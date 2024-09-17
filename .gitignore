@@ -1,0 +1,10 @@
+# Build files
+zig-out/
+zig-cache/
+.zig-cache/
+
+# IDE files
+.idea
+.vscode
+
+lines.sh
