@@ -5,15 +5,15 @@
 }
 
 :root {
-    --primary-color: #85622A; /* primary color */
+    --primary-color: #433f47; /* primary color */
     --secondary-color: #E6A644; /* secondary color */
     --tertiary-color: #E18339; /* tertiary color */
     --dark-color: #8C3313; /* dark color for text */
-    --light-color: #dace8d; /* light color for text */
+    --light-color: #b58dda; /* light color for text */
     --math-color: #2A6A9E; /* a shade of blue often associated with math and science */
     --background-color: #F5F5F5; /* light gray for subtle backgrounds */
-    --highlight-color: #C19A6B; /* camel color for highlights */
-    --font-color: #3d2a00; /* dark gray for text */
+    --highlight-color: #8c6bc1; /* camel color for highlights */
+    --font-color: #211624; /* dark gray for text */
 }
 
 

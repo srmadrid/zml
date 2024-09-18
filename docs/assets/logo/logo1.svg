@@ -3,12 +3,12 @@
 
 <svg
    width="512"
-   height="261.22501"
-   viewBox="0 0 135.46666 69.115785"
+   height="512"
+   viewBox="0 0 135.46666 135.46667"
    version="1.1"
    id="svg5"
    inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
-   sodipodi:docname="logo.svg"
+   sodipodi:docname="logo1.svg"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
@@ -25,14 +25,14 @@
      inkscape:document-units="px"
      showgrid="false"
      inkscape:zoom="1.1959364"
-     inkscape:cx="320.66921"
-     inkscape:cy="263.81"
+     inkscape:cx="322.34156"
+     inkscape:cy="264.64618"
      inkscape:window-width="1920"
      inkscape:window-height="1003"
      inkscape:window-x="0"
      inkscape:window-y="0"
      inkscape:window-maximized="1"
-     inkscape:current-layer="layer1" />
+     inkscape:current-layer="g31" />
   <defs
      id="defs2" />
   <g
@@ -43,8 +43,16 @@
        stroke="#000000"
        fill="#000000"
        stroke-width="0"
-       transform="matrix(0.06911565,0,0,-0.06911583,-8.1556467,51.836873)"
+       transform="matrix(0.06447818,0,0,-0.06447836,-3.0636773,83.852888)"
        id="g31">
+      <rect
+         style="fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:34.3734"
+         id="rect12080"
+         width="2100.9692"
+         height="2100.9631"
+         x="47.514946"
+         y="-1300.4811"
+         transform="scale(1,-1)" />
       <g
          data-mml-node="math"
          id="g29">
