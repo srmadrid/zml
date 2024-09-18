@@ -1,10 +1,10 @@
 const std = @import("std");
-const cml = @import("camel");
+const zml = @import("zml");
 
 pub fn main() !void {
     const a: std.mem.Allocator = std.heap.page_allocator;
 
-    var B: cml.NDArray(f64) = try cml.NDArray(f64).initFlags(a, &[_]usize{ 1, 4 }, cml.ndarray.Flags{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var B: zml.NDArray(f64) = try zml.NDArray(f64).initFlags(a, &[_]usize{ 1, 4 }, zml.ndarray.Flags{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
     defer B.deinit();
     for (0..B.size) |i| {
         B.data[i] = @floatFromInt(i + 1);
@@ -18,7 +18,7 @@ pub fn main() !void {
         std.debug.print("\n", .{});
     }
 
-    var C: cml.NDArray(f64) = try cml.NDArray(f64).initFlags(a, &[_]usize{ 3, 1 }, cml.ndarray.Flags{ .RowMajorContiguous = true, .ColumnMajorContiguous = false });
+    var C: zml.NDArray(f64) = try zml.NDArray(f64).initFlags(a, &[_]usize{ 3, 1 }, zml.ndarray.Flags{ .RowMajorContiguous = true, .ColumnMajorContiguous = false });
     defer C.deinit();
     C.setAll(10);
     std.debug.print("\nC =\n", .{});
@@ -30,10 +30,10 @@ pub fn main() !void {
         std.debug.print("\n", .{});
     }
 
-    var D: cml.NDArray(f64) = try cml.NDArray(f64).initFlags(a, &[_]usize{ 3, 4 }, cml.ndarray.Flags{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var D: zml.NDArray(f64) = try zml.NDArray(f64).initFlags(a, &[_]usize{ 3, 4 }, zml.ndarray.Flags{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
     defer D.deinit();
     try D.mult(B, C);
-    // try cml.NDArray(u64).add(&D, B, C);
+    // try zml.NDArray(u64).add(&D, B, C);
     std.debug.print("\nD =\n", .{});
     for (0..D.shape[0]) |i| {
         std.debug.print("\t", .{});
