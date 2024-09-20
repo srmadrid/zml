@@ -3,8 +3,14 @@ const zml = @import("zml.zig");
 const Symbol = zml.Symbol;
 const Expression = zml.Expression;
 
-/// A
+/// A mathematical set.
 pub const Set = struct {
-    elements: Expression,
-    properties: []const Expression,
+    /// Symbol of the set.
+    symbol: Symbol,
+    variable: Symbol,
+    domain: Symbol,
+    condition: Expression,
+
+    /// Initialization functions
+    pub const init = struct {};
 };
