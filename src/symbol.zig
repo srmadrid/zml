@@ -11,15 +11,19 @@ pub const Symbol = struct {
     /// Pointer to the mathematical object.
     object: *anyopaque,
     /// Dependent symbols.
-    dependents: std.ArrayListUnmanaged(Symbol),
+    dependents: std.ArrayListUnmanaged(*Symbol),
     /// Dependencies.
-    dependencies: std.ArrayListUnmanaged(Symbol),
+    dependencies: std.ArrayListUnmanaged(*Symbol),
     /// Allocator for the symbol.
-    allocator: std.mem.Allocator,
+    allocator: ?std.mem.Allocator,
 };
 
 /// Types of symbols.
 pub const SymbolType = enum {
+    /// An element of a set. Fixed.
+    Element,
+    /// A variable of a set. Can be any element of a set.
+    Variable,
     /// Mathematical set.
     Set,
 };
