@@ -2,7 +2,7 @@ const std = @import("std");
 const zml = @import("../zml.zig");
 const ExpressionTree = @import("exprtree.zig").ExpressionTree;
 
-/// A
+/// A mathematical expression.
 pub const Expression = struct {
     string: []const u8,
     tree: ExpressionTree,

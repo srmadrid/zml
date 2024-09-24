@@ -9,7 +9,7 @@ pub const Element = struct {
     /// Symbol of the variable.
     symbol: *Symbol,
     /// Set in which the element lives.
-    domain: Set,
-    /// The element itself. NOT FINAL. MAYBE HAVE THE NAME OF THE SYMBOL BE THE ELEMENT
+    domain: *Set,
+    /// The element itself.
     element: *anyopaque,
 };
