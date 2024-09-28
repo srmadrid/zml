@@ -6,9 +6,11 @@ pub fn main() !void {
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     //std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
 
+    try symbolicTesting(a);
+
     // try generalTesting(a);
 
-    try addTesting(a);
+    // try addTesting(a);
 
     // try iterTesting(a);
 
@@ -17,6 +19,13 @@ pub fn main() !void {
     // try multiIterTesting(a);
 
     // try perfTesting(a);
+}
+
+fn symbolicTesting(a: std.mem.Allocator) !void {
+    // Does not work, just for design.
+    const x = try zml.Variable.init(a, "x", &zml.Set.RealNumbers);
+    const S = try zml.Set.init.builder(a, "S", x, &[_]zml.Expression{zml.Expression.init.fromString(a, "sin(x) = 0", &[_]*zml.Symbol{&x})});
+    _ = S;
 }
 
 fn generalTesting(a: std.mem.Allocator) !void {

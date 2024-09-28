@@ -1,4 +1,5 @@
 const std = @import("std");
+const registry = @import("registry.zig").registry;
 
 /// The basic type for ZML.
 pub const Symbol = struct {
@@ -8,15 +9,54 @@ pub const Symbol = struct {
     id: usize,
     /// Type of the symbol.
     type: SymbolType,
-    /// Pointer to the mathematical object.
-    object: *anyopaque,
-    /// Dependent symbols.
-    dependents: std.ArrayListUnmanaged(*Symbol),
     /// Dependencies.
     dependencies: std.ArrayListUnmanaged(*Symbol),
+    /// Dependent symbols.
+    dependents: std.ArrayListUnmanaged(*Symbol),
     /// Allocator for the symbol.
-    allocator: ?std.mem.Allocator,
+    allocator: std.mem.Allocator,
+
+    /// Initialize a symbol.
+    pub fn init(name: []const u8, symbol_type: SymbolType, dependencies: []const *Symbol, allocator: std.mem.Allocator) !Symbol {
+        const _dependencies = try std.ArrayListUnmanaged(*Symbol).initCapacity(allocator, @min(2, dependencies.len));
+        const _dependents = try std.ArrayListUnmanaged(*Symbol).initCapacity(allocator, 2);
+
+        return Symbol{
+            .name = name,
+            .id = generateID(),
+            .type = symbol_type,
+            .dependencies = _dependencies,
+            .dependents = _dependents,
+            .allocator = allocator,
+        };
+    }
+
+    /// Deinitialize a symbol.
+    pub fn deinit(self: *Symbol) !void {
+        if (self.dependents.items.len != 0) {
+            return error.Error;
+        }
+
+        self.dependencies.deinit(self.allocator);
+        self.dependents.deinit(self.allocator);
+    }
+
+    /// Returns a pointer to the parent object.
+    pub fn object(self: *Symbol) anyopaque {
+        return @fieldParentPtr("symbol", self);
+    }
 };
+
+/// Generate a random unused ID.
+pub fn generateID() usize {
+    var number = std.crypto.random.int(usize);
+
+    while (registry.contains(number)) {
+        number = std.crypto.random.int(usize);
+    }
+
+    return number;
+}
 
 /// Types of symbols.
 pub const SymbolType = enum {
