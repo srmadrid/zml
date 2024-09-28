@@ -1,5 +1,6 @@
 const std = @import("std");
-const camel = @import("../camel.zig");
+
+// To be removed in favor of a more flexible approach.
 
 pub const SupportedNumericType = enum {
     /// u8, u16, u32, u64, u128, i8, i16, i32, i64, i128

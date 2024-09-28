@@ -1,5 +1,4 @@
 const std = @import("std");
-const registry = @import("registry.zig").registry;
 
 /// The basic type for ZML.
 pub const Symbol = struct {
@@ -49,12 +48,8 @@ pub const Symbol = struct {
 
 /// Generate a random unused ID.
 pub fn generateID() usize {
-    var number = std.crypto.random.int(usize);
-
-    while (registry.contains(number)) {
-        number = std.crypto.random.int(usize);
-    }
-
+    const number = std.crypto.random.int(usize);
+    // Somehow check if ID is in use
     return number;
 }
 

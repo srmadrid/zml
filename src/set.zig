@@ -8,7 +8,7 @@ const Variable = zml.Variable;
 /// A mathematical set.
 pub const Set = struct {
     /// Symbol of the set.
-    symbol: Symbol,
+    symbol: *Symbol,
     /// Variable from which the set is created. The domain of the set is
     /// contained here, and if it is equal to the set itself, and no condition
     /// is passed, then the set is only declared, i.e., it is equivalent to
@@ -24,8 +24,9 @@ pub const Set = struct {
             // Some function that joins predicates with ANDs.
             const expr = Expression.combineAND(allocator, conditions);
 
-            const symbol = try Symbol.init(name, SymbolType.Set, &[_]*Symbol{&variable.symbol}, allocator);
-            symbol.dependents.append(allocator, &variable.symbol);
+            const symbol = try allocator.create(Symbol);
+            symbol.* = Symbol.init(name, SymbolType.Set, &[_]*Symbol{variable.symbol}, allocator);
+            variable.symbol.dependents.append(variable.symbol.allocator, symbol);
 
             return Set{
                 .symbol = symbol,
