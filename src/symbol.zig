@@ -8,6 +8,8 @@ pub const Symbol = struct {
     id: usize,
     /// Type of the symbol.
     type: SymbolType,
+    /// The object itself.
+    object: *anyopaque,
     /// Dependencies.
     dependencies: std.ArrayListUnmanaged(*Symbol),
     /// Dependent symbols.
@@ -16,7 +18,7 @@ pub const Symbol = struct {
     allocator: std.mem.Allocator,
 
     /// Initialize a symbol.
-    pub fn init(name: []const u8, symbol_type: SymbolType, dependencies: []const *Symbol, allocator: std.mem.Allocator) !Symbol {
+    pub fn init(allocator: std.mem.Allocator, name: []const u8, symbol_type: SymbolType, object: *anyopaque, dependencies: []const *Symbol) !Symbol {
         const _dependencies = try std.ArrayListUnmanaged(*Symbol).initCapacity(allocator, @min(2, dependencies.len));
         const _dependents = try std.ArrayListUnmanaged(*Symbol).initCapacity(allocator, 2);
 
@@ -24,6 +26,7 @@ pub const Symbol = struct {
             .name = name,
             .id = generateID(),
             .type = symbol_type,
+            .object = object,
             .dependencies = _dependencies,
             .dependents = _dependents,
             .allocator = allocator,
@@ -38,11 +41,6 @@ pub const Symbol = struct {
 
         self.dependencies.deinit(self.allocator);
         self.dependents.deinit(self.allocator);
-    }
-
-    /// Returns a pointer to the parent object.
-    pub fn object(self: *Symbol) anyopaque {
-        return @fieldParentPtr("symbol", self);
     }
 };
 

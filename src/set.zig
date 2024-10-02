@@ -20,15 +20,15 @@ pub const Set = struct {
     /// Initialization functions
     pub const init = struct {
         /// Initialize a set using set-builder style.
-        pub fn builder(allocator: std.mem.Allocator, name: []const u8, variable: Variable, conditions: []const Expression) !Set {
+        pub fn builder(self: *Set, allocator: std.mem.Allocator, name: []const u8, variable: Variable, conditions: []const Expression) !void {
             // Some function that joins predicates with ANDs.
             const expr = Expression.combineAND(allocator, conditions);
 
             const symbol = try allocator.create(Symbol);
-            symbol.* = Symbol.init(name, SymbolType.Set, &[_]*Symbol{variable.symbol}, allocator);
+            symbol.* = Symbol.init(allocator, name, SymbolType.Set, self, &[_]*Symbol{variable.symbol});
             variable.symbol.dependents.append(variable.symbol.allocator, symbol);
 
-            return Set{
+            self.* = Set{
                 .symbol = symbol,
                 .variable = variable,
                 .condition = expr,

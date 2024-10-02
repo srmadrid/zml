@@ -6,7 +6,7 @@ pub fn main() !void {
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     //std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
 
-    try symbolicTesting(a);
+    // try symbolicTesting(a);
 
     // try generalTesting(a);
 
@@ -16,7 +16,7 @@ pub fn main() !void {
 
     // try iterPerfTesting(a);
 
-    // try multiIterTesting(a);
+    try multiIterTesting(a);
 
     // try perfTesting(a);
 }
@@ -257,7 +257,7 @@ fn multiIterTesting(a: std.mem.Allocator) !void {
         std.debug.print("{}  ", .{iter.iterators[3].position[i]});
     }
     std.debug.print("]: {:0>2}\n", .{iter.iterators[3].index});
-    while (iter.nextOrder(false) != null) {
+    while (iter.nextOrder(true) != null) {
         std.debug.print("[  ", .{});
         for (0..iter.ndim) |i| {
             std.debug.print("{}  ", .{iter.position[i]});

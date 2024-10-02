@@ -13,12 +13,12 @@ pub const Variable = struct {
     domain: *Set,
 
     /// Initialize a variable.
-    pub fn init(allocator: std.mem.Allocator, name: []const u8, domain: *Set) !Variable {
+    pub fn init(self: *Variable, allocator: std.mem.Allocator, name: []const u8, domain: *Set) !void {
         const symbol = try allocator.create(Symbol);
-        symbol.* = Symbol.init(name, SymbolType.Variable, &[_]*Symbol{domain.symbol}, allocator);
+        symbol.* = Symbol.init(allocator, name, SymbolType.Variable, self, &[_]*Symbol{domain.symbol});
         domain.symbol.dependents.append(domain.symbol.allocator, symbol);
 
-        return Variable{
+        self.* = Variable{
             .symbol = symbol,
             .domain = domain,
         };
