@@ -319,7 +319,15 @@ pub fn MultiIterator(comptime T: type) type {
         /// - `T`: the next item.
         /// - `null`: reached end.
         pub fn next(self: *Self) ?usize {
-            return self.nextOrder(true);
+            var trueCount: usize = 0;
+            for (0..self.narray) |i| {
+                if (self.iterators[i].flags.RowMajorContiguous) {
+                    trueCount += 1;
+                }
+            }
+            const order: bool = self.narray <= (trueCount * 2);
+
+            return self.nextOrder(order);
         }
 
         /// Iterates to the next element.
