@@ -60,6 +60,35 @@ pub const Expression = struct {
                 continue;
             }
 
+            if (expression[i] == ')') {
+                if (stack.pop() != TokenType.OpeningParenthesis) {
+                    array.deinit(allocator);
+                    stack.deinit(allocator);
+                    return error.Untokenizable;
+                }
+                try array.append(allocator, Token{ .string = expression[i .. i + 1], .type = TokenType.ClosingParenthesis });
+                i += 1;
+                continue;
+            }
+
+            if (expression[i] == '[') {
+                try array.append(allocator, Token{ .string = expression[i .. i + 1], .type = TokenType.OpeningBrackets });
+                try stack.append(allocator, TokenType.OpeningParenthesis);
+                i += 1;
+                continue;
+            }
+
+            if (expression[i] == ']') {
+                if (stack.pop() != TokenType.OpeningBrackets) {
+                    array.deinit(allocator);
+                    stack.deinit(allocator);
+                    return error.Untokenizable;
+                }
+                try array.append(allocator, Token{ .string = expression[i .. i + 1], .type = TokenType.ClosingBrackets });
+                i += 1;
+                continue;
+            }
+
             var j: usize = i;
             if (expression[i] == '\\') {
                 if (i + 1 >= expression.len) {
@@ -69,13 +98,19 @@ pub const Expression = struct {
                 }
 
                 if (expression[i + 1] == '{') {
-                    try array.append(allocator, Token{ .string = expression[i .. i + 2], .type = TokenType.OpeningBrackets });
+                    try array.append(allocator, Token{ .string = expression[i .. i + 2], .type = TokenType.OpeningBackslashBraces });
+                    try stack.append(allocator, TokenType.OpeningBackslashBraces);
                     i += 2;
                     continue;
                 }
 
                 if (expression[i + 1] == '}') {
-                    try array.append(allocator, Token{ .string = expression[i .. i + 2], .type = TokenType.ClosingBrackets });
+                    if (stack.pop() != TokenType.OpeningBackslashBraces) {
+                        array.deinit(allocator);
+                        stack.deinit(allocator);
+                        return error.Untokenizable;
+                    }
+                    try array.append(allocator, Token{ .string = expression[i .. i + 2], .type = TokenType.ClosingBackslashBraces });
                     i += 2;
                     continue;
                 }
@@ -83,19 +118,11 @@ pub const Expression = struct {
                 j += 1;
             }
 
-            while (j < expression.len and expression[j] != ' ' and expression[j] != ',' and expression[j] != '\\') {
-                if (expression[j] == '(') {
-                    try stack.append(allocator, TokenType.OpeningParenthesis);
-                } else if (expression[j] == '{') {
-                    try stack.append(allocator, TokenType.OpeningBrackets);
+            while (j < expression.len and expression[j] != ' ' and expression[j] != ',' and expression[j] != '\\' and expression[j] != '(' and expression[j] != ')' and expression[j] != '[' and expression[j] != ']') {
+                if (expression[j] == '{') {
+                    try stack.append(allocator, TokenType.OpeningBraces);
                 } else if (expression[j] == '}') {
-                    if (stack.pop() != TokenType.OpeningBrackets) {
-                        array.deinit(allocator);
-                        stack.deinit(allocator);
-                        return error.Untokenizable;
-                    }
-                } else if (expression[j] == ')') {
-                    if (stack.pop() != TokenType.OpeningParenthesis) {
+                    if (stack.pop() != TokenType.OpeningBraces) {
                         array.deinit(allocator);
                         stack.deinit(allocator);
                         return error.Untokenizable;
@@ -116,6 +143,12 @@ pub const Expression = struct {
             i = j;
         }
 
+        if (stack.items.len != 0) {
+            array.deinit(allocator);
+            stack.deinit(allocator);
+            return error.Untokenizable;
+        }
+
         std.debug.print("\n", .{});
         stack.deinit(allocator);
         return array;
@@ -133,6 +166,10 @@ pub const TokenType = enum {
     ClosingParenthesis,
     OpeningBrackets,
     ClosingBrackets,
+    OpeningBraces,
+    ClosingBraces,
+    OpeningBackslashBraces,
+    ClosingBackslashBraces,
     Comma,
 };
 

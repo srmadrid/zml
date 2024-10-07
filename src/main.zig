@@ -27,7 +27,7 @@ fn symbolicTesting(a: std.mem.Allocator) !void {
     //const S = try zml.Set.init.builder(a, "S", x, &[_]zml.Expression{zml.Expression.init.fromString(a, "sin(x) = 0", &[_]*zml.Symbol{&x})});
     //_ = S;
     const expression = @import("expression/expression.zig");
-    const expr = "\\{x\\in\\mathbb{R}\\mid x > 0, \\arcsin(x) = 2\\pi k, k\\in\\mathbb{N}\\}";
+    const expr = "S = \\{x\\in\\mathbb{R}\\mid x > 0, \\arcsin(x) = 2\\pi k, \\forall k\\in\\mathbb{N}\\}";
     const arr = try expression.Expression.tokenize(a, expr);
     std.debug.print("{s}\n\nTokenized:\n", .{expr});
     for (arr.items) |token| {
