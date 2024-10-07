@@ -52,7 +52,7 @@ pub fn build(b: *std.Build) void {
             .optimize = optimize,
         });
         const install_example = b.addInstallArtifact(example, .{});
-        example.root_module.addImport("camel", module);
+        example.root_module.addImport("zml", module);
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }

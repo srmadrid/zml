@@ -6,7 +6,7 @@ pub fn main() !void {
     // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
     //std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
 
-    // try symbolicTesting(a);
+    try symbolicTesting(a);
 
     // try generalTesting(a);
 
@@ -16,16 +16,23 @@ pub fn main() !void {
 
     // try iterPerfTesting(a);
 
-    try multiIterTesting(a);
+    // try multiIterTesting(a);
 
     // try perfTesting(a);
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {
     // Does not work, just for design.
-    const x = try zml.Variable.init(a, "x", &zml.Set.RealNumbers);
-    const S = try zml.Set.init.builder(a, "S", x, &[_]zml.Expression{zml.Expression.init.fromString(a, "sin(x) = 0", &[_]*zml.Symbol{&x})});
-    _ = S;
+    //const x = try zml.Variable.init(a, "x", &zml.Set.RealNumbers);
+    //const S = try zml.Set.init.builder(a, "S", x, &[_]zml.Expression{zml.Expression.init.fromString(a, "sin(x) = 0", &[_]*zml.Symbol{&x})});
+    //_ = S;
+    const expression = @import("expression/expression.zig");
+    const expr = "\\{x\\in\\mathbb{R}\\mid x > 0, \\arcsin(x) = 2\\pi k, k\\in\\mathbb{N}\\}";
+    const arr = try expression.Expression.tokenize(a, expr);
+    std.debug.print("{s}\n\nTokenized:\n", .{expr});
+    for (arr.items) |token| {
+        std.debug.print("<string = {s}, type = {}>\n", .{ token.string, token.type });
+    }
 }
 
 fn generalTesting(a: std.mem.Allocator) !void {

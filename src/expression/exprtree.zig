@@ -4,7 +4,7 @@ const Symbol = zml.Symbol;
 
 /// A tree containing an expression.
 pub const ExpressionTree = struct {
-    root: Node,
+    root: ?Node,
 
     pub const Node = struct {
         value: *Symbol,
@@ -31,7 +31,7 @@ pub const ExpressionTree = struct {
     };
 
     /// Initialize the tree with the value as the root.
-    pub fn init(allocator: std.mem.Allocator, value: Symbol) !ExpressionTree {
+    pub fn init(allocator: std.mem.Allocator, value: *Symbol) !ExpressionTree {
         return ExpressionTree{
             .root = try Node.init(allocator, value, null),
         };

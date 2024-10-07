@@ -57,6 +57,8 @@ pub const SymbolType = enum {
     Element,
     /// A variable of a set. Can be any element of a set.
     Variable,
+    /// An operator.
+    Operator,
     /// Mathematical set.
     Set,
 };
