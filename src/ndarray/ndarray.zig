@@ -105,21 +105,21 @@ pub fn NDArray(comptime T: type) type {
                 }
             }
 
-            if ((flags.RowMajorContiguous == flags.ColumnMajorContiguous and count > 1) or !flags.OwnsData) {
-                return Error.InvalidFlags;
-            }
+            //if ((flags.RowMajorContiguous == flags.ColumnMajorContiguous and count > 1) or !flags.OwnsData) {
+            //    return Error.InvalidFlags;
+            //}
 
             var size: usize = 1;
             var shapes: []usize = try allocator.alloc(usize, shape.len);
             var strides: []usize = try allocator.alloc(usize, shape.len);
             if (shape.len > 0) {
-                if (flags.RowMajorContiguous) {
+                if (flags.order == .RowMajor) {
                     for (0..shape.len) |i| {
                         strides[shape.len - i - 1] = size;
                         size *= shape[shape.len - i - 1];
                         shapes[i] = shape[i];
                     }
-                } else if (flags.ColumnMajorContiguous) {
+                } else {
                     for (0..shape.len) |i| {
                         strides[i] = size;
                         size *= shape[i];
@@ -155,7 +155,7 @@ pub fn NDArray(comptime T: type) type {
         pub fn deinit(self: *Self) void {
             self.allocator.free(self.shape);
             self.allocator.free(self.strides);
-            if (self.flags.OwnsData) {
+            if (self.flags.ownsData) {
                 self.allocator.free(self.data);
             }
 
@@ -685,10 +685,10 @@ pub fn NDArray(comptime T: type) type {
             /// The routine computes the sum of the magnitudes of elements of a
             /// real array, or the sum of magnitudes of the real and imaginary
             /// parts of elements of a complex array:
-            ///
-            /// `res = |x[1].Re| + |x[1].Im| + |x[2].Re| + |x[2].Im| + ... +
-            /// |x[n].Re| + |x[n].Im|`,
-            ///
+            /// ```zig
+            /// res = |x[1].Re| + |x[1].Im| + |x[2].Re| + |x[2].Im| + ... +
+            /// |x[n].Re| + |x[n].Im|,
+            /// ```
             /// where `x` is an `NDArray`.
             ///
             /// **Input Parameters**:
@@ -768,14 +768,20 @@ pub const Error = error{
 /// Flags representing information on the storage of an array.
 pub const Flags = packed struct {
     /// Row major element storage (right to left).
-    RowMajorContiguous: bool = true,
-    /// Column major element storage (left to right).
-    ColumnMajorContiguous: bool = false,
+    order: Order = .RowMajor,
     /// The array owns the data, and it will be freed when the array is
     /// deinitialized. If it does not own it, it is assumed to be a view.
-    OwnsData: bool = true,
+    ownsData: bool = true,
     /// The data of the array can or not be modified.
-    Writeable: bool = true,
+    writeable: bool = true,
+};
+
+/// Order of the elements in the array.
+pub const Order = enum(u1) {
+    /// Row major element storage (right to left).
+    RowMajor,
+    /// Column major element storage (left to right).
+    ColumnMajor,
 };
 
 test "init" {
@@ -784,31 +790,29 @@ test "init" {
     const tooBig: [MaxDimensions + 1]usize = [_]usize{1} ** (MaxDimensions + 1);
     try std.testing.expectError(Error.TooManyDimensions, NDArray(f64).init(a, &tooBig, .{}));
     try std.testing.expectError(Error.ZeroDimension, NDArray(f64).init(a, &[_]usize{ 2, 3, 5, 6, 0, 1, 8 }, .{}));
-    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .RowMajorContiguous = true, .ColumnMajorContiguous = true }));
-    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .RowMajorContiguous = false, .ColumnMajorContiguous = false }));
-    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .OwnsData = false }));
+    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .order = .ColumnMajor }));
+    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .order = .RowMajor }));
+    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .ownsData = false }));
 
-    var scalar1: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{ .RowMajorContiguous = true, .ColumnMajorContiguous = true });
+    var scalar1: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{});
     defer scalar1.deinit();
     try std.testing.expect(scalar1.data.len == 1);
     try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar1.shape));
     try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar1.strides));
     try std.testing.expect(scalar1.size == 1);
-    try std.testing.expect(scalar1.flags.RowMajorContiguous);
-    try std.testing.expect(scalar1.flags.ColumnMajorContiguous);
-    try std.testing.expect(scalar1.flags.OwnsData);
-    try std.testing.expect(scalar1.flags.Writeable);
+    try std.testing.expect(scalar1.flags.order == .RowMajor);
+    try std.testing.expect(scalar1.flags.ownsData);
+    try std.testing.expect(scalar1.flags.writeable);
 
-    var scalar2: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{ .RowMajorContiguous = false, .ColumnMajorContiguous = false });
+    var scalar2: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{});
     defer scalar2.deinit();
     try std.testing.expect(scalar2.data.len == 1);
     try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar2.shape));
     try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar2.strides));
     try std.testing.expect(scalar2.size == 1);
-    try std.testing.expect(!scalar2.flags.RowMajorContiguous);
-    try std.testing.expect(!scalar2.flags.ColumnMajorContiguous);
-    try std.testing.expect(scalar2.flags.OwnsData);
-    try std.testing.expect(scalar2.flags.Writeable);
+    try std.testing.expect(scalar2.flags.order == .RowMajor);
+    try std.testing.expect(scalar2.flags.ownsData);
+    try std.testing.expect(scalar2.flags.writeable);
 
     var A: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{});
     defer A.deinit();
@@ -817,22 +821,20 @@ test "init" {
     try std.testing.expect(std.mem.eql(usize, &[_]usize{ 10, 5, 8, 3 }, A.shape));
     try std.testing.expect(std.mem.eql(usize, &[_]usize{ 120, 24, 3, 1 }, A.strides));
     try std.testing.expect(A.size == 1200);
-    try std.testing.expect(A.flags.RowMajorContiguous);
-    try std.testing.expect(!A.flags.ColumnMajorContiguous);
-    try std.testing.expect(A.flags.OwnsData);
-    try std.testing.expect(A.flags.Writeable);
+    try std.testing.expect(A.flags.order == .RowMajor);
+    try std.testing.expect(A.flags.ownsData);
+    try std.testing.expect(A.flags.writeable);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{ .order = .ColumnMajor });
     defer B.deinit();
 
     try std.testing.expect(B.data.len == 1200);
     try std.testing.expect(std.mem.eql(usize, &[_]usize{ 10, 5, 8, 3 }, B.shape));
     try std.testing.expect(std.mem.eql(usize, &[_]usize{ 1, 10, 50, 400 }, B.strides));
     try std.testing.expect(B.size == 1200);
-    try std.testing.expect(!B.flags.RowMajorContiguous);
-    try std.testing.expect(B.flags.ColumnMajorContiguous);
-    try std.testing.expect(B.flags.OwnsData);
-    try std.testing.expect(B.flags.Writeable);
+    try std.testing.expect(B.flags.order == .ColumnMajor);
+    try std.testing.expect(B.flags.ownsData);
+    try std.testing.expect(B.flags.writeable);
 
     var scalar: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{});
     defer scalar.deinit();
@@ -840,10 +842,9 @@ test "init" {
     try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar.shape));
     try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar.strides));
     try std.testing.expect(scalar.size == 1);
-    try std.testing.expect(scalar.flags.RowMajorContiguous);
-    try std.testing.expect(!scalar.flags.ColumnMajorContiguous);
-    try std.testing.expect(scalar.flags.OwnsData);
-    try std.testing.expect(scalar.flags.Writeable);
+    try std.testing.expect(scalar.flags.order == .RowMajor);
+    try std.testing.expect(scalar.flags.ownsData);
+    try std.testing.expect(scalar.flags.writeable);
 
     // MORE FOR VIEWS WHEN THEY ARE IMPLEMENTED
 }
@@ -856,7 +857,7 @@ test "_index" {
 
     try std.testing.expect(A._index(&[_]usize{ 3, 1, 0, 2 }) == 386);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{ .order = .ColumnMajor });
     defer B.deinit();
 
     try std.testing.expect(B._index(&[_]usize{ 3, 1, 0, 2 }) == 813);
@@ -889,7 +890,7 @@ test "set" {
     }
     try std.testing.expect(std.mem.eql(f64, A.data, &[_]f64{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 }));
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 3, 2, 4 }, .{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 3, 2, 4 }, .{ .order = .ColumnMajor });
     defer B.deinit();
     elem = 1;
     for (0..B.shape[0]) |i| {

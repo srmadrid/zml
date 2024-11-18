@@ -257,7 +257,7 @@ pub fn MultiIterator(comptime T: type) type {
 
             var size: usize = 1;
             var strides: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
-            if (flags.RowMajorContiguous) {
+            if (flags.order == .RowMajor) {
                 for (0..ndim) |i| {
                     strides[ndim - i - 1] = size;
                     size *= shape[ndim - i - 1];
@@ -321,7 +321,7 @@ pub fn MultiIterator(comptime T: type) type {
         pub fn next(self: *Self) ?usize {
             var trueCount: usize = 0;
             for (0..self.narray) |i| {
-                if (self.iterators[i].flags.RowMajorContiguous) {
+                if (self.iterators[i].flags.order == .RowMajor) {
                     trueCount += 1;
                 }
             }
