@@ -2,19 +2,21 @@ const std = @import("std");
 const zml = @import("zml.zig");
 
 pub fn main() !void {
-    const a: std.mem.Allocator = std.heap.page_allocator;
+    // const a: std.mem.Allocator = std.heap.page_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const a = gpa.allocator();
 
     // try symbolicTesting(a);
 
     // try generalTesting(a);
 
-    // try addTesting(a);
+    try addTesting(a);
 
     // try iterTesting(a);
 
     // try iterPerfTesting(a);
 
-    try multiIterTesting(a);
+    // try multiIterTesting(a);
 
     // try perfTesting(a);
 }
@@ -24,9 +26,8 @@ fn symbolicTesting(a: std.mem.Allocator) !void {
     //const x = try zml.Variable.init(a, "x", &zml.Set.RealNumbers);
     //const S = try zml.Set.init.builder(a, "S", x, &[_]zml.Expression{zml.Expression.init.fromString(a, "sin(x) = 0", &[_]*zml.Symbol{&x})});
     //_ = S;
-    const expression = @import("expression/expression.zig");
     const expr = "S = \\{x\\in\\mathbb{R}\\mid x > 0, \\arcsin(x) = 2\\pi k, \\forall k\\in\\mathbb{N}\\}";
-    const arr = try expression.Expression.tokenize(a, expr);
+    const arr = try zml.Expression.tokenize(a, expr);
     std.debug.print("{s}\n\nTokenized:\n", .{expr});
     for (arr.items) |token| {
         std.debug.print("<string = {s}, type = {}>\n", .{ token.string, token.type });
@@ -36,19 +37,19 @@ fn symbolicTesting(a: std.mem.Allocator) !void {
 fn generalTesting(a: std.mem.Allocator) !void {
     std.debug.print("Size of flags: {}\n", .{@sizeOf(zml.ndarray.Flags)});
 
-    var A: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 20, 15, 8, 18 }, .{ .order = .ColumnMajor });
+    var A: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 20, 15, 8, 18 }, .{ .order = .ColumnMajor });
     defer A.deinit();
 
     std.debug.print("A dimentions = {}\n", .{A.shape.len});
 
     std.debug.print("A.shape = [  ", .{});
-    for (A.shape) |dim| {
+    for (A.shape[0..A.ndim]) |dim| {
         std.debug.print("{}  ", .{dim});
     }
     std.debug.print("]\n", .{});
 
     std.debug.print("A.strides = [  ", .{});
-    for (A.strides) |stride| {
+    for (A.strides[0..A.ndim]) |stride| {
         std.debug.print("{}  ", .{stride});
     }
     std.debug.print("]\n", .{});
@@ -95,7 +96,7 @@ fn addTesting(a: std.mem.Allocator) !void {
 
     var D: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 3, 5 }, .{ .order = .ColumnMajor });
     defer D.deinit();
-    try D.mul(B, C);
+    try D.sub(B, C);
     // try zml.NDArray(u64).add(&D, B, C);
     std.debug.print("\nD =\n", .{});
     for (0..D.shape[0]) |i| {
@@ -125,7 +126,7 @@ fn iterTesting(a: std.mem.Allocator) !void {
         std.debug.print("{}  ", .{iterC.position[i]});
     }
     std.debug.print("],  {},  {}\n", .{ iterR.index, iterC.index });
-    while (iterR.nextOrder(false) != null and iterC.nextOrder(false) != null) {
+    while (iterR.nextOrder(.ColumnMajor) != null and iterC.nextOrder(.ColumnMajor) != null) {
         std.debug.print("[  ", .{});
         for (0..iterR.ndim) |i| {
             std.debug.print("{}  ", .{iterR.position[i]});
@@ -136,7 +137,7 @@ fn iterTesting(a: std.mem.Allocator) !void {
         }
         std.debug.print("],  {},  {}\n", .{ iterR.index, iterC.index });
     }
-    _ = iterC.nextOrder(false);
+    _ = iterC.nextOrder(.ColumnMajor);
     std.debug.print("Final state:\n", .{});
     std.debug.print("[  ", .{});
     for (0..iterR.ndim) |i| {
@@ -232,17 +233,17 @@ fn multiIterTesting(a: std.mem.Allocator) !void {
     }
     std.debug.print("]\n", .{});
     std.debug.print("arr1.shape = [  ", .{});
-    for (0..arr1.shape.len) |i| {
+    for (0..arr1.ndim) |i| {
         std.debug.print("{}  ", .{arr1.shape[i]});
     }
     std.debug.print("]\n", .{});
     std.debug.print("arr2.shape = [  ", .{});
-    for (0..arr2.shape.len) |i| {
+    for (0..arr2.ndim) |i| {
         std.debug.print("{}  ", .{arr2.shape[i]});
     }
     std.debug.print("]\n", .{});
     std.debug.print("arr3.shape = [  ", .{});
-    for (0..arr3.shape.len) |i| {
+    for (0..arr3.ndim) |i| {
         std.debug.print("{}  ", .{arr3.shape[i]});
     }
     std.debug.print("]\n", .{});
@@ -270,7 +271,7 @@ fn multiIterTesting(a: std.mem.Allocator) !void {
         std.debug.print("{}  ", .{iter.iterators[3].position[i]});
     }
     std.debug.print("]: {:0>2}\n", .{iter.iterators[3].index});
-    while (iter.nextOrder(true) != null) {
+    while (iter.nextOrder(.RowMajor) != null) {
         std.debug.print("[  ", .{});
         for (0..iter.ndim) |i| {
             std.debug.print("{}  ", .{iter.position[i]});

@@ -24,7 +24,7 @@ const MaxArrays: usize = 8;
 pub fn Iterator(comptime T: type) type {
     return struct {
         const Self: type = @This();
-        /// The dimensions of the iterator.
+        /// The number dimensions of the iterator.
         ndim: usize,
         /// The shape of the iterator.
         shape: [MaxDimensions]usize,
@@ -49,7 +49,7 @@ pub fn Iterator(comptime T: type) type {
         /// **Return Values**:
         /// - `Self`: the initialized iterator.
         pub fn init(array: NDArray(T)) Self {
-            const ndim: usize = array.shape.len;
+            const ndim: usize = array.ndim;
             var shape: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
             var strides: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
             for (0..ndim) |i| {
@@ -86,7 +86,7 @@ pub fn Iterator(comptime T: type) type {
         /// - `usize`: the index of the next item.
         /// - `null`: reached end.
         pub fn next(self: *Self) ?usize {
-            return self.nextOrder(self.flags.RowMajorContiguous);
+            return self.nextOrder(self.flags.order);
         }
 
         /// Iterates to the next element.
@@ -113,14 +113,14 @@ pub fn Iterator(comptime T: type) type {
         /// **Return Values**:
         /// - `usize`: the index of the next item.
         /// - `null`: reached end.
-        pub fn nextOrder(self: *Self, rowMajorOrder: bool) ?usize {
+        pub fn nextOrder(self: *Self, order: ndarray.Order) ?usize {
             var carry: usize = 1;
             var change: i64 = undefined;
             var prev: i64 = undefined;
             var index: i64 = undefined;
             var stride: i64 = undefined;
             var mustBreak: bool = false;
-            if (rowMajorOrder) {
+            if (order == .RowMajor) {
                 for (0..self.ndim) |i| {
                     prev = @intCast(self.position[self.ndim - i - 1]);
                     self.position[self.ndim - i - 1] += 1;
@@ -226,8 +226,8 @@ pub fn MultiIterator(comptime T: type) type {
             var iterators: [MaxArrays]Iterator(T) = undefined;
             for (0..narray) |i| {
                 iterators[i] = Iterator(T).init(arrays[i]);
-                if (arrays[i].shape.len > ndim) {
-                    ndim = arrays[i].shape.len;
+                if (arrays[i].ndim > ndim) {
+                    ndim = arrays[i].ndim;
                 }
             }
 
@@ -243,12 +243,12 @@ pub fn MultiIterator(comptime T: type) type {
                 //    std.debug.print("{}  ", .{arrays[i].shape[help]});
                 //}
                 //std.debug.print("]\n", .{});
-                for (0..arrays[i].shape.len) |j| {
-                    if (shape[ndim - j - 1] != arrays[i].shape[arrays[i].shape.len - j - 1]) {
+                for (0..arrays[i].ndim) |j| {
+                    if (shape[ndim - j - 1] != arrays[i].shape[arrays[i].ndim - j - 1]) {
                         //std.debug.print("Disagreement = {} != {}\n", .{ shape[ndim - j - 1], arrays[i].shape[arrays[i].shape.len - j - 1] });
                         if (shape[ndim - j - 1] == 1 or shape[ndim - j - 1] == 0) {
-                            shape[ndim - j - 1] = arrays[i].shape[arrays[i].shape.len - j - 1];
-                        } else if (arrays[i].shape[arrays[i].shape.len - j - 1] != 1) {
+                            shape[ndim - j - 1] = arrays[i].shape[arrays[i].ndim - j - 1];
+                        } else if (arrays[i].shape[arrays[i].ndim - j - 1] != 1) {
                             return IteratorError.NotBroadcastable;
                         }
                     }
@@ -319,13 +319,13 @@ pub fn MultiIterator(comptime T: type) type {
         /// - `T`: the next item.
         /// - `null`: reached end.
         pub fn next(self: *Self) ?usize {
-            var trueCount: usize = 0;
+            var rowCount: usize = 0;
             for (0..self.narray) |i| {
                 if (self.iterators[i].flags.order == .RowMajor) {
-                    trueCount += 1;
+                    rowCount += 1;
                 }
             }
-            const order: bool = self.narray <= (trueCount * 2);
+            const order: ndarray.Order = if (self.narray <= (rowCount * 2)) .RowMajor else .ColumnMajor;
 
             return self.nextOrder(order);
         }
@@ -354,14 +354,14 @@ pub fn MultiIterator(comptime T: type) type {
         /// **Return Values**:
         /// - `T`: the next item.
         /// - `null`: reached end.
-        pub fn nextOrder(self: *Self, rowMajorOrder: bool) ?usize {
+        pub fn nextOrder(self: *Self, order: ndarray.Order) ?usize {
             var carry: usize = 1;
             var change: i64 = undefined;
             var prev: i64 = undefined;
             var index: i64 = undefined;
             var stride: i64 = undefined;
             var mustBreak: bool = false;
-            if (rowMajorOrder) {
+            if (order == .RowMajor) {
                 for (0..self.ndim) |i| {
                     prev = @intCast(self.position[self.ndim - i - 1]);
                     self.position[self.ndim - i - 1] += 1;

@@ -48,15 +48,19 @@ pub fn NDArray(comptime T: type) type {
     _ = core.supported.whatSupportedNumericType(T);
     return struct {
         const Self: type = @This();
-        /// The data of the matrix.
+        /// The data of the array.
         data: []T,
+        /// The number dimensions of the array.
+        ndim: usize,
         /// The shape of the array, i.e., the dimensions of the array.
-        shape: []usize,
+        shape: [MaxDimensions]usize,
         /// The strides of the array. These are the number of elements to skip
         /// to get the next element in each dimension.
-        strides: []usize,
+        strides: [MaxDimensions]usize,
         /// Total number of elements in the array.
         size: usize,
+        /// Owner of the data. Set to `null` if itself is the owner.
+        base: ?*NDArray(T),
         /// Flags holding info on the storage of the array.
         flags: Flags,
         /// The allocator used for internal memory management.
@@ -76,17 +80,14 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Input Parameters**:
         /// - `allocator`: allocator to use internally.
-        /// - `shape`: shape of the array. Must have length
-        /// `≤ MaxDimensions` and no dimension of size `0`.
-        /// - `flags`: storage flags for the array (must be valid:
-        /// `RowMajorContiguous` and `ColumnMajorContinuous` must not be set at
-        /// the same time, unless the desired array is a scalar or a vector, and
-        /// `OwnsData` must be true. Using an empty anonymous struct `.{}` will
-        /// yield the default flags.
+        /// - `shape`: shape of the array. Must have length `≤ MaxDimensions`
+        /// and no dimension of size `0`.
+        /// - `flags`: storage flags for the array (`ownsData` must be true).
+        /// Using an empty anonymous struct `.{}` will yield the default flags.
         ///
         /// **Return Values**:
         /// - `Self`: the initialized array.
-        /// - `TooManyDimensions`: `shape` is too long (`≥ MaxDimensions`).
+        /// - `TooManyDimensions`: `shape` is too long (`> MaxDimensions`).
         /// - `ZeroDimension`: at least one dimension is `0`.
         /// - `InvalidFlags`: flags are invalid.
         /// - `OutOfMemory`: `alloc` failed.
@@ -95,48 +96,80 @@ pub fn NDArray(comptime T: type) type {
                 return Error.TooManyDimensions;
             }
 
-            var count: u32 = 0;
+            if (!flags.ownsData) {
+                return Error.InvalidFlags;
+            }
+
             for (shape) |dim| {
                 if (dim == 0) {
                     return Error.ZeroDimension;
                 }
-                if (dim > 1) {
-                    count += 1;
-                }
             }
 
-            //if ((flags.RowMajorContiguous == flags.ColumnMajorContiguous and count > 1) or !flags.OwnsData) {
-            //    return Error.InvalidFlags;
-            //}
-
+            const ndim = shape.len;
             var size: usize = 1;
-            var shapes: []usize = try allocator.alloc(usize, shape.len);
-            var strides: []usize = try allocator.alloc(usize, shape.len);
-            if (shape.len > 0) {
+            //var shapes: []usize = try allocator.alloc(usize, shape.len);
+            //var strides: []usize = try allocator.alloc(usize, shape.len);
+            var shapes: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
+            var strides: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
+            if (ndim > 0) {
                 if (flags.order == .RowMajor) {
-                    for (0..shape.len) |i| {
+                    for (0..ndim) |i| {
                         strides[shape.len - i - 1] = size;
                         size *= shape[shape.len - i - 1];
                         shapes[i] = shape[i];
                     }
                 } else {
-                    for (0..shape.len) |i| {
+                    for (0..ndim) |i| {
                         strides[i] = size;
                         size *= shape[i];
                         shapes[i] = shape[i];
                     }
                 }
             }
-            // MORE IS NEEDED FOR VIEWS, AND ALSO; FOR THEM; ALLOW OWNSDATA TO
-            // BE FALSE (AS THAT IS WHAT IDENTIFIES A VIEW)
+            // Views are created in other functions.
 
             return Self{
                 .data = try allocator.alloc(T, size),
+                .ndim = ndim,
                 .shape = shapes,
                 .strides = strides,
                 .size = size,
+                .base = null,
                 .flags = flags,
                 .allocator = allocator,
+            };
+        }
+
+        /// Initializes a view of an array.
+        ///
+        /// **Description**:
+        ///
+        /// Given a preexistsent `NDArray` and a new shape, creates another
+        /// array that accesses the input array's data without owning it. Do not
+        /// use this array after freeing the parent. It is not needed to deinit
+        /// the view.
+        ///
+        /// **Input Parameters**:
+        /// - `parent`: The owner of the data.
+        /// - `shape`: shape of the array. Must have length `≤ MaxDimensions`
+        /// and no dimension of size `0` and must be broadcastable to `parent`'s
+        /// shape.
+        ///
+        /// **Return Values**:
+        /// - `Self`: the initialized array.
+        pub fn view(parent: *const NDArray(T), shape: []const usize) !Self {
+            _ = shape;
+            // TODO: right now only for no error
+            return Self{
+                .data = parent.data,
+                .ndim = parent.ndim,
+                .shape = parent.shape,
+                .strides = parent.strides,
+                .size = parent.size,
+                .base = null,
+                .flags = parent.flags,
+                .allocator = null,
             };
         }
 
@@ -147,14 +180,13 @@ pub fn NDArray(comptime T: type) type {
         /// Deinitializes the array, freeing the data. The user is responsible
         /// for deinitializing the elements of `data` for custom types.
         ///
-        /// If the array has `OwnsData` set to false, data is not freed (assumed
-        /// to be owned by another array) but is still set to undefined.
+        /// If the array has `ownsData` set to false, i.e., it is a view, this
+        /// only invalidates the data pointer, the shape and the strides. Note
+        /// that in this case they need not be deinitialized.
         ///
         /// **Input Parameters**:
         /// - `self`: the array to be deinitialized.
         pub fn deinit(self: *Self) void {
-            self.allocator.free(self.shape);
-            self.allocator.free(self.strides);
             if (self.flags.ownsData) {
                 self.allocator.free(self.data);
             }
@@ -227,7 +259,7 @@ pub fn NDArray(comptime T: type) type {
         /// No bounds checking is performed.
         inline fn _index(self: Self, position: []const usize) usize {
             var idx: usize = 0;
-            for (0..self.strides.len) |i| {
+            for (0..self.ndim) |i| {
                 idx += position[i] * self.strides[i];
             }
 
@@ -240,7 +272,7 @@ pub fn NDArray(comptime T: type) type {
         /// This function should be used before accessing elements in the array
         /// to prevent `PositionOutOfBounds` and `DimensionMismatch` errors.
         inline fn _checkPosition(self: Self, position: []const usize) !void {
-            if (position.len != self.shape.len) {
+            if (position.len != self.ndim) {
                 return Error.DimensionMismatch;
             }
 
@@ -598,7 +630,7 @@ pub fn NDArray(comptime T: type) type {
         /// of the full broadcast.
         pub fn add(self: *Self, left: Self, right: Self) !void {
             var iter: MultiIterator(T) = try MultiIterator(T).init(&[_]zml.NDArray(f64){ self.*, left, right }, self.flags);
-            if (!std.mem.eql(usize, self.shape, iter.shape[0..self.shape.len])) {
+            if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
             }
 
@@ -632,7 +664,7 @@ pub fn NDArray(comptime T: type) type {
         /// of the full broadcast.
         pub fn sub(self: *Self, left: Self, right: Self) !void {
             var iter: MultiIterator(T) = try MultiIterator(T).init(&[_]zml.NDArray(f64){ self.*, left, right }, self.flags);
-            if (!std.mem.eql(usize, self.shape, iter.shape[0..self.shape.len])) {
+            if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
             }
 
@@ -666,7 +698,7 @@ pub fn NDArray(comptime T: type) type {
         /// of the full broadcast.
         pub fn mul(self: *Self, left: Self, right: Self) !void {
             var iter: MultiIterator(T) = try MultiIterator(T).init(&[_]zml.NDArray(f64){ self.*, left, right }, self.flags);
-            if (!std.mem.eql(usize, self.shape, iter.shape[0..self.shape.len])) {
+            if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
             }
 
@@ -686,8 +718,7 @@ pub fn NDArray(comptime T: type) type {
             /// real array, or the sum of magnitudes of the real and imaginary
             /// parts of elements of a complex array:
             /// ```zig
-            /// res = |x[1].Re| + |x[1].Im| + |x[2].Re| + |x[2].Im| + ... +
-            /// |x[n].Re| + |x[n].Im|,
+            /// res = |x[1].Re| + |x[1].Im| + |x[2].Re| + |x[2].Im| + ... + |x[n].Re| + |x[n].Im|,
             /// ```
             /// where `x` is an `NDArray`.
             ///
