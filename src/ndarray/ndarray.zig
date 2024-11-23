@@ -64,7 +64,7 @@ pub fn NDArray(comptime T: type) type {
         /// Flags holding info on the storage of the array.
         flags: Flags,
         /// The allocator used for internal memory management.
-        allocator: std.mem.Allocator,
+        allocator: ?std.mem.Allocator,
 
         /// Initializes an array.
         ///
@@ -108,26 +108,20 @@ pub fn NDArray(comptime T: type) type {
 
             const ndim = shape.len;
             var size: usize = 1;
-            //var shapes: []usize = try allocator.alloc(usize, shape.len);
-            //var strides: []usize = try allocator.alloc(usize, shape.len);
             var shapes: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
             var strides: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
             if (ndim > 0) {
-                if (flags.order == .RowMajor) {
-                    for (0..ndim) |i| {
+                for (0..ndim) |i| {
+                    if (flags.order == .RowMajor) {
                         strides[shape.len - i - 1] = size;
                         size *= shape[shape.len - i - 1];
-                        shapes[i] = shape[i];
-                    }
-                } else {
-                    for (0..ndim) |i| {
+                    } else {
                         strides[i] = size;
                         size *= shape[i];
-                        shapes[i] = shape[i];
                     }
+                    shapes[i] = shape[i];
                 }
             }
-            // Views are created in other functions.
 
             return Self{
                 .data = try allocator.alloc(T, size),
@@ -145,30 +139,27 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Description**:
         ///
-        /// Given a preexistsent `NDArray` and a new shape, creates another
-        /// array that accesses the input array's data without owning it. Do not
-        /// use this array after freeing the parent. It is not needed to deinit
-        /// the view.
+        /// Given a preexistsent `NDArray`, creates another array that accesses
+        /// the input array's data without owning it. Do not use this array
+        /// after freeing the parent. It is not needed to deinit the view.
         ///
         /// **Input Parameters**:
         /// - `parent`: The owner of the data.
-        /// - `shape`: shape of the array. Must have length `≤ MaxDimensions`
-        /// and no dimension of size `0` and must be broadcastable to `parent`'s
-        /// shape.
         ///
         /// **Return Values**:
         /// - `Self`: the initialized array.
-        pub fn view(parent: *const NDArray(T), shape: []const usize) !Self {
-            _ = shape;
-            // TODO: right now only for no error
+        pub fn view(parent: *const NDArray(T)) !Self {
+            const base = if (parent.flags.ownsData) parent else parent.base;
+            var flags = parent.flags;
+            flags.ownsData = false;
             return Self{
                 .data = parent.data,
                 .ndim = parent.ndim,
                 .shape = parent.shape,
                 .strides = parent.strides,
                 .size = parent.size,
-                .base = null,
-                .flags = parent.flags,
+                .base = base,
+                .flags = flags,
                 .allocator = null,
             };
         }
@@ -188,7 +179,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `self`: the array to be deinitialized.
         pub fn deinit(self: *Self) void {
             if (self.flags.ownsData) {
-                self.allocator.free(self.data);
+                self.allocator.?.free(self.data);
             }
 
             self.shape = undefined;
@@ -629,7 +620,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn add(self: *Self, left: Self, right: Self) !void {
-            var iter: MultiIterator(T) = try MultiIterator(T).init(&[_]zml.NDArray(f64){ self.*, left, right }, self.flags);
+            var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
             }
@@ -663,7 +654,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn sub(self: *Self, left: Self, right: Self) !void {
-            var iter: MultiIterator(T) = try MultiIterator(T).init(&[_]zml.NDArray(f64){ self.*, left, right }, self.flags);
+            var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
             }
@@ -697,7 +688,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn mul(self: *Self, left: Self, right: Self) !void {
-            var iter: MultiIterator(T) = try MultiIterator(T).init(&[_]zml.NDArray(f64){ self.*, left, right }, self.flags);
+            var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
             }
@@ -705,6 +696,40 @@ pub fn NDArray(comptime T: type) type {
             _mul(&self.data[0], left.data[0], right.data[0]);
             while (iter.next() != null) {
                 _mul(&self.data[iter.iterators[0].index], left.data[iter.iterators[1].index], right.data[iter.iterators[2].index]);
+            }
+        }
+
+        /// Computes elementwise division (self = left ./ right).
+        ///
+        /// **Description**:
+        ///
+        /// Computes elementwise multiplication (self = left ./ right) applying
+        /// broadcasting rules. Arrays must be broadcastable.
+        ///
+        /// **Input Parameters**:
+        /// - `self`: the output array. Must have the same shape as the full
+        /// broadcast.
+        /// - `left`: the array on the left side.
+        /// - `right`: the array on the right side.
+        ///
+        /// **Output Parameters**:
+        /// - `self`: Overwritten by the result of the operation.
+        ///
+        /// **Return Values**:
+        /// - `void`: the execution was successful.
+        /// - `NotBroadcastable`: the shapes of the arrays cannot be
+        /// broadcasted.
+        /// - `IncompatibleDimensions`: the `out` array does not have the shape
+        /// of the full broadcast.
+        pub fn div(self: *Self, left: Self, right: Self) !void {
+            var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
+            if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
+                return Error.IncompatibleDimensions;
+            }
+
+            _div(&self.data[0], left.data[0], right.data[0]);
+            while (iter.next() != null) {
+                _div(&self.data[iter.iterators[0].index], left.data[iter.iterators[1].index], right.data[iter.iterators[2].index]);
             }
         }
 

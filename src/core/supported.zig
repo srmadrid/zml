@@ -9,12 +9,12 @@ pub const SupportedNumericType = enum {
     BuiltinFloat,
     /// bool
     BuiltinBool,
+    /// std.math.Complex
+    Complex,
     /// BigInt
     CustomInt,
     /// Fraction
     CustomReal,
-    /// cf32, cf64, cf128
-    CustomComplexFloat,
     /// Complex
     CustomComplex,
     /// Expression
@@ -24,29 +24,24 @@ pub const SupportedNumericType = enum {
 
 pub inline fn whatSupportedNumericType(comptime T: type) SupportedNumericType {
     const info = @typeInfo(T);
-    const name = @typeName(T);
 
     return switch (info) {
-        .Int => SupportedNumericType.BuiltinInt,
-        .Float => SupportedNumericType.BuiltinFloat,
-        .Bool => SupportedNumericType.BuiltinBool,
+        .Int => .BuiltinInt,
+        .Float => .BuiltinFloat,
+        .Bool => .BuiltinBool,
         else => { // Maybe just use the ones from the standard library, and fix so this works
-            if (std.mem.eql(u8, name, "bigint.BigInt")) {
-                return SupportedNumericType.CustomInt;
-            } else if (std.mem.eql(u8, name, "fraction.Fraction")) {
-                return SupportedNumericType.CustomReal;
-            } else if (std.mem.eql(u8, name, "types.cf.cf(f16)") or
-                std.mem.eql(u8, name, "types.cf.cf(f32)") or
-                std.mem.eql(u8, name, "types.cf.cf(f64)") or
-                std.mem.eql(u8, name, "types.cf.cf(f128)"))
-            {
-                return SupportedNumericType.CustomComplexFloat;
-            } else if (std.mem.eql(u8, name, "complex.Complex")) {
-                return SupportedNumericType.CustomComplex;
-            } else if (std.mem.eql(u8, name, "expression.Expression")) {
-                return SupportedNumericType.CustomExpression;
+            if (T == std.math.big.int.Managed) {
+                return .CustomInt;
+            } else if (T == std.math.big.Rational) {
+                return .CustomReal;
+            } else if (T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64)) {
+                return .Complex;
+            } else if (false) {
+                return .CustomComplex;
+            } else if (false) {
+                return .CustomExpression;
             } else {
-                @compileError("Unsupported numeric type: " ++ name);
+                @compileError("Unsupported numeric type: " ++ @typeName(T));
             }
         },
     };
@@ -62,7 +57,7 @@ pub inline fn _add(out: anytype, left: anytype, right: anytype) void {
         .BuiltinInt, .BuiltinFloat => {
             out.* = left + right;
         },
-        .CustomComplexFloat => {
+        .Complex => {
             out.* = T.add(left, right);
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => {
@@ -83,7 +78,7 @@ pub inline fn _sub(out: anytype, left: anytype, right: anytype) void {
         .BuiltinInt, .BuiltinFloat => {
             out.* = left - right;
         },
-        .CustomComplexFloat => {
+        .Complex => {
             out.* = T.sub(left, right);
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => {
@@ -104,11 +99,11 @@ pub inline fn _mul(out: anytype, left: anytype, right: anytype) void {
         .BuiltinInt, .BuiltinFloat => {
             out.* = left * right;
         },
-        .CustomComplexFloat => {
-            out.* = T.mult(left, right);
+        .Complex => {
+            out.* = T.mul(left, right);
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => {
-            out.mult(left, right);
+            out.mul(left, right);
         },
         .BuiltinBool => @compileError("Multiplication function not defined for booleans"),
         .Unsupported => unreachable,
@@ -125,7 +120,7 @@ pub inline fn _div(out: anytype, left: anytype, right: anytype) void {
         .BuiltinInt, .BuiltinFloat => {
             out.* = left / right;
         },
-        .CustomComplexFloat => {
+        .Complex => {
             out.* = T.div(left, right);
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => {

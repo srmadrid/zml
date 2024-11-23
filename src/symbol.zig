@@ -19,7 +19,7 @@ pub const Symbol = struct {
 
     /// Initialize a symbol.
     pub fn init(allocator: std.mem.Allocator, name: []const u8, symbol_type: SymbolType, object: *anyopaque, dependencies: []const *Symbol) !Symbol {
-        const _dependencies = try std.ArrayListUnmanaged(*Symbol).initCapacity(allocator, @min(2, dependencies.len));
+        const _dependencies = try std.ArrayListUnmanaged(*Symbol).initCapacity(allocator, @max(2, dependencies.len));
         const _dependents = try std.ArrayListUnmanaged(*Symbol).initCapacity(allocator, 2);
 
         return Symbol{

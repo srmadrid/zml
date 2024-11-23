@@ -10,7 +10,7 @@ pub fn main() !void {
 
     // try generalTesting(a);
 
-    try addTesting(a);
+    // try addTesting(a);
 
     // try iterTesting(a);
 
@@ -19,6 +19,65 @@ pub fn main() !void {
     // try multiIterTesting(a);
 
     // try perfTesting(a);
+
+    try typeTesting(a);
+}
+
+fn typeTesting(a: std.mem.Allocator) !void {
+    const Complex = std.math.Complex;
+
+    //const z = Complex(f64).init(10, 10);
+    //const w = Complex(f64).init(20, 20);
+    //var u: Complex(f64) = undefined;
+    //const _add = @import("core/core.zig").supported._add;
+    //_add(&u, z, w);
+    //std.debug.print("u: {}\n", .{u});
+
+    var B: zml.NDArray(Complex(f64)) = try zml.NDArray(Complex(f64)).init(a, &.{ 1, 1 }, .{ .order = .ColumnMajor });
+    defer B.deinit();
+    for (0..B.size) |i| {
+        B.data[i].re = @floatFromInt(i + 1);
+        B.data[i].im = @floatFromInt((i + 1) * 2);
+    }
+    std.debug.print("B =\n", .{});
+    for (0..B.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..B.shape[1]) |j| {
+            const z = try B.get(&.{ i, j });
+            std.debug.print("{d:.2} + {d:.2}i  ", .{ z.re, z.im });
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var C: zml.NDArray(Complex(f64)) = try zml.NDArray(Complex(f64)).init(a, &.{ 5, 8 }, .{ .order = .RowMajor });
+    defer C.deinit();
+    for (0..C.size) |i| {
+        C.data[i].re = @floatFromInt(i + 1);
+        C.data[i].im = @floatFromInt((i + 1) * 2);
+    }
+    std.debug.print("\nC =\n", .{});
+    for (0..C.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..C.shape[1]) |j| {
+            const z = try C.get(&.{ i, j });
+            std.debug.print("{d:.2} + {d:.2}i  ", .{ z.re, z.im });
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var D: zml.NDArray(Complex(f64)) = try zml.NDArray(Complex(f64)).init(a, &.{ 5, 8 }, .{ .order = .ColumnMajor });
+    defer D.deinit();
+    try D.add(B, C);
+    // try zml.NDArray(u64).add(&D, B, C);
+    std.debug.print("\nD =\n", .{});
+    for (0..D.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..D.shape[1]) |j| {
+            const z = try D.get(&.{ i, j });
+            std.debug.print("{d:.2} + {d:.2}i  ", .{ z.re, z.im });
+        }
+        std.debug.print("\n", .{});
+    }
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {
@@ -68,7 +127,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 }
 
 fn addTesting(a: std.mem.Allocator) !void {
-    var B: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 3, 1 }, .{ .order = .ColumnMajor });
+    var B: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 1, 1 }, .{ .order = .ColumnMajor });
     defer B.deinit();
     for (0..B.size) |i| {
         B.data[i] = @floatFromInt(i + 1);
@@ -82,9 +141,11 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    var C: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 1, 5 }, .{ .order = .RowMajor });
+    var C: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 5, 8 }, .{ .order = .RowMajor });
     defer C.deinit();
-    C.setAll(10);
+    for (0..C.size) |i| {
+        C.data[i] = @floatFromInt(i + 1);
+    }
     std.debug.print("\nC =\n", .{});
     for (0..C.shape[0]) |i| {
         std.debug.print("\t", .{});
@@ -94,9 +155,9 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    var D: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 3, 5 }, .{ .order = .ColumnMajor });
+    var D: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 5, 8 }, .{ .order = .ColumnMajor });
     defer D.deinit();
-    try D.sub(B, C);
+    try D.add(B, C);
     // try zml.NDArray(u64).add(&D, B, C);
     std.debug.print("\nD =\n", .{});
     for (0..D.shape[0]) |i| {
@@ -327,23 +388,23 @@ fn formatValueWithCustomPadding(value: i32, padding: u8) []const u8 {
 
 fn perfTesting(a: std.mem.Allocator) !void {
     // Perf testing
-    var big1: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 10000, 10000 }, zml.ndarray.Flags{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var big1: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 10000, 10000 }, .{ .order = .ColumnMajor });
     defer big1.deinit();
-    var big2: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 10000, 10000 }, zml.ndarray.Flags{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var big2: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 1, 1 }, .{ .order = .ColumnMajor });
     defer big2.deinit();
-    var big3: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &[_]usize{ 10000, 10000 }, zml.ndarray.Flags{ .RowMajorContiguous = false, .ColumnMajorContiguous = true });
+    var big3: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 10000, 10000 }, .{ .order = .ColumnMajor });
     defer big3.deinit();
 
-    std.debug.print("big3 dimentions = {}\n", .{big3.shape.len});
+    std.debug.print("big3 dimentions = {}\n", .{big3.ndim});
 
     std.debug.print("big3.shape = [  ", .{});
-    for (big3.shape) |dim| {
+    for (big3.shape[0..big3.ndim]) |dim| {
         std.debug.print("{}  ", .{dim});
     }
     std.debug.print("]\n", .{});
 
     std.debug.print("big3.strides = [  ", .{});
-    for (big3.strides) |stride| {
+    for (big3.strides[0..big3.ndim]) |stride| {
         std.debug.print("{}  ", .{stride});
     }
     std.debug.print("]\n", .{});
@@ -351,7 +412,7 @@ fn perfTesting(a: std.mem.Allocator) !void {
     std.debug.print("big3.size = {}\n", .{big3.size});
 
     // Profiling
-    const n: usize = 5;
+    const n: usize = 10;
     const start_time = std.time.nanoTimestamp();
 
     for (0..n) |_| {
