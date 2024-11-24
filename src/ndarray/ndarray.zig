@@ -733,6 +733,55 @@ pub fn NDArray(comptime T: type) type {
             }
         }
 
+        /// Returns a view of the input array with the axes transposed.
+        ///
+        /// **Description**:
+        ///
+        /// Returns a view of the input array with the axes transposed according
+        /// to the give axes, or reversed otherwise.
+        ///
+        /// **Input Parameters**:
+        /// - `self`: the input array.
+        /// - `axes`: optional axes. If provided must be a permutation of
+        /// `[0, 1, ..., ndim - 1]`.
+        ///
+        /// **Return Values**:
+        /// - `NDArray(T)`: the execution was successful.
+        /// - `InvalidAxes`: the `axes` array was wrong.
+        pub fn transpose(self: *const Self, axes: ?[]const usize) !NDArray(T) {
+            var axess = [_]usize{0} ** MaxDimensions;
+            if (axes == null) {
+                for (0..self.ndim) |i| {
+                    axess[i] = self.ndim - i - 1;
+                }
+            } else {
+                for (0..self.ndim) |i| {
+                    axess[i] = axes.?[i];
+                }
+            }
+
+            var flags = self.flags;
+            flags.ownsData = false;
+
+            var result = Self{
+                .data = self.data,
+                .ndim = self.ndim,
+                .shape = .{0} ** MaxDimensions,
+                .strides = .{0} ** MaxDimensions,
+                .size = self.size,
+                .base = @constCast(self),
+                .flags = flags,
+                .allocator = null,
+            };
+
+            for (0..result.ndim) |i| {
+                result.shape[i] = self.shape[axess[i]];
+                result.strides[i] = self.strides[axess[i]];
+            }
+
+            return result;
+        }
+
         /// Namespace for BLAS functions.
         pub const BLAS = struct {
             /// Computes the sum of magnitudes of the vector elements.
