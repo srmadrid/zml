@@ -4,30 +4,32 @@ const core = @import("../../core/core.zig");
 
 const scalar = core.supported.scalar;
 
-pub inline fn asum(comptime T: type, x: NDArray(T)) scalar(T) {
+pub inline fn nrm2(comptime T: type, x: NDArray(T)) scalar(T) {
     const supported = core.supported.whatSupportedNumericType(T);
 
     var res: scalar(T) = 0;
     switch (supported) {
-        .BuiltinBool => @compileError("BLAS.asum does not support bool."),
+        .BuiltinBool => @compileError("BLAS.nrm2 does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
             for (0..x.size) |i| {
-                res += @abs(x.data[i]);
+                res += x.data[i] * x.data[i];
             }
         },
         .Complex => {
             for (0..x.size) |i| {
-                res += @abs(x.data[i].re) + @abs(x.data[i].im);
+                res += x.data[i].re * x.data[i].re + x.data[i].im * x.data[i].im;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.asum only supports simple types."),
+        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.nrm2 only supports simple types."),
         .Unsupported => unreachable,
     }
+
+    res = @sqrt(res);
 
     return res;
 }
 
-test "asum" {
+test "nrm2" {
     const a = std.testing.allocator;
 
     var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 8, 18, 7 }, .{});
@@ -35,8 +37,8 @@ test "asum" {
 
     A.setAll(1);
 
-    const result1 = NDArray(f64).BLAS.asum(A);
-    try std.testing.expect(result1 == 1008);
+    const result1 = NDArray(f64).BLAS.nrm2(A);
+    try std.testing.expect(result1 == @sqrt(1008.0));
 
     const Complex = std.math.Complex;
     var B: NDArray(Complex(f64)) = try NDArray(Complex(f64)).init(a, &.{ 8, 18, 7 }, .{});
@@ -44,6 +46,6 @@ test "asum" {
 
     B.setAll(Complex(f64).init(1, -1));
 
-    const result2: f64 = NDArray(Complex(f64)).BLAS.asum(B);
-    try std.testing.expect(result2 == 2016);
+    const result2: f64 = NDArray(Complex(f64)).BLAS.nrm2(B);
+    try std.testing.expect(result2 == @sqrt(2016.0));
 }

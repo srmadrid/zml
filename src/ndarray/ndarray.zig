@@ -10,9 +10,9 @@
 
 // FOR MOST FUNCTIONS, MAKE TWO VERSIONS (NAMES NOT FINAL)?? MAYBE JUST OPTIONAL
 // PARAMETERS (?T)?
-// - add, addInPlace: (self: *Self, left: Self, right: Self) void: adds left +
+// - add, addInPlace: (self: *NDArray(T), left: NDArray(T), right: NDArray(T)) void: adds left +
 //   right and stores the result in self
-// - addNew, add: (allocator: std.mem.Allocator, left: Self, right: Self) Self:
+// - addNew, add: (allocator: std.mem.Allocator, left: NDArray(T), right: NDArray(T)) NDArray(T):
 //   adds left + right and returns a newly allocated array with the result
 const std = @import("std");
 const zml = @import("../zml.zig");
@@ -27,6 +27,7 @@ const _add = core.supported._add;
 const _sub = core.supported._sub;
 const _mul = core.supported._mul;
 const _div = core.supported._div;
+const scalar = core.supported.scalar;
 
 /// Maximal number of dimensions.
 pub const MaxDimensions = 32;
@@ -47,7 +48,6 @@ pub fn NDArray(comptime T: type) type {
     // Catch any attempt to create with unsupported type.
     _ = core.supported.whatSupportedNumericType(T);
     return struct {
-        const Self: type = @This();
         /// The data of the array.
         data: []T,
         /// The number dimensions of the array.
@@ -86,12 +86,12 @@ pub fn NDArray(comptime T: type) type {
         /// Using an empty anonymous struct `.{}` will yield the default flags.
         ///
         /// **Return Values**:
-        /// - `Self`: the initialized array.
+        /// - `NDArray(T)`: the initialized array.
         /// - `TooManyDimensions`: `shape` is too long (`> MaxDimensions`).
         /// - `ZeroDimension`: at least one dimension is `0`.
         /// - `InvalidFlags`: flags are invalid.
         /// - `OutOfMemory`: `alloc` failed.
-        pub fn init(allocator: std.mem.Allocator, shape: []const usize, flags: Flags) !Self {
+        pub fn init(allocator: std.mem.Allocator, shape: []const usize, flags: Flags) !NDArray(T) {
             if (shape.len > MaxDimensions) {
                 return Error.TooManyDimensions;
             }
@@ -123,7 +123,7 @@ pub fn NDArray(comptime T: type) type {
                 }
             }
 
-            return Self{
+            return NDArray(T){
                 .data = try allocator.alloc(T, size),
                 .ndim = ndim,
                 .shape = shapes,
@@ -147,12 +147,12 @@ pub fn NDArray(comptime T: type) type {
         /// - `parent`: The owner of the data.
         ///
         /// **Return Values**:
-        /// - `Self`: the initialized array.
-        pub fn view(parent: *const NDArray(T)) !Self {
+        /// - `NDArray(T)`: the initialized array.
+        pub fn view(parent: *const NDArray(T)) !NDArray(T) {
             const base = if (parent.flags.ownsData) parent else parent.base;
             var flags = parent.flags;
             flags.ownsData = false;
-            return Self{
+            return NDArray(T){
                 .data = parent.data,
                 .ndim = parent.ndim,
                 .shape = parent.shape,
@@ -177,7 +177,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Input Parameters**:
         /// - `self`: the array to be deinitialized.
-        pub fn deinit(self: *Self) void {
+        pub fn deinit(self: *NDArray(T)) void {
             if (self.flags.ownsData) {
                 self.allocator.?.free(self.data);
             }
@@ -204,7 +204,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `DimensionMismatch`: the length of `position` is not equalm to the
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
-        pub fn deinitElement(self: *Self, position: []const usize) !void {
+        pub fn deinitElement(self: *NDArray(T), position: []const usize) !void {
             const supported = core.supported.whatSupportedNumericType(T);
             switch (supported) {
                 .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => @compileError("deinitElement only defined on types that need to be deinitialized."),
@@ -231,7 +231,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Input Parameters**:
         /// - `self`: the array in which to free the elements.
-        pub fn deinitAllElements(self: *Self) void {
+        pub fn deinitAllElements(self: *NDArray(T)) void {
             const supported = core.supported.whatSupportedNumericType(T);
             switch (supported) {
                 .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => @compileError("deinitAllElements only defined on types that need to be deinitialized."),
@@ -248,7 +248,7 @@ pub fn NDArray(comptime T: type) type {
         /// array.
         ///
         /// No bounds checking is performed.
-        inline fn _index(self: Self, position: []const usize) usize {
+        inline fn _index(self: NDArray(T), position: []const usize) usize {
             var idx: usize = 0;
             for (0..self.ndim) |i| {
                 idx += position[i] * self.strides[i];
@@ -262,7 +262,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// This function should be used before accessing elements in the array
         /// to prevent `PositionOutOfBounds` and `DimensionMismatch` errors.
-        inline fn _checkPosition(self: Self, position: []const usize) !void {
+        inline fn _checkPosition(self: NDArray(T), position: []const usize) !void {
             if (position.len != self.ndim) {
                 return Error.DimensionMismatch;
             }
@@ -299,7 +299,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `DimensionMismatch`: the length of `position` is not equalm to the
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
-        pub fn set(self: *Self, position: []const usize, value: T) !void {
+        pub fn set(self: *NDArray(T), position: []const usize, value: T) !void {
             if (self.isScalar()) {
                 self.data[0] = value;
                 return;
@@ -329,12 +329,12 @@ pub fn NDArray(comptime T: type) type {
         /// **Input Parameters**:
         /// - `self`: the array in which to set the element.
         /// - `value`: the value to set.
-        pub fn setAll(self: *Self, value: T) void {
+        pub fn setAll(self: *NDArray(T), value: T) void {
             self.data[0] = value;
 
             const supported = core.supported.whatSupportedNumericType(T);
             switch (supported) {
-                .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => {
+                .BuiltinInt, .BuiltinFloat, .BuiltinBool, .Complex => {
                     for (1..self.size) |i| {
                         self.data[i] = value;
                     }
@@ -372,7 +372,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `DimensionMismatch`: the length of `position` is not equalm to the
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
-        pub fn replace(self: *Self, position: []const usize, value: T) !T {
+        pub fn replace(self: *NDArray(T), position: []const usize, value: T) !T {
             var idx: usize = undefined;
             if (self.isScalar()) {
                 idx = 0;
@@ -418,7 +418,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `DimensionMismatch`: the length of `position` is not equalm to the
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
-        pub fn update(self: *Self, position: []const usize, value: anytype) !void {
+        pub fn update(self: *NDArray(T), position: []const usize, value: anytype) !void {
             var idx: usize = undefined;
             if (self.isScalar()) {
                 idx = 0;
@@ -465,7 +465,7 @@ pub fn NDArray(comptime T: type) type {
         /// **Return Values**:
         /// - `void`: the execution was successful.
         /// - ...
-        pub fn updateAll(self: *Self, value: T) !void {
+        pub fn updateAll(self: *NDArray(T), value: T) !void {
             const supported = core.supported.whatSupportedNumericType(T);
             switch (supported) {
                 .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => {
@@ -503,7 +503,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `DimensionMismatch`: the length of `position` is not equalm to the
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
-        pub fn get(self: Self, position: []const usize) !T {
+        pub fn get(self: NDArray(T), position: []const usize) !T {
             if (self.isScalar()) {
                 return self.data[0];
             }
@@ -523,7 +523,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Return Values**:
         /// - `bool`: whether the array is a scalar or not.
-        pub fn isScalar(self: Self) bool {
+        pub fn isScalar(self: NDArray(T)) bool {
             return self.size == 1;
         }
 
@@ -538,7 +538,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Return Values**:
         /// - `bool`: whether the array is a vector or not.
-        pub fn isVector(self: Self) bool {
+        pub fn isVector(self: NDArray(T)) bool {
             return self.shape.len == 1;
         }
 
@@ -553,7 +553,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Return Values**:
         /// - `bool`: whether the array is a row vector or not.
-        pub fn isRowVector(self: Self) bool {
+        pub fn isRowVector(self: NDArray(T)) bool {
             return self.shape.len == 2 and self.shape[0] == 1 and self.shape[1] > 1;
         }
 
@@ -568,7 +568,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Return Values**:
         /// - `bool`: whether the array is a column vector or not.
-        pub fn isColVector(self: Self) bool {
+        pub fn isColVector(self: NDArray(T)) bool {
             return self.shape.len == 2 and self.shape[0] > 1 and self.shape[1] == 1;
         }
 
@@ -583,7 +583,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Return Values**:
         /// - `bool`: whether the array is a matrix or not.
-        pub fn isMatrix(self: Self) bool {
+        pub fn isMatrix(self: NDArray(T)) bool {
             return self.shape.len == 2;
         }
 
@@ -619,7 +619,7 @@ pub fn NDArray(comptime T: type) type {
         /// broadcasted.
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
-        pub fn add(self: *Self, left: Self, right: Self) !void {
+        pub fn add(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
@@ -653,7 +653,7 @@ pub fn NDArray(comptime T: type) type {
         /// broadcasted.
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
-        pub fn sub(self: *Self, left: Self, right: Self) !void {
+        pub fn sub(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
@@ -687,7 +687,7 @@ pub fn NDArray(comptime T: type) type {
         /// broadcasted.
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
-        pub fn mul(self: *Self, left: Self, right: Self) !void {
+        pub fn mul(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
@@ -721,7 +721,7 @@ pub fn NDArray(comptime T: type) type {
         /// broadcasted.
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
-        pub fn div(self: *Self, left: Self, right: Self) !void {
+        pub fn div(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
@@ -748,7 +748,7 @@ pub fn NDArray(comptime T: type) type {
         /// **Return Values**:
         /// - `NDArray(T)`: the execution was successful.
         /// - `InvalidAxes`: the `axes` array was wrong.
-        pub fn transpose(self: *const Self, axes: ?[]const usize) !NDArray(T) {
+        pub fn transpose(self: *const NDArray(T), axes: ?[]const usize) !NDArray(T) {
             var axess = [_]usize{0} ** MaxDimensions;
             if (axes == null) {
                 for (0..self.ndim) |i| {
@@ -762,8 +762,9 @@ pub fn NDArray(comptime T: type) type {
 
             var flags = self.flags;
             flags.ownsData = false;
+            flags.order = if (self.flags.order == .RowMajor) .ColumnMajor else .RowMajor;
 
-            var result = Self{
+            var result = NDArray(T){
                 .data = self.data,
                 .ndim = self.ndim,
                 .shape = .{0} ** MaxDimensions,
@@ -782,35 +783,200 @@ pub fn NDArray(comptime T: type) type {
             return result;
         }
 
-        /// Namespace for BLAS functions.
+        /// Namespace for BLAS routines for simple types that do not require
+        /// memory management. All level 1 BLAS routines are applied directly
+        /// to the data of the arrays as if they were vectors. Level 2 and 3
+        /// BLAS routines require correct shapes for matrices, but not for
+        /// vectors.
         pub const BLAS = struct {
-            /// Computes the sum of magnitudes of the vector elements.
+            /// Computes the sum of magnitudes of the array elements.
             ///
             /// **Description**:
             ///
-            /// The routine computes the sum of the magnitudes of elements of a
-            /// real array, or the sum of magnitudes of the real and imaginary
-            /// parts of elements of a complex array:
+            /// The `asum` routine computes the sum of the magnitudes of
+            /// elements of a real array, or the sum of magnitudes of the real
+            /// and imaginary parts of the elements of a complex array:
             /// ```zig
-            /// res = |x[1].Re| + |x[1].Im| + |x[2].Re| + |x[2].Im| + ... + |x[n].Re| + |x[n].Im|,
+            /// res = |x[1].re| + |x[1].im| + |x[2].re| + |x[2].im| + ... + |x[n].re| + |x[n].im|,
             /// ```
             /// where `x` is an `NDArray`.
             ///
             /// **Input Parameters**:
-            /// - `allocator`: an optional `std.mem.Allocator`. Only needed when
-            /// `T` is `BigInt`, `Fraction`, `Complex` or `Expression`.
-            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `x`: `NDArray` of any shape.
             ///
             /// **Return Values**:
             /// - `T`: The sum of magnitudes of real and imaginary parts of
             /// all elements of the vector.
-            /// - `someError`: blabla
-            pub fn asum(allocator: ?std.mem.Allocator, x: NDArray(T)) !T {
-                return @import("BLAS/BLAS.zig").asum(allocator, T, x);
+            pub fn asum(x: NDArray(T)) scalar(T) {
+                return @import("BLAS/BLAS.zig").asum(T, x);
+            }
+
+            /// Computes an array-scalar product and adds the result to an
+            /// array.
+            ///
+            /// **Description**:
+            ///
+            /// The `axpy` routine performs an array-array operation defined as:
+            /// ```zig
+            /// y = a*x + y,
+            /// ```
+            /// where `a` is a scalar and `x` and `y` are arrays each with the
+            /// same size. Note that they may not have the same shape, strides
+            /// or order, but keep in mind that the operation is performed
+            /// following the one-dimensional data order.
+            ///
+            /// **Input Parameters**:
+            /// - `a`: scalar.
+            /// - `x`: `NDArray` of size `n`.
+            /// - `y`: `NDArray` of size `n`.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn axpy(a: T, x: NDArray(T), y: *NDArray(T)) !void {
+                return @import("BLAS/BLAS.zig").axpy(T, a, x, y);
+            }
+
+            /// Copies an array to another array.
+            ///
+            /// **Description**:
+            ///
+            /// The `copy` routine performs an array-array operation defined as:
+            /// ```zig
+            /// y = x,
+            /// ```
+            /// where `x` and `y` are arrays each with the same size. Note that
+            /// they may not have the same shape, strides or order, but keep in
+            /// mind that the operation is performed following the
+            /// one-dimensional data order.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of size `n`.
+            /// - `y`: `NDArray` of size `n`.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn copy(x: NDArray(T), y: *NDArray(T)) !void {
+                return @import("BLAS/BLAS.zig").copy(T, x, y);
+            }
+
+            /// Computes an array-array dot product.
+            ///
+            /// **Description**:
+            ///
+            /// The `dot` routines perform a vector-vector reduction operation
+            /// defined as:
+            /// ```zig
+            /// res = x[1]*y[1] + x[2]*y[2] + ... + x[n]*y[n],
+            /// ```
+            /// where `x` and `y` are arrays each with the same size. Note that
+            /// they may not have the same shape, strides or order, but keep in
+            /// mind that the operation is performed following the
+            /// one-dimensional data order.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of size `n`.
+            /// - `y`: `NDArray` of size `n`.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn dot(x: NDArray(T), y: NDArray(T)) !T {
+                return @import("BLAS/BLAS.zig").dot(T, x, y);
+            }
+
+            /// Computes a dot product of a conjugated array with another array.
+            ///
+            /// **Description**:
+            ///
+            /// The `dotc` routine performs an array-array operation defined as:
+            /// ```zig
+            /// res = conj(x[1])*y[1] + conj(x[2])*y[2] + ... + conj(x[n])*y[n],
+            /// ```
+            /// where `x` and `y` are complex arrays each with the same size.
+            /// Note that they may not have the same shape, strides or order,
+            /// but keep in mind that the operation is performed following the
+            /// one-dimensional data order.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of size `n`.
+            /// - `y`: `NDArray` of size `n`.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn dotc(x: NDArray(T), y: NDArray(T)) !T {
+                return @import("BLAS/BLAS.zig").dotc(T, x, y);
+            }
+
+            /// Computes a complex array-array dot product.
+            ///
+            /// **Description**:
+            ///
+            /// The `dotu` routine performs an array-array operation defined as:
+            /// ```zig
+            /// res = x[1]*y[1] + x[2]*y[2] + ... + x[n]*y[n],
+            /// ```
+            /// where `x` and `y` are complex arrays each with the same size.
+            /// Note that they may not have the same shape, strides or order,
+            /// but keep in mind that the operation is performed following the
+            /// one-dimensional data order.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of size `n`.
+            /// - `y`: `NDArray` of size `n`.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn dotu(x: NDArray(T), y: NDArray(T)) !T {
+                return @import("BLAS/BLAS.zig").dotu(T, x, y);
+            }
+
+            /// Computes the Euclidean norm of an array.
+            ///
+            /// **Description**:
+            ///
+            /// The `nrm2` routine performs and array reduction operation
+            /// defined as:
+            /// ```zig
+            /// res = sqrt(|x[1]|^2 + |x[2]|^2 + ... + |x[n]|^2),
+            /// ```
+            /// where `x` is an `NDArray`.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of any shape.
+            ///
+            /// **Return Values**:
+            /// - `T`: The Euclidean norm of all elements of the vector.
+            pub fn nrm2(x: NDArray(T)) scalar(T) {
+                return @import("BLAS/BLAS.zig").nrm2(T, x);
+            }
+
+            /// Computes the Euclidean norm of an array.
+            ///
+            /// **Description**:
+            ///
+            /// The `nrm2` routine performs and array reduction operation
+            /// defined as:
+            /// ```zig
+            /// res = sqrt(|x[1]|^2 + |x[2]|^2 + ... + |x[n]|^2),
+            /// ```
+            /// where `x` is an `NDArray`.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of any shape.
+            ///
+            /// **Return Values**:
+            /// - `T`: The Euclidean norm of all elements of the vector.
+            pub fn rot(x: *NDArray(T), y: *NDArray(T), c: T, s: T) !void {
+                return @import("BLAS/BLAS.zig").rot(T, x, y, c, s);
             }
         };
 
-        /// Namespace for LAPACK functions.
+        /// Namespace for LAPACK functions for simple types that do not require
+        /// memory management.
         pub const LAPACK = struct {
             /// Computes the LU factorization of a general m-by-n matrix.
             ///
@@ -836,9 +1002,25 @@ pub fn NDArray(comptime T: type) type {
             /// **Return Values**:
             /// - `void`: the execution was successful.
             /// ...
-            //pub fn getrf(a: *Self, ipiv: *NDArray(usize)) !void {
+            //pub fn getrf(a: *NDArray(T), ipiv: *NDArray(usize)) !void {
             //    return @import("ndarray/LAPACK/getrf.zig").getrf(T, a, ipiv);
             //}
+            pub fn tmp() usize {
+                return 3;
+            }
+        };
+
+        /// Namespace for BLAS functions for types that require memory
+        /// management.
+        pub const BLASA = struct {
+            pub fn tmp() usize {
+                return 3;
+            }
+        };
+
+        /// Namespace for LAPACK functions for types that require memory
+        /// management.
+        pub const LAPACKA = struct {
             pub fn tmp() usize {
                 return 3;
             }
@@ -866,6 +1048,8 @@ pub const Error = error{
     NotMatrix,
     /// The dimensions of the array are not compatible.
     IncompatibleDimensions,
+    /// The arrays do not have the same size.
+    IncompatibleSize,
     /// No allocator was provided when needed.
     NoAllocator,
 };
@@ -894,62 +1078,60 @@ test "init" {
 
     const tooBig: [MaxDimensions + 1]usize = [_]usize{1} ** (MaxDimensions + 1);
     try std.testing.expectError(Error.TooManyDimensions, NDArray(f64).init(a, &tooBig, .{}));
-    try std.testing.expectError(Error.ZeroDimension, NDArray(f64).init(a, &[_]usize{ 2, 3, 5, 6, 0, 1, 8 }, .{}));
-    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .order = .ColumnMajor }));
-    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .order = .RowMajor }));
-    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &[_]usize{ 2, 2 }, .{ .ownsData = false }));
+    try std.testing.expectError(Error.ZeroDimension, NDArray(f64).init(a, &.{ 2, 3, 5, 6, 0, 1, 8 }, .{}));
+    try std.testing.expectError(Error.InvalidFlags, NDArray(f64).init(a, &.{ 2, 2 }, .{ .ownsData = false }));
 
-    var scalar1: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{});
+    var scalar1: NDArray(f64) = try NDArray(f64).init(a, &.{}, .{});
     defer scalar1.deinit();
     try std.testing.expect(scalar1.data.len == 1);
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar1.shape));
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar1.strides));
+    try std.testing.expect(std.mem.eql(usize, &.{}, scalar1.shape[0..scalar1.ndim]));
+    try std.testing.expect(std.mem.eql(usize, &.{}, scalar1.strides[0..scalar1.ndim]));
     try std.testing.expect(scalar1.size == 1);
     try std.testing.expect(scalar1.flags.order == .RowMajor);
     try std.testing.expect(scalar1.flags.ownsData);
     try std.testing.expect(scalar1.flags.writeable);
 
-    var scalar2: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{});
+    var scalar2: NDArray(f64) = try NDArray(f64).init(a, &.{}, .{});
     defer scalar2.deinit();
     try std.testing.expect(scalar2.data.len == 1);
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar2.shape));
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar2.strides));
+    try std.testing.expect(std.mem.eql(usize, &.{}, scalar2.shape[0..scalar2.ndim]));
+    try std.testing.expect(std.mem.eql(usize, &.{}, scalar2.strides[0..scalar1.ndim]));
     try std.testing.expect(scalar2.size == 1);
     try std.testing.expect(scalar2.flags.order == .RowMajor);
     try std.testing.expect(scalar2.flags.ownsData);
     try std.testing.expect(scalar2.flags.writeable);
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{});
+    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 10, 5, 8, 3 }, .{});
     defer A.deinit();
 
     try std.testing.expect(A.data.len == 1200);
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{ 10, 5, 8, 3 }, A.shape));
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{ 120, 24, 3, 1 }, A.strides));
+    try std.testing.expect(std.mem.eql(usize, &.{ 10, 5, 8, 3 }, A.shape[0..A.ndim]));
+    try std.testing.expect(std.mem.eql(usize, &.{ 120, 24, 3, 1 }, A.strides[0..A.ndim]));
     try std.testing.expect(A.size == 1200);
     try std.testing.expect(A.flags.order == .RowMajor);
     try std.testing.expect(A.flags.ownsData);
     try std.testing.expect(A.flags.writeable);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{ .order = .ColumnMajor });
+    var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 10, 5, 8, 3 }, .{ .order = .ColumnMajor });
     defer B.deinit();
 
     try std.testing.expect(B.data.len == 1200);
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{ 10, 5, 8, 3 }, B.shape));
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{ 1, 10, 50, 400 }, B.strides));
+    try std.testing.expect(std.mem.eql(usize, &.{ 10, 5, 8, 3 }, B.shape[0..B.ndim]));
+    try std.testing.expect(std.mem.eql(usize, &.{ 1, 10, 50, 400 }, B.strides[0..B.ndim]));
     try std.testing.expect(B.size == 1200);
     try std.testing.expect(B.flags.order == .ColumnMajor);
     try std.testing.expect(B.flags.ownsData);
     try std.testing.expect(B.flags.writeable);
 
-    var scalar: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{}, .{});
-    defer scalar.deinit();
-    try std.testing.expect(scalar.data.len == 1);
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar.shape));
-    try std.testing.expect(std.mem.eql(usize, &[_]usize{}, scalar.strides));
-    try std.testing.expect(scalar.size == 1);
-    try std.testing.expect(scalar.flags.order == .RowMajor);
-    try std.testing.expect(scalar.flags.ownsData);
-    try std.testing.expect(scalar.flags.writeable);
+    var scalar3: NDArray(f64) = try NDArray(f64).init(a, &.{}, .{});
+    defer scalar3.deinit();
+    try std.testing.expect(scalar3.data.len == 1);
+    try std.testing.expect(std.mem.eql(usize, &.{}, scalar3.shape[0..scalar3.ndim]));
+    try std.testing.expect(std.mem.eql(usize, &.{}, scalar3.strides[0..scalar3.ndim]));
+    try std.testing.expect(scalar3.size == 1);
+    try std.testing.expect(scalar3.flags.order == .RowMajor);
+    try std.testing.expect(scalar3.flags.ownsData);
+    try std.testing.expect(scalar3.flags.writeable);
 
     // MORE FOR VIEWS WHEN THEY ARE IMPLEMENTED
 }
@@ -957,62 +1139,62 @@ test "init" {
 test "_index" {
     const a: std.mem.Allocator = std.testing.allocator;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{});
+    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 10, 5, 8, 3 }, .{});
     defer A.deinit();
 
-    try std.testing.expect(A._index(&[_]usize{ 3, 1, 0, 2 }) == 386);
+    try std.testing.expect(A._index(&.{ 3, 1, 0, 2 }) == 386);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{ .order = .ColumnMajor });
+    var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 10, 5, 8, 3 }, .{ .order = .ColumnMajor });
     defer B.deinit();
 
-    try std.testing.expect(B._index(&[_]usize{ 3, 1, 0, 2 }) == 813);
+    try std.testing.expect(B._index(&.{ 3, 1, 0, 2 }) == 813);
 }
 
 test "_checkPosition" {
     const a: std.mem.Allocator = std.testing.allocator;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 10, 5, 8, 3 }, .{});
+    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 10, 5, 8, 3 }, .{});
     defer A.deinit();
 
-    try std.testing.expectError(Error.DimensionMismatch, A._checkPosition(&[_]usize{3}));
-    try std.testing.expectError(Error.PositionOutOfBounds, A._checkPosition(&[_]usize{ 3, 1, 9000, 2 }));
+    try std.testing.expectError(Error.DimensionMismatch, A._checkPosition(&.{3}));
+    try std.testing.expectError(Error.PositionOutOfBounds, A._checkPosition(&.{ 3, 1, 9000, 2 }));
 }
 
 test "set" {
     const a: std.mem.Allocator = std.testing.allocator;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 3, 2, 4 }, .{});
+    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 3, 2, 4 }, .{});
     defer A.deinit();
     // This is one way of iterating through an array.
     var elem: f64 = 1;
     for (0..A.shape[0]) |i| {
         for (0..A.shape[1]) |j| {
             for (0..A.shape[2]) |k| {
-                try A.set(&[_]usize{ i, j, k }, elem);
+                try A.set(&.{ i, j, k }, elem);
                 elem += 1;
             }
         }
     }
-    try std.testing.expect(std.mem.eql(f64, A.data, &[_]f64{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 }));
+    try std.testing.expect(std.mem.eql(f64, A.data, &.{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24 }));
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 3, 2, 4 }, .{ .order = .ColumnMajor });
+    var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 3, 2, 4 }, .{ .order = .ColumnMajor });
     defer B.deinit();
     elem = 1;
     for (0..B.shape[0]) |i| {
         for (0..B.shape[1]) |j| {
             for (0..B.shape[2]) |k| {
-                try B.set(&[_]usize{ i, j, k }, elem);
+                try B.set(&.{ i, j, k }, elem);
                 elem += 1;
             }
         }
     }
-    try std.testing.expect(std.mem.eql(f64, B.data, &[_]f64{ 1, 9, 17, 5, 13, 21, 2, 10, 18, 6, 14, 22, 3, 11, 19, 7, 15, 23, 4, 12, 20, 8, 16, 24 }));
+    try std.testing.expect(std.mem.eql(f64, B.data, &.{ 1, 9, 17, 5, 13, 21, 2, 10, 18, 6, 14, 22, 3, 11, 19, 7, 15, 23, 4, 12, 20, 8, 16, 24 }));
 }
 
 test "setAll" {
     const a: std.mem.Allocator = std.testing.allocator;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 5, 10, 4 }, .{});
+    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 5, 10, 4 }, .{});
     defer A.deinit();
     // This is one way of iterating through an array.
     A.setAll(5);
@@ -1022,21 +1204,21 @@ test "setAll" {
 test "replace" {
     const a: std.mem.Allocator = std.testing.allocator;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &[_]usize{ 3, 2, 4 }, .{});
+    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 3, 2, 4 }, .{});
     defer A.deinit();
     // This is one way of iterating through an array.
     var elem: f64 = 1;
     for (0..A.shape[0]) |i| {
         for (0..A.shape[1]) |j| {
             for (0..A.shape[2]) |k| {
-                try A.set(&[_]usize{ i, j, k }, elem);
+                try A.set(&.{ i, j, k }, elem);
                 elem += 1;
             }
         }
     }
-    const replaced: f64 = try A.replace(&[_]usize{ 0, 1, 1 }, 20);
+    const replaced: f64 = try A.replace(&.{ 0, 1, 1 }, 20);
     try std.testing.expect(replaced == 6);
-    try std.testing.expect(try A.get(&[_]usize{ 0, 1, 1 }) == 20);
+    try std.testing.expect(try A.get(&.{ 0, 1, 1 }) == 20);
 }
 
 test {
