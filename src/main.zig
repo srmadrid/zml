@@ -26,7 +26,7 @@ pub fn main() !void {
 }
 
 fn transposeTesting(a: std.mem.Allocator) !void {
-    var A: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 3, 6 }, .{ .order = .RowMajor });
+    var A: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 6, 6 }, .{ .order = .RowMajor });
     defer A.deinit();
     const At = try A.transpose(null);
 
@@ -82,6 +82,37 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         }
         std.debug.print("\n", .{});
     }
+
+    var B: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 6, 6 }, .{ .order = .ColumnMajor });
+    defer B.deinit();
+
+    try B.add(A, try A.transpose(null));
+    // or try B.add(A, At);
+
+    std.debug.print("B =\n", .{});
+    for (0..B.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..B.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{B.get(&[_]usize{ i, j })});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    const C = At.flatten();
+
+    std.debug.print("C.shape = [  ", .{});
+    for (C.shape[0..C.ndim]) |dim| {
+        std.debug.print("{}  ", .{dim});
+    }
+    std.debug.print("]\n", .{});
+
+    std.debug.print("C.size = {}\n", .{C.size});
+
+    std.debug.print("C =\n", .{});
+    for (0..C.size) |i| {
+        std.debug.print("{!d:.2}  ", .{C.data[i]});
+    }
+    std.debug.print("\n", .{});
 }
 
 fn typeTesting(a: std.mem.Allocator) !void {

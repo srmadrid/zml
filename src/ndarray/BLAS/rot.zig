@@ -4,11 +4,15 @@ const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
 pub inline fn rot(comptime T: type, x: *NDArray(T), y: *NDArray(T), c: T, s: T) !void {
-    const supported = core.supported.whatSupportedNumericType(T);
-
-    if (x.size != y.size) {
-        return Error.IncompatibleSize;
+    if (x.ndim != 1 or y.ndim != 1) {
+        return Error.IncompatibleDimensions;
     }
+
+    if (x.shape[0] != y.shape[0]) {
+        return Error.IncompatibleDimensions;
+    }
+
+    const supported = core.supported.whatSupportedNumericType(T);
 
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.nrm2 does not support bool."),
@@ -44,7 +48,7 @@ test "rot" {
 
     B.setAll(1);
 
-    try NDArray(f64).BLAS.rot(&A, &B, 0.7071067811865475, 0.7071067811865475);
+    try NDArray(f64).BLAS.rot(@constCast(&A.flatten()), @constCast(&B.flatten()), 0.7071067811865475, 0.7071067811865475);
 
     for (0..A.size) |i| {
         try std.testing.expectApproxEqAbs(0.7071067811865475 * 2, A.data[i], 0.0001);
@@ -62,7 +66,7 @@ test "rot" {
 
     D.setAll(Complex(f64).init(1, -1));
 
-    try NDArray(Complex(f64)).BLAS.rot(&C, &D, Complex(f64).init(0.7071067811865475, 0.7071067811865475), Complex(f64).init(0.7071067811865475, -0.7071067811865475));
+    try NDArray(Complex(f64)).BLAS.rot(@constCast(&C.flatten()), @constCast(&D.flatten()), Complex(f64).init(0.7071067811865475, 0.7071067811865475), Complex(f64).init(0.7071067811865475, -0.7071067811865475));
 
     for (0..C.size) |i| {
         try std.testing.expectApproxEqAbs(0.7071067811865475 * 2, C.data[i].re, 0.0001);

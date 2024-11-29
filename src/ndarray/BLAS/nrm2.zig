@@ -1,10 +1,15 @@
 const std = @import("std");
 const NDArray = @import("../ndarray.zig").NDArray;
+const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
 const scalar = core.supported.scalar;
 
-pub inline fn nrm2(comptime T: type, x: NDArray(T)) scalar(T) {
+pub inline fn nrm2(comptime T: type, x: NDArray(T)) !scalar(T) {
+    if (x.ndim != 1) {
+        return Error.IncompatibleDimensions;
+    }
+
     const supported = core.supported.whatSupportedNumericType(T);
 
     var res: scalar(T) = 0;
@@ -37,7 +42,7 @@ test "nrm2" {
 
     A.setAll(1);
 
-    const result1 = NDArray(f64).BLAS.nrm2(A);
+    const result1 = try NDArray(f64).BLAS.nrm2(A.flatten());
     try std.testing.expect(result1 == @sqrt(1008.0));
 
     const Complex = std.math.Complex;
@@ -46,6 +51,6 @@ test "nrm2" {
 
     B.setAll(Complex(f64).init(1, -1));
 
-    const result2: f64 = NDArray(Complex(f64)).BLAS.nrm2(B);
+    const result2: f64 = try NDArray(Complex(f64)).BLAS.nrm2(B.flatten());
     try std.testing.expect(result2 == @sqrt(2016.0));
 }

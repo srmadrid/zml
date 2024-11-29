@@ -4,11 +4,15 @@ const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
 pub inline fn dot(comptime T: type, x: NDArray(T), y: NDArray(T)) !T {
-    const supported = core.supported.whatSupportedNumericType(T);
-
-    if (x.size != y.size) {
-        return Error.IncompatibleSize;
+    if (x.ndim != 1 or y.ndim != 1) {
+        return Error.IncompatibleDimensions;
     }
+
+    if (x.shape[0] != y.shape[0]) {
+        return Error.IncompatibleDimensions;
+    }
+
+    const supported = core.supported.whatSupportedNumericType(T);
 
     var res: T = undefined;
     switch (supported) {
@@ -40,6 +44,6 @@ test "dot" {
 
     B.setAll(2);
 
-    const result1 = try NDArray(f64).BLAS.dot(A, B);
+    const result1 = try NDArray(f64).BLAS.dot(A.flatten(), B.flatten());
     try std.testing.expect(result1 == 2016);
 }

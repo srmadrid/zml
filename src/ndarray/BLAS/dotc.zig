@@ -4,11 +4,15 @@ const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
 pub inline fn dotc(comptime T: type, x: NDArray(T), y: NDArray(T)) !T {
-    const supported = core.supported.whatSupportedNumericType(T);
-
-    if (x.size != y.size) {
-        return Error.IncompatibleSize;
+    if (x.ndim != 1 or y.ndim != 1) {
+        return Error.IncompatibleDimensions;
     }
+
+    if (x.shape[0] != y.shape[0]) {
+        return Error.IncompatibleDimensions;
+    }
+
+    const supported = core.supported.whatSupportedNumericType(T);
 
     var res: T = undefined;
     switch (supported) {
@@ -43,6 +47,6 @@ test "dotc" {
 
     B.setAll(Complex(f64).init(2, 2));
 
-    const result1 = try NDArray(Complex(f64)).BLAS.dotc(A, B);
+    const result1 = try NDArray(Complex(f64)).BLAS.dotc(A.flatten(), B.flatten());
     try std.testing.expect(result1.re == 0 and result1.im == 4032);
 }

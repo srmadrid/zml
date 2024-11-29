@@ -783,85 +783,130 @@ pub fn NDArray(comptime T: type) type {
             return result;
         }
 
+        /// Returns a view of the input array as a 1D array.
+        ///
+        /// **Description**:
+        ///
+        /// Returns a view of the input array as a 1D array. The data is not
+        /// copied, so changes in the returned array will affect the original
+        /// array.
+        ///
+        /// **Input Parameters**:
+        /// - `self`: the input array.
+        ///
+        /// **Return Values**:
+        /// - `NDArray(T)`: the flattened array.
+        pub fn flatten(self: *const NDArray(T)) NDArray(T) {
+            var flags = self.flags;
+            flags.ownsData = false;
+
+            return NDArray(T){
+                .data = self.data,
+                .ndim = 1,
+                .shape = .{self.size} ++ .{0} ** (MaxDimensions - 1),
+                .strides = .{1} ++ .{0} ** (MaxDimensions - 1),
+                .size = self.size,
+                .base = if (self.flags.ownsData) @constCast(self) else self.base,
+                .flags = flags,
+                .allocator = null,
+            };
+        }
+
         /// Namespace for BLAS routines for simple types that do not require
-        /// memory management. All level 1 BLAS routines are applied directly
-        /// to the data of the arrays as if they were vectors. Level 2 and 3
-        /// BLAS routines require correct shapes for matrices, but not for
-        /// vectors.
+        /// memory management.
         pub const BLAS = struct {
-            /// Computes the sum of magnitudes of the array elements.
+            /// Computes the sum of magnitudes of the vector elements.
             ///
             /// **Description**:
             ///
             /// The `asum` routine computes the sum of the magnitudes of
-            /// elements of a real array, or the sum of magnitudes of the real
-            /// and imaginary parts of the elements of a complex array:
+            /// elements of a 1D real array, or the sum of magnitudes of the
+            /// real and imaginary parts of the elements of a complex 1D array:
             /// ```zig
             /// res = |x[1].re| + |x[1].im| + |x[2].re| + |x[2].im| + ... + |x[n].re| + |x[n].im|,
             /// ```
             /// where `x` is an `NDArray`.
             ///
             /// **Input Parameters**:
-            /// - `x`: `NDArray` of any shape.
+            /// - `x`: 1D `NDArray`.
             ///
             /// **Return Values**:
             /// - `T`: The sum of magnitudes of real and imaginary parts of
             /// all elements of the vector.
-            pub fn asum(x: NDArray(T)) scalar(T) {
-                return @import("BLAS/BLAS.zig").asum(T, x);
+            /// - `IncompatibleDimensions`: the array is not 1D.
+            pub fn asum(x: NDArray(T)) !scalar(T) {
+                if (x.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").asum(T, x.shape[0], x.data.ptr, @intCast(x.strides[0]));
             }
 
-            /// Computes an array-scalar product and adds the result to an
-            /// array.
+            /// Computes a vector-scalar product and adds the result to a
+            /// vector.
             ///
             /// **Description**:
             ///
-            /// The `axpy` routine performs an array-array operation defined as:
+            /// The `axpy` routine performs a vector-vector operation defined
+            /// as:
             /// ```zig
             /// y = a*x + y,
             /// ```
-            /// where `a` is a scalar and `x` and `y` are arrays each with the
-            /// same size. Note that they may not have the same shape, strides
-            /// or order, but keep in mind that the operation is performed
-            /// following the one-dimensional data order.
+            /// where `a` is a scalar and `x` and `y` are 1D arrays with the
+            /// same size.
             ///
             /// **Input Parameters**:
             /// - `a`: scalar.
-            /// - `x`: `NDArray` of size `n`.
-            /// - `y`: `NDArray` of size `n`.
+            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `y`: `NDArray` of shape `{n}`.
             ///
             /// **Return Values**:
             /// - `void`: the execution was successful.
-            /// - `IncompatibleSize`: the arrays do not have the same size.
+            /// - `IncompatibleSize`: the arrays are not 1D or do not have the
+            /// same size.
             pub fn axpy(a: T, x: NDArray(T), y: *NDArray(T)) !void {
-                return @import("BLAS/BLAS.zig").axpy(T, a, x, y);
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").axpy(T, x.shape[0], a, x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
             }
 
-            /// Copies an array to another array.
+            /// Copies a vector to another vector.
             ///
             /// **Description**:
             ///
-            /// The `copy` routine performs an array-array operation defined as:
+            /// The `copy` routine performs a vector-vector operation defined
+            /// as:
             /// ```zig
             /// y = x,
             /// ```
-            /// where `x` and `y` are arrays each with the same size. Note that
-            /// they may not have the same shape, strides or order, but keep in
-            /// mind that the operation is performed following the
-            /// one-dimensional data order.
+            /// where `x` and `y` are 1D arrays with the same size.
             ///
             /// **Input Parameters**:
-            /// - `x`: `NDArray` of size `n`.
-            /// - `y`: `NDArray` of size `n`.
+            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `y`: `NDArray` of shape `{n}`.
             ///
             /// **Return Values**:
             /// - `void`: the execution was successful.
             /// - `IncompatibleSize`: the arrays do not have the same size.
             pub fn copy(x: NDArray(T), y: *NDArray(T)) !void {
-                return @import("BLAS/BLAS.zig").copy(T, x, y);
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").copy(T, x.shape[0], x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
             }
 
-            /// Computes an array-array dot product.
+            /// Computes a vector-vector dot product.
             ///
             /// **Description**:
             ///
@@ -870,14 +915,11 @@ pub fn NDArray(comptime T: type) type {
             /// ```zig
             /// res = x[1]*y[1] + x[2]*y[2] + ... + x[n]*y[n],
             /// ```
-            /// where `x` and `y` are arrays each with the same size. Note that
-            /// they may not have the same shape, strides or order, but keep in
-            /// mind that the operation is performed following the
-            /// one-dimensional data order.
+            /// where `x` and `y` are 1D arrays with the same size.
             ///
             /// **Input Parameters**:
-            /// - `x`: `NDArray` of size `n`.
-            /// - `y`: `NDArray` of size `n`.
+            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `y`: `NDArray` of shape `{n}`.
             ///
             /// **Return Values**:
             /// - `void`: the execution was successful.
@@ -886,22 +928,21 @@ pub fn NDArray(comptime T: type) type {
                 return @import("BLAS/BLAS.zig").dot(T, x, y);
             }
 
-            /// Computes a dot product of a conjugated array with another array.
+            /// Computes a dot product of a conjugated vector with another
+            /// vector.
             ///
             /// **Description**:
             ///
-            /// The `dotc` routine performs an array-array operation defined as:
+            /// The `dotc` routine performs a vector-vector operation defined
+            /// as:
             /// ```zig
             /// res = conj(x[1])*y[1] + conj(x[2])*y[2] + ... + conj(x[n])*y[n],
             /// ```
-            /// where `x` and `y` are complex arrays each with the same size.
-            /// Note that they may not have the same shape, strides or order,
-            /// but keep in mind that the operation is performed following the
-            /// one-dimensional data order.
+            /// where `x` and `y` are complex 1D arrays with the same size.
             ///
             /// **Input Parameters**:
-            /// - `x`: `NDArray` of size `n`.
-            /// - `y`: `NDArray` of size `n`.
+            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `y`: `NDArray` of shape `{n}`.
             ///
             /// **Return Values**:
             /// - `void`: the execution was successful.
@@ -950,7 +991,7 @@ pub fn NDArray(comptime T: type) type {
             ///
             /// **Return Values**:
             /// - `T`: The Euclidean norm of all elements of the vector.
-            pub fn nrm2(x: NDArray(T)) scalar(T) {
+            pub fn nrm2(x: NDArray(T)) !scalar(T) {
                 return @import("BLAS/BLAS.zig").nrm2(T, x);
             }
 
