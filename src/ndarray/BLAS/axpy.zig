@@ -2,35 +2,27 @@ const std = @import("std");
 const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
 
-pub inline fn axpy(comptime T: type, n: usize, a: T, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
+pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
+    @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (n == 0) {
+    if (n <= 0) {
         return;
     }
 
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.axpy does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
-            if (a == 0) {
-                return;
-            }
+            if (a == 0) return;
 
             if (incx == 1 and incy == 1) {
-
-                // Code for both increments equal to 1.
-                const m: usize = n % 4;
-
-                // Clean-up loop for the remainder.
+                const m: usize = @as(usize, @intCast(n)) % 4;
                 for (0..m) |i| {
                     y[i] += a * x[i];
                 }
 
-                if (n < 4) {
-                    return;
-                }
+                if (n < 4) return;
 
-                // Process in blocks of 4 for efficiency.
                 var i: usize = m;
                 while (i < n) : (i += 4) {
                     y[i] += a * x[i];
@@ -39,14 +31,13 @@ pub inline fn axpy(comptime T: type, n: usize, a: T, x: [*]T, incx: isize, y: [*
                     y[i + 3] += a * x[i + 3];
                 }
             } else {
-                // Code for unequal increments or increments not equal to 1.
                 var ix: isize = 0;
                 var iy: isize = 0;
 
                 if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
                 if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
 
-                for (0..n) |_| {
+                for (0..@intCast(n)) |_| {
                     y[@intCast(iy)] += a * x[@intCast(ix)];
                     ix += incx;
                     iy += incy;
@@ -54,25 +45,17 @@ pub inline fn axpy(comptime T: type, n: usize, a: T, x: [*]T, incx: isize, y: [*
             }
         },
         .Complex => {
-            if (a.re == 0 and a.im == 0) {
-                return;
-            }
+            if (a.re == 0 and a.im == 0) return;
 
             if (incx == 1 and incy == 1) {
-                // Code for both increments equal to 1.
-                const m: usize = n % 4;
-
-                // Clean-up loop for the remainder.
+                const m: usize = @as(usize, @intCast(n)) % 4;
                 for (0..m) |i| {
                     y[i].re += a.re * x[i].re - a.im * x[i].im;
                     y[i].im += a.re * x[i].im + a.im * x[i].re;
                 }
 
-                if (n < 4) {
-                    return;
-                }
+                if (n < 4) return;
 
-                // Process in blocks of 4 for efficiency.
                 var i: usize = m;
                 while (i < n) : (i += 4) {
                     y[i].re += a.re * x[i].re - a.im * x[i].im;
@@ -85,14 +68,13 @@ pub inline fn axpy(comptime T: type, n: usize, a: T, x: [*]T, incx: isize, y: [*
                     y[i + 3].im += a.re * x[i + 3].im + a.im * x[i + 3].re;
                 }
             } else {
-                // Code for unequal increments or increments not equal to 1.
                 var ix: isize = 0;
                 var iy: isize = 0;
 
                 if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
                 if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
 
-                for (0..n) |_| {
+                for (0..@intCast(n)) |_| {
                     y[@intCast(iy)].re += a.re * x[@intCast(ix)].re - a.im * x[@intCast(ix)].im;
                     y[@intCast(iy)].im += a.re * x[@intCast(ix)].im + a.im * x[@intCast(ix)].re;
                     ix += incx;

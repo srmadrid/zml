@@ -839,7 +839,7 @@ pub fn NDArray(comptime T: type) type {
                     return Error.IncompatibleDimensions;
                 }
 
-                return @import("BLAS/BLAS.zig").asum(T, x.shape[0], x.data.ptr, @intCast(x.strides[0]));
+                return @import("BLAS/BLAS.zig").asum(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]));
             }
 
             /// Computes a vector-scalar product and adds the result to a
@@ -873,7 +873,7 @@ pub fn NDArray(comptime T: type) type {
                     return Error.IncompatibleDimensions;
                 }
 
-                return @import("BLAS/BLAS.zig").axpy(T, x.shape[0], a, x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
+                return @import("BLAS/BLAS.zig").axpy(T, @intCast(x.shape[0]), a, x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
             }
 
             /// Copies a vector to another vector.
@@ -903,7 +903,7 @@ pub fn NDArray(comptime T: type) type {
                     return Error.IncompatibleDimensions;
                 }
 
-                return @import("BLAS/BLAS.zig").copy(T, x.shape[0], x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
+                return @import("BLAS/BLAS.zig").copy(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
             }
 
             /// Computes a vector-vector dot product.
@@ -925,7 +925,15 @@ pub fn NDArray(comptime T: type) type {
             /// - `void`: the execution was successful.
             /// - `IncompatibleSize`: the arrays do not have the same size.
             pub fn dot(x: NDArray(T), y: NDArray(T)) !T {
-                return @import("BLAS/BLAS.zig").dot(T, x, y);
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").dot(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
             }
 
             /// Computes a dot product of a conjugated vector with another
@@ -948,7 +956,46 @@ pub fn NDArray(comptime T: type) type {
             /// - `void`: the execution was successful.
             /// - `IncompatibleSize`: the arrays do not have the same size.
             pub fn dotc(x: NDArray(T), y: NDArray(T)) !T {
-                return @import("BLAS/BLAS.zig").dotc(T, x, y);
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").dotc(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
+            }
+
+            /// Computes a dot product of a conjugated vector with another
+            /// vector.
+            ///
+            /// **Description**:
+            ///
+            /// The `dotc` routine performs a vector-vector operation defined
+            /// as:
+            /// ```zig
+            /// res = conj(x[1])*y[1] + conj(x[2])*y[2] + ... + conj(x[n])*y[n],
+            /// ```
+            /// where `x` and `y` are complex 1D arrays with the same size.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `y`: `NDArray` of shape `{n}`.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn dotc_sub(x: NDArray(T), y: NDArray(T), ret: *T) !void {
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").dotc_sub(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]), ret);
             }
 
             /// Computes a complex array-array dot product.
@@ -972,7 +1019,47 @@ pub fn NDArray(comptime T: type) type {
             /// - `void`: the execution was successful.
             /// - `IncompatibleSize`: the arrays do not have the same size.
             pub fn dotu(x: NDArray(T), y: NDArray(T)) !T {
-                return @import("BLAS/BLAS.zig").dotu(T, x, y);
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").dotu(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
+            }
+
+            /// Computes a complex array-array dot product.
+            ///
+            /// **Description**:
+            ///
+            /// The `dotu` routine performs an array-array operation defined as:
+            /// ```zig
+            /// res = x[1]*y[1] + x[2]*y[2] + ... + x[n]*y[n],
+            /// ```
+            /// where `x` and `y` are complex arrays each with the same size.
+            /// Note that they may not have the same shape, strides or order,
+            /// but keep in mind that the operation is performed following the
+            /// one-dimensional data order.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of size `n`.
+            /// - `y`: `NDArray` of size `n`.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn dotu_sub(x: NDArray(T), y: NDArray(T), ret: *T) !void {
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").dotu_sub(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]), ret);
             }
 
             /// Computes the Euclidean norm of an array.
@@ -992,7 +1079,11 @@ pub fn NDArray(comptime T: type) type {
             /// **Return Values**:
             /// - `T`: The Euclidean norm of all elements of the vector.
             pub fn nrm2(x: NDArray(T)) !scalar(T) {
-                return @import("BLAS/BLAS.zig").nrm2(T, x);
+                if (x.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").nrm2(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]));
             }
 
             /// Computes the Euclidean norm of an array.
@@ -1011,8 +1102,16 @@ pub fn NDArray(comptime T: type) type {
             ///
             /// **Return Values**:
             /// - `T`: The Euclidean norm of all elements of the vector.
-            pub fn rot(x: *NDArray(T), y: *NDArray(T), c: T, s: T) !void {
-                return @import("BLAS/BLAS.zig").rot(T, x, y, c, s);
+            pub fn rot(x: *NDArray(T), y: *NDArray(T), c: scalar(T), s: scalar(T)) !void {
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").rot(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]), c, s);
             }
         };
 

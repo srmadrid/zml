@@ -2,13 +2,13 @@ const std = @import("std");
 const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
 
-pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
+pub inline fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    var temp: T = T.init(0, 0);
+    ret.* = T.init(0, 0);
 
-    if (n <= 0) return temp;
+    if (n <= 0) return;
 
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.dotu does not support bool."),
@@ -17,8 +17,8 @@ pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
         .Complex => {
             if (incx == 1 and incy == 1) {
                 for (0..@intCast(n)) |i| {
-                    temp.re += x[i].re * y[i].re - x[i].im * y[i].im;
-                    temp.im += x[i].re * y[i].im + x[i].im * y[i].re;
+                    ret.*.re += x[i].re * y[i].re - x[i].im * y[i].im;
+                    ret.*.im += x[i].re * y[i].im + x[i].im * y[i].re;
                 }
             } else {
                 var ix: isize = 0;
@@ -28,8 +28,8 @@ pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
                 if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
 
                 for (0..@intCast(n)) |_| {
-                    temp.re += x[@intCast(ix)].re * y[@intCast(iy)].re - x[@intCast(ix)].im * y[@intCast(iy)].im;
-                    temp.im += x[@intCast(ix)].re * y[@intCast(iy)].im + x[@intCast(ix)].im * y[@intCast(iy)].re;
+                    ret.*.re += x[@intCast(ix)].re * y[@intCast(iy)].re - x[@intCast(ix)].im * y[@intCast(iy)].im;
+                    ret.*.im += x[@intCast(ix)].re * y[@intCast(iy)].im + x[@intCast(ix)].im * y[@intCast(iy)].re;
                     ix += incx;
                     iy += incy;
                 }
@@ -39,10 +39,10 @@ pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
         .Unsupported => unreachable,
     }
 
-    return temp;
+    return;
 }
 
-test "dotu" {
+test "dotu_sub" {
     const a = std.testing.allocator;
 
     const Complex = std.math.Complex;
@@ -56,6 +56,7 @@ test "dotu" {
 
     B.setAll(Complex(f64).init(2, 2));
 
-    const result1 = try NDArray(Complex(f64)).BLAS.dotu(A.flatten(), B.flatten());
+    var result1: Complex(f64) = undefined;
+    try NDArray(Complex(f64)).BLAS.dotu_sub(A.flatten(), B.flatten(), &result1);
     try std.testing.expect(result1.re == 4032 and result1.im == 0);
 }

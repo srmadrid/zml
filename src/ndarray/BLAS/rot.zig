@@ -3,31 +3,67 @@ const NDArray = @import("../ndarray.zig").NDArray;
 const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
-pub inline fn rot(comptime T: type, x: *NDArray(T), y: *NDArray(T), c: T, s: T) !void {
-    if (x.ndim != 1 or y.ndim != 1) {
-        return Error.IncompatibleDimensions;
-    }
+const scalar = core.supported.scalar;
 
-    if (x.shape[0] != y.shape[0]) {
-        return Error.IncompatibleDimensions;
-    }
-
+pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: scalar(T), s: scalar(T)) void {
+    @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.nrm2 does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
-            for (0..x.size) |i| {
-                const temp = c * x.data[i] + s * y.data[i];
-                y.data[i] = -s * x.data[i] + c * y.data[i];
-                x.data[i] = temp;
+            if (incx == 1 and incy == 1) {
+                for (0..@intCast(n)) |i| {
+                    const temp = c * x[i] + s * y[i];
+                    y[i] = c * y[i] - s * x[i];
+                    x[i] = temp;
+                }
+            } else {
+                var ix: isize = 0;
+                var iy: isize = 0;
+
+                if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
+                if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
+
+                for (0..@intCast(n)) |_| {
+                    const temp = c * x[@intCast(ix)] + s * y[@intCast(iy)];
+                    y[@intCast(iy)] = c * y[@intCast(iy)] - s * x[@intCast(ix)];
+                    x[@intCast(ix)] = temp;
+                    ix += incx;
+                    iy += incy;
+                }
             }
         },
         .Complex => {
-            for (0..x.size) |i| {
-                const temp = T.add(T.mul(c, x.data[i]), T.mul(s, y.data[i]));
-                y.data[i] = T.sub(T.mul(c, y.data[i]), T.mul(T.conjugate(s), x.data[i]));
-                x.data[i] = temp;
+            if (incx == 1 and incy == 1) {
+                for (0..@intCast(n)) |i| {
+                    var temp = c * x[i].re + s * y[i].re;
+                    y[i].re = c * y[i].re - s * x[i].re;
+                    x[i].re = temp;
+
+                    temp = c * x[i].im + s * y[i].im;
+                    y[i].im = c * y[i].im - s * x[i].im;
+                    x[i].im = temp;
+                }
+            } else {
+                var ix: isize = 0;
+                var iy: isize = 0;
+
+                if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
+                if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
+
+                for (0..@intCast(n)) |_| {
+                    var temp = c * x[@intCast(ix)].re + s * y[@intCast(iy)].re;
+                    y[@intCast(iy)].re = c * y[@intCast(iy)].re - s * x[@intCast(ix)].re;
+                    x[@intCast(ix)].re = temp;
+
+                    temp = c * x[@intCast(ix)].im + s * y[@intCast(iy)].im;
+                    y[@intCast(iy)].im = c * y[@intCast(iy)].im - s * x[@intCast(ix)].im;
+                    x[@intCast(ix)].im = temp;
+
+                    ix += incx;
+                    iy += incy;
+                }
             }
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.nrm2 only supports simple types."),
@@ -66,7 +102,7 @@ test "rot" {
 
     D.setAll(Complex(f64).init(1, -1));
 
-    try NDArray(Complex(f64)).BLAS.rot(@constCast(&C.flatten()), @constCast(&D.flatten()), Complex(f64).init(0.7071067811865475, 0.7071067811865475), Complex(f64).init(0.7071067811865475, -0.7071067811865475));
+    try NDArray(Complex(f64)).BLAS.rot(@constCast(&C.flatten()), @constCast(&D.flatten()), 0.7071067811865475, 0.7071067811865475);
 
     for (0..C.size) |i| {
         try std.testing.expectApproxEqAbs(0.7071067811865475 * 2, C.data[i].re, 0.0001);

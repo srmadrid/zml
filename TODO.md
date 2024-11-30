@@ -2,6 +2,8 @@
 
 ## Priority
 
+When changed, replace all `@setRuntimeSafety(false)` with `@optimizeFor(.ReleaseFast)`.
+
 For `NDArray` add view functions: `reshape`, `flatten`, `ravel`, `squeeze`, etc.
 
 Edit `BLAS` functions parameters' (pointers, const pointers, non pointers) to be consistent (keeping in mind that pinter or no pointer are just to show intent, as since we are editing the data buffer and not the struct itself, it does not matter if we pass a pointer or not). Using @constCast is a bad idea.
@@ -16,9 +18,9 @@ Make a C interface.
 
 Somehow be able to apply some optimization to some functions, and a different optimization to the rest (basically, force `BLAS` and `LAPACK` to be ReleaseFast, and the rest to be whatever the user wants).
 
-## `NDArray`
+Make a compilation option to use external BLAS and LAPACK libraries.
 
-Maybe, for vector and matrix BLAS functions, expect correct shapes, and the user can just do a `reshape` if needed (`flatten` is a view, so it does not need to be deallocated, but needs to be able to "shrink" the shape).
+## `NDArray`
 
 In the build system, give the option for the user to choose the BLAS and LAPACK implementation. If the user does not choose, then use the default one implemented in the library using zig.
 

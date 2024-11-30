@@ -1,36 +1,45 @@
 const std = @import("std");
 const NDArray = @import("../ndarray.zig").NDArray;
-const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
-pub inline fn dotc(comptime T: type, x: NDArray(T), y: NDArray(T)) !T {
-    if (x.ndim != 1 or y.ndim != 1) {
-        return Error.IncompatibleDimensions;
-    }
-
-    if (x.shape[0] != y.shape[0]) {
-        return Error.IncompatibleDimensions;
-    }
-
+pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
+    @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    var res: T = undefined;
+    var temp: T = T.init(0, 0);
+
+    if (n <= 0) return temp;
+
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.dotc does not support bool."),
         .BuiltinInt => @compileError("BLAS.dotc does not support integers. Use BLAS.dot instead."),
         .BuiltinFloat => @compileError("BLAS.dotc does not support floats. Use BLAS.dot instead."),
         .Complex => {
-            res = T.init(0, 0);
-            for (0..x.size) |i| {
-                res.re += x.data[i].re * y.data[i].re + x.data[i].im * y.data[i].im;
-                res.im += x.data[i].re * y.data[i].im - x.data[i].im * y.data[i].re;
+            if (incx == 1 and incy == 1) {
+                for (0..@intCast(n)) |i| {
+                    temp.re += x[i].re * y[i].re + x[i].im * y[i].im;
+                    temp.im += x[i].re * y[i].im - x[i].im * y[i].re;
+                }
+            } else {
+                var ix: isize = 0;
+                var iy: isize = 0;
+
+                if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
+                if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
+
+                for (0..@intCast(n)) |_| {
+                    temp.re += x[@intCast(ix)].re * y[@intCast(iy)].re + x[@intCast(ix)].im * y[@intCast(iy)].im;
+                    temp.im += x[@intCast(ix)].re * y[@intCast(iy)].im - x[@intCast(ix)].im * y[@intCast(iy)].re;
+                    ix += incx;
+                    iy += incy;
+                }
             }
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.dotc only supports simple types."),
         .Unsupported => unreachable,
     }
 
-    return res;
+    return temp;
 }
 
 test "dotc" {

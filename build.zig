@@ -9,13 +9,20 @@ pub fn build(b: *std.Build) void {
     });
 
     // Library
-    const lib = b.addStaticLibrary(.{
+    const alib = b.addStaticLibrary(.{
         .name = "zml",
         .root_source_file = b.path("src/zml.zig"),
         .target = target,
         .optimize = optimize,
     });
-    b.installArtifact(lib);
+    b.installArtifact(alib);
+    const slib = b.addSharedLibrary(.{
+        .name = "zml",
+        .root_source_file = b.path("src/zml.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(slib);
 
     // Executable (for testing)
     const exe = b.addExecutable(.{

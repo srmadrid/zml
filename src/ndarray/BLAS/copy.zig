@@ -1,27 +1,23 @@
 const std = @import("std");
 const NDArray = @import("../ndarray.zig").NDArray;
-const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
-pub inline fn copy(comptime T: type, n: usize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
+pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
+    @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (n == 0) return;
+    if (n <= 0) return;
 
     switch (supported) {
         .BuiltinBool, .BuiltinInt, .BuiltinFloat, .Complex => {
             if (incx == 1 and incy == 1) {
-                // Code for both increments equal to 1
-                const m: usize = n % 7;
-
-                // Clean-up loop for the remainder
+                const m: usize = @as(usize, @intCast(n)) % 7;
                 for (0..m) |i| {
                     y[i] = x[i];
                 }
 
                 if (n < 7) return;
 
-                // Process in blocks of 7 for efficiency
                 var i: usize = m;
                 while (i < n) : (i += 7) {
                     y[i] = x[i];
@@ -33,14 +29,13 @@ pub inline fn copy(comptime T: type, n: usize, x: [*]T, incx: isize, y: [*]T, in
                     y[i + 6] = x[i + 6];
                 }
             } else {
-                // Code for unequal increments or increments not equal to 1
                 var ix: isize = 0;
                 var iy: isize = 0;
 
                 if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
                 if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
 
-                for (0..n) |_| {
+                for (0..@intCast(n)) |_| {
                     y[@intCast(iy)] = x[@intCast(ix)];
                     ix += incx;
                     iy += incy;

@@ -4,12 +4,11 @@ const core = @import("../../core/core.zig");
 
 const scalar = core.supported.scalar;
 
-pub inline fn asum(comptime T: type, n: usize, x: [*]T, incx: isize) scalar(T) {
+pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
+    @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (n == 0 or incx == 0) {
-        return 0;
-    }
+    if (n <= 0 or incx <= 0) return 0;
 
     var temp: scalar(T) = 0;
 
@@ -17,19 +16,13 @@ pub inline fn asum(comptime T: type, n: usize, x: [*]T, incx: isize) scalar(T) {
         .BuiltinBool => @compileError("BLAS.asum does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
             if (incx == 1) {
-                // Code for increment equal to 1.
-                const m: usize = n % 6;
-
-                // Clean-up loop for elements not divisible by 6.
+                const m: usize = @as(usize, @intCast(n)) % 6;
                 for (0..m) |i| {
                     temp += @abs(x[i]);
                 }
 
-                if (n < 6) {
-                    return temp;
-                }
+                if (n < 6) return temp;
 
-                // Main loop, unrolling in chunks of 6.
                 var i: usize = m;
                 while (i < n) : (i += 6) {
                     temp += @abs(x[i]) + @abs(x[i + 1]) +
@@ -37,9 +30,8 @@ pub inline fn asum(comptime T: type, n: usize, x: [*]T, incx: isize) scalar(T) {
                         @abs(x[i + 4]) + @abs(x[i + 5]);
                 }
             } else {
-                // Code for increment not equal to 1.
                 var idx: isize = 0;
-                for (0..n) |_| {
+                for (0..@intCast(n)) |_| {
                     temp += @abs(x[@intCast(idx)]);
                     idx += incx;
                 }
@@ -47,19 +39,13 @@ pub inline fn asum(comptime T: type, n: usize, x: [*]T, incx: isize) scalar(T) {
         },
         .Complex => {
             if (incx == 1) {
-                // Code for increment equal to 1.
-                const m: usize = n % 6;
-
-                // Clean-up loop for elements not divisible by 6.
+                const m: usize = @as(usize, @intCast(n)) % 6;
                 for (0..m) |i| {
                     temp += @abs(x[i].re) + @abs(x[i].im);
                 }
 
-                if (n < 6) {
-                    return temp;
-                }
+                if (n < 6) return temp;
 
-                // Main loop, unrolling in chunks of 6.
                 var i: usize = m;
                 while (i < n) : (i += 6) {
                     temp += @abs(x[i].re) + @abs(x[i].im) + @abs(x[i + 1].re) + @abs(x[i + 1].im) +
@@ -67,9 +53,8 @@ pub inline fn asum(comptime T: type, n: usize, x: [*]T, incx: isize) scalar(T) {
                         @abs(x[i + 4].re) + @abs(x[i + 4].im) + @abs(x[i + 5].re) + @abs(x[i + 5].im);
                 }
             } else {
-                // Code for increment not equal to 1.
                 var idx: isize = 0;
-                for (0..n) |_| {
+                for (0..@intCast(n)) |_| {
                     temp += @abs(x[@intCast(idx)].re) + @abs(x[@intCast(idx)].im);
                     idx += incx;
                 }
