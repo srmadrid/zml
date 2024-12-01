@@ -1,6 +1,5 @@
 const std = @import("std");
 const NDArray = @import("../ndarray.zig").NDArray;
-const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
 const scalar = core.supported.scalar;

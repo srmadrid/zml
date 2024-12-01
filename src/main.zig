@@ -1,5 +1,6 @@
 const std = @import("std");
 const zml = @import("zml.zig");
+const ci = @import("c.zig");
 
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
@@ -113,6 +114,21 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         std.debug.print("{!d:.2}  ", .{C.data[i]});
     }
     std.debug.print("\n", .{});
+
+    var D: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 6, 6 }, .{});
+    defer D.deinit();
+    D.setAll(1);
+    var E: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 6, 6 }, .{});
+    defer E.deinit();
+    E.setAll(0);
+
+    std.debug.print("Before\n", .{});
+    std.debug.print("D[0] = {}, E[0] = {}\n", .{ D.data[0], E.data[0] });
+
+    ci.cblas_daxpy(36, 2.0, D.data.ptr, 1, E.data.ptr, 1);
+
+    std.debug.print("After\n", .{});
+    std.debug.print("D[0] = {}, E[0] = {}\n", .{ D.data[0], E.data[0] });
 }
 
 fn typeTesting(a: std.mem.Allocator) !void {

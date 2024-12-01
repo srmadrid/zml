@@ -16,9 +16,11 @@ Maybe make strides `isize` instead of `usize`?
 
 Make a C interface.
 
-Somehow be able to apply some optimization to some functions, and a different optimization to the rest (basically, force `BLAS` and `LAPACK` to be ReleaseFast, and the rest to be whatever the user wants).
+Fix rotg: real tests pass but complex tests fail.
 
-Make a compilation option to use external BLAS and LAPACK libraries.
+Make separate implementations for f64 and f32 for BLAS?
+
+Change the compilation option to use external BLAS and LAPACK libraries from bool to a string with the name of the library.
 
 ## `NDArray`
 

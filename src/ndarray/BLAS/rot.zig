@@ -1,6 +1,5 @@
 const std = @import("std");
 const NDArray = @import("../ndarray.zig").NDArray;
-const Error = @import("../ndarray.zig").Error;
 const core = @import("../../core/core.zig");
 
 const scalar = core.supported.scalar;
@@ -10,7 +9,7 @@ pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, inc
     const supported = core.supported.whatSupportedNumericType(T);
 
     switch (supported) {
-        .BuiltinBool => @compileError("BLAS.nrm2 does not support bool."),
+        .BuiltinBool => @compileError("BLAS.rot does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
             if (incx == 1 and incy == 1) {
                 for (0..@intCast(n)) |i| {
@@ -66,7 +65,7 @@ pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, inc
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.nrm2 only supports simple types."),
+        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.rot only supports simple types."),
         .Unsupported => unreachable,
     }
 }

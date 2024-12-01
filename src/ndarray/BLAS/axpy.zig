@@ -98,6 +98,8 @@ test "axpy" {
     var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 2, 3, 4 }, .{});
     defer B.deinit();
 
+    B.setAll(0);
+
     try NDArray(f64).BLAS.axpy(2, A.flatten(), @constCast(&B.flatten()));
 
     for (0..B.size) |i| {

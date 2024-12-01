@@ -1113,6 +1113,157 @@ pub fn NDArray(comptime T: type) type {
 
                 return @import("BLAS/BLAS.zig").rot(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]), c, s);
             }
+
+            /// Performs modified Givens rotation of points in the plane.
+            ///
+            /// **Description**:
+            ///
+            /// Given two vectors `x` and `y`, each vector element of these
+            /// vectors is replaced as follows:
+            /// ```zig
+            /// [ x[i] ]     [ x[i] ]
+            /// [ y[i] ] = H [ y[i] ]
+            /// ```
+            /// for `i=1` to `n`, where `H` is a modified Givens transformation
+            /// matrix whose values are stored in the `param[1]` through
+            /// `param[4]` array. See discussion on the param argument.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `y`: `NDArray` of shape `{n}`.
+            /// - `param`: `NDArray` of shape `{5}`. The last four elements
+            /// contain the modified Givens transformation matrix. The first
+            /// element contains a flag that determines the form of the
+            /// Givens rotation.
+            ///
+            /// **Output Parameters**:
+            /// - `x`: Overwritten by the result of the operation.
+            /// - `y`: Overwritten by the result of the operation.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            /// - `IncompatibleDimensions`: the arrays are not 1D.
+            pub fn rotm(x: *NDArray(T), y: *NDArray(T), param: NDArray(T)) !void {
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (param.ndim != 1 or param.shape[0] != 5) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").rotm(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]), param.data.ptr);
+            }
+
+            /// Computes the product of a vector by a scalar.
+            ///
+            /// **Description**:
+            ///
+            /// The scal routine performs a vector operation defined as:
+            /// ```zig
+            /// x = a*x,
+            /// ```
+            /// where `a` is a scalar and `x` is a 1D array.
+            ///
+            /// **Input Parameters**:
+            /// - `a`: scalar.
+            /// - `x`: `NDArray` of shape `{n}`.
+            ///
+            /// **Output Parameters**:
+            /// - `x`: Overwritten by the result of the operation.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleDimensions`: the array is not 1D.
+            pub fn scal(a: T, x: *NDArray(T)) !void {
+                if (x.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").scal(T, @intCast(x.shape[0]), a, x.data.ptr, @intCast(x.strides[0]));
+            }
+
+            /// Swaps a vector with another vector.
+            ///
+            /// **Description**:
+            ///
+            /// Given two vectors `x` and `y`, the swap routine returns vectors
+            /// `y` and `x` swapped, each replacing the other.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of shape `{n}`.
+            /// - `y`: `NDArray` of shape `{n}`.
+            ///
+            /// **Output Parameters**:
+            /// - `x`: Overwritten by the result of the operation.
+            /// - `y`: Overwritten by the result of the operation.
+            ///
+            /// **Return Values**:
+            /// - `void`: the execution was successful.
+            /// - `IncompatibleDimensions`: the arrays are not 1D.
+            /// - `IncompatibleSize`: the arrays do not have the same size.
+            pub fn swap(x: *NDArray(T), y: *NDArray(T)) !void {
+                if (x.ndim != 1 or y.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                if (x.shape[0] != y.shape[0]) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").swap(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
+            }
+
+            /// Finds the index of the element with maximum absolute value.
+            ///
+            /// Given a vector `x`, the iamax function returns the position of
+            /// the vector element `x[i]` that has the largest absolute value
+            /// for real flavors, or the largest sum `|x[i].re|+|x[i].im| for
+            /// complex flavors. If more than one vector element is found with
+            /// the same largest absolute value, the index of the first one
+            /// encountered is returned.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of shape `{n}`.
+            ///
+            /// **Return Values**:
+            /// - `usize`: the index of the element with maximum absolute value.
+            /// - `IncompatibleDimensions`: the array is not 1D.
+            pub fn iamax(x: NDArray(T)) !usize {
+                if (x.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").iamax(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]));
+            }
+
+            /// Finds the index of the element with minimum absolute value.
+            ///
+            /// Given a vector `x`, the iamin function returns the position of
+            /// the vector element `x[i]` that has the smallest absolute value
+            /// for real flavors, or the smallest sum `|x[i].re|+|x[i].im| for
+            /// complex flavors. If more than one vector element is found with
+            /// the same smallest absolute value, the index of the first one
+            /// encountered is returned.
+            ///
+            /// **Input Parameters**:
+            /// - `x`: `NDArray` of shape `{n}`.
+            ///
+            /// **Return Values**:
+            /// - `usize`: the index of the element with minimum absolute value.
+            /// - `IncompatibleDimensions`: the array is not 1D.
+            pub fn iamin(x: NDArray(T)) !usize {
+                if (x.ndim != 1) {
+                    return Error.IncompatibleDimensions;
+                }
+
+                return @import("BLAS/BLAS.zig").iamin(T, @intCast(x.shape[0]), x.data.ptr, @intCast(x.strides[0]));
+            }
         };
 
         /// Namespace for LAPACK functions for simple types that do not require
