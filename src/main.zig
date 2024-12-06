@@ -23,7 +23,102 @@ pub fn main() !void {
 
     // try typeTesting(a);
 
-    try transposeTesting(a);
+    // try transposeTesting(a);
+
+    try blasPerfTesting(a);
+}
+
+fn ask_user(default: usize) !usize {
+    const stdin = std.io.getStdIn().reader();
+    const stdout = std.io.getStdOut().writer();
+
+    var buf: [10]u8 = undefined;
+
+    try stdout.print("Enter the number of iterations: ", .{});
+
+    if (try (stdin.readUntilDelimiterOrEof(buf[0..], '\n'))) |user_input| {
+        return std.fmt.parseInt(usize, user_input, 10);
+    } else {
+        return default;
+    }
+}
+
+fn blasPerfTesting(a: std.mem.Allocator) !void {
+    var A: zml.NDArray(f64) = try zml.NDArray(f64).init(a, &.{ 10000, 10000 }, .{ .order = .ColumnMajor });
+    defer A.deinit();
+
+    // Ask for the number of iterations.
+    const n = try ask_user(10);
+    //const n = 10;
+    std.debug.print("Number of iterations: {}\n", .{n});
+
+    // Profiling
+    var start_time: i128 = undefined;
+    var end_time: i128 = undefined;
+    var tot_time: i128 = 0;
+
+    // Zig implementation 1
+    std.debug.print("Zig implementation 1\n", .{});
+    for (0..n) |_| {
+        std.debug.print(".", .{});
+        start_time = std.time.nanoTimestamp();
+        std.mem.doNotOptimizeAway(zml.BLAS.asum(f64, @intCast(A.size), A.data.ptr, 1));
+        //std.mem.doNotOptimizeAway(zml.BLAS.asum(f64, @divTrunc(@as(isize, @intCast(A.size)), @as(isize, 2)), A.data.ptr, 2));
+        end_time = std.time.nanoTimestamp();
+
+        tot_time += end_time - start_time;
+    }
+    std.debug.print("\n", .{});
+
+    // Convert nanoseconds to seconds as a floating-point number.
+    const duration_ns = tot_time;
+    tot_time = 0;
+    const duration_s: f128 = @as(f128, @floatFromInt(duration_ns)) / (1_000_000_000.0 * @as(f128, @floatFromInt(n)));
+
+    // Print the duration in seconds with high precision (e.g., 9 decimal places).
+    std.debug.print("Zig implementation 1 took: {d:.9} seconds\n", .{duration_s});
+
+    // Zig implementation 2
+    std.debug.print("Zig implementation 2\n", .{});
+    for (0..n) |_| {
+        std.debug.print(".", .{});
+        start_time = std.time.nanoTimestamp();
+        //std.mem.doNotOptimizeAway(zml.BLAS.asum2(f64, @intCast(A.size), A.data.ptr, 1));
+        //std.mem.doNotOptimizeAway(zml.BLAS.asum2(f64, @divTrunc(@as(isize, @intCast(A.size)), @as(isize, 2)), A.data.ptr, 2));
+        end_time = std.time.nanoTimestamp();
+
+        tot_time += end_time - start_time;
+    }
+    std.debug.print("\n", .{});
+
+    // Convert nanoseconds to seconds as a floating-point number.
+    const duration_ns2 = tot_time;
+    tot_time = 0;
+    const duration_s2: f128 = @as(f128, @floatFromInt(duration_ns2)) / (1_000_000_000.0 * @as(f128, @floatFromInt(n)));
+
+    // Print the duration in seconds with high precision (e.g., 9 decimal places).
+    std.debug.print("Zig implementation 2 took: {d:.9} seconds\n", .{duration_s2});
+
+    // Cblas implementation
+    std.debug.print("Cblas implementation\n", .{});
+    for (0..n) |_| {
+        std.debug.print(".", .{});
+        start_time = std.time.nanoTimestamp();
+        std.mem.doNotOptimizeAway(ci.cblas_dasum(@intCast(A.size), A.data.ptr, 1));
+        //std.mem.doNotOptimizeAway(ci.cblas_dasum(@divTrunc(@as(c_int, @intCast(A.size)), @as(c_int, 2)), A.data.ptr, 2));
+        end_time = std.time.nanoTimestamp();
+
+        tot_time += end_time - start_time;
+    }
+    std.debug.print("\n", .{});
+
+    // Convert nanoseconds to seconds as a floating-point number.
+    const duration_ns3 = tot_time;
+    tot_time = 0;
+    const duration_s3: f128 = @as(f128, @floatFromInt(duration_ns3)) / (1_000_000_000.0 * @as(f128, @floatFromInt(n)));
+
+    // Print the duration in seconds with high precision (e.g., 9 decimal places).
+    std.debug.print("Cblas implementation took: {d:.9} seconds\n", .{duration_s3});
 }
 
 fn transposeTesting(a: std.mem.Allocator) !void {

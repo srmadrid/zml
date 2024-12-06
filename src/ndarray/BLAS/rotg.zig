@@ -1,6 +1,6 @@
 const std = @import("std");
-const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
+const BLAS = @import("BLAS.zig");
 
 const scalar = core.supported.scalar;
 
@@ -69,7 +69,6 @@ pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
                 const g1 = @max(@abs(g.re), @abs(g.im));
 
                 if (f1 > rtmin and f1 < rtmax and g1 > rtmin and g1 < rtmax) {
-                    // Unscaled computation
                     const f2 = f.re * f.re + f.im * f.im;
                     const g2 = g.re * g.re + g.im * g.im;
                     const h2 = f2 + g2;
@@ -88,7 +87,6 @@ pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
                         a.* = T.init(h, 0.0);
                     }
                 } else {
-                    // Scaled computation
                     const u = @min(safmax, @max(safmin, @max(f1, g1)));
                     const fs = T.init(f.re / u, f.im / u);
                     const gs = T.init(g.re / u, g.im / u);
@@ -115,7 +113,7 @@ test "rotg" {
     var c: f64 = undefined;
     var s: f64 = undefined;
 
-    @import("BLAS.zig").rotg(f64, &a, &b, &c, &s);
+    BLAS.rotg(f64, &a, &b, &c, &s);
 
     try std.testing.expectApproxEqAbs(2.236068, a, 0.0001);
     try std.testing.expectApproxEqAbs(2.236068, b, 0.0001);
@@ -128,7 +126,7 @@ test "rotg" {
     var c_c: f64 = undefined;
     var s_c: Complex(f64) = undefined;
 
-    @import("BLAS.zig").rotg(Complex(f64), &a_c, &b_c, &c_c, &s_c);
+    BLAS.rotg(Complex(f64), &a_c, &b_c, &c_c, &s_c);
 
     //try std.testing.expectApproxEqAbs(2.44949, a_c.re, 0.0001);
     //try std.testing.expectApproxEqAbs(2, a_c.im, 0.0001);

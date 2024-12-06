@@ -1,85 +1,74 @@
 const std = @import("std");
-const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
+const BLAS = @import("BLAS.zig");
 
 pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (n <= 0) {
-        return;
-    }
+    if (n <= 0) return;
 
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.axpy does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
             if (a == 0) return;
 
-            if (incx == 1 and incy == 1) {
-                const m: usize = @as(usize, @intCast(n)) % 4;
-                for (0..m) |i| {
-                    y[i] += a * x[i];
-                }
-
-                if (n < 4) return;
-
-                var i: usize = m;
-                while (i < n) : (i += 4) {
-                    y[i] += a * x[i];
-                    y[i + 1] += a * x[i + 1];
-                    y[i + 2] += a * x[i + 2];
-                    y[i + 3] += a * x[i + 3];
-                }
-            } else {
-                var ix: isize = 0;
-                var iy: isize = 0;
-
-                if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
-                if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
-
-                for (0..@intCast(n)) |_| {
+            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+            const nu = (n >> 2) << 2;
+            if (nu != 0) {
+                const StX = ix + nu * incx;
+                const incx2 = incx * 2;
+                const incx3 = incx * 3;
+                const incx4 = incx * 4;
+                const incy2 = incy * 2;
+                const incy3 = incy * 3;
+                const incy4 = incy * 4;
+                while (ix <= StX) {
                     y[@intCast(iy)] += a * x[@intCast(ix)];
-                    ix += incx;
-                    iy += incy;
+                    y[@intCast(iy + incy)] += a * x[@intCast(ix + incx)];
+                    y[@intCast(iy + incy2)] += a * x[@intCast(ix + incx2)];
+                    y[@intCast(iy + incy3)] += a * x[@intCast(ix + incx3)];
+
+                    ix += incx4;
+                    iy += incy4;
                 }
+            }
+
+            for (@intCast(nu)..@intCast(n)) |_| {
+                y[@intCast(iy)] += a * x[@intCast(ix)];
+
+                ix += incx;
+                iy += incy;
             }
         },
         .Complex => {
             if (a.re == 0 and a.im == 0) return;
 
-            if (incx == 1 and incy == 1) {
-                const m: usize = @as(usize, @intCast(n)) % 4;
-                for (0..m) |i| {
-                    y[i].re += a.re * x[i].re - a.im * x[i].im;
-                    y[i].im += a.re * x[i].im + a.im * x[i].re;
-                }
-
-                if (n < 4) return;
-
-                var i: usize = m;
-                while (i < n) : (i += 4) {
-                    y[i].re += a.re * x[i].re - a.im * x[i].im;
-                    y[i].im += a.re * x[i].im + a.im * x[i].re;
-                    y[i + 1].re += a.re * x[i + 1].re - a.im * x[i + 1].im;
-                    y[i + 1].im += a.re * x[i + 1].im + a.im * x[i + 1].re;
-                    y[i + 2].re += a.re * x[i + 2].re - a.im * x[i + 2].im;
-                    y[i + 2].im += a.re * x[i + 2].im + a.im * x[i + 2].re;
-                    y[i + 3].re += a.re * x[i + 3].re - a.im * x[i + 3].im;
-                    y[i + 3].im += a.re * x[i + 3].im + a.im * x[i + 3].re;
-                }
-            } else {
-                var ix: isize = 0;
-                var iy: isize = 0;
-
-                if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
-                if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
-
-                for (0..@intCast(n)) |_| {
+            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+            const nu = (n >> 1) << 1;
+            if (nu != 0) {
+                const StX = ix + nu * incx;
+                const incx2 = incx * 2;
+                const incy2 = incy * 2;
+                while (ix <= StX) {
                     y[@intCast(iy)].re += a.re * x[@intCast(ix)].re - a.im * x[@intCast(ix)].im;
                     y[@intCast(iy)].im += a.re * x[@intCast(ix)].im + a.im * x[@intCast(ix)].re;
-                    ix += incx;
-                    iy += incy;
+                    y[@intCast(iy + incy)].re += a.re * x[@intCast(ix + incx)].re - a.im * x[@intCast(ix + incx)].im;
+                    y[@intCast(iy + incy)].im += a.re * x[@intCast(ix + incx)].im + a.im * x[@intCast(ix + incx)].re;
+
+                    ix += incx2;
+                    iy += incy2;
                 }
+            }
+
+            for (@intCast(nu)..@intCast(n)) |_| {
+                y[@intCast(iy)].re += a.re * x[@intCast(ix)].re - a.im * x[@intCast(ix)].im;
+                y[@intCast(iy)].im += a.re * x[@intCast(ix)].im + a.im * x[@intCast(ix)].re;
+
+                ix += incx;
+                iy += incy;
             }
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.axpy only supports simple types."),
@@ -89,35 +78,77 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
 
 test "axpy" {
     const a: std.mem.Allocator = std.testing.allocator;
+    const Complex = std.math.Complex;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 2, 3, 4 }, .{});
-    defer A.deinit();
+    const n = 1000;
 
-    A.setAll(1);
+    var x1 = try a.alloc(f64, n);
+    defer a.free(x1);
+    var x2 = try a.alloc(f64, n);
+    defer a.free(x2);
+    var x3 = try a.alloc(f64, n);
+    defer a.free(x3);
+    var x4 = try a.alloc(f64, n);
+    defer a.free(x4);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 2, 3, 4 }, .{});
-    defer B.deinit();
-
-    B.setAll(0);
-
-    try NDArray(f64).BLAS.axpy(2, A.flatten(), @constCast(&B.flatten()));
-
-    for (0..B.size) |i| {
-        try std.testing.expect(B.data[i] == 2);
+    for (0..n) |i| {
+        x1[i] = @floatFromInt(i + 1);
+        x2[i] = @floatFromInt(i + 1);
+        x3[i] = @floatFromInt(n - i);
+        x4[i] = @floatFromInt(i + 1);
     }
 
-    const Complex = std.math.Complex;
-    var C: NDArray(Complex(f64)) = try NDArray(Complex(f64)).init(a, &.{ 2, 3, 4 }, .{});
-    defer C.deinit();
+    BLAS.axpy(f64, n, 2, x1.ptr, 1, x2.ptr, 1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + (i + 1))), x2[i]);
+    }
+    BLAS.axpy(f64, n, 2, x1.ptr, 1, x3.ptr, -1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (n - i) + (n - i))), x3[i]);
+    }
+    BLAS.axpy(f64, n / 2, 2, x1.ptr, 2, x4.ptr, 2);
+    for (0..n) |i| {
+        if (i % 2 == 0) {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + (i + 1))), x4[i]);
+        } else {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x4[i]);
+        }
+    }
 
-    C.setAll(Complex(f64).init(1, -1));
+    var x5 = try a.alloc(Complex(f64), n);
+    defer a.free(x5);
+    var x6 = try a.alloc(Complex(f64), n);
+    defer a.free(x6);
+    var x7 = try a.alloc(Complex(f64), n);
+    defer a.free(x7);
+    var x8 = try a.alloc(Complex(f64), n);
+    defer a.free(x8);
 
-    var D: NDArray(Complex(f64)) = try NDArray(Complex(f64)).init(a, &.{ 2, 3, 4 }, .{});
-    defer D.deinit();
+    for (0..n) |i| {
+        x5[i] = Complex(f64).init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast((i + 1)))));
+        x6[i] = Complex(f64).init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast((i + 1)))));
+        x7[i] = Complex(f64).init(@floatFromInt(n - i), @floatFromInt(-@as(isize, @intCast((n - i)))));
+        x8[i] = Complex(f64).init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast((i + 1)))));
+    }
 
-    try NDArray(Complex(f64)).BLAS.axpy(Complex(f64).init(2, 2), C.flatten(), @constCast(&D.flatten()));
-
-    for (0..D.size) |i| {
-        try std.testing.expect(std.math.approxEqAbs(f64, D.data[i].re, 4, 0.0001) and std.math.approxEqAbs(f64, D.data[i].im, 0, 0.0001));
+    BLAS.axpy(Complex(f64), n, Complex(f64).init(2, 3), x5.ptr, 1, x6.ptr, 1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1) + (i + 1))), x6[i].re);
+        try std.testing.expectEqual(@as(f64, @floatFromInt(-2 * @as(isize, @intCast(i + 1)) + 3 * @as(isize, @intCast(i + 1)) - @as(isize, @intCast(i + 1)))), x6[i].im);
+    }
+    BLAS.axpy(Complex(f64), n, Complex(f64).init(2, 3), x5.ptr, 1, x7.ptr, -1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (n - i) + 3 * (n - i) + (n - i))), x7[i].re);
+        try std.testing.expectEqual(@as(f64, @floatFromInt(-2 * @as(isize, @intCast(n - i)) + 3 * @as(isize, @intCast(n - i)) - @as(isize, @intCast(n - i)))), x7[i].im);
+    }
+    BLAS.axpy(Complex(f64), n / 2, Complex(f64).init(2, 3), x5.ptr, 2, x8.ptr, 2);
+    for (0..n) |i| {
+        if (i % 2 == 0) {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1) + (i + 1))), x8[i].re);
+            try std.testing.expectEqual(@as(f64, @floatFromInt(-2 * @as(isize, @intCast(i + 1)) + 3 * @as(isize, @intCast(i + 1)) - @as(isize, @intCast(i + 1)))), x8[i].im);
+        } else {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x8[i].re);
+            try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(i + 1)))), x8[i].im);
+        }
     }
 }

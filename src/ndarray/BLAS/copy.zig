@@ -1,6 +1,6 @@
 const std = @import("std");
-const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
+const BLAS = @import("BLAS.zig");
 
 pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
@@ -10,36 +10,33 @@ pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
 
     switch (supported) {
         .BuiltinBool, .BuiltinInt, .BuiltinFloat, .Complex => {
-            if (incx == 1 and incy == 1) {
-                const m: usize = @as(usize, @intCast(n)) % 7;
-                for (0..m) |i| {
-                    y[i] = x[i];
-                }
-
-                if (n < 7) return;
-
-                var i: usize = m;
-                while (i < n) : (i += 7) {
-                    y[i] = x[i];
-                    y[i + 1] = x[i + 1];
-                    y[i + 2] = x[i + 2];
-                    y[i + 3] = x[i + 3];
-                    y[i + 4] = x[i + 4];
-                    y[i + 5] = x[i + 5];
-                    y[i + 6] = x[i + 6];
-                }
-            } else {
-                var ix: isize = 0;
-                var iy: isize = 0;
-
-                if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
-                if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
-
-                for (0..@intCast(n)) |_| {
+            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+            const nu = (n >> 2) << 2;
+            if (nu != 0) {
+                const StX = ix + nu * incx;
+                const incx2 = incx * 2;
+                const incx3 = incx * 3;
+                const incx4 = incx * 4;
+                const incy2 = incy * 2;
+                const incy3 = incy * 3;
+                const incy4 = incy * 4;
+                while (ix <= StX) {
                     y[@intCast(iy)] = x[@intCast(ix)];
-                    ix += incx;
-                    iy += incy;
+                    y[@intCast(iy + incy)] = x[@intCast(ix + incx)];
+                    y[@intCast(iy + incy2)] = x[@intCast(ix + incx2)];
+                    y[@intCast(iy + incy3)] = x[@intCast(ix + incx3)];
+
+                    ix += incx4;
+                    iy += incy4;
                 }
+            }
+
+            for (@intCast(nu)..@intCast(n)) |_| {
+                y[@intCast(iy)] = x[@intCast(ix)];
+
+                ix += incx;
+                iy += incy;
             }
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.copy only supports simple types."),
@@ -49,33 +46,77 @@ pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
 
 test "copy" {
     const a: std.mem.Allocator = std.testing.allocator;
+    const Complex = std.math.Complex;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 2, 3, 4 }, .{});
-    defer A.deinit();
+    const n = 1000;
 
-    A.setAll(1);
+    var x1 = try a.alloc(f64, n);
+    defer a.free(x1);
+    var x2 = try a.alloc(f64, n);
+    defer a.free(x2);
+    var x3 = try a.alloc(f64, n);
+    defer a.free(x3);
+    var x4 = try a.alloc(f64, n);
+    defer a.free(x4);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 2, 3, 4 }, .{});
-    defer B.deinit();
-
-    try NDArray(f64).BLAS.copy(A.flatten(), @constCast(&B.flatten()));
-
-    for (0..B.size) |i| {
-        try std.testing.expect(B.data[i] == 1);
+    for (0..n) |i| {
+        x1[i] = @floatFromInt(i + 1);
+        x2[i] = 0;
+        x3[i] = 0;
+        x4[i] = 0;
     }
 
-    const Complex = std.math.Complex;
-    var C: NDArray(Complex(f64)) = try NDArray(Complex(f64)).init(a, &.{ 2, 3, 4 }, .{});
-    defer C.deinit();
+    BLAS.copy(f64, n, x1.ptr, 1, x2.ptr, 1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x2[i]);
+    }
+    BLAS.copy(f64, n, x1.ptr, 1, x3.ptr, -1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(n - i)), x3[i]);
+    }
+    BLAS.copy(f64, n / 2, x1.ptr, 2, x4.ptr, 2);
+    for (0..n) |i| {
+        if (i % 2 == 0) {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x4[i]);
+        } else {
+            try std.testing.expectEqual(0, x4[i]);
+        }
+    }
 
-    C.setAll(Complex(f64).init(1, -1));
+    var x5 = try a.alloc(Complex(f64), n);
+    defer a.free(x5);
+    var x6 = try a.alloc(Complex(f64), n);
+    defer a.free(x6);
+    var x7 = try a.alloc(Complex(f64), n);
+    defer a.free(x7);
+    var x8 = try a.alloc(Complex(f64), n);
+    defer a.free(x8);
 
-    var D: NDArray(Complex(f64)) = try NDArray(Complex(f64)).init(a, &.{ 2, 3, 4 }, .{});
-    defer D.deinit();
+    for (0..n) |i| {
+        x5[i] = Complex(f64).init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast(i + 1))));
+        x6[i] = Complex(f64).init(0, 0);
+        x7[i] = Complex(f64).init(0, 0);
+        x8[i] = Complex(f64).init(0, 0);
+    }
 
-    try NDArray(Complex(f64)).BLAS.copy(C.flatten(), @constCast(&D.flatten()));
-
-    for (0..D.size) |i| {
-        try std.testing.expect(std.math.approxEqAbs(f64, D.data[i].re, 1, 0.0001) and std.math.approxEqAbs(f64, D.data[i].im, -1, 0.0001));
+    BLAS.copy(Complex(f64), n, x5.ptr, 1, x6.ptr, 1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x6[i].re);
+        try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(i + 1)))), x6[i].im);
+    }
+    BLAS.copy(Complex(f64), n, x5.ptr, 1, x7.ptr, -1);
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(n - i)), x7[i].re);
+        try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(n - i)))), x7[i].im);
+    }
+    BLAS.copy(Complex(f64), n / 2, x5.ptr, 2, x8.ptr, 2);
+    for (0..n) |i| {
+        if (i % 2 == 0) {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x8[i].re);
+            try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(i + 1)))), x8[i].im);
+        } else {
+            try std.testing.expectEqual(0, x8[i].re);
+            try std.testing.expectEqual(0, x8[i].im);
+        }
     }
 }

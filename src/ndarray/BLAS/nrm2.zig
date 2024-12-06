@@ -1,6 +1,6 @@
 const std = @import("std");
-const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
+const BLAS = @import("BLAS.zig");
 
 const scalar = core.supported.scalar;
 
@@ -29,7 +29,6 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.nrm2 does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
-            // Compute the sum of squares.
             var ax: scalar(T) = undefined;
             for (0..@intCast(n)) |_| {
                 ax = @abs(x[@intCast(ix)]);
@@ -43,8 +42,6 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 }
                 ix += incx;
             }
-
-            // Combine the accumulators.
             if (abig > 0) {
                 if (amed > 0 or amed > huge or amed != amed) {
                     abig += std.math.pow(scalar(T), amed * sbig, 2);
@@ -69,7 +66,6 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
             }
         },
         .Complex => {
-            // Compute the sum of squares.
             var ax: scalar(T) = undefined;
             for (0..@intCast(n)) |_| {
                 ax = @abs(x[@intCast(ix)].re);
@@ -93,7 +89,6 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 ix += incx;
             }
 
-            // Combine the accumulators.
             if (abig > 0) {
                 if (amed > 0 or amed > huge or amed != amed) {
                     abig += std.math.pow(scalar(T), amed * sbig, 2);
@@ -126,21 +121,31 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
 
 test "nrm2" {
     const a = std.testing.allocator;
-
-    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 8, 18, 7 }, .{});
-    defer A.deinit();
-
-    A.setAll(1);
-
-    const result1 = try NDArray(f64).BLAS.nrm2(A.flatten());
-    try std.testing.expect(result1 == @sqrt(1008.0));
-
     const Complex = std.math.Complex;
-    var B: NDArray(Complex(f64)) = try NDArray(Complex(f64)).init(a, &.{ 8, 18, 7 }, .{});
-    defer B.deinit();
 
-    B.setAll(Complex(f64).init(1, -1));
+    const n = 1000;
 
-    const result2: f64 = try NDArray(Complex(f64)).BLAS.nrm2(B.flatten());
-    try std.testing.expect(result2 == @sqrt(2016.0));
+    var x1 = try a.alloc(f64, n);
+    defer a.free(x1);
+
+    for (0..n) |i| {
+        x1[i] = @floatFromInt(i + 1);
+    }
+
+    const result1 = BLAS.nrm2(f64, n, x1.ptr, 1);
+    try std.testing.expectApproxEqRel(18271.111077326415, result1, 0.0000000001);
+    const result2 = BLAS.nrm2(f64, n / 2, x1.ptr, 2);
+    try std.testing.expectApproxEqRel(12909.9380323842, result2, 0.0000000001);
+
+    var x2 = try a.alloc(Complex(f64), n);
+    defer a.free(x2);
+
+    for (0..n) |i| {
+        x2[i] = Complex(f64).init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast(i + 1))));
+    }
+
+    const result3 = BLAS.nrm2(Complex(f64), n, x2.ptr, 1);
+    try std.testing.expectApproxEqRel(25839.253085180306, result3, 0.0000000001);
+    const result4 = BLAS.nrm2(Complex(f64), n / 2, x2.ptr, 2);
+    try std.testing.expectApproxEqRel(18257.409454793964, result4, 0.0000000001);
 }

@@ -873,7 +873,7 @@ pub fn NDArray(comptime T: type) type {
                     return Error.IncompatibleDimensions;
                 }
 
-                return @import("BLAS/BLAS.zig").axpy(T, @intCast(x.shape[0]), a, x.data.ptr, @intCast(x.strides[0]), y.data.ptr, @intCast(y.strides[0]));
+                return @import("BLAS/BLAS.zig").axpy(T, @intCast(x.shape[0]), a, x.data.ptr, @intCast(x.strides[0]), y.data.ptr, -@as(isize, @intCast(y.strides[0])));
             }
 
             /// Copies a vector to another vector.
@@ -1357,11 +1357,19 @@ pub const Flags = packed struct {
 };
 
 /// Order of the elements in the array.
-pub const Order = enum(u1) {
+pub const Order = enum(u7) {
     /// Row major element storage (right to left).
-    RowMajor,
+    RowMajor = 101,
     /// Column major element storage (left to right).
-    ColumnMajor,
+    ColumnMajor = 102,
+};
+
+/// Transposition of matrices.
+pub const Transpose = enum(u7) {
+    NoTrans = 111,
+    Trans = 112,
+    ConjTrans = 113,
+    ConjNoTrans = 114,
 };
 
 test "init" {

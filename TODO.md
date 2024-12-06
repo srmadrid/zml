@@ -2,29 +2,27 @@
 
 ## Priority
 
+Rewrite (and write the ones that are missing) the BLAS routines according to the ATLAS reference implementation (`desktop/ref/ATLAS/src/blas/reference/...`). Remaining rotg, rotm, rotmg, scal and swap.
+
 When changed, replace all `@setRuntimeSafety(false)` with `@optimizeFor(.ReleaseFast)`.
 
-For `NDArray` add view functions: `reshape`, `flatten`, `ravel`, `squeeze`, etc.
+For `NDArray` add view functions: `reshape`, `flatten`, etc.
 
-Edit `BLAS` functions parameters' (pointers, const pointers, non pointers) to be consistent (keeping in mind that pinter or no pointer are just to show intent, as since we are editing the data buffer and not the struct itself, it does not matter if we pass a pointer or not). Using @constCast is a bad idea.
+Edit `BLAS` functions parameters' in `NDArray` (pointers, const pointers, non pointers) to be consistent (keeping in mind that pinter or no pointer are just to show intent, as since we are editing the data buffer and not the struct itself, it does not matter if we pass a pointer or not). Using @constCast is a bad idea.
 
-Make BLAS functions take `T` and `T`, and inside `NDArray(T)` just make calls to them. This way all BLAS and LAPACK functions are according to the specification on netlib.
-
-Maybe make strides `isize` instead of `usize`?
+Maybe make strides `isize` instead of `usize` (probably not)?
 
 ## General
 
-Make a C interface.
+Make a C interface (and, therefore, a C++ one) for the library.
 
-Fix rotg: real tests pass but complex tests fail.
+Make a Python package (especially for the symbolic system).
 
-Make separate implementations for f64 and f32 for BLAS?
+Allow the user to build only BLAS and LAPACK to create `libblas.so`, `liblapack.so`, `libblas.a` and `liblapack.a` (also for Windows and MacOS) and export the necessary headers.
 
 Change the compilation option to use external BLAS and LAPACK libraries from bool to a string with the name of the library.
 
 ## `NDArray`
-
-In the build system, give the option for the user to choose the BLAS and LAPACK implementation. If the user does not choose, then use the default one implemented in the library using zig.
 
 Offer two BLAS and LAPACK implementations: one for types that do not use allocators (bools, ints, floats and complex) and another for types that use allocators. The first one will be in the `BLAS` and `LAPACK` namespaces and the second one will be in the `BLASAlloc` and `LAPACKAlloc` namespaces (names not final). If the function signatures end up being the same, then use one namespace and use the `BLAS` and `LAPACK` names.
 
@@ -36,7 +34,7 @@ Make `NDArray` agnostic to the type of the elements.
 
 ## Symbolic System
 
-Make use of global context? Like, we have a type `zml.Context` that has to be initialized before using the symbolic system using something like `zml.Context.init(allocator, other stuff)`. Then you have to set a global context, like `zml.SetGlobalContext(&context)`. The context will hold a `StringArrayHashMap` with symbols and their names. This way, the context stores all the symbols and the user can have several contexts at the same time and switch between them. The context will also store the allocator and other stuff.
+Make use of global context? Like, we have a type `zml.Context` that has to be initialized before using the symbolic system using something like `zml.Context.init(allocator, other stuff)`. Then you have to set a global context, like `zml.SetGlobalContext(&context)`. The context will hold a `StringArrayHashMap` (hash map optimized for iteration) with symbols and their names. This way, the context stores all the symbols and the user can have several contexts at the same time and switch between them. The context will also store the allocator and other stuff.
 
 Make a `<object>FromExpression` function. For instance, if I want to create the product of a set (`S\times S`), then I can use setFromExpression(...). The expression must evaluate to the correct type.
 

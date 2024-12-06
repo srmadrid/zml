@@ -3,14 +3,17 @@ const core = @import("../../core/core.zig");
 const ci = @import("../../c.zig");
 const options = @import("options");
 const Complex = std.math.Complex;
+const ndarray = @import("../ndarray.zig");
+const Order = ndarray.Order;
+const Transpose = ndarray.Transpose;
 
 const scalar = core.supported.scalar;
 
 // Level 1 BLAS
-pub fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
+pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -45,10 +48,10 @@ pub fn dzasum(n: isize, x: [*]const Complex(f64), incx: isize) f64 {
     return asum(Complex(f64), n, x, incx);
 }
 
-pub fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
+pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -86,7 +89,7 @@ pub fn zaxpy(n: isize, a: Complex(f64), x: [*]const Complex(f64), incx: isize, y
 pub fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -124,7 +127,7 @@ pub fn zcopy(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]Complex(f64)
 pub fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) scalar(T) {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -174,7 +177,7 @@ pub fn zdotc(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Comple
 pub fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .Complex => {
                 if (scalar(T) == f32) {
@@ -224,7 +227,7 @@ pub fn zdotu(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Comple
 pub fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .Complex => {
                 if (scalar(T) == f32) {
@@ -249,7 +252,7 @@ pub fn zdotu_sub(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Co
 pub fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -287,7 +290,7 @@ pub fn dznrm2(n: isize, x: [*]const Complex(f64), incx: isize) f64 {
 pub fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: scalar(T), s: scalar(T)) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -315,17 +318,17 @@ pub fn srot(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize, c: f32, s:
 pub fn drot(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, c: f64, s: f64) void {
     return rot(f64, n, x, incx, y, incy, c, s);
 }
-pub fn crot(n: isize, x: [*]Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize, c: f32, s: f32) void {
+pub fn csrot(n: isize, x: [*]Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize, c: f32, s: f32) void {
     return rot(Complex(f32), n, x, incx, y, incy, c, s);
 }
-pub fn zrot(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize, c: f64, s: f64) void {
+pub fn zdrot(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize, c: f64, s: f64) void {
     return rot(Complex(f64), n, x, incx, y, incy, c, s);
 }
 
 pub fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -363,7 +366,7 @@ pub fn zrotg(a: *Complex(f64), b: *Complex(f64), c: *f64, s: *Complex(f64)) void
 pub fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, param: [*]const T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -388,7 +391,7 @@ pub fn drotm(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, param: [*
 pub fn rotmg(comptime T: type, d1: *T, d2: *T, x1: *T, y1: T, param: [*]T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -413,7 +416,7 @@ pub fn drotmg(d1: *f64, d2: *f64, x1: *f64, y1: f64, param: [*]f64) void {
 pub fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -451,7 +454,7 @@ pub fn zscal(n: isize, a: Complex(f64), x: [*]Complex(f64), incx: isize) void {
 pub fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -489,7 +492,7 @@ pub fn zswap(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy
 pub fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
@@ -527,7 +530,7 @@ pub fn izamax(n: isize, x: [*]const Complex(f64), incx: isize) usize {
 pub fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (options.use_cblas) {
+    if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {

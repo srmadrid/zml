@@ -1,6 +1,8 @@
 const std = @import("std");
-const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
+const BLAS = @import("BLAS.zig");
+
+const scalar = core.supported.scalar;
 
 pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     @setRuntimeSafety(false);
@@ -10,52 +12,181 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
 
     if (n == 1) return 0;
 
-    var imin: usize = 0;
+    var imin: usize = std.math.maxInt(usize);
+    var i: usize = 0;
 
     switch (supported) {
-        .BuiltinBool => @compileError("BLAS.swap does not support bool."),
+        .BuiltinBool => @compileError("BLAS.iamin does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
-            var min = @abs(x[0]);
+            var min: T = std.math.floatMax(T);
 
-            if (incx == 1) {
-                for (1..@intCast(n)) |i| {
-                    if (@abs(x[i]) < @abs(min)) {
-                        min = @abs(x[i]);
+            var ix: isize = 0;
+            const nu = (n >> 3) << 3;
+            if (nu != 0) {
+                const StX = ix + nu * incx;
+                const incx2 = incx * 2;
+                const incx3 = incx * 3;
+                const incx4 = incx * 4;
+                const incx5 = incx * 5;
+                const incx6 = incx * 6;
+                const incx7 = incx * 7;
+                const incx8 = incx * 8;
+                while (ix <= StX) {
+                    var absx = @abs(x[@intCast(ix)]);
+                    if (absx < min) {
+                        min = absx;
                         imin = i;
                     }
-                }
-            } else {
-                var ix: isize = incx;
+                    i += 1;
 
-                for (1..@intCast(n)) |i| {
-                    if (@abs(x[@intCast(ix)]) < @abs(min)) {
-                        min = @abs(x[@intCast(ix)]);
+                    absx = @abs(x[@intCast(ix + incx)]);
+                    if (absx < min) {
+                        min = absx;
                         imin = i;
                     }
-                    ix += incx;
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx2)]);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx3)]);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx4)]);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx5)]);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx6)]);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx7)]);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    ix += incx8;
                 }
+            }
+
+            for (@intCast(nu)..@intCast(n)) |_| {
+                const absx = @abs(x[@intCast(ix)]);
+                if (absx < min) {
+                    min = absx;
+                    imin = i;
+                }
+                i += 1;
+
+                ix += incx;
             }
         },
         .Complex => {
-            var min = @abs(x[0].re) + @abs(x[0].im);
+            var min: scalar(T) = std.math.floatMax(scalar(T));
 
-            if (incx == 1) {
-                for (1..@intCast(n)) |i| {
-                    if (@abs(x[i].re) + @abs(x[i].im) < @abs(min)) {
-                        min = @abs(x[i].re) + @abs(x[i].im);
+            var ix: isize = 0;
+            const nu = (n >> 3) << 3;
+            if (nu != 0) {
+                const StX = ix + nu * incx;
+                const incx2 = incx * 2;
+                const incx3 = incx * 3;
+                const incx4 = incx * 4;
+                const incx5 = incx * 5;
+                const incx6 = incx * 6;
+                const incx7 = incx * 7;
+                const incx8 = incx * 8;
+                while (ix <= StX) {
+                    var absx = @abs(x[@intCast(ix)].re) + @abs(x[@intCast(ix)].im);
+                    if (absx < min) {
+                        min = absx;
                         imin = i;
                     }
-                }
-            } else {
-                var ix: isize = incx;
+                    i += 1;
 
-                for (1..@intCast(n)) |i| {
-                    if (@abs(x[@intCast(ix)].re) + @abs(x[@intCast(ix)].im) < @abs(min)) {
-                        min = @abs(x[@intCast(ix)].re) + @abs(x[@intCast(ix)].im);
+                    absx = @abs(x[@intCast(ix + incx)].re) + @abs(x[@intCast(ix + incx)].im);
+                    if (absx < min) {
+                        min = absx;
                         imin = i;
                     }
-                    ix += incx;
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx2)].re) + @abs(x[@intCast(ix + incx2)].im);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx3)].re) + @abs(x[@intCast(ix + incx3)].im);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx4)].re) + @abs(x[@intCast(ix + incx4)].im);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx5)].re) + @abs(x[@intCast(ix + incx5)].im);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx6)].re) + @abs(x[@intCast(ix + incx6)].im);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    absx = @abs(x[@intCast(ix + incx7)].re) + @abs(x[@intCast(ix + incx7)].im);
+                    if (absx < min) {
+                        min = absx;
+                        imin = i;
+                    }
+                    i += 1;
+
+                    ix += incx8;
                 }
+            }
+
+            for (@intCast(nu)..@intCast(n)) |_| {
+                const absx = @abs(x[@intCast(ix)].re) + @abs(x[@intCast(ix)].im);
+                if (absx < min) {
+                    min = absx;
+                    imin = i;
+                }
+                i += 1;
+
+                ix += incx;
             }
         },
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.iamin only supports simple types."),
@@ -67,27 +198,41 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
 
 test "iamin" {
     const a: std.mem.Allocator = std.testing.allocator;
-
-    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 2, 3, 4 }, .{});
-    defer A.deinit();
-
-    A.setAll(1);
-
-    A.data[7] = 0;
-
-    const result = try NDArray(f64).BLAS.iamin(A.flatten());
-
-    try std.testing.expect(result == 7);
-
     const Complex = std.math.Complex;
-    var C: NDArray(Complex(f64)) = try NDArray(Complex(f64)).init(a, &.{ 2, 3, 4 }, .{});
-    defer C.deinit();
 
-    C.setAll(Complex(f64).init(1, -1));
+    const n = 1000;
 
-    C.data[7] = Complex(f64).init(1, 0);
+    var x1 = try a.alloc(f64, n);
+    defer a.free(x1);
 
-    const result2 = try NDArray(Complex(f64)).BLAS.iamin(C.flatten());
+    for (0..n) |i| {
+        x1[i] = std.math.floatMax(f64);
+    }
 
-    try std.testing.expect(result2 == 7);
+    x1[127] = 0;
+    x1[456] = 0;
+
+    const result1 = BLAS.iamin(f64, n, x1.ptr, 1);
+    try std.testing.expectEqual(127, result1);
+    const result2 = BLAS.iamin(f64, n, x1.ptr, -1);
+    try std.testing.expectEqual(0, result2);
+    const result3 = BLAS.iamin(f64, n / 2, x1.ptr, 2);
+    try std.testing.expectEqual(228, result3);
+
+    var x2 = try a.alloc(Complex(f64), n);
+    defer a.free(x2);
+
+    for (0..n) |i| {
+        x2[i] = Complex(f64).init(std.math.floatMax(f64), std.math.floatMax(f64));
+    }
+
+    x2[127] = Complex(f64).init(0, 0);
+    x2[456] = Complex(f64).init(0, 0);
+
+    const result4 = BLAS.iamin(Complex(f64), n, x2.ptr, 1);
+    try std.testing.expectEqual(127, result4);
+    const result5 = BLAS.iamin(Complex(f64), n, x2.ptr, -1);
+    try std.testing.expectEqual(0, result5);
+    const result6 = BLAS.iamin(Complex(f64), n / 2, x2.ptr, 2);
+    try std.testing.expectEqual(228, result6);
 }

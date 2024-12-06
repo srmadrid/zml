@@ -1,41 +1,41 @@
 const std = @import("std");
-const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
+const BLAS = @import("BLAS.zig");
 
 pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (n <= 0) return 0.0;
+    if (n <= 0) return 0;
 
-    var temp: T = 0;
+    var sum: T = 0;
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.dot does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
-            if (incx == 1 and incy == 1) {
-                const m: usize = @as(usize, @intCast(n)) % 5;
-                for (0..m) |i| {
-                    temp += x[i] * y[i];
+            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+            const nu = (n >> 2) << 2;
+            if (nu != 0) {
+                const StX = ix + nu * incx;
+                const incx2 = incx * 2;
+                const incx3 = incx * 3;
+                const incx4 = incx * 4;
+                const incy2 = incy * 2;
+                const incy3 = incy * 3;
+                const incy4 = incy * 4;
+                while (ix <= StX) {
+                    sum += x[@intCast(ix)] * y[@intCast(iy)] + x[@intCast(ix + incx)] * y[@intCast(iy + incy)] + x[@intCast(ix + incx2)] * y[@intCast(iy + incy2)] + x[@intCast(ix + incx3)] * y[@intCast(iy + incy3)];
+
+                    ix += incx4;
+                    iy += incy4;
                 }
+            }
 
-                if (n < 5) return temp;
+            for (@intCast(nu)..@intCast(n)) |_| {
+                sum += x[@intCast(ix)] * y[@intCast(iy)];
 
-                var mp1: usize = m;
-                while (mp1 < n) : (mp1 += 5) {
-                    temp += x[mp1] * y[mp1] + x[mp1 + 1] * y[mp1 + 1] + x[mp1 + 2] * y[mp1 + 2] + x[mp1 + 3] * y[mp1 + 3] + x[mp1 + 4] * y[mp1 + 4];
-                }
-            } else {
-                var ix: isize = 0;
-                var iy: isize = 0;
-
-                if (incx < 0) ix = (-@as(isize, @intCast(n)) + 1) * incx;
-                if (incy < 0) iy = (-@as(isize, @intCast(n)) + 1) * incy;
-
-                for (0..@intCast(n)) |_| {
-                    temp += x[@intCast(ix)] * y[@intCast(iy)];
-                    ix += incx;
-                    iy += incy;
-                }
+                ix += incx;
+                iy += incy;
             }
         },
         .Complex => @compileError("BLAS.dot does not support complex numbers. Use BLAS.dotc or BLAS.dotu instead."),
@@ -43,22 +43,34 @@ pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]
         .Unsupported => unreachable,
     }
 
-    return temp;
+    return sum;
 }
 
 test "dot" {
-    const a = std.testing.allocator;
+    const a: std.mem.Allocator = std.testing.allocator;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 8, 18, 7 }, .{});
-    defer A.deinit();
+    const n = 1000;
 
-    A.setAll(1);
+    var x1 = try a.alloc(f64, n);
+    defer a.free(x1);
+    var x2 = try a.alloc(f64, n);
+    defer a.free(x2);
+    var x3 = try a.alloc(f64, n);
+    defer a.free(x3);
+    var x4 = try a.alloc(f64, n);
+    defer a.free(x4);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 8, 18, 7 }, .{});
-    defer B.deinit();
+    for (0..n) |i| {
+        x1[i] = @floatFromInt(i + 1);
+        x2[i] = @floatFromInt(i + 1);
+        x3[i] = @floatFromInt(n - i);
+        x4[i] = @floatFromInt(i + 1);
+    }
 
-    B.setAll(2);
-
-    const result1 = try NDArray(f64).BLAS.dot(A.flatten(), B.flatten());
-    try std.testing.expect(result1 == 2016);
+    const result1 = BLAS.dot(f64, n, x1.ptr, 1, x2.ptr, 1);
+    try std.testing.expectEqual(333833500, result1);
+    const result2 = BLAS.dot(f64, n, x1.ptr, 1, x3.ptr, -1);
+    try std.testing.expectEqual(333833500, result2);
+    const result3 = BLAS.dot(f64, n / 2, x1.ptr, 2, x4.ptr, 2);
+    try std.testing.expectEqual(166666500, result3);
 }
