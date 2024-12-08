@@ -21,7 +21,7 @@ pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
                 const incy2 = incy * 2;
                 const incy3 = incy * 3;
                 const incy4 = incy * 4;
-                while (ix <= StX) {
+                while (ix != StX) {
                     y[@intCast(iy)] = x[@intCast(ix)];
                     y[@intCast(iy + incy)] = x[@intCast(ix + incx)];
                     y[@intCast(iy + incy2)] = x[@intCast(ix + incx2)];

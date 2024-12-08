@@ -26,7 +26,7 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 const incx6 = incx * 6;
                 const incx7 = incx * 7;
                 const incx8 = incx * 8;
-                while (ix <= StX) {
+                while (ix != StX) {
                     sum += @abs(x[@intCast(ix)]) + @abs(x[@intCast(ix + incx)]) + @abs(x[@intCast(ix + incx2)]) + @abs(x[@intCast(ix + incx3)]) + @abs(x[@intCast(ix + incx4)]) + @abs(x[@intCast(ix + incx5)]) + @abs(x[@intCast(ix + incx6)]) + @abs(x[@intCast(ix + incx7)]);
 
                     ix += incx8;
@@ -47,7 +47,7 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 const incx2 = incx * 2;
                 const incx3 = incx * 3;
                 const incx4 = incx * 4;
-                while (ix <= StX) {
+                while (ix != StX) {
                     sum += @abs(x[@intCast(ix)].re) + @abs(x[@intCast(ix)].im) + @abs(x[@intCast(ix + incx)].re) + @abs(x[@intCast(ix + incx)].im) + @abs(x[@intCast(ix + incx2)].re) + @abs(x[@intCast(ix + incx2)].im) + @abs(x[@intCast(ix + incx3)].re) + @abs(x[@intCast(ix + incx3)].im);
 
                     ix += incx4;

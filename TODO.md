@@ -2,7 +2,9 @@
 
 ## Priority
 
-Rewrite (and write the ones that are missing) the BLAS routines according to the ATLAS reference implementation (`desktop/ref/ATLAS/src/blas/reference/...`). Remaining rotg, rotm, rotmg, scal and swap.
+Complex `rotg` does not work.
+
+Rewrite (and write the ones that are missing) the BLAS routines according to the ATLAS reference implementation (`desktop/ref/ATLAS/src/blas/reference/...`). Remaining: rotm, rotmg, scal and swap.
 
 When changed, replace all `@setRuntimeSafety(false)` with `@optimizeFor(.ReleaseFast)`.
 

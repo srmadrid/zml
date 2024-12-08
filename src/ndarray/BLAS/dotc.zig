@@ -22,7 +22,7 @@ pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
                 const StX = ix + nu * incx;
                 const incx2 = incx * 2;
                 const incy2 = incy * 2;
-                while (ix <= StX) {
+                while (ix != StX) {
                     sum.re += x[@intCast(ix)].re * y[@intCast(iy)].re + x[@intCast(ix)].im * y[@intCast(iy)].im + x[@intCast(ix + incx)].re * y[@intCast(iy + incy)].re + x[@intCast(ix + incx)].im * y[@intCast(iy + incy)].im;
                     sum.im += x[@intCast(ix)].re * y[@intCast(iy)].im - x[@intCast(ix)].im * y[@intCast(iy)].re + x[@intCast(ix + incx)].re * y[@intCast(iy + incy)].im - x[@intCast(ix + incx)].im * y[@intCast(iy + incy)].re;
 

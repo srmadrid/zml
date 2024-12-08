@@ -24,7 +24,7 @@ pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, inc
                 const incy2 = incy * 2;
                 const incy3 = incy * 3;
                 const incy4 = incy * 4;
-                while (ix <= StX) {
+                while (ix != StX) {
                     var temp = c * x[@intCast(ix)] + s * y[@intCast(iy)];
                     y[@intCast(iy)] = c * y[@intCast(iy)] - s * x[@intCast(ix)];
                     x[@intCast(ix)] = temp;
@@ -63,7 +63,7 @@ pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, inc
                 const StX = ix + nu * incx;
                 const incx2 = incx * 2;
                 const incy2 = incy * 2;
-                while (ix <= StX) {
+                while (ix != StX) {
                     var temp = c * x[@intCast(ix)].re + s * y[@intCast(iy)].re;
                     y[@intCast(iy)].re = c * y[@intCast(iy)].re - s * x[@intCast(ix)].re;
                     x[@intCast(ix)].re = temp;

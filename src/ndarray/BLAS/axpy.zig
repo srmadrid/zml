@@ -24,7 +24,7 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
                 const incy2 = incy * 2;
                 const incy3 = incy * 3;
                 const incy4 = incy * 4;
-                while (ix <= StX) {
+                while (ix != StX) {
                     y[@intCast(iy)] += a * x[@intCast(ix)];
                     y[@intCast(iy + incy)] += a * x[@intCast(ix + incx)];
                     y[@intCast(iy + incy2)] += a * x[@intCast(ix + incx2)];
@@ -52,7 +52,7 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
                 const StX = ix + nu * incx;
                 const incx2 = incx * 2;
                 const incy2 = incy * 2;
-                while (ix <= StX) {
+                while (ix != StX) {
                     y[@intCast(iy)].re += a.re * x[@intCast(ix)].re - a.im * x[@intCast(ix)].im;
                     y[@intCast(iy)].im += a.re * x[@intCast(ix)].im + a.im * x[@intCast(ix)].re;
                     y[@intCast(iy + incy)].re += a.re * x[@intCast(ix + incx)].re - a.im * x[@intCast(ix + incx)].im;

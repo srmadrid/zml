@@ -23,7 +23,7 @@ pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]
                 const incy2 = incy * 2;
                 const incy3 = incy * 3;
                 const incy4 = incy * 4;
-                while (ix <= StX) {
+                while (ix != StX) {
                     sum += x[@intCast(ix)] * y[@intCast(iy)] + x[@intCast(ix + incx)] * y[@intCast(iy + incy)] + x[@intCast(ix + incx2)] * y[@intCast(iy + incy2)] + x[@intCast(ix + incx3)] * y[@intCast(iy + incy3)];
 
                     ix += incx4;

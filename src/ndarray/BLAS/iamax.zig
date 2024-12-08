@@ -31,7 +31,7 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 const incx6 = incx * 6;
                 const incx7 = incx * 7;
                 const incx8 = incx * 8;
-                while (ix <= StX) {
+                while (ix != StX) {
                     var absx = @abs(x[@intCast(ix)]);
                     if (absx > max) {
                         max = absx;
@@ -117,7 +117,7 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 const incx6 = incx * 6;
                 const incx7 = incx * 7;
                 const incx8 = incx * 8;
-                while (ix <= StX) {
+                while (ix != StX) {
                     var absx = @abs(x[@intCast(ix)].re) + @abs(x[@intCast(ix)].im);
                     if (absx > max) {
                         max = absx;

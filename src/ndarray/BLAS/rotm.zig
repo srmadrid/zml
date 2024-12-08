@@ -1,6 +1,6 @@
 const std = @import("std");
-const NDArray = @import("../ndarray.zig").NDArray;
 const core = @import("../../core/core.zig");
+const BLAS = @import("BLAS.zig");
 
 const scalar = core.supported.scalar;
 
@@ -8,98 +8,137 @@ pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
-    if (n == 0 or param[0] + 2 == 0) return;
+    if (n == 0 or param[0] == -2) return;
 
     switch (supported) {
         .BuiltinBool => @compileError("BLAS.rotm does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
             const flag = param[0];
-            var kx: isize = 0;
-            var ky: isize = 0;
 
-            if (incx == incy and incx > 0) {
-                const nsteps: usize = @intCast(n * incx);
-                if (flag < 0) {
-                    const h11 = param[1];
-                    const h12 = param[3];
-                    const h21 = param[2];
-                    const h22 = param[4];
+            if (flag == -1) {
+                const h11 = param[1];
+                const h21 = param[2];
+                const h12 = param[3];
+                const h22 = param[4];
+                var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+                var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+                const nu = (n >> 2) << 2;
+                if (nu != 0) {
+                    const StX = ix + nu * incx;
+                    const incx2 = incx * 2;
+                    const incx3 = incx * 3;
+                    const incx4 = incx * 4;
+                    const incy2 = incy * 2;
+                    const incy3 = incy * 3;
+                    const incy4 = incy * 4;
+                    while (ix != StX) {
+                        const x0 = x[@intCast(ix)];
+                        const x1 = x[@intCast(ix + incx)];
+                        const x2 = x[@intCast(ix + incx2)];
+                        const x3 = x[@intCast(ix + incx3)];
+                        x[@intCast(ix)] = h11 * x[@intCast(ix)] + h12 * y[@intCast(iy)];
+                        y[@intCast(iy)] = h21 * x0 + h22 * y[@intCast(iy)];
+                        x[@intCast(ix + incx)] = h11 * x[@intCast(ix + incx)] + h12 * y[@intCast(iy + incy)];
+                        y[@intCast(iy + incy)] = h21 * x1 + h22 * y[@intCast(iy + incy)];
+                        x[@intCast(ix + incx2)] = h11 * x[@intCast(ix + incx2)] + h12 * y[@intCast(iy + incy2)];
+                        y[@intCast(iy + incy2)] = h21 * x2 + h22 * y[@intCast(iy + incy2)];
+                        x[@intCast(ix + incx3)] = h11 * x[@intCast(ix + incx3)] + h12 * y[@intCast(iy + incy3)];
+                        y[@intCast(iy + incy3)] = h21 * x3 + h22 * y[@intCast(iy + incy3)];
 
-                    var i: usize = 0;
-                    while (i < nsteps) : (i += @intCast(incx)) {
-                        const idx = i * @as(usize, @intCast(incx));
-                        const w = x[idx];
-                        const z = y[idx];
-                        x[idx] = w * h11 + z * h12;
-                        y[idx] = w * h21 + z * h22;
-                    }
-                } else if (flag == 0.0) {
-                    const h12 = param[3];
-                    const h21 = param[2];
-
-                    var i: usize = 0;
-                    while (i < nsteps) : (i += @intCast(incx)) {
-                        const idx = i * @as(usize, @intCast(incx));
-                        const w = x[idx];
-                        const z = y[idx];
-                        x[idx] = w + z * h12;
-                        y[idx] = w * h21 + z;
-                    }
-                } else {
-                    const h11 = param[1];
-                    const h22 = param[4];
-
-                    var i: usize = 0;
-                    while (i < nsteps) : (i += @intCast(incx)) {
-                        const idx = i * @as(usize, @intCast(incx));
-                        const w = x[idx];
-                        const z = y[idx];
-                        x[idx] = w * h11 + z;
-                        y[idx] = -w + h22 * z;
+                        ix += incx4;
+                        iy += incy4;
                     }
                 }
-            } else {
-                if (incx < 0) kx = (1 - n) * incx;
-                if (incy < 0) ky = (1 - n) * incy;
 
-                if (flag < 0) {
-                    const h11 = param[1];
-                    const h12 = param[3];
-                    const h21 = param[2];
-                    const h22 = param[4];
+                for (@intCast(nu)..@intCast(n)) |_| {
+                    const x0 = x[@intCast(ix)];
+                    x[@intCast(ix)] = h11 * x[@intCast(ix)] + h12 * y[@intCast(iy)];
+                    y[@intCast(iy)] = h21 * x0 + h22 * y[@intCast(iy)];
 
-                    for (0..@intCast(n)) |_| {
-                        const w = x[@intCast(kx)];
-                        const z = y[@intCast(ky)];
-                        x[@intCast(kx)] = w * h11 + z * h12;
-                        y[@intCast(ky)] = w * h21 + z * h22;
-                        kx += incx;
-                        ky += incy;
+                    ix += incx;
+                    iy += incy;
+                }
+            } else if (flag == 0) {
+                const h21 = param[2];
+                const h12 = param[3];
+                var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+                var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+                const nu = (n >> 2) << 2;
+                if (nu != 0) {
+                    const StX = ix + nu * incx;
+                    const incx2 = incx * 2;
+                    const incx3 = incx * 3;
+                    const incx4 = incx * 4;
+                    const incy2 = incy * 2;
+                    const incy3 = incy * 3;
+                    const incy4 = incy * 4;
+                    while (ix != StX) {
+                        const x0 = x[@intCast(ix)];
+                        const x1 = x[@intCast(ix + incx)];
+                        const x2 = x[@intCast(ix + incx2)];
+                        const x3 = x[@intCast(ix + incx3)];
+                        x[@intCast(ix)] = x[@intCast(ix)] + h12 * y[@intCast(iy)];
+                        y[@intCast(iy)] = y[@intCast(iy)] + h21 * x0;
+                        x[@intCast(ix + incx)] = x[@intCast(ix + incx)] + h12 * y[@intCast(iy + incy)];
+                        y[@intCast(iy + incy)] = y[@intCast(iy + incy)] + h21 * x1;
+                        x[@intCast(ix + incx2)] = x[@intCast(ix + incx2)] + h12 * y[@intCast(iy + incy2)];
+                        y[@intCast(iy + incy2)] = y[@intCast(iy + incy2)] + h21 * x2;
+                        x[@intCast(ix + incx3)] = x[@intCast(ix + incx3)] + h12 * y[@intCast(iy + incy3)];
+                        y[@intCast(iy + incy3)] = y[@intCast(iy + incy3)] + h21 * x3;
+
+                        ix += incx4;
+                        iy += incy4;
                     }
-                } else if (flag == 0) {
-                    const h12 = param[3];
-                    const h21 = param[2];
+                }
 
-                    for (0..@intCast(n)) |_| {
-                        const w = x[@intCast(kx)];
-                        const z = y[@intCast(ky)];
-                        x[@intCast(kx)] = w + z * h12;
-                        y[@intCast(ky)] = w * h21 + z;
-                        kx += incx;
-                        ky += incy;
-                    }
-                } else {
-                    const h11 = param[1];
-                    const h22 = param[4];
+                for (@intCast(nu)..@intCast(n)) |_| {
+                    const x0 = x[@intCast(ix)];
+                    x[@intCast(ix)] = x[@intCast(ix)] + h12 * y[@intCast(iy)];
+                    y[@intCast(iy)] = y[@intCast(iy)] + h21 * x0;
 
-                    for (0..@intCast(n)) |_| {
-                        const w = x[@intCast(kx)];
-                        const z = y[@intCast(ky)];
-                        x[@intCast(kx)] = w * h11 + z;
-                        y[@intCast(ky)] = -w + h22 * z;
-                        kx += incx;
-                        ky += incy;
+                    ix += incx;
+                    iy += incy;
+                }
+            } else if (flag == 1) {
+                const h11 = param[1];
+                const h22 = param[4];
+                var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+                var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+                const nu = (n >> 2) << 2;
+                if (nu != 0) {
+                    const StX = ix + nu * incx;
+                    const incx2 = incx * 2;
+                    const incx3 = incx * 3;
+                    const incx4 = incx * 4;
+                    const incy2 = incy * 2;
+                    const incy3 = incy * 3;
+                    const incy4 = incy * 4;
+                    while (ix != StX) {
+                        const x0 = x[@intCast(ix)];
+                        const x1 = x[@intCast(ix + incx)];
+                        const x2 = x[@intCast(ix + incx2)];
+                        const x3 = x[@intCast(ix + incx3)];
+                        x[@intCast(ix)] = h11 * x[@intCast(ix)] + y[@intCast(iy)];
+                        y[@intCast(iy)] = h22 * y[@intCast(iy)] - x0;
+                        x[@intCast(ix + incx)] = h11 * x[@intCast(ix + incx)] + y[@intCast(iy + incy)];
+                        y[@intCast(iy + incy)] = h22 * y[@intCast(iy + incy)] - x1;
+                        x[@intCast(ix + incx2)] = h11 * x[@intCast(ix + incx2)] + y[@intCast(iy + incy2)];
+                        y[@intCast(iy + incy2)] = h22 * y[@intCast(iy + incy2)] - x2;
+                        x[@intCast(ix + incx3)] = h11 * x[@intCast(ix + incx3)] + y[@intCast(iy + incy3)];
+                        y[@intCast(iy + incy3)] = h22 * y[@intCast(iy + incy3)] - x3;
+
+                        ix += incx4;
+                        iy += incy4;
                     }
+                }
+
+                for (@intCast(nu)..@intCast(n)) |_| {
+                    const x0 = x[@intCast(ix)];
+                    x[@intCast(ix)] = h11 * x[@intCast(ix)] + y[@intCast(iy)];
+                    y[@intCast(iy)] = h22 * y[@intCast(iy)] - x0;
+
+                    ix += incx;
+                    iy += incy;
                 }
             }
         },
@@ -110,31 +149,46 @@ pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
 }
 
 test "rotm" {
-    const a = std.testing.allocator;
+    const a: std.mem.Allocator = std.testing.allocator;
 
-    var A: NDArray(f64) = try NDArray(f64).init(a, &.{ 8, 18, 7 }, .{});
-    defer A.deinit();
+    const n = 1000;
 
-    A.setAll(1);
+    var x1 = try a.alloc(f64, n);
+    defer a.free(x1);
+    var x2 = try a.alloc(f64, n);
+    defer a.free(x2);
+    var x3 = try a.alloc(f64, n);
+    defer a.free(x3);
+    var x4 = try a.alloc(f64, n);
+    defer a.free(x4);
 
-    var B: NDArray(f64) = try NDArray(f64).init(a, &.{ 8, 18, 7 }, .{});
-    defer B.deinit();
+    for (0..n) |i| {
+        x1[i] = @floatFromInt(i + 1);
+        x2[i] = @floatFromInt(i + 1);
+        x3[i] = @floatFromInt(n - i);
+        x4[i] = @floatFromInt(i + 1);
+    }
 
-    B.setAll(1);
-
-    var param: NDArray(f64) = try NDArray(f64).init(a, &.{5}, .{});
-    defer param.deinit();
-
-    param.data[0] = -1;
-    param.data[1] = 0.7071067811865475;
-    param.data[2] = 0;
-    param.data[3] = 0.7071067811865475;
-    param.data[4] = 0;
-
-    try NDArray(f64).BLAS.rotm(@constCast(&A.flatten()), @constCast(&B.flatten()), param.flatten());
-
-    for (0..A.size) |i| {
-        try std.testing.expectApproxEqAbs(1.414214, A.data[i], 0.0001);
-        try std.testing.expectApproxEqAbs(0, B.data[i], 0.0001);
+    BLAS.rotm(f64, n, x1.ptr, 1, x2.ptr, 1, &.{ 1, 2, 3, 4, 5 });
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + (i + 1))), x1[i]);
+        try std.testing.expectEqual(@as(f64, @floatFromInt(5 * (i + 1) - (i + 1))), x2[i]);
+        x1[i] = @floatFromInt(i + 1);
+    }
+    BLAS.rotm(f64, n, x1.ptr, 1, x3.ptr, -1, &.{ 0, 2, 3, 4, 5 });
+    for (0..n) |i| {
+        try std.testing.expectEqual(@as(f64, @floatFromInt((i + 1) + 4 * (i + 1))), x1[i]);
+        try std.testing.expectEqual(@as(f64, @floatFromInt(4 * (n - i))), x3[i]);
+        x1[i] = @floatFromInt(i + 1);
+    }
+    BLAS.rotm(f64, n / 2, x1.ptr, 2, x4.ptr, 2, &.{ -1, 2, 3, 4, 5 });
+    for (0..n) |i| {
+        if (i % 2 == 0) {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 4 * (i + 1))), x1[i]);
+            try std.testing.expectEqual(@as(f64, @floatFromInt(3 * (i + 1) + 5 * (i + 1))), x4[i]);
+        } else {
+            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x1[i]);
+            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x4[i]);
+        }
     }
 }
