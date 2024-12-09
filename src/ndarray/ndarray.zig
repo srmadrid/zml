@@ -1372,6 +1372,24 @@ pub const Transpose = enum(u7) {
     ConjNoTrans = 114,
 };
 
+/// Uplo parameter for symmetric matrices.
+pub const Uplo = enum(u7) {
+    Upper = 121,
+    Lower = 122,
+};
+
+/// Diag parameter for triangular matrices.
+pub const Diag = enum(u8) {
+    NonUnit = 131,
+    Unit = 132,
+};
+
+/// Side parameter for triangular matrices.
+pub const Side = enum(u8) {
+    Left = 141,
+    Right = 142,
+};
+
 test "init" {
     const a: std.mem.Allocator = std.testing.allocator;
 
