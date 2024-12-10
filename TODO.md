@@ -2,9 +2,9 @@
 
 ## Priority
 
-Complex `rotg` does not work.
+Separate compile flags: `use_cblas` turn into `use_blas` (`bool`) to use BLAS functions in `NDArray` functions (inside use `options` to determine to use a BLAS function or a bespoke one), and, if true, have `link_cblas` (`[]const u8`) to link with a cblas library (if not provided, link with the internal zig implementation). Do the same with `use_clapack`.
 
-Rewrite (and write the ones that are missing) the BLAS routines according to the ATLAS reference implementation (`desktop/ref/ATLAS/src/blas/reference/...`). Remaining: rotm, rotmg, scal and swap.
+Complex `rotg` does not work.
 
 When changed, replace all `@setRuntimeSafety(false)` with `@optimizeFor(.ReleaseFast)`.
 

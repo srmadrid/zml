@@ -10,7 +10,7 @@ pub fn build(b: *std.Build) void {
 
     // Option to provide BLAS and LAPACK implementations
     const options = b.addOptions();
-    const opt_use_blas = b.option([]const u8, "use_cblas", "Use OpenBLAS implementation");
+    const opt_use_blas = b.option([]const u8, "use_cblas", "Use CBLAS implementation");
     options.addOption(?[]const u8, "use_cblas", opt_use_blas);
     const opt_use_lapack = b.option([]const u8, "use_lapacke", "Use LAPACKE implementation");
     options.addOption(?[]const u8, "use_lapacke", opt_use_lapack);

@@ -6,6 +6,9 @@ const Complex = std.math.Complex;
 const ndarray = @import("../ndarray.zig");
 const Order = ndarray.Order;
 const Transpose = ndarray.Transpose;
+const Uplo = ndarray.Uplo;
+const Diag = ndarray.Diag;
+const Side = ndarray.Side;
 
 const scalar = core.supported.scalar;
 
@@ -566,6 +569,43 @@ pub fn izamin(n: isize, x: [*]const Complex(f64), incx: isize) usize {
 }
 
 // Level 2 BLAS
+pub fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), alpha, a, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                } else if (T == f64) {
+                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), alpha, a, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, a, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, a, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("gbmv.zig").gbmv(T, order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+}
+pub fn sgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return gbmv(f32, order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+}
+pub fn dgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return gbmv(f64, order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+}
+pub fn cgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f32), a: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
+    return gbmv(Complex(f32), order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+}
+pub fn zgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f64), a: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
+    return gbmv(Complex(f64), order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+}
 
 test {
     std.testing.refAllDeclsRecursive(@This());
@@ -590,4 +630,5 @@ test {
     _ = @import("iamin.zig");
 
     // Level 2 BLAS
+    _ = @import("gbmv.zig");
 }
