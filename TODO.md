@@ -4,7 +4,7 @@
 
 Separate compile flags: `use_cblas` turn into `use_blas` (`bool`) to use BLAS functions in `NDArray` functions (inside use `options` to determine to use a BLAS function or a bespoke one), and, if true, have `link_cblas` (`[]const u8`) to link with a cblas library (if not provided, link with the internal zig implementation). Do the same with `use_clapack`.
 
-Complex `rotg` does not work.
+Complex `rotg` does not work. `rotmg` fails when compiling with optimization `ReleaseFast`.
 
 When changed, replace all `@setRuntimeSafety(false)` with `@optimizeFor(.ReleaseFast)`.
 
