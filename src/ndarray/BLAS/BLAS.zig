@@ -569,42 +569,137 @@ pub fn izamin(n: isize, x: [*]const Complex(f64), incx: isize) usize {
 }
 
 // Level 2 BLAS
-pub fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.use_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
-                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), alpha, a, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
                 } else if (T == f64) {
-                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), alpha, a, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
                 }
             },
             .Complex => {
                 if (scalar(T) == f32) {
-                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, a, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
                 } else if (scalar(T) == f64) {
-                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, a, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
                 }
             },
             else => {},
         }
     }
 
-    return @import("gbmv.zig").gbmv(T, order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+    return @import("gbmv.zig").gbmv(T, order, trans, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn sgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return gbmv(f32, order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+pub fn sgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f32, A: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return gbmv(f32, order, trans, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn dgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return gbmv(f64, order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+pub fn dgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return gbmv(f64, order, trans, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn cgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f32), a: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
-    return gbmv(Complex(f32), order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+pub fn cgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
+    return gbmv(Complex(f32), order, trans, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn zgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f64), a: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
-    return gbmv(Complex(f64), order, trans, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy);
+pub fn zgbmv(order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
+    return gbmv(Complex(f64), order, trans, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+}
+
+pub fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_sgemv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                } else if (T == f64) {
+                    return ci.cblas_dgemv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cgemv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zgemv(@intFromEnum(order), @intFromEnum(trans), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("gemv.zig").gemv(T, order, trans, m, n, alpha, A, lda, x, incx, beta, y, incy);
+}
+
+pub fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_sger(@intFromEnum(order), @intCast(m), @intCast(n), alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                } else if (T == f64) {
+                    return ci.cblas_dger(@intFromEnum(order), @intCast(m), @intCast(n), alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("ger.zig").ger(T, order, m, n, alpha, x, incx, y, incy, A, lda);
+}
+
+pub fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cgerc(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zgerc(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("gerc.zig").gerc(T, order, m, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn cgerc(order: Order, m: isize, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, A: [*]Complex(f32), lda: isize) void {
+    return gerc(Complex(f32), order, m, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn zgerc(order: Order, m: isize, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, A: [*]Complex(f64), lda: isize) void {
+    return gerc(Complex(f64), order, m, n, alpha, x, incx, y, incy, A, lda);
+}
+
+pub fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cgeru(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zgeru(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("geru.zig").geru(T, order, m, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn cgeru(order: Order, m: isize, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, A: [*]Complex(f32), lda: isize) void {
+    return geru(Complex(f32), order, m, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn zgeru(order: Order, m: isize, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, A: [*]Complex(f64), lda: isize) void {
+    return geru(Complex(f64), order, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
 test {
@@ -631,4 +726,8 @@ test {
 
     // Level 2 BLAS
     _ = @import("gbmv.zig");
+    _ = @import("gemv.zig");
+    _ = @import("ger.zig");
+    _ = @import("gerc.zig");
+    _ = @import("geru.zig");
 }

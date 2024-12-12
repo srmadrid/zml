@@ -307,20 +307,17 @@ pub inline fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.gbmv only supports simple types."),
+        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.gemv only supports simple types."),
         .Unsupported => unreachable,
     }
 }
 
 test "gemv" {
-    // TODO; Replace gbmv with gemv and make proper tests
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 
     const m = 4;
     const n = 5;
-    const kl = 1;
-    const ku = 2;
     const alpha: f64 = 1;
     const beta: f64 = 1;
 
@@ -335,12 +332,12 @@ test "gemv" {
     @memcpy(x1.ptr, &[_]f64{ 1, 2, 3, 4, 5 });
     @memcpy(y1.ptr, &[_]f64{ 1, 2, 3, 4 });
 
-    BLAS.gbmv(f64, .RowMajor, .NoTrans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x1.ptr, 1, beta, y1.ptr, 1);
+    BLAS.gemv(f64, .RowMajor, .NoTrans, m, n, alpha, A.ptr, n, x1.ptr, 1, beta, y1.ptr, 1);
 
-    try std.testing.expectEqual(28, y1[0]);
-    try std.testing.expectEqual(43, y1[1]);
-    try std.testing.expectEqual(94, y1[2]);
-    try std.testing.expectEqual(83, y1[3]);
+    try std.testing.expectEqual(93, y1[0]);
+    try std.testing.expectEqual(134, y1[1]);
+    try std.testing.expectEqual(93, y1[2]);
+    try std.testing.expectEqual(60, y1[3]);
 
     const x2 = try a.alloc(f64, n);
     defer a.free(x2);
@@ -350,12 +347,12 @@ test "gemv" {
     @memcpy(x2.ptr, &[_]f64{ 5, 4, 3, 2, 1 });
     @memcpy(y2.ptr, &[_]f64{ 1, 0, 2, 0, 3, 0, 4, 0 });
 
-    BLAS.gbmv(f64, .ColumnMajor, .NoTrans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x2.ptr, -1, beta, y2.ptr, 2);
+    BLAS.gemv(f64, .ColumnMajor, .NoTrans, m, n, alpha, A.ptr, m, x2.ptr, -1, beta, y2.ptr, 2);
 
-    try std.testing.expectEqual(34, y2[0]);
-    try std.testing.expectEqual(91, y2[2]);
-    try std.testing.expectEqual(110, y2[4]);
-    try std.testing.expectEqual(79, y2[6]);
+    try std.testing.expectEqual(129, y2[0]);
+    try std.testing.expectEqual(156, y2[2]);
+    try std.testing.expectEqual(13, y2[4]);
+    try std.testing.expectEqual(54, y2[6]);
 
     const x3 = try a.alloc(f64, m);
     defer a.free(x3);
@@ -365,13 +362,13 @@ test "gemv" {
     @memcpy(x3.ptr, &[_]f64{ 1, 2, 3, 4 });
     @memcpy(y3.ptr, &[_]f64{ 5, 0, 4, 0, 3, 0, 2, 0, 1, 0 });
 
-    BLAS.gbmv(f64, .RowMajor, .Trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x3.ptr, 1, beta, y3.ptr, -2);
+    BLAS.gemv(f64, .RowMajor, .Trans, m, n, alpha, A.ptr, n, x3.ptr, 1, beta, y3.ptr, -2);
 
-    try std.testing.expectEqual(23, y3[8]);
-    try std.testing.expectEqual(35, y3[6]);
-    try std.testing.expectEqual(92, y3[4]);
-    try std.testing.expectEqual(71, y3[2]);
-    try std.testing.expectEqual(20, y3[0]);
+    try std.testing.expectEqual(20, y3[8]);
+    try std.testing.expectEqual(53, y3[6]);
+    try std.testing.expectEqual(93, y3[4]);
+    try std.testing.expectEqual(70, y3[2]);
+    try std.testing.expectEqual(44, y3[0]);
 
     const x4 = try a.alloc(f64, 2 * m);
     defer a.free(x4);
@@ -381,13 +378,13 @@ test "gemv" {
     @memcpy(x4.ptr, &[_]f64{ 4, 0, 3, 0, 2, 0, 1, 0 });
     @memcpy(y4.ptr, &[_]f64{ 5, 4, 3, 2, 1 });
 
-    BLAS.gbmv(f64, .ColumnMajor, .Trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x4.ptr, -2, beta, y4.ptr, -1);
+    BLAS.gemv(f64, .ColumnMajor, .Trans, m, n, alpha, A.ptr, m, x4.ptr, -2, beta, y4.ptr, -1);
 
-    try std.testing.expectEqual(18, y4[4]);
-    try std.testing.expectEqual(24, y4[3]);
+    try std.testing.expectEqual(38, y4[4]);
+    try std.testing.expectEqual(43, y4[3]);
     try std.testing.expectEqual(64, y4[2]);
-    try std.testing.expectEqual(61, y4[1]);
-    try std.testing.expectEqual(77, y4[0]);
+    try std.testing.expectEqual(55, y4[1]);
+    try std.testing.expectEqual(37, y4[0]);
 
     const alpha2 = Complex(f64).init(1, 1);
     const beta2 = Complex(f64).init(3, 3);
@@ -435,16 +432,16 @@ test "gemv" {
         Complex(f64).init(3, 3),
     });
 
-    BLAS.gbmv(Complex(f64), .RowMajor, .NoTrans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x5.ptr, 1, beta2, y5.ptr, 1);
+    BLAS.gemv(Complex(f64), .RowMajor, .NoTrans, m, n, alpha2, A2.ptr, n, x5.ptr, 1, beta2, y5.ptr, 1);
 
-    try std.testing.expectEqual(-111, y5[0].re);
-    try std.testing.expectEqual(97, y5[0].im);
-    try std.testing.expectEqual(-164, y5[1].re);
-    try std.testing.expectEqual(144, y5[1].im);
-    try std.testing.expectEqual(-367, y5[2].re);
+    try std.testing.expectEqual(-371, y5[0].re);
+    try std.testing.expectEqual(335, y5[0].im);
+    try std.testing.expectEqual(-528, y5[1].re);
+    try std.testing.expectEqual(482, y5[1].im);
+    try std.testing.expectEqual(-363, y5[2].re);
     try std.testing.expectEqual(313, y5[2].im);
-    try std.testing.expectEqual(-316, y5[3].re);
-    try std.testing.expectEqual(290, y5[3].im);
+    try std.testing.expectEqual(-224, y5[3].re);
+    try std.testing.expectEqual(194, y5[3].im);
 
     const x6 = try a.alloc(Complex(f64), n);
     defer a.free(x6);
@@ -469,16 +466,16 @@ test "gemv" {
         Complex(f64).init(0, 0),
     });
 
-    BLAS.gbmv(Complex(f64), .ColumnMajor, .NoTrans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x6.ptr, -1, beta2, y6.ptr, 2);
+    BLAS.gemv(Complex(f64), .ColumnMajor, .NoTrans, m, n, alpha2, A2.ptr, m, x6.ptr, -1, beta2, y6.ptr, 2);
 
-    try std.testing.expectEqual(-135, y6[0].re);
-    try std.testing.expectEqual(115, y6[0].im);
-    try std.testing.expectEqual(-356, y6[2].re);
-    try std.testing.expectEqual(310, y6[2].im);
-    try std.testing.expectEqual(-431, y6[4].re);
-    try std.testing.expectEqual(381, y6[4].im);
-    try std.testing.expectEqual(-300, y6[6].re);
-    try std.testing.expectEqual(284, y6[6].im);
+    try std.testing.expectEqual(-515, y6[0].re);
+    try std.testing.expectEqual(445, y6[0].im);
+    try std.testing.expectEqual(-616, y6[2].re);
+    try std.testing.expectEqual(556, y6[2].im);
+    try std.testing.expectEqual(-43, y6[4].re);
+    try std.testing.expectEqual(37, y6[4].im);
+    try std.testing.expectEqual(-200, y6[6].re);
+    try std.testing.expectEqual(174, y6[6].im);
 
     const x7 = try a.alloc(Complex(f64), m);
     defer a.free(x7);
@@ -504,18 +501,18 @@ test "gemv" {
         Complex(f64).init(0, 0),
     });
 
-    BLAS.gbmv(Complex(f64), .RowMajor, .Trans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x7.ptr, 1, beta2, y7.ptr, -2);
+    BLAS.gemv(Complex(f64), .RowMajor, .Trans, m, n, alpha2, A2.ptr, n, x7.ptr, 1, beta2, y7.ptr, -2);
 
-    try std.testing.expectEqual(-91, y7[8].re);
+    try std.testing.expectEqual(-79, y7[8].re);
     try std.testing.expectEqual(75, y7[8].im);
-    try std.testing.expectEqual(-132, y7[6].re);
-    try std.testing.expectEqual(124, y7[6].im);
-    try std.testing.expectEqual(-359, y7[4].re);
-    try std.testing.expectEqual(301, y7[4].im);
-    try std.testing.expectEqual(-268, y7[2].re);
-    try std.testing.expectEqual(246, y7[2].im);
-    try std.testing.expectEqual(-63, y7[0].re);
-    try std.testing.expectEqual(59, y7[0].im);
+    try std.testing.expectEqual(-204, y7[6].re);
+    try std.testing.expectEqual(192, y7[6].im);
+    try std.testing.expectEqual(-363, y7[4].re);
+    try std.testing.expectEqual(309, y7[4].im);
+    try std.testing.expectEqual(-264, y7[2].re);
+    try std.testing.expectEqual(222, y7[2].im);
+    try std.testing.expectEqual(-159, y7[0].re);
+    try std.testing.expectEqual(115, y7[0].im);
 
     const x8 = try a.alloc(Complex(f64), 2 * m);
     defer a.free(x8);
@@ -540,18 +537,18 @@ test "gemv" {
         Complex(f64).init(1, 2),
     });
 
-    BLAS.gbmv(Complex(f64), .ColumnMajor, .Trans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x8.ptr, -2, beta2, y8.ptr, -1);
+    BLAS.gemv(Complex(f64), .ColumnMajor, .Trans, m, n, alpha2, A2.ptr, m, x8.ptr, -2, beta2, y8.ptr, -1);
 
-    try std.testing.expectEqual(-71, y8[4].re);
-    try std.testing.expectEqual(57, y8[4].im);
-    try std.testing.expectEqual(-88, y8[3].re);
-    try std.testing.expectEqual(90, y8[3].im);
+    try std.testing.expectEqual(-151, y8[4].re);
+    try std.testing.expectEqual(137, y8[4].im);
+    try std.testing.expectEqual(-164, y8[3].re);
+    try std.testing.expectEqual(144, y8[3].im);
     try std.testing.expectEqual(-247, y8[2].re);
     try std.testing.expectEqual(193, y8[2].im);
-    try std.testing.expectEqual(-228, y8[1].re);
-    try std.testing.expectEqual(202, y8[1].im);
-    try std.testing.expectEqual(-291, y8[0].re);
-    try std.testing.expectEqual(257, y8[0].im);
+    try std.testing.expectEqual(-204, y8[1].re);
+    try std.testing.expectEqual(170, y8[1].im);
+    try std.testing.expectEqual(-131, y8[0].re);
+    try std.testing.expectEqual(97, y8[0].im);
 
     const x9 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(x9);
@@ -577,16 +574,16 @@ test "gemv" {
         Complex(f64).init(1, 2),
     });
 
-    BLAS.gbmv(Complex(f64), .RowMajor, .ConjNoTrans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x9.ptr, -2, beta2, y9.ptr, -1);
+    BLAS.gemv(Complex(f64), .RowMajor, .ConjNoTrans, m, n, alpha2, A2.ptr, n, x9.ptr, -2, beta2, y9.ptr, -1);
 
-    try std.testing.expectEqual(85, y9[3].re);
-    try std.testing.expectEqual(117, y9[3].im);
-    try std.testing.expectEqual(126, y9[2].re);
-    try std.testing.expectEqual(182, y9[2].im);
+    try std.testing.expectEqual(323, y9[3].re);
+    try std.testing.expectEqual(377, y9[3].im);
+    try std.testing.expectEqual(464, y9[2].re);
+    try std.testing.expectEqual(546, y9[2].im);
     try std.testing.expectEqual(301, y9[1].re);
-    try std.testing.expectEqual(373, y9[1].im);
-    try std.testing.expectEqual(272, y9[0].re);
-    try std.testing.expectEqual(334, y9[0].im);
+    try std.testing.expectEqual(369, y9[1].im);
+    try std.testing.expectEqual(176, y9[0].re);
+    try std.testing.expectEqual(242, y9[0].im);
 
     const x10 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(x10);
@@ -612,16 +609,16 @@ test "gemv" {
         Complex(f64).init(3, 3),
     });
 
-    BLAS.gbmv(Complex(f64), .ColumnMajor, .ConjNoTrans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x10.ptr, 2, beta2, y10.ptr, 1);
+    BLAS.gemv(Complex(f64), .ColumnMajor, .ConjNoTrans, m, n, alpha2, A2.ptr, m, x10.ptr, 2, beta2, y10.ptr, 1);
 
-    try std.testing.expectEqual(103, y10[0].re);
-    try std.testing.expectEqual(141, y10[0].im);
-    try std.testing.expectEqual(292, y10[1].re);
-    try std.testing.expectEqual(374, y10[1].im);
-    try std.testing.expectEqual(369, y10[2].re);
-    try std.testing.expectEqual(437, y10[2].im);
-    try std.testing.expectEqual(266, y10[3].re);
-    try std.testing.expectEqual(318, y10[3].im);
+    try std.testing.expectEqual(433, y10[0].re);
+    try std.testing.expectEqual(521, y10[0].im);
+    try std.testing.expectEqual(538, y10[1].re);
+    try std.testing.expectEqual(634, y10[1].im);
+    try std.testing.expectEqual(25, y10[2].re);
+    try std.testing.expectEqual(49, y10[2].im);
+    try std.testing.expectEqual(156, y10[3].re);
+    try std.testing.expectEqual(218, y10[3].im);
 
     const x11 = try a.alloc(Complex(f64), m);
     defer a.free(x11);
@@ -642,18 +639,18 @@ test "gemv" {
         Complex(f64).init(1, 2),
     });
 
-    BLAS.gbmv(Complex(f64), .RowMajor, .ConjTrans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x11.ptr, -1, beta2, y11.ptr, -1);
+    BLAS.gemv(Complex(f64), .RowMajor, .ConjTrans, m, n, alpha2, A2.ptr, n, x11.ptr, -1, beta2, y11.ptr, -1);
 
     try std.testing.expectEqual(63, y11[4].re);
-    try std.testing.expectEqual(97, y11[4].im);
-    try std.testing.expectEqual(106, y11[3].re);
-    try std.testing.expectEqual(150, y11[3].im);
-    try std.testing.expectEqual(289, y11[2].re);
-    try std.testing.expectEqual(365, y11[2].im);
-    try std.testing.expectEqual(228, y11[1].re);
-    try std.testing.expectEqual(286, y11[1].im);
-    try std.testing.expectEqual(47, y11[0].re);
-    try std.testing.expectEqual(69, y11[0].im);
+    try std.testing.expectEqual(85, y11[4].im);
+    try std.testing.expectEqual(174, y11[3].re);
+    try std.testing.expectEqual(222, y11[3].im);
+    try std.testing.expectEqual(297, y11[2].re);
+    try std.testing.expectEqual(369, y11[2].im);
+    try std.testing.expectEqual(204, y11[1].re);
+    try std.testing.expectEqual(282, y11[1].im);
+    try std.testing.expectEqual(103, y11[0].re);
+    try std.testing.expectEqual(165, y11[0].im);
 
     const x12 = try a.alloc(Complex(f64), m);
     defer a.free(x12);
@@ -674,16 +671,16 @@ test "gemv" {
         Complex(f64).init(1, 2),
     });
 
-    BLAS.gbmv(Complex(f64), .ColumnMajor, .ConjTrans, m, n, kl, ku, alpha2, A2.ptr, kl + ku + 1, x12.ptr, 1, beta2, y12.ptr, 1);
+    BLAS.gemv(Complex(f64), .ColumnMajor, .ConjTrans, m, n, alpha2, A2.ptr, m, x12.ptr, 1, beta2, y12.ptr, 1);
 
-    try std.testing.expectEqual(45, y12[0].re);
-    try std.testing.expectEqual(77, y12[0].im);
-    try std.testing.expectEqual(72, y12[1].re);
-    try std.testing.expectEqual(106, y12[1].im);
+    try std.testing.expectEqual(125, y12[0].re);
+    try std.testing.expectEqual(157, y12[0].im);
+    try std.testing.expectEqual(126, y12[1].re);
+    try std.testing.expectEqual(182, y12[1].im);
     try std.testing.expectEqual(181, y12[2].re);
     try std.testing.expectEqual(253, y12[2].im);
-    try std.testing.expectEqual(184, y12[3].re);
-    try std.testing.expectEqual(246, y12[3].im);
-    try std.testing.expectEqual(245, y12[4].re);
-    try std.testing.expectEqual(297, y12[4].im);
+    try std.testing.expectEqual(152, y12[3].re);
+    try std.testing.expectEqual(222, y12[3].im);
+    try std.testing.expectEqual(85, y12[4].re);
+    try std.testing.expectEqual(137, y12[4].im);
 }
