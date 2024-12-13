@@ -50,7 +50,7 @@ pub fn build(b: *std.Build) void {
 
     // Executable (for testing)
     const exe = b.addExecutable(.{
-        .name = "zml",
+        .name = "main",
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,

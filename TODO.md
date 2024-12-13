@@ -8,7 +8,7 @@ Complex `rotg` does not work. `rotmg` fails when compiling with optimization `Re
 
 When changed, replace all `@setRuntimeSafety(false)` with `@optimizeFor(.ReleaseFast)`.
 
-For `NDArray` add view functions: `reshape`, `flatten`, etc.
+For `NDArray` add view functions: `reshape`, `slice`.
 
 Edit `BLAS` functions parameters' in `NDArray` (pointers, const pointers, non pointers) to be consistent (keeping in mind that pinter or no pointer are just to show intent, as since we are editing the data buffer and not the struct itself, it does not matter if we pass a pointer or not). Using @constCast is a bad idea.
 
@@ -27,8 +27,6 @@ Change the compilation option to use external BLAS and LAPACK libraries from boo
 ## `NDArray`
 
 Offer two BLAS and LAPACK implementations: one for types that do not use allocators (bools, ints, floats and complex) and another for types that use allocators. The first one will be in the `BLAS` and `LAPACK` namespaces and the second one will be in the `BLASAlloc` and `LAPACKAlloc` namespaces (names not final). If the function signatures end up being the same, then use one namespace and use the `BLAS` and `LAPACK` names.
-
-Maybe make it so shape and strides are stack-allocated. This way `allocator` can be optional and views (which do not need allocators as they access preexistent data) can be created without the need of an allocator and do not need to be deallocated.
 
 Make two inits: `init` without flags (default values) and `initFlags` with flags?
 

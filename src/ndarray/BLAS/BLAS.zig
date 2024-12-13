@@ -702,6 +702,38 @@ pub fn zgeru(order: Order, m: isize, n: isize, alpha: Complex(f64), x: [*]const 
     return geru(Complex(f64), order, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
+pub fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                } else if (T == f64) {
+                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("hbmv.zig").hbmv(T, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+}
+pub fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
+    return hbmv(Complex(f32), order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+}
+pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
+    return hbmv(Complex(f64), order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+}
+
 test {
     std.testing.refAllDeclsRecursive(@This());
 
@@ -730,4 +762,5 @@ test {
     _ = @import("ger.zig");
     _ = @import("gerc.zig");
     _ = @import("geru.zig");
+    _ = @import("hbmv.zig");
 }

@@ -325,12 +325,12 @@ test "gemv" {
     defer a.free(A);
     const x1 = try a.alloc(f64, n);
     defer a.free(x1);
-    const y1 = try a.alloc(f64, m);
+    const y1 = try a.alloc(f64, n);
     defer a.free(y1);
 
     @memcpy(A.ptr, &[_]f64{ 0, 0, 3, 7, 11, 0, 2, 6, 10, 14, 1, 5, 9, 13, 0, 4, 8, 12, 0, 0 });
     @memcpy(x1.ptr, &[_]f64{ 1, 2, 3, 4, 5 });
-    @memcpy(y1.ptr, &[_]f64{ 1, 2, 3, 4 });
+    @memcpy(y1.ptr, &[_]f64{ 1, 2, 3, 4, 5 });
 
     BLAS.gemv(f64, .RowMajor, .NoTrans, m, n, alpha, A.ptr, n, x1.ptr, 1, beta, y1.ptr, 1);
 

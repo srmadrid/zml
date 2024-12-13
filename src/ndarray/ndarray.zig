@@ -620,6 +620,19 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn add(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
+            // Fast loop if possible.
+            if (self.flags.order == left.flags.order and self.flags.order == right.flags.order and
+                self.ndim == left.ndim and self.ndim == right.ndim and
+                std.mem.eql(usize, self.shape[0..self.ndim], left.shape[0..left.ndim]) and
+                std.mem.eql(usize, self.shape[0..self.ndim], right.shape[0..right.ndim]))
+            {
+                for (0..self.size) |i| {
+                    _add(&self.data[i], left.data[i], right.data[i]);
+                }
+
+                return;
+            }
+
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
@@ -654,6 +667,19 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn sub(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
+            // Fast loop if possible.
+            if (self.flags.order == left.flags.order and self.flags.order == right.flags.order and
+                self.ndim == left.ndim and self.ndim == right.ndim and
+                std.mem.eql(usize, self.shape[0..self.ndim], left.shape[0..left.ndim]) and
+                std.mem.eql(usize, self.shape[0..self.ndim], right.shape[0..right.ndim]))
+            {
+                for (0..self.size) |i| {
+                    _sub(&self.data[i], left.data[i], right.data[i]);
+                }
+
+                return;
+            }
+
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
@@ -688,6 +714,19 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn mul(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
+            // Fast loop if possible.
+            if (self.flags.order == left.flags.order and self.flags.order == right.flags.order and
+                self.ndim == left.ndim and self.ndim == right.ndim and
+                std.mem.eql(usize, self.shape[0..self.ndim], left.shape[0..left.ndim]) and
+                std.mem.eql(usize, self.shape[0..self.ndim], right.shape[0..right.ndim]))
+            {
+                for (0..self.size) |i| {
+                    _mul(&self.data[i], left.data[i], right.data[i]);
+                }
+
+                return;
+            }
+
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
@@ -722,6 +761,19 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn div(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
+            // Fast loop if possible.
+            if (self.flags.order == left.flags.order and self.flags.order == right.flags.order and
+                self.ndim == left.ndim and self.ndim == right.ndim and
+                std.mem.eql(usize, self.shape[0..self.ndim], left.shape[0..left.ndim]) and
+                std.mem.eql(usize, self.shape[0..self.ndim], right.shape[0..right.ndim]))
+            {
+                for (0..self.size) |i| {
+                    _div(&self.data[i], left.data[i], right.data[i]);
+                }
+
+                return;
+            }
+
             var iter: MultiIterator(T) = try MultiIterator(T).init(&.{ self.*, left, right }, self.flags);
             if (!std.mem.eql(usize, self.shape[0..self.ndim], iter.shape[0..iter.ndim])) {
                 return Error.IncompatibleDimensions;
