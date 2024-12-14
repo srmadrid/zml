@@ -759,6 +759,56 @@ pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), A: [*]cons
     return hemv(Complex(f64), order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
+pub fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), A, @intCast(lda));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), A, @intCast(lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("her.zig").her(T, order, uplo, n, alpha, x, incx, A, lda);
+}
+pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const Complex(f32), incx: isize, A: [*]Complex(f32), lda: isize) void {
+    return her(Complex(f32), order, uplo, n, alpha, x, incx, A, lda);
+}
+pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const Complex(f64), incx: isize, A: [*]Complex(f64), lda: isize) void {
+    return her(Complex(f64), order, uplo, n, alpha, x, incx, A, lda);
+}
+
+pub fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.use_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("her2.zig").her2(T, order, uplo, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, A: [*]Complex(f32), lda: isize) void {
+    return her2(Complex(f32), order, uplo, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, A: [*]Complex(f64), lda: isize) void {
+    return her2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, A, lda);
+}
+
 test {
     std.testing.refAllDeclsRecursive(@This());
 
@@ -789,4 +839,6 @@ test {
     _ = @import("geru.zig");
     _ = @import("hbmv.zig");
     _ = @import("hemv.zig");
+    _ = @import("her.zig");
+    _ = @import("her2.zig");
 }

@@ -14,10 +14,10 @@ pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
 
     const N = n;
     var UPLO = uplo;
-    var conj: scalar(T) = -1;
+    var conj: scalar(T) = 1;
     if (order == .RowMajor) {
         UPLO = if (uplo == .Upper) .Lower else .Upper;
-        conj = 1;
+        conj = -1;
     }
 
     if (lda < k + 1) return;
@@ -89,11 +89,11 @@ pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
                     var ix = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
                     iy = if (incy < 0) (-LENY + 1) * incy + I0 * incy else I0 * incy;
                     while (i < I1) {
-                        y[@intCast(iy)].re += t0.re * A[@intCast(iaij)].re + t0.im * A[@intCast(iaij)].im * conj;
-                        y[@intCast(iy)].im += t0.im * A[@intCast(iaij)].re - t0.re * A[@intCast(iaij)].im * conj;
+                        y[@intCast(iy)].re += t0.re * A[@intCast(iaij)].re - t0.im * A[@intCast(iaij)].im * conj;
+                        y[@intCast(iy)].im += t0.im * A[@intCast(iaij)].re + t0.re * A[@intCast(iaij)].im * conj;
 
-                        t1.re += A[@intCast(iaij)].re * x[@intCast(ix)].re - A[@intCast(iaij)].im * conj * x[@intCast(ix)].im;
-                        t1.im += A[@intCast(iaij)].re * x[@intCast(ix)].im + A[@intCast(iaij)].im * conj * x[@intCast(ix)].re;
+                        t1.re += A[@intCast(iaij)].re * x[@intCast(ix)].re + A[@intCast(iaij)].im * conj * x[@intCast(ix)].im;
+                        t1.im += A[@intCast(iaij)].re * x[@intCast(ix)].im - A[@intCast(iaij)].im * conj * x[@intCast(ix)].re;
 
                         i += 1;
                         iaij += 1;
@@ -144,11 +144,11 @@ pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
                     var ix = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
                     iy = if (incy < 0) (-LENY + 1) * incy + I0 * incy else I0 * incy;
                     while (i < I1) {
-                        y[@intCast(iy)].re += t0.re * A[@intCast(iaij)].re + t0.im * A[@intCast(iaij)].im * conj;
-                        y[@intCast(iy)].im += t0.im * A[@intCast(iaij)].re - t0.re * A[@intCast(iaij)].im * conj;
+                        y[@intCast(iy)].re += t0.re * A[@intCast(iaij)].re - t0.im * A[@intCast(iaij)].im * conj;
+                        y[@intCast(iy)].im += t0.im * A[@intCast(iaij)].re + t0.re * A[@intCast(iaij)].im * conj;
 
-                        t1.re += A[@intCast(iaij)].re * x[@intCast(ix)].re - A[@intCast(iaij)].im * conj * x[@intCast(ix)].im;
-                        t1.im += A[@intCast(iaij)].re * x[@intCast(ix)].im + A[@intCast(iaij)].im * conj * x[@intCast(ix)].re;
+                        t1.re += A[@intCast(iaij)].re * x[@intCast(ix)].re + A[@intCast(iaij)].im * conj * x[@intCast(ix)].im;
+                        t1.im += A[@intCast(iaij)].re * x[@intCast(ix)].im - A[@intCast(iaij)].im * conj * x[@intCast(ix)].re;
 
                         i += 1;
                         iaij += 1;
