@@ -1,6 +1,6 @@
 const std = @import("std");
 const zml = @import("zml.zig");
-const ci = @import("c.zig");
+//const ci = @import("c.zig");
 
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
@@ -23,9 +23,9 @@ pub fn main() !void {
 
     // try typeTesting(a);
 
-    // try transposeTesting(a);
+    try transposeTesting(a);
 
-    try blasPerfTesting(a);
+    // try blasPerfTesting(a);
 }
 
 fn ask_user(default: usize) !usize {
@@ -104,7 +104,7 @@ fn blasPerfTesting(a: std.mem.Allocator) !void {
     for (0..n) |_| {
         std.debug.print(".", .{});
         start_time = std.time.nanoTimestamp();
-        std.mem.doNotOptimizeAway(ci.cblas_dasum(@intCast(A.size), A.data.ptr, 1));
+        //std.mem.doNotOptimizeAway(ci.cblas_dasum(@intCast(A.size), A.data.ptr, 1));
         //std.mem.doNotOptimizeAway(ci.cblas_dasum(@divTrunc(@as(c_int, @intCast(A.size)), @as(c_int, 2)), A.data.ptr, 2));
         end_time = std.time.nanoTimestamp();
 
@@ -217,13 +217,58 @@ fn transposeTesting(a: std.mem.Allocator) !void {
     defer E.deinit();
     E.setAll(0);
 
-    std.debug.print("Before\n", .{});
-    std.debug.print("D[0] = {}, E[0] = {}\n", .{ D.data[0], E.data[0] });
+    var x = try zml.NDArray(f64).init(a, &.{ 5, 9, 4, 8 }, .{});
 
-    ci.cblas_daxpy(36, 2.0, D.data.ptr, 1, E.data.ptr, 1);
+    std.debug.print("x.shape = [\n", .{});
+    for (0..x.ndim) |i| {
+        std.debug.print("x.shape[{}] = {}\n", .{ i, x.shape[i] });
+    }
+    std.debug.print("]\n", .{});
 
-    std.debug.print("After\n", .{});
-    std.debug.print("D[0] = {}, E[0] = {}\n", .{ D.data[0], E.data[0] });
+    for (0..x.shape[0]) |i| {
+        for (0..x.shape[1]) |j| {
+            for (0..x.shape[2]) |k| {
+                for (0..x.shape[3]) |l| {
+                    try x.set(&[_]usize{ i, j, k, l }, @floatFromInt(i * 1000 + j * 100 + k * 10 + l));
+                }
+            }
+        }
+    }
+
+    const x1 = try x.slice(&.{ try zml.ndarray.Slice.init(1, 5, 1), try zml.ndarray.Slice.init(2, 5, 1), try zml.ndarray.Slice.init(2, 3, 1) });
+
+    std.debug.print("x1 = x[1:5, 2:5, 2:3]\n", .{});
+    std.debug.print("x1.shape = [\n", .{});
+    for (0..x1.ndim) |i| {
+        std.debug.print("x1.shape[{}] = {}\n", .{ i, x1.shape[i] });
+    }
+    std.debug.print("]\n", .{});
+
+    const x2 = try x.slice(&.{ try zml.ndarray.Slice.init(0, 5, 1), try zml.ndarray.Slice.init(2, 10, 1) });
+
+    std.debug.print("x2 = x[:, 2:10]\n", .{});
+    std.debug.print("x2.shape = [\n", .{});
+    for (0..x2.ndim) |i| {
+        std.debug.print("x2.shape[{}] = {}\n", .{ i, x2.shape[i] });
+    }
+    std.debug.print("]\n", .{});
+
+    const x3 = try x.slice(&.{ try zml.ndarray.Slice.init(1, 5, 1), try zml.ndarray.Slice.init(8, 4, -3), try zml.ndarray.Slice.init(0, 0, 0), try zml.ndarray.Slice.init(0, 0, 0) });
+
+    std.debug.print("x3 = x[1:5, 8:4:-3, 0:0, 0:0]\n", .{});
+    std.debug.print("x3.shape = [\n", .{});
+    for (0..x3.ndim) |i| {
+        std.debug.print("x3.shape[{}] = {}\n", .{ i, x3.shape[i] });
+    }
+    std.debug.print("]\n", .{});
+
+    std.debug.print("x3 =\n", .{});
+    for (0..x3.shape[0]) |i| {
+        for (0..x3.shape[1]) |j| {
+            std.debug.print("{d}  ", .{try x3.get(&[_]usize{ i, j })});
+        }
+        std.debug.print("\n", .{});
+    }
 }
 
 fn typeTesting(a: std.mem.Allocator) !void {

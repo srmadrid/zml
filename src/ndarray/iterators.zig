@@ -23,13 +23,14 @@ const MaxArrays: usize = 8;
 /// calls `nextOrder` with the best order for the array?
 pub fn Iterator(comptime T: type) type {
     return struct {
-        const Self: type = @This();
         /// The number dimensions of the iterator.
         ndim: usize,
         /// The shape of the iterator.
         shape: [MaxDimensions]usize,
         /// The strides of the iterator.
-        strides: [MaxDimensions]usize,
+        strides: [MaxDimensions]isize,
+        /// Offset of the first element of the iterator.
+        offset: usize,
         /// The flags of the iterator.
         flags: Flags,
         /// Current position.
@@ -47,20 +48,21 @@ pub fn Iterator(comptime T: type) type {
         /// - `array`: the array for the Iterator.
         ///
         /// **Return Values**:
-        /// - `Self`: the initialized iterator.
-        pub fn init(array: NDArray(T)) Self {
+        /// - `Iterator(T)`: the initialized iterator.
+        pub fn init(array: NDArray(T)) Iterator(T) {
             const ndim: usize = array.ndim;
-            var shape: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
-            var strides: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
+            var shape: [MaxDimensions]usize = .{0} ** MaxDimensions;
+            var strides: [MaxDimensions]isize = .{0} ** MaxDimensions;
             for (0..ndim) |i| {
                 shape[i] = array.shape[i];
                 strides[i] = array.strides[i];
             }
 
-            return Self{
+            return Iterator(T){
                 .ndim = ndim,
                 .shape = shape,
                 .strides = strides,
+                .offset = array.offset,
                 .flags = array.flags,
                 .position = [_]usize{0} ** MaxDimensions,
                 .index = 0,
@@ -85,7 +87,7 @@ pub fn Iterator(comptime T: type) type {
         /// **Return Values**:
         /// - `usize`: the index of the next item.
         /// - `null`: reached end.
-        pub fn next(self: *Self) ?usize {
+        pub fn next(self: *Iterator(T)) ?usize {
             return self.nextOrder(self.flags.order);
         }
 
@@ -113,58 +115,35 @@ pub fn Iterator(comptime T: type) type {
         /// **Return Values**:
         /// - `usize`: the index of the next item.
         /// - `null`: reached end.
-        pub fn nextOrder(self: *Self, order: ndarray.Order) ?usize {
+        pub fn nextOrder(self: *Iterator(T), order: ndarray.Order) ?usize {
             var carry: usize = 1;
-            var change: i64 = undefined;
-            var prev: i64 = undefined;
-            var index: i64 = undefined;
-            var stride: i64 = undefined;
+            var change: isize = undefined;
+            var prev: isize = undefined;
+            var index: isize = undefined;
+            var stride: isize = undefined;
             var mustBreak: bool = false;
-            if (order == .RowMajor) {
-                for (0..self.ndim) |i| {
-                    prev = @intCast(self.position[self.ndim - i - 1]);
-                    self.position[self.ndim - i - 1] += 1;
-                    if (self.position[self.ndim - i - 1] >= self.shape[self.ndim - i - 1]) {
-                        self.position[self.ndim - i - 1] = 0;
-                    } else {
-                        carry = 0;
-                        mustBreak = true;
-                    }
-                    // change = @intCast(self.position[self.ndim - i - 1]) - prev;
-                    change = @intCast(self.position[self.ndim - i - 1]);
-                    change -= prev;
-                    // self.index += change * self.strides[self.ndim - i - 1];
-                    index = @intCast(self.index);
-                    // index += change * self.strides[self.ndim - i - 1];
-                    stride = @intCast(self.strides[self.ndim - i - 1]);
-                    index += change * stride;
-                    self.index = @intCast(index);
-                    if (mustBreak) {
-                        break;
-                    }
+
+            for (0..self.ndim) |i| {
+                const idx = if (order == .RowMajor) self.ndim - i - 1 else i;
+                prev = @intCast(self.position[idx]);
+                self.position[idx] += 1;
+
+                if (self.position[idx] >= self.shape[idx]) {
+                    self.position[idx] = 0;
+                } else {
+                    carry = 0;
+                    mustBreak = true;
                 }
-            } else {
-                for (0..self.ndim) |i| {
-                    prev = @intCast(self.position[i]);
-                    self.position[i] += 1;
-                    if (self.position[i] >= self.shape[i]) {
-                        self.position[i] = 0;
-                    } else {
-                        carry = 0;
-                        mustBreak = true;
-                    }
-                    // change = @intCast(self.position[i]) - prev;
-                    change = @intCast(self.position[i]);
-                    change -= prev;
-                    // self.index += change * self.strides[i];
-                    index = @intCast(self.index);
-                    // index += change * self.strides[i];
-                    stride = @intCast(self.strides[i]);
-                    index += change * stride;
-                    self.index = @intCast(index);
-                    if (mustBreak) {
-                        break;
-                    }
+
+                change = @intCast(self.position[idx]);
+                change -= prev;
+                index = @intCast(self.index);
+                stride = @intCast(self.strides[idx]);
+                index += change * stride;
+                self.index = @intCast(index);
+
+                if (mustBreak) {
+                    break;
                 }
             }
 
@@ -180,7 +159,6 @@ pub fn Iterator(comptime T: type) type {
 /// Iterator for multiple `NDArray`.
 pub fn MultiIterator(comptime T: type) type {
     return struct {
-        const Self: type = @This();
         /// The number of arrays.
         narray: usize,
         /// The number of dimetions of the broadcast.
@@ -190,7 +168,9 @@ pub fn MultiIterator(comptime T: type) type {
         /// Broadcasted shape.
         shape: [MaxDimensions]usize,
         /// Broadcasted strides.
-        strides: [MaxDimensions]usize,
+        strides: [MaxDimensions]isize,
+        /// Offset of the first element of the iterator.
+        offset: usize,
         /// Broadcasted size.
         size: usize,
         /// Flags of the (theoretical) broadcasted array.
@@ -211,8 +191,8 @@ pub fn MultiIterator(comptime T: type) type {
         /// - `flags`: the flags for the iterator.
         ///
         /// **Return Values**:
-        /// - `Self`: the initialized iterator.
-        pub fn init(arrays: []const NDArray(T), flags: Flags) !Self {
+        /// - `MultiIterator(T)`: the initialized iterator.
+        pub fn init(arrays: []const NDArray(T), flags: Flags) !MultiIterator(T) {
             if (arrays.len == 0) {
                 return IteratorError.NoArrays;
             }
@@ -231,18 +211,8 @@ pub fn MultiIterator(comptime T: type) type {
                 }
             }
 
-            var shape: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
+            var shape: [MaxDimensions]usize = .{0} ** MaxDimensions;
             for (0..narray) |i| {
-                //std.debug.print("Shape = [  ", .{});
-                //for (0..ndim) |help| {
-                //    std.debug.print("{}  ", .{shape[help]});
-                //}
-                //std.debug.print("]\n", .{});
-                //std.debug.print("Array shape = [  ", .{});
-                //for (0..arrays[i].shape.len) |help| {
-                //    std.debug.print("{}  ", .{arrays[i].shape[help]});
-                //}
-                //std.debug.print("]\n", .{});
                 for (0..arrays[i].ndim) |j| {
                     if (shape[ndim - j - 1] != arrays[i].shape[arrays[i].ndim - j - 1]) {
                         //std.debug.print("Disagreement = {} != {}\n", .{ shape[ndim - j - 1], arrays[i].shape[arrays[i].shape.len - j - 1] });
@@ -256,25 +226,21 @@ pub fn MultiIterator(comptime T: type) type {
             }
 
             var size: usize = 1;
-            var strides: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
-            if (flags.order == .RowMajor) {
-                for (0..ndim) |i| {
-                    strides[ndim - i - 1] = size;
-                    size *= shape[ndim - i - 1];
-                }
-            } else {
-                for (0..ndim) |i| {
-                    strides[i] = size;
-                    size *= shape[i];
-                }
+            var strides: [MaxDimensions]isize = .{0} ** MaxDimensions;
+
+            for (0..ndim) |i| {
+                const idx = if (flags.order == .RowMajor) ndim - i - 1 else i;
+                strides[idx] = @intCast(size);
+                size *= shape[idx];
             }
 
-            return Self{
+            return MultiIterator(T){
                 .narray = narray,
                 .ndim = ndim,
                 .iterators = iterators,
                 .shape = shape,
                 .strides = strides,
+                .offset = 0,
                 .size = size,
                 .flags = flags,
                 .position = [_]usize{0} ** MaxDimensions,
@@ -294,8 +260,8 @@ pub fn MultiIterator(comptime T: type) type {
         /// - `flags`: the flags for the iterator.
         ///
         /// **Return Values**:
-        /// - `Self`: the initialized iterator.
-        pub fn initCheck(first: NDArray(T), rest: []const NDArray(T)) !Self {
+        /// - `MultiIterator(T)`: the initialized iterator.
+        pub fn initCheck(first: NDArray(T), rest: []const NDArray(T)) !MultiIterator(T) {
             // Not implemented yet, this is done to be able to compile.
             return init([_]NDArray(T){first} ++ rest, first.flags);
         }
@@ -318,7 +284,7 @@ pub fn MultiIterator(comptime T: type) type {
         /// **Return Values**:
         /// - `T`: the next item.
         /// - `null`: reached end.
-        pub fn next(self: *Self) ?usize {
+        pub fn next(self: *MultiIterator(T)) ?usize {
             var rowCount: usize = 0;
             for (0..self.narray) |i| {
                 if (self.iterators[i].flags.order == .RowMajor) {
@@ -354,7 +320,7 @@ pub fn MultiIterator(comptime T: type) type {
         /// **Return Values**:
         /// - `T`: the next item.
         /// - `null`: reached end.
-        pub fn nextOrder(self: *Self, order: ndarray.Order) ?usize {
+        pub fn nextOrder(self: *MultiIterator(T), order: ndarray.Order) ?usize {
             var carry: usize = 1;
             var change: i64 = undefined;
             var prev: i64 = undefined;

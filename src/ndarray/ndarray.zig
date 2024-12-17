@@ -56,14 +56,17 @@ pub fn NDArray(comptime T: type) type {
         shape: [MaxDimensions]usize,
         /// The strides of the array. These are the number of elements to skip
         /// to get the next element in each dimension.
-        strides: [MaxDimensions]usize,
+        strides: [MaxDimensions]isize,
+        /// Offset of the first element of the array.
+        offset: usize,
         /// Total number of elements in the array.
         size: usize,
-        /// Owner of the data. Set to `null` if itself is the owner.
-        base: ?*NDArray(T),
+        /// Owner of the data. Set to `null` if it is the owner.
+        base: ?*const NDArray(T),
         /// Flags holding info on the storage of the array.
         flags: Flags,
-        /// The allocator used for internal memory management.
+        /// The allocator used for internal memory management. Set to `null` if
+        /// the array is a view.
         allocator: ?std.mem.Allocator,
 
         /// Initializes an array.
@@ -108,17 +111,15 @@ pub fn NDArray(comptime T: type) type {
 
             const ndim = shape.len;
             var size: usize = 1;
-            var shapes: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
-            var strides: [MaxDimensions]usize = [_]usize{0} ** MaxDimensions;
+            var shapes: [MaxDimensions]usize = .{0} ** MaxDimensions;
+            var strides: [MaxDimensions]isize = .{0} ** MaxDimensions;
             if (ndim > 0) {
                 for (0..ndim) |i| {
-                    if (flags.order == .RowMajor) {
-                        strides[shape.len - i - 1] = size;
-                        size *= shape[shape.len - i - 1];
-                    } else {
-                        strides[i] = size;
-                        size *= shape[i];
-                    }
+                    const idx = if (flags.order == .RowMajor) shape.len - i - 1 else i;
+
+                    strides[idx] = @intCast(size);
+                    size *= shape[idx];
+
                     shapes[i] = shape[i];
                 }
             }
@@ -128,6 +129,7 @@ pub fn NDArray(comptime T: type) type {
                 .ndim = ndim,
                 .shape = shapes,
                 .strides = strides,
+                .offset = 0,
                 .size = size,
                 .base = null,
                 .flags = flags,
@@ -149,7 +151,7 @@ pub fn NDArray(comptime T: type) type {
         /// **Return Values**:
         /// - `NDArray(T)`: the initialized array.
         pub fn view(parent: *const NDArray(T)) !NDArray(T) {
-            const base = if (parent.flags.ownsData) parent else parent.base;
+            const base = if (parent.base != null) parent.base else parent;
             var flags = parent.flags;
             flags.ownsData = false;
             return NDArray(T){
@@ -157,6 +159,7 @@ pub fn NDArray(comptime T: type) type {
                 .ndim = parent.ndim,
                 .shape = parent.shape,
                 .strides = parent.strides,
+                .offset = parent.offset,
                 .size = parent.size,
                 .base = base,
                 .flags = flags,
@@ -182,66 +185,9 @@ pub fn NDArray(comptime T: type) type {
                 self.allocator.?.free(self.data);
             }
 
-            self.shape = undefined;
-            self.strides = undefined;
+            self.shape = .{0} ** MaxDimensions;
+            self.strides = .{0} ** MaxDimensions;
             self.data = undefined;
-        }
-
-        /// Deinitializes an element of the array.
-        ///
-        /// **Description**:
-        ///
-        /// Deinitializes an element of the array. Only defined for custom
-        /// types. For a scalar, any position will yield the only element.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the array in which to free the element.
-        /// - `position`: the location of the element to be freed. Must be a
-        /// valid position, unless the array is a scalar.
-        ///
-        /// **Return Values**:
-        /// - `void`: the execution was successful.
-        /// - `DimensionMismatch`: the length of `position` is not equalm to the
-        /// number of dimentions in `self`.
-        /// - `PositionOutOfBounds`: the position is out of bounds.
-        pub fn deinitElement(self: *NDArray(T), position: []const usize) !void {
-            const supported = core.supported.whatSupportedNumericType(T);
-            switch (supported) {
-                .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => @compileError("deinitElement only defined on types that need to be deinitialized."),
-                .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => {
-                    if (self.isScalar()) {
-                        self.data[0].deinit();
-                        return;
-                    }
-
-                    try self._checkPosition(position);
-
-                    self.data[self._index(position)].deinit();
-                },
-                .Unsupported => unreachable,
-            }
-        }
-
-        /// Deinitializes all elements of the array.
-        ///
-        /// **Description**:
-        ///
-        /// Deinitializes all elements of the array. Only defined for custom
-        /// types.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the array in which to free the elements.
-        pub fn deinitAllElements(self: *NDArray(T)) void {
-            const supported = core.supported.whatSupportedNumericType(T);
-            switch (supported) {
-                .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => @compileError("deinitAllElements only defined on types that need to be deinitialized."),
-                .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => {
-                    for (self.data) |element| {
-                        element.deinit();
-                    }
-                },
-                .Unsupported => unreachable,
-            }
         }
 
         /// Calculates the index of the element at the given position of the
@@ -249,9 +195,14 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// No bounds checking is performed.
         inline fn _index(self: NDArray(T), position: []const usize) usize {
-            var idx: usize = 0;
+            var idx: usize = self.offset;
             for (0..self.ndim) |i| {
-                idx += position[i] * self.strides[i];
+                const stride = self.strides[i];
+                if (stride < 0) {
+                    idx -= position[i] * @abs(stride);
+                } else {
+                    idx += position[i] * @as(usize, @intCast(self.strides[i]));
+                }
             }
 
             return idx;
@@ -415,7 +366,7 @@ pub fn NDArray(comptime T: type) type {
         ///
         /// **Return Values**:
         /// - `void`: the execution was successful.
-        /// - `DimensionMismatch`: the length of `position` is not equalm to the
+        /// - `DimensionMismatch`: the length of `position` is not equal to the
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
         pub fn update(self: *NDArray(T), position: []const usize, value: anytype) !void {
@@ -821,6 +772,7 @@ pub fn NDArray(comptime T: type) type {
                 .ndim = self.ndim,
                 .shape = .{0} ** MaxDimensions,
                 .strides = .{0} ** MaxDimensions,
+                .offset = self.offset,
                 .size = self.size,
                 .base = @constCast(self),
                 .flags = flags,
@@ -849,6 +801,7 @@ pub fn NDArray(comptime T: type) type {
         /// **Return Values**:
         /// - `NDArray(T)`: the flattened array.
         pub fn flatten(self: *const NDArray(T)) NDArray(T) {
+            // Once order is expanded, only work on contiguous arrays.
             var flags = self.flags;
             flags.ownsData = false;
 
@@ -857,10 +810,84 @@ pub fn NDArray(comptime T: type) type {
                 .ndim = 1,
                 .shape = .{self.size} ++ .{0} ** (MaxDimensions - 1),
                 .strides = .{1} ++ .{0} ** (MaxDimensions - 1),
+                .offset = self.offset,
                 .size = self.size,
-                .base = if (self.flags.ownsData) @constCast(self) else self.base,
+                .base = if (self.flags.ownsData) self else self.base,
                 .flags = flags,
                 .allocator = null,
+            };
+        }
+
+        pub fn slice(self: *const NDArray(T), slices: []const Slice) !NDArray(T) {
+            if (slices.len == 0 or slices.len > self.ndim) {
+                return error.DimensionMismatch;
+            }
+
+            var ndim = self.ndim;
+            var size: usize = 1;
+            var shapes: [MaxDimensions]usize = .{0} ** MaxDimensions;
+            var strides: [MaxDimensions]isize = .{0} ** MaxDimensions;
+            var offset: usize = self.offset;
+
+            var i: usize = 0;
+            var j: usize = 0;
+            while (i < self.ndim) {
+                if (i >= slices.len) {
+                    shapes[j] = self.shape[i];
+                    strides[j] = self.strides[i];
+                    size *= self.shape[i];
+                    j += 1;
+                    i += 1;
+                    continue;
+                }
+
+                var sl = slices[i];
+                if (sl.step > 0) {
+                    if (sl.start >= self.shape[i]) {
+                        sl.start = self.shape[i] - 1;
+                        sl.stop = self.shape[i];
+                    } else if (sl.stop > self.shape[i]) {
+                        sl.stop = self.shape[i];
+                    }
+                } else {
+                    if (sl.stop >= self.shape[i]) {
+                        sl.stop = self.shape[i] - 1;
+                        sl.start = self.shape[i];
+                    } else if (sl.start > self.shape[i]) {
+                        sl.start = self.shape[i];
+                    }
+                }
+
+                const len = sl.len();
+                if (len == 0 or len == 1) {
+                    offset += sl.start * @as(usize, @intCast(self.strides[i]));
+                    ndim -= 1;
+                } else {
+                    shapes[j] = len;
+                    strides[j] = self.strides[i] * slices[i].step;
+                    size *= len;
+                    offset += sl.start * @as(usize, @intCast(self.strides[i]));
+                    j += 1;
+                }
+
+                i += 1;
+            }
+
+            // Adjust the flags for the new array
+            var flags = self.flags;
+            flags.ownsData = false; // The new view does not own the data
+
+            // Return the new sliced array
+            return NDArray(T){
+                .data = self.data, // Point to the original data
+                .ndim = ndim, // Updated number of dimensions
+                .shape = shapes, // Updated shapes
+                .strides = strides, // Updated strides
+                .offset = offset, // Updated offset
+                .size = size, // Updated total size
+                .base = if (self.flags.ownsData) self else self.base, // Keep the original base if needed
+                .flags = flags, // Updated flags
+                .allocator = null, // No allocator since this is a view
             };
         }
 
@@ -1440,6 +1467,48 @@ pub const Diag = enum(u8) {
 pub const Side = enum(u8) {
     Left = 141,
     Right = 142,
+};
+
+///
+pub const Slice = struct {
+    /// Start of the slice.
+    start: usize,
+    /// End of the slice, non-inclusive.
+    stop: usize,
+    /// Step of the slice.
+    step: isize,
+
+    /// Initializes a slice with the given parameters.
+    pub fn init(start: usize, stop: usize, step: isize) !Slice {
+        if (step == 0 and start != stop) {
+            return Error.ZeroDimension;
+        }
+
+        if (step > 0) {
+            if (start >= stop) {
+                return Error.DimensionMismatch;
+            }
+        } else if (step < 0) {
+            if (start <= stop) {
+                return Error.DimensionMismatch;
+            }
+        }
+
+        return Slice{ .start = start, .stop = stop, .step = step };
+    }
+
+    /// Returns the length of the slice.
+    pub fn len(self: Slice) usize {
+        if (self.start == self.stop) {
+            return 0;
+        }
+
+        if (self.step > 0) {
+            return (self.stop - self.start + @as(usize, @intCast(self.step)) - 1) / @as(usize, @intCast(self.step));
+        }
+
+        return (self.start - self.stop + @abs(self.step) - 1) / @abs(self.step);
+    }
 };
 
 test "init" {

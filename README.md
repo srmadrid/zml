@@ -9,7 +9,7 @@ This library is in the early stages of development and is not yet ready for use.
 ## Current Features
 
 - Numerical System:
-  - Basic N-dimensional array support:
+  - N-dimensional arrays:
     - Broadcasting
     - Element-wise operations
     - Views
