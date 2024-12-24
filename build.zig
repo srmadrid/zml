@@ -10,10 +10,10 @@ pub fn build(b: *std.Build) void {
 
     // Option to provide BLAS and LAPACK implementations
     const options = b.addOptions();
-    const opt_use_blas = b.option([]const u8, "use_cblas", "Use CBLAS implementation");
-    options.addOption(?[]const u8, "use_cblas", opt_use_blas);
-    const opt_use_lapack = b.option([]const u8, "use_lapacke", "Use LAPACKE implementation");
-    options.addOption(?[]const u8, "use_lapacke", opt_use_lapack);
+    const opt_link_cblas = b.option([]const u8, "link_cblas", "Link CBLAS implementation");
+    options.addOption(?[]const u8, "link_cblas", opt_link_cblas);
+    const opt_link_lapacke = b.option([]const u8, "link_lapacke", "Link LAPACKE implementation");
+    options.addOption(?[]const u8, "link_apacke", opt_link_lapacke);
 
     // Library
     const alib = b.addStaticLibrary(.{
@@ -32,17 +32,17 @@ pub fn build(b: *std.Build) void {
     alib.root_module.addOptions("options", options);
     slib.root_module.addOptions("options", options);
 
-    if (opt_use_blas != null or opt_use_lapack != null) {
+    if (opt_link_cblas != null or opt_link_lapacke != null) {
         alib.linkLibC();
         slib.linkLibC();
     }
-    if (opt_use_blas != null) {
-        alib.root_module.linkSystemLibrary(opt_use_blas.?, .{});
-        slib.root_module.linkSystemLibrary(opt_use_blas.?, .{});
+    if (opt_link_cblas != null) {
+        alib.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
+        slib.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
     }
-    if (opt_use_lapack != null) {
-        alib.root_module.linkSystemLibrary(opt_use_lapack.?, .{});
-        slib.root_module.linkSystemLibrary(opt_use_lapack.?, .{});
+    if (opt_link_lapacke != null) {
+        alib.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
+        slib.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
     }
 
     b.installArtifact(alib);
@@ -58,14 +58,14 @@ pub fn build(b: *std.Build) void {
 
     exe.root_module.addOptions("options", options);
 
-    if (opt_use_blas != null or opt_use_lapack != null) {
+    if (opt_link_cblas != null or opt_link_lapacke != null) {
         exe.linkLibC();
     }
-    if (opt_use_blas != null) {
-        exe.root_module.linkSystemLibrary(opt_use_blas.?, .{});
+    if (opt_link_cblas != null) {
+        exe.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
     }
-    if (opt_use_lapack != null) {
-        exe.root_module.linkSystemLibrary(opt_use_lapack.?, .{});
+    if (opt_link_lapacke != null) {
+        exe.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
     }
 
     b.installArtifact(exe);
@@ -84,14 +84,14 @@ pub fn build(b: *std.Build) void {
 
     lib_unit_tests.root_module.addOptions("options", options);
 
-    if (opt_use_blas != null or opt_use_lapack != null) {
+    if (opt_link_cblas != null or opt_link_lapacke != null) {
         lib_unit_tests.linkLibC();
     }
-    if (opt_use_blas != null) {
-        lib_unit_tests.root_module.linkSystemLibrary(opt_use_blas.?, .{});
+    if (opt_link_cblas != null) {
+        lib_unit_tests.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
     }
-    if (opt_use_lapack != null) {
-        lib_unit_tests.root_module.linkSystemLibrary(opt_use_lapack.?, .{});
+    if (opt_link_lapacke != null) {
+        lib_unit_tests.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
     }
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);

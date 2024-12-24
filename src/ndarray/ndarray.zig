@@ -1523,7 +1523,7 @@ test "init" {
     defer scalar1.deinit();
     try std.testing.expect(scalar1.data.len == 1);
     try std.testing.expect(std.mem.eql(usize, &.{}, scalar1.shape[0..scalar1.ndim]));
-    try std.testing.expect(std.mem.eql(usize, &.{}, scalar1.strides[0..scalar1.ndim]));
+    try std.testing.expect(std.mem.eql(isize, &.{}, scalar1.strides[0..scalar1.ndim]));
     try std.testing.expect(scalar1.size == 1);
     try std.testing.expect(scalar1.flags.order == .RowMajor);
     try std.testing.expect(scalar1.flags.ownsData);
@@ -1533,7 +1533,7 @@ test "init" {
     defer scalar2.deinit();
     try std.testing.expect(scalar2.data.len == 1);
     try std.testing.expect(std.mem.eql(usize, &.{}, scalar2.shape[0..scalar2.ndim]));
-    try std.testing.expect(std.mem.eql(usize, &.{}, scalar2.strides[0..scalar1.ndim]));
+    try std.testing.expect(std.mem.eql(isize, &.{}, scalar2.strides[0..scalar1.ndim]));
     try std.testing.expect(scalar2.size == 1);
     try std.testing.expect(scalar2.flags.order == .RowMajor);
     try std.testing.expect(scalar2.flags.ownsData);
@@ -1544,7 +1544,7 @@ test "init" {
 
     try std.testing.expect(A.data.len == 1200);
     try std.testing.expect(std.mem.eql(usize, &.{ 10, 5, 8, 3 }, A.shape[0..A.ndim]));
-    try std.testing.expect(std.mem.eql(usize, &.{ 120, 24, 3, 1 }, A.strides[0..A.ndim]));
+    try std.testing.expect(std.mem.eql(isize, &.{ 120, 24, 3, 1 }, A.strides[0..A.ndim]));
     try std.testing.expect(A.size == 1200);
     try std.testing.expect(A.flags.order == .RowMajor);
     try std.testing.expect(A.flags.ownsData);
@@ -1555,7 +1555,7 @@ test "init" {
 
     try std.testing.expect(B.data.len == 1200);
     try std.testing.expect(std.mem.eql(usize, &.{ 10, 5, 8, 3 }, B.shape[0..B.ndim]));
-    try std.testing.expect(std.mem.eql(usize, &.{ 1, 10, 50, 400 }, B.strides[0..B.ndim]));
+    try std.testing.expect(std.mem.eql(isize, &.{ 1, 10, 50, 400 }, B.strides[0..B.ndim]));
     try std.testing.expect(B.size == 1200);
     try std.testing.expect(B.flags.order == .ColumnMajor);
     try std.testing.expect(B.flags.ownsData);
@@ -1565,7 +1565,7 @@ test "init" {
     defer scalar3.deinit();
     try std.testing.expect(scalar3.data.len == 1);
     try std.testing.expect(std.mem.eql(usize, &.{}, scalar3.shape[0..scalar3.ndim]));
-    try std.testing.expect(std.mem.eql(usize, &.{}, scalar3.strides[0..scalar3.ndim]));
+    try std.testing.expect(std.mem.eql(isize, &.{}, scalar3.strides[0..scalar3.ndim]));
     try std.testing.expect(scalar3.size == 1);
     try std.testing.expect(scalar3.flags.order == .RowMajor);
     try std.testing.expect(scalar3.flags.ownsData);

@@ -137,7 +137,7 @@ test "scal" {
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1))), x1[i]);
     }
-    if (options.use_cblas == null) {
+    if (options.link_cblas == null) {
         BLAS.scal(f64, n, 2, x2.ptr, -1);
         for (0..n) |i| {
             try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (n - i))), x2[i]);
@@ -170,7 +170,7 @@ test "scal" {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1))), x4[i].re);
         try std.testing.expectEqual(@as(f64, @floatFromInt(-2 * @as(isize, @intCast(i + 1)) + 3 * @as(isize, @intCast(i + 1)))), x4[i].im);
     }
-    if (options.use_cblas == null) {
+    if (options.link_cblas == null) {
         BLAS.scal(Complex(f64), n, Complex(f64).init(2, 3), x5.ptr, -1);
         for (0..n) |i| {
             try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (n - i) + 3 * (n - i))), x5[i].re);

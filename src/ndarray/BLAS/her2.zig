@@ -26,8 +26,8 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     const LENY = N;
 
     switch (supported) {
-        .BuiltinBool => @compileError("BLAS.her does not support bool."),
-        .BuiltinInt, .BuiltinFloat => @compileError("BLAS.her does not support int or float."),
+        .BuiltinBool => @compileError("BLAS.her2 does not support bool."),
+        .BuiltinInt, .BuiltinFloat => @compileError("BLAS.her2 does not support int or float."),
         .Complex => {
             if (alpha.re == 0 and alpha.im == 0) return;
 
@@ -99,7 +99,7 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.her only supports simple types."),
+        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("BLAS.her2 only supports simple types."),
         .Unsupported => unreachable,
     }
 }
