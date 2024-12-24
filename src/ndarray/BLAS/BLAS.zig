@@ -809,6 +809,81 @@ pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]cons
     return her2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, A, lda);
 }
 
+pub fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, Ap, x, @intCast(incx), &beta, y, @intCast(incy));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, Ap, x, @intCast(incx), &beta, y, @intCast(incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("hpmv.zig").hpmv(T, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+}
+pub fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f32), Ap: [*]const Complex(f32), x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
+    return hpmv(Complex(f32), order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+}
+pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), Ap: [*]const Complex(f64), x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
+    return hpmv(Complex(f64), order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+}
+
+pub fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), Ap);
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), Ap);
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("hpr.zig").hpr(T, order, uplo, n, alpha, x, incx, Ap);
+}
+pub fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const Complex(f32), incx: isize, Ap: [*]Complex(f32)) void {
+    return hpr(Complex(f32), order, uplo, n, alpha, x, incx, Ap);
+}
+pub fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const Complex(f64), incx: isize, Ap: [*]Complex(f64)) void {
+    return hpr(Complex(f64), order, uplo, n, alpha, x, incx, Ap);
+}
+
+pub fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), Ap);
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), Ap);
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("hpr2.zig").hpr2(T, order, uplo, n, alpha, x, incx, y, incy, Ap);
+}
+pub fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, Ap: [*]Complex(f32)) void {
+    return hpr2(Complex(f32), order, uplo, n, alpha, x, incx, y, incy, Ap);
+}
+pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, Ap: [*]Complex(f64)) void {
+    return hpr2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, Ap);
+}
+
 test {
     std.testing.refAllDeclsRecursive(@This());
 
@@ -841,4 +916,7 @@ test {
     _ = @import("hemv.zig");
     _ = @import("her.zig");
     _ = @import("her2.zig");
+    _ = @import("hpmv.zig");
+    _ = @import("hpr.zig");
+    _ = @import("hpr2.zig");
 }
