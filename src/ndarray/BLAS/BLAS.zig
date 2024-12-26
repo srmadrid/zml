@@ -884,6 +884,181 @@ pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]cons
     return hpr2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, Ap);
 }
 
+pub fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_ssbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                } else if (T == f64) {
+                    return ci.cblas_dsbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("sbmv.zig").sbmv(T, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+}
+pub fn ssbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f32, A: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return sbmv(f32, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+}
+pub fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return sbmv(f64, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+}
+
+pub fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_sspmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, Ap, x, @intCast(incx), beta, y, @intCast(incy));
+                } else if (T == f64) {
+                    return ci.cblas_dspmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, Ap, x, @intCast(incx), beta, y, @intCast(incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("spmv.zig").spmv(T, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+}
+pub fn sspmv(order: Order, uplo: Uplo, n: isize, alpha: f32, Ap: [*]const f32, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return spmv(f32, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+}
+pub fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, Ap: [*]const f64, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return spmv(f64, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+}
+
+pub fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_sspr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), Ap);
+                } else if (T == f64) {
+                    return ci.cblas_dspr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), Ap);
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("spr.zig").spr(T, order, uplo, n, alpha, x, incx, Ap);
+}
+pub fn sspr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, Ap: [*]f32) void {
+    return spr(f32, order, uplo, n, alpha, x, incx, Ap);
+}
+pub fn dspr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, Ap: [*]f64) void {
+    return spr(f64, order, uplo, n, alpha, x, incx, Ap);
+}
+
+pub fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_sspr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), y, @intCast(incy), Ap);
+                } else if (T == f64) {
+                    return ci.cblas_dspr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), y, @intCast(incy), Ap);
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("spr2.zig").spr2(T, order, uplo, n, alpha, x, incx, y, incy, Ap);
+}
+pub fn sspr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, Ap: [*]f32) void {
+    return spr2(f32, order, uplo, n, alpha, x, incx, y, incy, Ap);
+}
+pub fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, Ap: [*]f64) void {
+    return spr2(f64, order, uplo, n, alpha, x, incx, y, incy, Ap);
+}
+
+pub fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_ssymv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                } else if (T == f64) {
+                    return ci.cblas_dsymv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, A, @intCast(lda), x, @intCast(incx), beta, y, @intCast(incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("symv.zig").symv(T, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
+}
+pub fn ssymv(order: Order, uplo: Uplo, n: isize, alpha: f32, A: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return symv(f32, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
+}
+pub fn dsymv(order: Order, uplo: Uplo, n: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return symv(f64, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
+}
+
+pub fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_ssyr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), A, @intCast(lda));
+                } else if (T == f64) {
+                    return ci.cblas_dsyr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), A, @intCast(lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("syr.zig").syr(T, order, uplo, n, alpha, x, incx, A, lda);
+}
+pub fn ssyr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, A: [*]f32, lda: isize) void {
+    return syr(f32, order, uplo, n, alpha, x, incx, A, lda);
+}
+pub fn dsyr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, A: [*]f64, lda: isize) void {
+    return syr(f64, order, uplo, n, alpha, x, incx, A, lda);
+}
+
+pub fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_ssyr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                } else if (T == f64) {
+                    return ci.cblas_dsyr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("syr2.zig").syr2(T, order, uplo, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn ssyr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, A: [*]f32, lda: isize) void {
+    return syr2(f32, order, uplo, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, A: [*]f64, lda: isize) void {
+    return syr2(f64, order, uplo, n, alpha, x, incx, y, incy, A, lda);
+}
+
 test {
     std.testing.refAllDeclsRecursive(@This());
 
@@ -919,4 +1094,11 @@ test {
     _ = @import("hpmv.zig");
     _ = @import("hpr.zig");
     _ = @import("hpr2.zig");
+    _ = @import("sbmv.zig");
+    _ = @import("spmv.zig");
+    _ = @import("spr.zig");
+    _ = @import("spr2.zig");
+    _ = @import("symv.zig");
+    _ = @import("syr.zig");
+    _ = @import("syr2.zig");
 }
