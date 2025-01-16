@@ -12,7 +12,7 @@ For `NDArray` add view functions: `reshape`, `slice`.
 
 Edit `BLAS` functions parameters' in `NDArray` (pointers, const pointers, non pointers) to be consistent (keeping in mind that pinter or no pointer are just to show intent, as since we are editing the data buffer and not the struct itself, it does not matter if we pass a pointer or not). Using @constCast is a bad idea.
 
-Maybe make strides `isize` instead of `usize` (probably not)?
+Eventually move the documentation website to a custom website (maybe using something like doxygen) instead of using zig's documentation system.
 
 ## General
 
