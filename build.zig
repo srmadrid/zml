@@ -115,6 +115,16 @@ pub fn build(b: *std.Build) void {
         example_step.dependOn(&install_example.step);
     }
 
+    // Documentation
+    const doc = b.addInstallDirectory(.{
+        .source_dir = alib.getEmittedDocs(),
+        .install_dir = .prefix,
+        .install_subdir = "docs",
+    });
+
+    const doc_step = b.step("doc", "Generate documentation");
+    doc_step.dependOn(&doc.step);
+
     // Steps
     const check_step = b.step("check", "Check if the code compiles; this is for ZLS.");
     check_step.dependOn(&exe.step);

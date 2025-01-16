@@ -651,6 +651,12 @@ pub fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]c
 
     return @import("ger.zig").ger(T, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
+pub fn sger(order: Order, m: isize, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, A: [*]f32, lda: isize) void {
+    return ger(f32, order, m, n, alpha, x, incx, y, incy, A, lda);
+}
+pub fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, A: [*]f64, lda: isize) void {
+    return ger(f64, order, m, n, alpha, x, incx, y, incy, A, lda);
+}
 
 pub fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);

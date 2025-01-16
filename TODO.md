@@ -26,7 +26,9 @@ Change the compilation option to use external BLAS and LAPACK libraries from boo
 
 ## `NDArray`
 
-Offer two BLAS and LAPACK implementations: one for types that do not use allocators (bools, ints, floats and complex) and another for types that use allocators. The first one will be in the `BLAS` and `LAPACK` namespaces and the second one will be in the `BLASAlloc` and `LAPACKAlloc` namespaces (names not final). If the function signatures end up being the same, then use one namespace and use the `BLAS` and `LAPACK` names.
+Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `COO`), `Diagonal`, `Triangular`, `Symmetric`, `Hermitian`, etc.) instead of having different types for each one?
+
+Remove BLAS and LAPACK wrappers from `NDArray` and only offer the "standard" API (i.e., call them as intended and no `NDArray` specific wrappers).
 
 Make two inits: `init` without flags (default values) and `initFlags` with flags?
 
