@@ -122,7 +122,7 @@ pub fn build(b: *std.Build) void {
         .install_subdir = "docs",
     });
 
-    const doc_step = b.step("doc", "Generate documentation");
+    const doc_step = b.step("docs", "Generate documentation");
     doc_step.dependOn(&doc.step);
 
     // Steps
