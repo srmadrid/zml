@@ -8,7 +8,7 @@ const BLAS = @import("BLAS.zig");
 
 const scalar = core.supported.scalar;
 
-pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
@@ -16,10 +16,10 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
 
     const N = n;
     var UPLO = uplo;
-    var TRANS = trans;
+    var TRANSA = transA;
     if (order == .RowMajor) {
         UPLO = if (uplo == .Upper) .Lower else .Upper;
-        TRANS = if (trans == .NoTrans) .Trans else if (trans == .ConjNoTrans) .ConjTrans else if (trans == .Trans) .NoTrans else .ConjNoTrans;
+        TRANSA = if (transA == .NoTrans) .Trans else if (transA == .ConjNoTrans) .ConjTrans else if (transA == .Trans) .NoTrans else .ConjNoTrans;
     }
 
     if (lda < k + 1) return;
@@ -30,7 +30,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
         .BuiltinBool => @compileError("BLAS.tbmv does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
             if (UPLO == .Upper) {
-                if (TRANS == .NoTrans or TRANS == .ConjNoTrans) {
+                if (TRANSA == .NoTrans or TRANSA == .ConjNoTrans) {
                     if (diag == .NonUnit) {
                         var j: isize = 0;
                         var jaj: isize = 0;
@@ -144,7 +144,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                     }
                 }
             } else {
-                if (TRANS == .NoTrans or TRANS == .ConjNoTrans) {
+                if (TRANSA == .NoTrans or TRANSA == .ConjNoTrans) {
                     if (diag == .NonUnit) {
                         var j: isize = N - 1;
                         var jaj: isize = lda * (N - 1);
@@ -251,7 +251,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
         },
         .Complex => {
             if (UPLO == .Upper) {
-                if (TRANS == .NoTrans) {
+                if (TRANSA == .NoTrans) {
                     if (diag == .NonUnit) {
                         var j: isize = 0;
                         var jaj: isize = 0;
@@ -312,7 +312,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                             jx += incx;
                         }
                     }
-                } else if (TRANS == .ConjNoTrans) {
+                } else if (TRANSA == .ConjNoTrans) {
                     if (diag == .NonUnit) {
                         var j: isize = 0;
                         var jaj: isize = 0;
@@ -373,7 +373,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                             jx += incx;
                         }
                     }
-                } else if (TRANS == .Trans) {
+                } else if (TRANSA == .Trans) {
                     if (diag == .NonUnit) {
                         var j: isize = N - 1;
                         var jaj: isize = lda * (N - 1);
@@ -493,7 +493,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                     }
                 }
             } else {
-                if (TRANS == .NoTrans) {
+                if (TRANSA == .NoTrans) {
                     if (diag == .NonUnit) {
                         var j: isize = N - 1;
                         var jaj: isize = lda * (N - 1);
@@ -545,7 +545,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                             jx -= incx;
                         }
                     }
-                } else if (TRANS == .ConjNoTrans) {
+                } else if (TRANSA == .ConjNoTrans) {
                     if (diag == .NonUnit) {
                         var j: isize = N - 1;
                         var jaj: isize = lda * (N - 1);
@@ -597,7 +597,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                             jx -= incx;
                         }
                     }
-                } else if (TRANS == .Trans) {
+                } else if (TRANSA == .Trans) {
                     if (diag == .NonUnit) {
                         var j: isize = 0;
                         var jaj: isize = 0;

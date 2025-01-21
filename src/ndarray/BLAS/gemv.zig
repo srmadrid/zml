@@ -6,7 +6,7 @@ const BLAS = @import("BLAS.zig");
 
 const scalar = core.supported.scalar;
 
-pub inline fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
@@ -14,18 +14,18 @@ pub inline fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n
 
     var M = m;
     var N = n;
-    var TRANS = trans;
+    var TRANSA = transA;
     if (order == .RowMajor) {
         M = n;
         N = m;
-        TRANS = if (trans == .NoTrans) .Trans else if (trans == .ConjNoTrans) .ConjTrans else if (trans == .Trans) .NoTrans else .ConjNoTrans;
+        TRANSA = if (transA == .NoTrans) .Trans else if (transA == .ConjNoTrans) .ConjTrans else if (transA == .Trans) .NoTrans else .ConjNoTrans;
     }
 
     if (lda < @max(1, M)) return;
 
     var LENX = N;
     var LENY = M;
-    if (TRANS == .Trans or TRANS == .ConjTrans) {
+    if (TRANSA == .Trans or TRANSA == .ConjTrans) {
         LENX = M;
         LENY = N;
     }
@@ -55,7 +55,7 @@ pub inline fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                 return;
             }
 
-            if (TRANS == .NoTrans or TRANS == .ConjNoTrans) {
+            if (TRANSA == .NoTrans or TRANSA == .ConjNoTrans) {
                 var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 const Sty = iy + LENY * incy;
                 if (beta == 0) {
@@ -151,7 +151,7 @@ pub inline fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                 return;
             }
 
-            if (TRANS == .NoTrans) {
+            if (TRANSA == .NoTrans) {
                 var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 const Sty = iy + LENY * incy;
                 if (beta.re == 0 and beta.im == 0) {
@@ -193,7 +193,7 @@ pub inline fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                     jaj += lda;
                     jx += incx;
                 }
-            } else if (TRANS == .ConjNoTrans) {
+            } else if (TRANSA == .ConjNoTrans) {
                 var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 const Sty = iy + LENY * incy;
                 if (beta.re == 0 and beta.im == 0) {
@@ -235,7 +235,7 @@ pub inline fn gemv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                     jaj += lda;
                     jx += incx;
                 }
-            } else if (TRANS == .Trans) {
+            } else if (TRANSA == .Trans) {
                 var j: isize = 0;
                 var jaj: isize = 0;
                 var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;

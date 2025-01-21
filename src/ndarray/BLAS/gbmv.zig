@@ -6,7 +6,7 @@ const BLAS = @import("BLAS.zig");
 
 const scalar = core.supported.scalar;
 
-pub inline fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
@@ -16,18 +16,18 @@ pub inline fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n
     var N = n;
     var KL = kl;
     var KU = ku;
-    var TRANS = trans;
+    var TRANSA = transA;
     if (order == .RowMajor) {
         M = n;
         N = m;
         KL = ku;
         KU = kl;
-        TRANS = if (trans == .NoTrans) .Trans else if (trans == .ConjNoTrans) .ConjTrans else if (trans == .Trans) .NoTrans else .ConjNoTrans;
+        TRANSA = if (transA == .NoTrans) .Trans else if (transA == .ConjNoTrans) .ConjTrans else if (transA == .Trans) .NoTrans else .ConjNoTrans;
     }
 
     var LENX = N;
     var LENY = M;
-    if (TRANS == .Trans or TRANS == .ConjTrans) {
+    if (TRANSA == .Trans or TRANSA == .ConjTrans) {
         LENX = M;
         LENY = N;
     }
@@ -57,7 +57,7 @@ pub inline fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                 return;
             }
 
-            if (TRANS == .NoTrans or TRANS == .ConjNoTrans) {
+            if (TRANSA == .NoTrans or TRANSA == .ConjNoTrans) {
                 var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 const Sty = iy + LENY * incy;
                 if (beta == 0) {
@@ -165,7 +165,7 @@ pub inline fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                 return;
             }
 
-            if (TRANS == .NoTrans) {
+            if (TRANSA == .NoTrans) {
                 var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 const Sty = iy + LENY * incy;
                 if (beta.re == 0 and beta.im == 0) {
@@ -213,7 +213,7 @@ pub inline fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                     jaj += lda;
                     jx += incx;
                 }
-            } else if (TRANS == .ConjNoTrans) {
+            } else if (TRANSA == .ConjNoTrans) {
                 var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 const Sty = iy + LENY * incy;
                 if (beta.re == 0 and beta.im == 0) {
@@ -261,7 +261,7 @@ pub inline fn gbmv(comptime T: type, order: Order, trans: Transpose, m: isize, n
                     jaj += lda;
                     jx += incx;
                 }
-            } else if (TRANS == .Trans) {
+            } else if (TRANSA == .Trans) {
                 var j: isize = 0;
                 var jaj: isize = 0;
                 var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;

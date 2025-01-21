@@ -126,6 +126,6 @@ pub fn build(b: *std.Build) void {
     doc_step.dependOn(&doc.step);
 
     // Steps
-    const check_step = b.step("check", "Check if the code compiles; this is for ZLS.");
+    const check_step = b.step("check", "Check if the code compiles; this is for ZLS");
     check_step.dependOn(&exe.step);
 }

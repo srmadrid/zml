@@ -65,7 +65,7 @@ pub fn Iterator(comptime T: type) type {
                 .offset = array.offset,
                 .flags = array.flags,
                 .position = [_]usize{0} ** MaxDimensions,
-                .index = 0,
+                .index = array.offset,
             };
         }
 

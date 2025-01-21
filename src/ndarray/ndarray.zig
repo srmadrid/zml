@@ -252,7 +252,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `PositionOutOfBounds`: the position is out of bounds.
         pub fn set(self: *NDArray(T), position: []const usize, value: T) !void {
             if (self.isScalar()) {
-                self.data[0] = value;
+                self.data[self.offset] = value;
                 return;
             }
 
@@ -281,7 +281,8 @@ pub fn NDArray(comptime T: type) type {
         /// - `self`: the array in which to set the element.
         /// - `value`: the value to set.
         pub fn setAll(self: *NDArray(T), value: T) void {
-            self.data[0] = value;
+            // WRONG
+            self.data[self.offset] = value;
 
             const supported = core.supported.whatSupportedNumericType(T);
             switch (supported) {
@@ -326,7 +327,7 @@ pub fn NDArray(comptime T: type) type {
         pub fn replace(self: *NDArray(T), position: []const usize, value: T) !T {
             var idx: usize = undefined;
             if (self.isScalar()) {
-                idx = 0;
+                idx = self.offset;
             } else {
                 try self._checkPosition(position);
                 idx = self._index(position);
@@ -372,7 +373,7 @@ pub fn NDArray(comptime T: type) type {
         pub fn update(self: *NDArray(T), position: []const usize, value: anytype) !void {
             var idx: usize = undefined;
             if (self.isScalar()) {
-                idx = 0;
+                idx = self.offset;
             } else {
                 try self._checkPosition(position);
                 idx = self._index(position);
@@ -417,6 +418,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `void`: the execution was successful.
         /// - ...
         pub fn updateAll(self: *NDArray(T), value: T) !void {
+            // Wrong
             const supported = core.supported.whatSupportedNumericType(T);
             switch (supported) {
                 .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => {
@@ -456,7 +458,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `PositionOutOfBounds`: the position is out of bounds.
         pub fn get(self: NDArray(T), position: []const usize) !T {
             if (self.isScalar()) {
-                return self.data[0];
+                return self.data[self.offset];
             }
 
             try self._checkPosition(position);
@@ -571,7 +573,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `IncompatibleDimensions`: the `out` array does not have the shape
         /// of the full broadcast.
         pub fn add(self: *NDArray(T), left: NDArray(T), right: NDArray(T)) !void {
-            // Fast loop if possible.
+            // Fast loop if possible. WRONG: make sure the offset is taken into account, and further checks to see if the array is contiguous
             if (self.flags.order == left.flags.order and self.flags.order == right.flags.order and
                 self.ndim == left.ndim and self.ndim == right.ndim and
                 std.mem.eql(usize, self.shape[0..self.ndim], left.shape[0..left.ndim]) and
