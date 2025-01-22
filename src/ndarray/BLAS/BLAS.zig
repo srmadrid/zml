@@ -1153,6 +1153,44 @@ pub fn ztbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
     return tbsv(Complex(f64), order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
 
+pub fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_stpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                } else if (T == f64) {
+                    return ci.cblas_dtpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_ctpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_ztpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("tpmv.zig").tpmv(T, order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn stpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f32, x: [*]f32, incx: isize) void {
+    return tpmv(f32, order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn dtpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f64, x: [*]f64, incx: isize) void {
+    return tpmv(f64, order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn ctpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f32), x: [*]Complex(f32), incx: isize) void {
+    return tpmv(Complex(f32), order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn ztpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f64), x: [*]Complex(f64), incx: isize) void {
+    return tpmv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
+}
+
 test {
     std.testing.refAllDeclsRecursive(@This());
 
@@ -1197,4 +1235,5 @@ test {
     _ = @import("syr2.zig");
     _ = @import("tbmv.zig");
     _ = @import("tbsv.zig");
+    _ = @import("tpmv.zig");
 }

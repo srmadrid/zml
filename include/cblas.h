@@ -189,6 +189,11 @@ void cblas_dtbsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRA
 void cblas_ctbsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const int k, const void   *A, const int lda, void   *x, const int incx);
 void cblas_ztbsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const int k, const void   *A, const int lda, void   *x, const int incx);
 
+void cblas_stpmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const float  *Ap, float  *x, const int incx);
+void cblas_dtpmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const double *Ap, double *x, const int incx);
+void cblas_ctpmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *Ap, void   *x, const int incx);
+void cblas_ztpmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *Ap, void   *x, const int incx);
+
 
 #ifdef __cplusplus
 }
