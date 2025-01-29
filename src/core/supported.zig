@@ -23,6 +23,7 @@ pub const SupportedNumericType = enum {
 };
 
 pub inline fn whatSupportedNumericType(comptime T: type) SupportedNumericType {
+    @setEvalBranchQuota(2000);
     const info = @typeInfo(T);
 
     return switch (info) {

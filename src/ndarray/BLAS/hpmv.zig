@@ -74,15 +74,15 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = T.init(alpha.re * x[@intCast(jx)].re - alpha.im * x[@intCast(jx)].im, alpha.re * x[@intCast(jx)].im + alpha.im * x[@intCast(jx)].re);
                     var t1 = T.init(0, 0);
 
                     var i: isize = 0;
                     var iaij: isize = jaj;
-                    var ix = if (incx < 0) (-LENX + 1) * incx else 0;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
                     iy = if (incy < 0) (-LENY + 1) * incy else 0;
                     while (i < j) {
                         y[@intCast(iy)].re += t0.re * Ap[@intCast(iaij)].re - t0.im * Ap[@intCast(iaij)].im * conj;
@@ -127,8 +127,8 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = T.init(alpha.re * x[@intCast(jx)].re - alpha.im * x[@intCast(jx)].im, alpha.re * x[@intCast(jx)].im + alpha.im * x[@intCast(jx)].re);
                     var t1 = T.init(0, 0);
@@ -137,7 +137,7 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
                     var i: isize = I0;
                     var iaij: isize = jaj + 1;
-                    var ix = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
                     iy = if (incy < 0) (-LENY + 1) * incy + I0 * incy else I0 * incy;
                     while (i < I1) {
                         y[@intCast(iy)].re += t0.re * Ap[@intCast(iaij)].re - t0.im * Ap[@intCast(iaij)].im * conj;

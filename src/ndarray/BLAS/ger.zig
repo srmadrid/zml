@@ -31,13 +31,13 @@ pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, 
             if (order == .ColumnMajor) {
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = alpha * y[@intCast(jy)];
 
                     var i: isize = 0;
                     var iaij: isize = jaj;
-                    var ix = if (incx < 0) (-LENX + 1) * incx else 0;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
                     while (i < M) {
                         A[@intCast(iaij)] += t0 * x[@intCast(ix)];
 
@@ -53,13 +53,13 @@ pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, 
             } else {
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
                 while (j < N) {
                     const t0 = alpha * x[@intCast(jx)];
 
                     var i: isize = 0;
                     var iaij: isize = jaj;
-                    var iy = if (incy < 0) (-LENY + 1) * incy else 0;
+                    var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                     while (i < M) {
                         A[@intCast(iaij)] += t0 * y[@intCast(iy)];
 

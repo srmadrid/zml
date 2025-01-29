@@ -32,7 +32,7 @@ pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
             if (order == .ColumnMajor) {
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = T.init(alpha.re * y[@intCast(jy)].re - alpha.im * y[@intCast(jy)].im, alpha.im * y[@intCast(jy)].re + alpha.re * y[@intCast(jy)].im);
 
@@ -55,13 +55,13 @@ pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
             } else {
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
                 while (j < N) {
                     const t0 = T.init(alpha.re * x[@intCast(jx)].re - alpha.im * x[@intCast(jx)].im, alpha.im * x[@intCast(jx)].re + alpha.re * x[@intCast(jx)].im);
 
                     var i: isize = 0;
                     var iaij: isize = jaj;
-                    var iy = if (incy < 0) (-LENY + 1) * incy else 0;
+                    var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                     while (i < M) {
                         A[@intCast(iaij)].re += y[@intCast(iy)].re * t0.re - y[@intCast(iy)].im * t0.im;
                         A[@intCast(iaij)].im += y[@intCast(iy)].re * t0.im + y[@intCast(iy)].im * t0.re;

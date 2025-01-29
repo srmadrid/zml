@@ -33,13 +33,13 @@ pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: s
             if (UPLO == .Upper) {
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
                 while (j < N) {
                     const t0 = T.init(alpha * x[@intCast(jx)].re, alpha * x[@intCast(jx)].im * (-conj));
 
                     var i: isize = 0;
                     var iaij: isize = jaj;
-                    var ix = if (incx < 0) (-LENX + 1) * incx else 0;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
                     while (i < j) {
                         A[@intCast(iaij)].re += t0.re * x[@intCast(ix)].re - t0.im * x[@intCast(ix)].im * conj;
                         A[@intCast(iaij)].im += t0.im * x[@intCast(ix)].re + t0.re * x[@intCast(ix)].im * conj;
@@ -61,7 +61,7 @@ pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: s
 
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
                 while (j < N) {
                     const t0 = T.init(alpha * x[@intCast(jx)].re, alpha * x[@intCast(jx)].im * (-conj));
                     const I0: isize = j + 1;
@@ -72,7 +72,7 @@ pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: s
 
                     var i: isize = I0;
                     var iaij: isize = jaj + 1;
-                    var ix = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
                     while (i < I1) {
                         A[@intCast(iaij)].re += t0.re * x[@intCast(ix)].re - t0.im * x[@intCast(ix)].im * conj;
                         A[@intCast(iaij)].im += t0.im * x[@intCast(ix)].re + t0.re * x[@intCast(ix)].im * conj;

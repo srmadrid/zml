@@ -207,30 +207,30 @@ export fn cblas_izamin(n: c_int, x: [*c]const anyopaque, incx: c_int) c_uint {
     return zml.BLAS.iamin(Complex(f64), n, x, incx);
 }
 
-export fn cblas_sgbmv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: f32, A: [*c]const f32, lda: c_int, x: [*c]const f32, incx: c_int, beta: f32, y: [*c]f32, incy: c_int) void {
-    return zml.BLAS.gbmv(f32, order, trans, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+export fn cblas_sgbmv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: f32, A: [*c]const f32, lda: c_int, x: [*c]const f32, incx: c_int, beta: f32, y: [*c]f32, incy: c_int) void {
+    return zml.BLAS.gbmv(f32, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-export fn cblas_dgbmv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: f64, A: [*c]const f64, lda: c_int, x: [*c]const f64, incx: c_int, beta: f64, y: [*c]f64, incy: c_int) void {
-    return zml.BLAS.gbmv(f64, order, trans, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+export fn cblas_dgbmv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: f64, A: [*c]const f64, lda: c_int, x: [*c]const f64, incx: c_int, beta: f64, y: [*c]f64, incy: c_int) void {
+    return zml.BLAS.gbmv(f64, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-export fn cblas_cgbmv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
-    return zml.BLAS.gbmv(Complex(f32), order, trans, m, n, kl, ku, alpha.*, A, lda, x, incx, beta.*, y, incy);
+export fn cblas_cgbmv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
+    return zml.BLAS.gbmv(Complex(f32), order, transA, m, n, kl, ku, alpha.*, A, lda, x, incx, beta.*, y, incy);
 }
-export fn cblas_zgbmv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
-    return zml.BLAS.gbmv(Complex(f64), order, trans, m, n, kl, ku, alpha.*, A, lda, x, incx, beta.*, y, incy);
+export fn cblas_zgbmv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, kl: c_int, ku: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
+    return zml.BLAS.gbmv(Complex(f64), order, transA, m, n, kl, ku, alpha.*, A, lda, x, incx, beta.*, y, incy);
 }
 
-export fn cblas_sgemv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: f32, A: [*c]const f32, lda: c_int, x: [*c]const f32, incx: c_int, beta: f32, y: [*c]f32, incy: c_int) void {
-    return zml.BLAS.gemv(f32, order, trans, m, n, alpha, A, lda, x, incx, beta, y, incy);
+export fn cblas_sgemv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: f32, A: [*c]const f32, lda: c_int, x: [*c]const f32, incx: c_int, beta: f32, y: [*c]f32, incy: c_int) void {
+    return zml.BLAS.gemv(f32, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
-export fn cblas_dgemv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: f64, A: [*c]const f64, lda: c_int, x: [*c]const f64, incx: c_int, beta: f64, y: [*c]f64, incy: c_int) void {
-    return zml.BLAS.gemv(f64, order, trans, m, n, alpha, A, lda, x, incx, beta, y, incy);
+export fn cblas_dgemv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: f64, A: [*c]const f64, lda: c_int, x: [*c]const f64, incx: c_int, beta: f64, y: [*c]f64, incy: c_int) void {
+    return zml.BLAS.gemv(f64, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
-export fn cblas_cgemv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
-    return zml.BLAS.gemv(Complex(f32), order, trans, m, n, alpha.*, A, lda, x, incx, beta.*, y, incy);
+export fn cblas_cgemv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
+    return zml.BLAS.gemv(Complex(f32), order, transA, m, n, alpha.*, A, lda, x, incx, beta.*, y, incy);
 }
-export fn cblas_zgemv(order: CBLAS_ORDER, trans: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
-    return zml.BLAS.gemv(Complex(f64), order, trans, m, n, alpha.*, A, lda, x, incx, beta.*, y, incy);
+export fn cblas_zgemv(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, x: [*c]const anyopaque, incx: c_int, beta: *const anyopaque, y: [*c]anyopaque, incy: c_int) void {
+    return zml.BLAS.gemv(Complex(f64), order, transA, m, n, alpha.*, A, lda, x, incx, beta.*, y, incy);
 }
 
 export fn cblas_sger(order: CBLAS_ORDER, m: c_int, n: c_int, alpha: f32, x: [*c]const f32, incx: c_int, y: [*c]const f32, incy: c_int, A: [*c]f32, lda: c_int) void {
@@ -352,15 +352,41 @@ export fn cblas_dsyr2(order: CBLAS_ORDER, uplo: CBLAS_UPLO, n: c_int, alpha: f64
     return zml.BLAS.syr2(f64, order, uplo, n, alpha, x, incx, y, incy, A, lda);
 }
 
-export fn cblas_stbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const f32, lda: c_int, x: [*c]f32, incx: c_int) void {
-    return zml.BLAS.tbmv(f32, order, uplo, trans, diag, n, k, A, lda, x, incx);
+export fn cblas_stbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const f32, lda: c_int, x: [*c]f32, incx: c_int) void {
+    return zml.BLAS.tbmv(f32, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
-export fn cblas_dtbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const f64, lda: c_int, x: [*c]f64, incx: c_int) void {
-    return zml.BLAS.tbmv(f64, order, uplo, trans, diag, n, k, A, lda, x, incx);
+export fn cblas_dtbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const f64, lda: c_int, x: [*c]f64, incx: c_int) void {
+    return zml.BLAS.tbmv(f64, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
-export fn cblas_ctbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
-    return zml.BLAS.tbmv(Complex(f32), order, uplo, trans, diag, n, k, A, lda, x, incx);
+export fn cblas_ctbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tbmv(Complex(f32), order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
-export fn cblas_ztbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
-    return zml.BLAS.tbmv(Complex(f64), order, uplo, trans, diag, n, k, A, lda, x, incx);
+export fn cblas_ztbmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tbmv(Complex(f64), order, uplo, transA, diag, n, k, A, lda, x, incx);
+}
+
+export fn cblas_stbsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const f32, lda: c_int, x: [*c]f32, incx: c_int) void {
+    return zml.BLAS.tbsv(f32, order, uplo, transA, diag, n, k, A, lda, x, incx);
+}
+export fn cblas_dtbsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const f64, lda: c_int, x: [*c]f64, incx: c_int) void {
+    return zml.BLAS.tbsv(f64, order, uplo, transA, diag, n, k, A, lda, x, incx);
+}
+export fn cblas_ctbsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tbsv(Complex(f32), order, uplo, transA, diag, n, k, A, lda, x, incx);
+}
+export fn cblas_ztbsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, k: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tbsv(Complex(f64), order, uplo, transA, diag, n, k, A, lda, x, incx);
+}
+
+export fn cblas_stpmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const f32, x: [*c]f32, incx: c_int) void {
+    return zml.BLAS.tpmv(f32, order, uplo, transA, diag, n, Ap, x, incx);
+}
+export fn cblas_dtpmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const f64, x: [*c]f64, incx: c_int) void {
+    return zml.BLAS.tpmv(f64, order, uplo, transA, diag, n, Ap, x, incx);
+}
+export fn cblas_ctpmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const anyopaque, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tpmv(Complex(f32), order, uplo, transA, diag, n, Ap, x, incx);
+}
+export fn cblas_ztpmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const anyopaque, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tpmv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
 }

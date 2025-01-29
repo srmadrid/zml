@@ -1157,6 +1157,5 @@ test "replace" {
 }
 
 test {
-    _ = @import("BLAS/BLAS.zig");
     std.testing.refAllDeclsRecursive(@This());
 }

@@ -34,16 +34,16 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
             if (UPLO == .Upper) {
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = T.init(alpha.re * x[@intCast(jx)].re - alpha.im * x[@intCast(jx)].im, alpha.im * x[@intCast(jx)].re + alpha.re * x[@intCast(jx)].im);
                     const t1 = T.init(alpha.re * y[@intCast(jy)].re + alpha.im * y[@intCast(jy)].im, -alpha.im * y[@intCast(jy)].re + alpha.re * y[@intCast(jy)].im);
 
                     var i: isize = 0;
                     var iaij: isize = jaj;
-                    var ix = if (incx < 0) (-LENX + 1) * incx else 0;
-                    var iy = if (incy < 0) (-LENY + 1) * incy else 0;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
+                    var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                     while (i < j) {
                         A[@intCast(iaij)].re += t0.re * y[@intCast(iy)].re + t0.im * y[@intCast(iy)].im + t1.re * x[@intCast(ix)].re + t1.im * x[@intCast(ix)].im;
                         A[@intCast(iaij)].im += (t0.im * y[@intCast(iy)].re - t0.re * y[@intCast(iy)].im + t1.im * x[@intCast(ix)].re - t1.re * x[@intCast(ix)].im) * (-conj);
@@ -67,8 +67,8 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = T.init(alpha.re * x[@intCast(jx)].re - alpha.im * x[@intCast(jx)].im, alpha.im * x[@intCast(jx)].re + alpha.re * x[@intCast(jx)].im);
                     const t1 = T.init(alpha.re * y[@intCast(jy)].re + alpha.im * y[@intCast(jy)].im, -alpha.im * y[@intCast(jy)].re + alpha.re * y[@intCast(jy)].im);
@@ -80,8 +80,8 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
                     var i: isize = I0;
                     var iaij: isize = jaj + 1;
-                    var ix = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
-                    var iy = if (incy < 0) (-LENY + 1) * incy + I0 * incy else I0 * incy;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
+                    var iy: isize = if (incy < 0) (-LENY + 1) * incy + I0 * incy else I0 * incy;
                     while (i < I1) {
                         A[@intCast(iaij)].re += t0.re * y[@intCast(iy)].re + t0.im * y[@intCast(iy)].im + t1.re * x[@intCast(ix)].re + t1.im * x[@intCast(ix)].im;
                         A[@intCast(iaij)].im += (t0.im * y[@intCast(iy)].re - t0.re * y[@intCast(iy)].im + t1.im * x[@intCast(ix)].re - t1.re * x[@intCast(ix)].im) * (-conj);

@@ -67,8 +67,8 @@ pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
 
                 var j: isize = 0;
                 var jaj: isize = k;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = alpha * x[@intCast(jx)];
                     var t1: T = 0;
@@ -77,7 +77,7 @@ pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
 
                     var i: isize = I0;
                     var iaij: isize = jaj - j + I0;
-                    var ix = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
                     iy = if (incy < 0) (-LENY + 1) * incy + I0 * incy else I0 * incy;
                     while (i < I1) {
                         y[@intCast(iy)] += t0 * A[@intCast(iaij)];
@@ -116,8 +116,8 @@ pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
 
                 var j: isize = 0;
                 var jaj: isize = 0;
-                var jx = if (incx < 0) (-LENX + 1) * incx else 0;
-                var jy = if (incy < 0) (-LENY + 1) * incy else 0;
+                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
+                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
                 while (j < N) {
                     const t0 = alpha * x[@intCast(jx)];
                     var t1: T = 0;
@@ -126,7 +126,7 @@ pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
 
                     var i: isize = I0;
                     var iaij: isize = jaj + 1;
-                    var ix = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
+                    var ix: isize = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
                     iy = if (incy < 0) (-LENY + 1) * incy + I0 * incy else I0 * incy;
                     while (i < I1) {
                         y[@intCast(iy)] += t0 * A[@intCast(iaij)];

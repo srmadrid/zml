@@ -89,7 +89,7 @@ pub fn zaxpy(n: isize, a: Complex(f64), x: [*]const Complex(f64), incx: isize, y
     return axpy(Complex(f64), n, a, x, incx, y, incy);
 }
 
-pub fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
+pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -127,7 +127,7 @@ pub fn zcopy(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]Complex(f64)
     return copy(Complex(f64), n, x, incx, y, incy);
 }
 
-pub fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) scalar(T) {
+pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) scalar(T) {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -152,7 +152,7 @@ pub fn ddot(n: isize, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize
     return dot(f64, n, x, incx, y, incy);
 }
 
-pub fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
+pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
     //const supported = core.supported.whatSupportedNumericType(T);
 
     //if (options.link_cblas) {
@@ -177,7 +177,7 @@ pub fn zdotc(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Comple
     return dotc(Complex(f64), n, x, incx, y, incy);
 }
 
-pub fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
+pub inline fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -202,7 +202,7 @@ pub fn zdotc_sub(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Co
     return dotc_sub(Complex(f64), n, x, incx, y, incy, ret);
 }
 
-pub fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
+pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
     //const supported = core.supported.whatSupportedNumericType(T);
 
     //if (options.link_cblas) {
@@ -227,7 +227,7 @@ pub fn zdotu(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Comple
     return dotu(Complex(f64), n, x, incx, y, incy);
 }
 
-pub fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
+pub inline fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -252,7 +252,7 @@ pub fn zdotu_sub(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Co
     return dotu_sub(Complex(f64), n, x, incx, y, incy, ret);
 }
 
-pub fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
+pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -290,7 +290,7 @@ pub fn dznrm2(n: isize, x: [*]const Complex(f64), incx: isize) f64 {
     return nrm2(Complex(f64), n, x, incx);
 }
 
-pub fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: scalar(T), s: scalar(T)) void {
+pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: scalar(T), s: scalar(T)) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -328,7 +328,7 @@ pub fn zdrot(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy
     return rot(Complex(f64), n, x, incx, y, incy, c, s);
 }
 
-pub fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
+pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -366,7 +366,7 @@ pub fn zrotg(a: *Complex(f64), b: *Complex(f64), c: *f64, s: *Complex(f64)) void
     return rotg(Complex(f64), a, b, c, s);
 }
 
-pub fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, param: [*]const T) void {
+pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, param: [*]const T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -391,7 +391,7 @@ pub fn drotm(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, param: [*
     return rotm(f64, n, x, incx, y, incy, param);
 }
 
-pub fn rotmg(comptime T: type, d1: *T, d2: *T, x1: *T, y1: T, param: [*]T) void {
+pub inline fn rotmg(comptime T: type, d1: *T, d2: *T, x1: *T, y1: T, param: [*]T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -416,7 +416,7 @@ pub fn drotmg(d1: *f64, d2: *f64, x1: *f64, y1: f64, param: [*]f64) void {
     return rotmg(f64, d1, d2, x1, y1, param);
 }
 
-pub fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void {
+pub inline fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -454,7 +454,7 @@ pub fn zscal(n: isize, a: Complex(f64), x: [*]Complex(f64), incx: isize) void {
     return scal(Complex(f64), n, a, x, incx);
 }
 
-pub fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
+pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -492,7 +492,7 @@ pub fn zswap(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy
     return swap(Complex(f64), n, x, incx, y, incy);
 }
 
-pub fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
+pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -530,7 +530,7 @@ pub fn izamax(n: isize, x: [*]const Complex(f64), incx: isize) usize {
     return iamax(Complex(f64), n, x, incx);
 }
 
-pub fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
+pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -569,7 +569,7 @@ pub fn izamin(n: isize, x: [*]const Complex(f64), incx: isize) usize {
 }
 
 // Level 2 BLAS
-pub fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -607,7 +607,7 @@ pub fn zgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku:
     return gbmv(Complex(f64), order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-pub fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -645,7 +645,7 @@ pub fn zgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: Complex
     return gemv(Complex(f64), order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-pub fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -670,7 +670,7 @@ pub fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64, incx:
     return ger(f64, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
-pub fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+pub inline fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -695,7 +695,7 @@ pub fn zgerc(order: Order, m: isize, n: isize, alpha: Complex(f64), x: [*]const 
     return gerc(Complex(f64), order, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
-pub fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -720,7 +720,7 @@ pub fn zgeru(order: Order, m: isize, n: isize, alpha: Complex(f64), x: [*]const 
     return geru(Complex(f64), order, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
-pub fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -752,7 +752,7 @@ pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: Complex(f64), 
     return hbmv(Complex(f64), order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-pub fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -777,7 +777,7 @@ pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), A: [*]cons
     return hemv(Complex(f64), order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-pub fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
+pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -802,7 +802,7 @@ pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const Complex(
     return her(Complex(f64), order, uplo, n, alpha, x, incx, A, lda);
 }
 
-pub fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -827,7 +827,7 @@ pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]cons
     return her2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, A, lda);
 }
 
-pub fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -852,7 +852,7 @@ pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), Ap: [*]con
     return hpmv(Complex(f64), order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
 }
 
-pub fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -877,7 +877,7 @@ pub fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const Complex(
     return hpr(Complex(f64), order, uplo, n, alpha, x, incx, Ap);
 }
 
-pub fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
+pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -902,7 +902,7 @@ pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]cons
     return hpr2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, Ap);
 }
 
-pub fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -927,7 +927,7 @@ pub fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, A: [*]con
     return sbmv(f64, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-pub fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -952,7 +952,7 @@ pub fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, Ap: [*]const f64, x
     return spmv(f64, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
 }
 
-pub fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -977,7 +977,7 @@ pub fn dspr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, inc
     return spr(f64, order, uplo, n, alpha, x, incx, Ap);
 }
 
-pub fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
+pub inline fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1002,7 +1002,7 @@ pub fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, in
     return spr2(f64, order, uplo, n, alpha, x, incx, y, incy, Ap);
 }
 
-pub fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1027,7 +1027,7 @@ pub fn dsymv(order: Order, uplo: Uplo, n: isize, alpha: f64, A: [*]const f64, ld
     return symv(f64, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-pub fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
+pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1052,7 +1052,7 @@ pub fn dsyr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, inc
     return syr(f64, order, uplo, n, alpha, x, incx, A, lda);
 }
 
-pub fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+pub inline fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1077,7 +1077,7 @@ pub fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, in
     return syr2(f64, order, uplo, n, alpha, x, incx, y, incy, A, lda);
 }
 
-pub fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1115,7 +1115,7 @@ pub fn ztbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
     return tbmv(Complex(f64), order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
 
-pub fn tbsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1153,7 +1153,7 @@ pub fn ztbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
     return tbsv(Complex(f64), order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
 
-pub fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
+pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1191,9 +1191,45 @@ pub fn ztpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
     return tpmv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
 }
 
-test {
-    std.testing.refAllDeclsRecursive(@This());
+pub inline fn tpsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
 
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_stpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                } else if (T == f64) {
+                    return ci.cblas_dtpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_ctpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_ztpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("tpsv.zig").tpsv(T, order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn stpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f32, x: [*]f32, incx: isize) void {
+    return tpsv(f32, order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn dtpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f64, x: [*]f64, incx: isize) void {
+    return tpsv(f64, order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn ctpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f32), x: [*]Complex(f32), incx: isize) void {
+    return tpsv(Complex(f32), order, uplo, transA, diag, n, Ap, x, incx);
+}
+pub fn ztpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f64), x: [*]Complex(f64), incx: isize) void {
+    return tpsv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
+}
+
+test {
     // Level 1 BLAS
     _ = @import("asum.zig");
     _ = @import("axpy.zig");
@@ -1236,4 +1272,7 @@ test {
     _ = @import("tbmv.zig");
     _ = @import("tbsv.zig");
     _ = @import("tpmv.zig");
+    _ = @import("tpsv.zig");
+
+    std.testing.refAllDeclsRecursive(@This());
 }
