@@ -390,3 +390,29 @@ export fn cblas_ctpmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSP
 export fn cblas_ztpmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const anyopaque, x: [*c]anyopaque, incx: c_int) void {
     return zml.BLAS.tpmv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
 }
+
+export fn cblas_stpsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const f32, x: [*c]f32, incx: c_int) void {
+    return zml.BLAS.tpsv(f32, order, uplo, transA, diag, n, Ap, x, incx);
+}
+export fn cblas_dtpsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const f64, x: [*c]f64, incx: c_int) void {
+    return zml.BLAS.tpsv(f64, order, uplo, transA, diag, n, Ap, x, incx);
+}
+export fn cblas_ctpsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const anyopaque, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tpsv(Complex(f32), order, uplo, transA, diag, n, Ap, x, incx);
+}
+export fn cblas_ztpsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, Ap: [*c]const anyopaque, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.tpsv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
+}
+
+export fn cblas_strmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const f32, lda: c_int, x: [*c]f32, incx: c_int) void {
+    return zml.BLAS.trmv(f32, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+export fn cblas_dtrmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const f64, lda: c_int, x: [*c]f64, incx: c_int) void {
+    return zml.BLAS.trmv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+export fn cblas_ctrmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.trmv(Complex(f32), order, uplo, transA, diag, n, A, lda, x, incx);
+}
+export fn cblas_ztrmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.trmv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
+}

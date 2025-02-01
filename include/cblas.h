@@ -194,6 +194,16 @@ void cblas_dtpmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRA
 void cblas_ctpmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *Ap, void   *x, const int incx);
 void cblas_ztpmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *Ap, void   *x, const int incx);
 
+void cblas_stpsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const float  *Ap, float  *x, const int incx);
+void cblas_dtpsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const double *Ap, double *x, const int incx);
+void cblas_ctpsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *Ap, void   *x, const int incx);
+void cblas_ztpsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *Ap, void   *x, const int incx);
+
+void cblas_strmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const float  *A, const int lda, float  *x, const int incx);
+void cblas_dtrmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const double *A, const int lda, double *x, const int incx);
+void cblas_ctrmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *A, const int lda, void   *x, const int incx);
+void cblas_ztrmv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int n, const void   *A, const int lda, void   *x, const int incx);
+
 
 #ifdef __cplusplus
 }
