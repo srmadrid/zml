@@ -416,3 +416,16 @@ export fn cblas_ctrmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSP
 export fn cblas_ztrmv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
     return zml.BLAS.trmv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
 }
+
+export fn cblas_strsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const f32, lda: c_int, x: [*c]f32, incx: c_int) void {
+    return zml.BLAS.trsv(f32, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+export fn cblas_dtrsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const f64, lda: c_int, x: [*c]f64, incx: c_int) void {
+    return zml.BLAS.trsv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+export fn cblas_ctrsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.trsv(Complex(f32), order, uplo, transA, diag, n, A, lda, x, incx);
+}
+export fn cblas_ztrsv(order: CBLAS_ORDER, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: c_int, A: [*c]const anyopaque, lda: c_int, x: [*c]anyopaque, incx: c_int) void {
+    return zml.BLAS.trsv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
+}

@@ -1236,16 +1236,16 @@ pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
-                    return ci.cblas_strmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, lda, x, @intCast(incx));
+                    return ci.cblas_strmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
                 } else if (T == f64) {
-                    return ci.cblas_dtrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, lda, x, @intCast(incx));
+                    return ci.cblas_dtrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
                 }
             },
             .Complex => {
                 if (scalar(T) == f32) {
-                    return ci.cblas_ctrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, lda, x, @intCast(incx));
+                    return ci.cblas_ctrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
                 } else if (scalar(T) == f64) {
-                    return ci.cblas_ztrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, lda, x, @intCast(incx));
+                    return ci.cblas_ztrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
                 }
             },
             else => {},
@@ -1254,6 +1254,58 @@ pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
 
     return @import("trmv.zig").trmv(T, order, uplo, transA, diag, n, A, lda, x, incx);
 }
+pub fn strmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+    return trmv(f32, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+pub fn dtrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+    return trmv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+pub fn ctrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f32), lda: isize, x: [*]Complex(f32), incx: isize) void {
+    return trmv(Complex(f32), order, uplo, transA, diag, n, A, lda, x, incx);
+}
+pub fn ztrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f64), lda: isize, x: [*]Complex(f64), incx: isize) void {
+    return trmv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
+}
+
+pub fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_strsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
+                } else if (T == f64) {
+                    return ci.cblas_dtrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_ctrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_ztrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("trsv.zig").trsv(T, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+pub fn strsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+    return trsv(f32, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+pub fn dtrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+    return trsv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
+}
+pub fn ctrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f32), lda: isize, x: [*]Complex(f32), incx: isize) void {
+    return trsv(Complex(f32), order, uplo, transA, diag, n, A, lda, x, incx);
+}
+pub fn ztrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f64), lda: isize, x: [*]Complex(f64), incx: isize) void {
+    return trsv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
+}
+
+// Level 3 BLAS
 
 test {
     // Level 1 BLAS
@@ -1300,6 +1352,9 @@ test {
     _ = @import("tpmv.zig");
     _ = @import("tpsv.zig");
     _ = @import("trmv.zig");
+    _ = @import("trsv.zig");
+
+    // Level 3 BLAS
 
     std.testing.refAllDeclsRecursive(@This());
 }

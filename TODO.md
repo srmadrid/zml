@@ -24,7 +24,7 @@ Allow the user to build only BLAS and LAPACK to create `libblas.so`, `liblapack.
 
 Add view functions: `reshape`, `slice`.
 
-Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `COO`), `Diagonal`, `Triangular`, `Symmetric`, `Hermitian`, etc.) instead of having different types for each one? If yes, a metadata field must be added to `NDArray` to store the extra information.
+Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `COO`), `Diagonal`, `Triangular`, `Symmetric`, `Hermitian`, etc.) instead of having different types for each one? If yes, a metadata field must be added to `NDArray` to store the extra information. Also, rename `RowMajor` and `ColumnMajor` to `RowMajorContiguous` and `ColumnMajorContiguous`, respectively.
 
 Make two inits: `init` without flags (default values) and `initFlags` with flags?
 
