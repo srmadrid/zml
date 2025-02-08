@@ -182,135 +182,155 @@ test "hbmv" {
 
     const A = try a.alloc(Complex(f64), (1 + 2 * k) * n);
     defer a.free(A);
-    const x1 = try a.alloc(Complex(f64), n);
+    const x1 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(x1);
-    const y1 = try a.alloc(Complex(f64), n);
+    const y1 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(y1);
 
     @memcpy(A.ptr, &[_]Complex(f64){
-        Complex(f64).init(0, 0),
-        Complex(f64).init(2, 3),
-        Complex(f64).init(4, -1),
-        Complex(f64).init(5, 2),
-        Complex(f64).init(6, -3),
-        Complex(f64).init(1, 0),
-        Complex(f64).init(7, 0),
-        Complex(f64).init(11, 0),
-        Complex(f64).init(14, 0),
-        Complex(f64).init(16, 0),
-        Complex(f64).init(2, -3),
-        Complex(f64).init(4, 1),
-        Complex(f64).init(5, -2),
-        Complex(f64).init(6, 3),
-        Complex(f64).init(0, 0),
+        Complex(f64).init(1, 1),
+        Complex(f64).init(2, 2),
+        Complex(f64).init(3, 3),
+        Complex(f64).init(4, 4),
+        Complex(f64).init(5, 5),
+        Complex(f64).init(6, 6),
+        Complex(f64).init(7, 7),
+        Complex(f64).init(8, 8),
+        Complex(f64).init(9, 9),
+        Complex(f64).init(10, 10),
+        Complex(f64).init(11, 11),
+        Complex(f64).init(12, 12),
+        Complex(f64).init(13, 13),
+        Complex(f64).init(14, 14),
+        Complex(f64).init(15, 15),
     });
     @memcpy(x1.ptr, &[_]Complex(f64){
         Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
         Complex(f64).init(3, 4),
+        Complex(f64).init(0, 0),
         Complex(f64).init(5, 6),
+        Complex(f64).init(0, 0),
         Complex(f64).init(7, 8),
+        Complex(f64).init(0, 0),
         Complex(f64).init(9, 10),
+        Complex(f64).init(0, 0),
     });
     @memcpy(y1.ptr, &[_]Complex(f64){
-        Complex(f64).init(1, 2),
+        Complex(f64).init(1, 1),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(2, 2),
+        Complex(f64).init(0, 0),
         Complex(f64).init(3, 3),
-        Complex(f64).init(1, 2),
-        Complex(f64).init(3, 3),
-        Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(4, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(5, 5),
+        Complex(f64).init(0, 0),
     });
 
-    blas.hbmv(Complex(f64), .RowMajor, .Upper, n, k, alpha, A.ptr, k + 1, x1.ptr, 1, beta, y1.ptr, 1);
+    blas.hbmv(Complex(f64), .RowMajor, .Upper, n, k, alpha, A.ptr, k + 1, x1.ptr, 2, beta, y1.ptr, 2);
 
-    try std.testing.expectEqual(-26, y1[0].re);
-    try std.testing.expectEqual(20, y1[0].im);
-    try std.testing.expectEqual(-24, y1[1].re);
-    try std.testing.expectEqual(108, y1[1].im);
-    try std.testing.expectEqual(-1, y1[2].re);
-    try std.testing.expectEqual(127, y1[2].im);
-    try std.testing.expectEqual(-19, y1[3].re);
-    try std.testing.expectEqual(343, y1[3].im);
-    try std.testing.expectEqual(-28, y1[4].re);
-    try std.testing.expectEqual(440, y1[4].im);
+    try std.testing.expectEqual(-17, y1[0].re);
+    try std.testing.expectEqual(21, y1[0].im);
+    try std.testing.expectEqual(-47, y1[2].re);
+    try std.testing.expectEqual(81, y1[2].im);
+    try std.testing.expectEqual(-77, y1[4].re);
+    try std.testing.expectEqual(189, y1[4].im);
+    try std.testing.expectEqual(-107, y1[6].re);
+    try std.testing.expectEqual(345, y1[6].im);
+    try std.testing.expectEqual(103, y1[8].re);
+    try std.testing.expectEqual(329, y1[8].im);
 
-    const x2 = try a.alloc(Complex(f64), n);
+    const x2 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(x2);
     const y2 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(y2);
 
     @memcpy(x2.ptr, &[_]Complex(f64){
         Complex(f64).init(9, 10),
+        Complex(f64).init(0, 0),
         Complex(f64).init(7, 8),
+        Complex(f64).init(0, 0),
         Complex(f64).init(5, 6),
+        Complex(f64).init(0, 0),
         Complex(f64).init(3, 4),
+        Complex(f64).init(0, 0),
         Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
     });
     @memcpy(y2.ptr, &[_]Complex(f64){
-        Complex(f64).init(1, 2),
+        Complex(f64).init(5, 5),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(4, 4),
         Complex(f64).init(0, 0),
         Complex(f64).init(3, 3),
         Complex(f64).init(0, 0),
-        Complex(f64).init(1, 2),
+        Complex(f64).init(2, 2),
         Complex(f64).init(0, 0),
-        Complex(f64).init(3, 3),
-        Complex(f64).init(0, 0),
-        Complex(f64).init(1, 2),
+        Complex(f64).init(1, 1),
         Complex(f64).init(0, 0),
     });
 
-    blas.hbmv(Complex(f64), .ColumnMajor, .Upper, n, k, alpha, A.ptr, k + 1, x2.ptr, -1, beta, y2.ptr, 2);
+    blas.hbmv(Complex(f64), .RowMajor, .Upper, n, k, alpha, A.ptr, k + 1, x2.ptr, -2, beta, y2.ptr, -2);
 
-    try std.testing.expectEqual(-2, y2[0].re);
-    try std.testing.expectEqual(44, y2[0].im);
-    try std.testing.expectEqual(15, y2[2].re);
-    try std.testing.expectEqual(133, y2[2].im);
-    try std.testing.expectEqual(-38, y2[4].re);
-    try std.testing.expectEqual(164, y2[4].im);
-    try std.testing.expectEqual(-32, y2[6].re);
-    try std.testing.expectEqual(526, y2[6].im);
-    try std.testing.expectEqual(-33, y2[8].re);
-    try std.testing.expectEqual(523, y2[8].im);
+    try std.testing.expectEqual(-17, y2[8].re);
+    try std.testing.expectEqual(21, y2[8].im);
+    try std.testing.expectEqual(-47, y2[6].re);
+    try std.testing.expectEqual(81, y2[6].im);
+    try std.testing.expectEqual(-77, y2[4].re);
+    try std.testing.expectEqual(189, y2[4].im);
+    try std.testing.expectEqual(-107, y2[2].re);
+    try std.testing.expectEqual(345, y2[2].im);
+    try std.testing.expectEqual(103, y2[0].re);
+    try std.testing.expectEqual(329, y2[0].im);
 
-    const x3 = try a.alloc(Complex(f64), n);
+    const x3 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(x3);
     const y3 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(y3);
 
     @memcpy(x3.ptr, &[_]Complex(f64){
         Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
         Complex(f64).init(3, 4),
+        Complex(f64).init(0, 0),
         Complex(f64).init(5, 6),
+        Complex(f64).init(0, 0),
         Complex(f64).init(7, 8),
+        Complex(f64).init(0, 0),
         Complex(f64).init(9, 10),
+        Complex(f64).init(0, 0),
     });
     @memcpy(y3.ptr, &[_]Complex(f64){
-        Complex(f64).init(1, 2),
+        Complex(f64).init(1, 1),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(2, 2),
         Complex(f64).init(0, 0),
         Complex(f64).init(3, 3),
         Complex(f64).init(0, 0),
-        Complex(f64).init(1, 2),
+        Complex(f64).init(4, 4),
         Complex(f64).init(0, 0),
-        Complex(f64).init(3, 3),
-        Complex(f64).init(0, 0),
-        Complex(f64).init(1, 2),
+        Complex(f64).init(5, 5),
         Complex(f64).init(0, 0),
     });
 
-    blas.hbmv(Complex(f64), .RowMajor, .Lower, n, k, alpha, A.ptr, k + 1, x3.ptr, 1, beta, y3.ptr, -2);
+    blas.hbmv(Complex(f64), .ColumnMajor, .Upper, n, k, alpha, A.ptr, k + 1, x3.ptr, 2, beta, y3.ptr, 2);
 
-    try std.testing.expectEqual(-16, y3[8].re);
-    try std.testing.expectEqual(42, y3[8].im);
-    try std.testing.expectEqual(-45, y3[6].re);
-    try std.testing.expectEqual(129, y3[6].im);
-    try std.testing.expectEqual(4, y3[4].re);
-    try std.testing.expectEqual(170, y3[4].im);
-    try std.testing.expectEqual(-32, y3[2].re);
-    try std.testing.expectEqual(526, y3[2].im);
-    try std.testing.expectEqual(-33, y3[0].re);
-    try std.testing.expectEqual(523, y3[0].im);
+    try std.testing.expectEqual(-26, y3[0].re);
+    try std.testing.expectEqual(30, y3[0].im);
+    try std.testing.expectEqual(-58, y3[2].re);
+    try std.testing.expectEqual(102, y3[2].im);
+    try std.testing.expectEqual(-88, y3[4].re);
+    try std.testing.expectEqual(222, y3[4].im);
+    try std.testing.expectEqual(-118, y3[6].re);
+    try std.testing.expectEqual(390, y3[6].im);
+    try std.testing.expectEqual(116, y3[8].re);
+    try std.testing.expectEqual(364, y3[8].im);
 
     const x4 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(x4);
-    const y4 = try a.alloc(Complex(f64), n);
+    const y4 = try a.alloc(Complex(f64), 2 * n);
     defer a.free(y4);
 
     @memcpy(x4.ptr, &[_]Complex(f64){
@@ -326,23 +346,200 @@ test "hbmv" {
         Complex(f64).init(0, 0),
     });
     @memcpy(y4.ptr, &[_]Complex(f64){
-        Complex(f64).init(1, 2),
+        Complex(f64).init(5, 5),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(4, 4),
+        Complex(f64).init(0, 0),
         Complex(f64).init(3, 3),
-        Complex(f64).init(1, 2),
-        Complex(f64).init(3, 3),
-        Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(2, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(1, 1),
+        Complex(f64).init(0, 0),
     });
 
-    blas.hbmv(Complex(f64), .ColumnMajor, .Lower, n, k, alpha, A.ptr, k + 1, x4.ptr, -2, beta, y4.ptr, -1);
+    blas.hbmv(Complex(f64), .ColumnMajor, .Upper, n, k, alpha, A.ptr, k + 1, x4.ptr, -2, beta, y4.ptr, -2);
 
-    try std.testing.expectEqual(16, y4[4].re);
-    try std.testing.expectEqual(26, y4[4].im);
-    try std.testing.expectEqual(2, y4[3].re);
-    try std.testing.expectEqual(106, y4[3].im);
-    try std.testing.expectEqual(-29, y4[2].re);
-    try std.testing.expectEqual(123, y4[2].im);
-    try std.testing.expectEqual(-19, y4[1].re);
-    try std.testing.expectEqual(343, y4[1].im);
-    try std.testing.expectEqual(-28, y4[0].re);
-    try std.testing.expectEqual(440, y4[0].im);
+    try std.testing.expectEqual(-26, y4[8].re);
+    try std.testing.expectEqual(30, y4[8].im);
+    try std.testing.expectEqual(-58, y4[6].re);
+    try std.testing.expectEqual(102, y4[6].im);
+    try std.testing.expectEqual(-88, y4[4].re);
+    try std.testing.expectEqual(222, y4[4].im);
+    try std.testing.expectEqual(-118, y4[2].re);
+    try std.testing.expectEqual(390, y4[2].im);
+    try std.testing.expectEqual(116, y4[0].re);
+    try std.testing.expectEqual(364, y4[0].im);
+
+    const x5 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(x5);
+    const y5 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(y5);
+
+    @memcpy(x5.ptr, &[_]Complex(f64){
+        Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(5, 6),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(7, 8),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(9, 10),
+        Complex(f64).init(0, 0),
+    });
+    @memcpy(y5.ptr, &[_]Complex(f64){
+        Complex(f64).init(1, 1),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(2, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 3),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(4, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(5, 5),
+        Complex(f64).init(0, 0),
+    });
+
+    blas.hbmv(Complex(f64), .RowMajor, .Lower, n, k, alpha, A.ptr, k + 1, x5.ptr, 2, beta, y5.ptr, 2);
+
+    try std.testing.expectEqual(16, y5[0].re);
+    try std.testing.expectEqual(36, y5[0].im);
+    try std.testing.expectEqual(34, y5[2].re);
+    try std.testing.expectEqual(106, y5[2].im);
+    try std.testing.expectEqual(52, y5[4].re);
+    try std.testing.expectEqual(226, y5[4].im);
+    try std.testing.expectEqual(70, y5[6].re);
+    try std.testing.expectEqual(394, y5[6].im);
+    try std.testing.expectEqual(-154, y5[8].re);
+    try std.testing.expectEqual(346, y5[8].im);
+
+    const x6 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(x6);
+    const y6 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(y6);
+
+    @memcpy(x6.ptr, &[_]Complex(f64){
+        Complex(f64).init(9, 10),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(7, 8),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(5, 6),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
+    });
+    @memcpy(y6.ptr, &[_]Complex(f64){
+        Complex(f64).init(5, 5),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(4, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 3),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(2, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(1, 1),
+        Complex(f64).init(0, 0),
+    });
+
+    blas.hbmv(Complex(f64), .RowMajor, .Lower, n, k, alpha, A.ptr, k + 1, x6.ptr, -2, beta, y6.ptr, -2);
+
+    try std.testing.expectEqual(16, y6[8].re);
+    try std.testing.expectEqual(36, y6[8].im);
+    try std.testing.expectEqual(34, y6[6].re);
+    try std.testing.expectEqual(106, y6[6].im);
+    try std.testing.expectEqual(52, y6[4].re);
+    try std.testing.expectEqual(226, y6[4].im);
+    try std.testing.expectEqual(70, y6[2].re);
+    try std.testing.expectEqual(394, y6[2].im);
+    try std.testing.expectEqual(-154, y6[0].re);
+    try std.testing.expectEqual(346, y6[0].im);
+
+    const x7 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(x7);
+    const y7 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(y7);
+
+    @memcpy(x7.ptr, &[_]Complex(f64){
+        Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(5, 6),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(7, 8),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(9, 10),
+        Complex(f64).init(0, 0),
+    });
+    @memcpy(y7.ptr, &[_]Complex(f64){
+        Complex(f64).init(1, 1),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(2, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 3),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(4, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(5, 5),
+        Complex(f64).init(0, 0),
+    });
+
+    blas.hbmv(Complex(f64), .ColumnMajor, .Lower, n, k, alpha, A.ptr, k + 1, x7.ptr, 2, beta, y7.ptr, 2);
+
+    try std.testing.expectEqual(11, y7[0].re);
+    try std.testing.expectEqual(25, y7[0].im);
+    try std.testing.expectEqual(29, y7[2].re);
+    try std.testing.expectEqual(85, y7[2].im);
+    try std.testing.expectEqual(47, y7[4].re);
+    try std.testing.expectEqual(193, y7[4].im);
+    try std.testing.expectEqual(65, y7[6].re);
+    try std.testing.expectEqual(349, y7[6].im);
+    try std.testing.expectEqual(-137, y7[8].re);
+    try std.testing.expectEqual(313, y7[8].im);
+
+    const x8 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(x8);
+    const y8 = try a.alloc(Complex(f64), 2 * n);
+    defer a.free(y8);
+
+    @memcpy(x8.ptr, &[_]Complex(f64){
+        Complex(f64).init(9, 10),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(7, 8),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(5, 6),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(1, 2),
+        Complex(f64).init(0, 0),
+    });
+    @memcpy(y8.ptr, &[_]Complex(f64){
+        Complex(f64).init(5, 5),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(4, 4),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(3, 3),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(2, 2),
+        Complex(f64).init(0, 0),
+        Complex(f64).init(1, 1),
+        Complex(f64).init(0, 0),
+    });
+
+    blas.hbmv(Complex(f64), .ColumnMajor, .Lower, n, k, alpha, A.ptr, k + 1, x8.ptr, -2, beta, y8.ptr, -2);
+
+    try std.testing.expectEqual(11, y8[8].re);
+    try std.testing.expectEqual(25, y8[8].im);
+    try std.testing.expectEqual(29, y8[6].re);
+    try std.testing.expectEqual(85, y8[6].im);
+    try std.testing.expectEqual(47, y8[4].re);
+    try std.testing.expectEqual(193, y8[4].im);
+    try std.testing.expectEqual(65, y8[2].re);
+    try std.testing.expectEqual(349, y8[2].im);
+    try std.testing.expectEqual(-137, y8[0].re);
+    try std.testing.expectEqual(313, y8[0].im);
 }

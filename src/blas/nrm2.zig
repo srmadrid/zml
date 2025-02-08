@@ -42,6 +42,7 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 }
                 ix += incx;
             }
+
             if (abig > 0) {
                 if (amed > 0 or amed > huge or amed != amed) {
                     abig += std.math.pow(scalar(T), amed * sbig, 2);
