@@ -13,6 +13,10 @@ This library is in the early stages of development and is not yet ready for use.
     - Broadcasting
     - Element-wise operations
     - Views
+  - Blas implementation:
+    - Level 1: complete
+    - Level 2: complete
+    - Level 3: not implemented
 - Symbolic System:
   - Nothing implemented yet
 
