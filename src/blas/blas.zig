@@ -155,7 +155,7 @@ pub fn ddot(n: isize, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize
 pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
     //const supported = core.supported.whatSupportedNumericType(T);
 
-    //if (options.link_cblas) {
+    //if (options.link_cblas != null) {
     //    switch (supported) {
     //        .Complex => {
     //            if (scalar(T) == f32) {
@@ -205,7 +205,7 @@ pub fn zdotc_sub(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Co
 pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
     //const supported = core.supported.whatSupportedNumericType(T);
 
-    //if (options.link_cblas) {
+    //if (options.link_cblas != null) {
     //    switch (supported) {
     //        .Complex => {
     //            if (scalar(T) == f32) {
@@ -452,6 +452,12 @@ pub fn cscal(n: isize, a: Complex(f32), x: [*]Complex(f32), incx: isize) void {
 }
 pub fn zscal(n: isize, a: Complex(f64), x: [*]Complex(f64), incx: isize) void {
     return scal(Complex(f64), n, a, x, incx);
+}
+pub fn csscal(n: isize, a: f32, x: [*]Complex(f32), incx: isize) void {
+    return scal(Complex(f32), n, Complex(f32){ .re = a, .im = 0.0 }, x, incx);
+}
+pub fn zdscal(n: isize, a: f64, x: [*]Complex(f64), incx: isize) void {
+    return scal(Complex(f64), n, Complex(f64){ .re = a, .im = 0.0 }, x, incx);
 }
 
 pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
@@ -1306,6 +1312,43 @@ pub fn ztrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 }
 
 // Level 3 BLAS
+pub fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_sgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), @intCast(m), @intCast(n), @intCast(k), alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                } else if (T == f64) {
+                    return ci.cblas_dgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), @intCast(m), @intCast(n), @intCast(k), alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), @intCast(m), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), @intCast(m), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("gemm.zig").gemm(T, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn sgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]const f32, ldb: isize, beta: f32, C: [*]f32, ldc: isize) void {
+    return gemm(f32, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn dgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
+    return gemm(f64, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn cgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
+    return gemm(Complex(f32), order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn zgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
+    return gemm(Complex(f64), order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
 
 test {
     // Level 1 BLAS
@@ -1355,6 +1398,7 @@ test {
     _ = @import("trsv.zig");
 
     // Level 3 BLAS
+    _ = @import("gemm.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }

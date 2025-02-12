@@ -96,8 +96,8 @@ void cblas_sscal(const int n, const float   a, float  *x, const int incx);
 void cblas_dscal(const int n, const double  a, double *x, const int incx);
 void cblas_cscal(const int n, const void   *a, void   *x, const int incx);
 void cblas_zscal(const int n, const void   *a, void   *x, const int incx);
-//void cblas_csscal(const int n, const float  a, void *x, const int incx);
-//void cblas_zdscal(const int n, const double a, void *x, const int incx);
+void cblas_csscal(const int n, const float  a, void *x, const int incx);
+void cblas_zdscal(const int n, const double a, void *x, const int incx);
 
 void cblas_sswap(const int n, float  *x, const int incx, float  *y, const int incy);
 void cblas_dswap(const int n, double *x, const int incx, double *y, const int incy);
@@ -213,6 +213,10 @@ void cblas_ztrsv(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRA
 /*
  * Level 3
  */
+void cblas_sgemm(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB, const int m, const int n, const int k, const float   alpha, const float  *A, const int lda, const float  *B, const int ldb, const float   beta, float  *C, const int ldc);
+void cblas_dgemm(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB, const int m, const int n, const int k, const double  alpha, const double *A, const int lda, const double *B, const int ldb, const double  beta, double *C, const int ldc);
+void cblas_cgemm(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB, const int m, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *B, const int ldb, const void   *beta, void   *C, const int ldc);
+void cblas_zgemm(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB, const int m, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *B, const int ldb, const void   *beta, void   *C, const int ldc);
 
 
 #ifdef __cplusplus

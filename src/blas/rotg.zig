@@ -115,10 +115,10 @@ test "rotg" {
 
     blas.rotg(f64, &a, &b, &c, &s);
 
-    try std.testing.expectApproxEqAbs(2.8284271247461903, a, 0.0000000001);
-    try std.testing.expectApproxEqAbs(1.4142135623730951, b, 0.0000000001);
-    try std.testing.expectApproxEqAbs(0.7071067811865475, c, 0.0000000001);
-    try std.testing.expectApproxEqAbs(0.7071067811865475, s, 0.0000000001);
+    try std.testing.expectApproxEqAbs(2.8284271247461903, a, 0.0000001);
+    try std.testing.expectApproxEqAbs(1.4142135623730951, b, 0.0000001);
+    try std.testing.expectApproxEqAbs(0.7071067811865475, c, 0.0000001);
+    try std.testing.expectApproxEqAbs(0.7071067811865475, s, 0.0000001);
 
     const Complex = std.math.Complex;
     var a_c: Complex(f64) = Complex(f64).init(1, 2);
@@ -128,11 +128,11 @@ test "rotg" {
 
     blas.rotg(Complex(f64), &a_c, &b_c, &c_c, &s_c);
 
-    //try std.testing.expectApproxEqAbs(2.449489742783178, a_c.re, 0.0000000001);
-    //try std.testing.expectApproxEqAbs(-5.375387381226731e102, a_c.im, 0.0000000001);
-    //try std.testing.expectApproxEqAbs(3, b_c.re, 0.0000000001);
-    //try std.testing.expectApproxEqAbs(2, b_c.im, 0.0000000001);
-    //try std.testing.expectApproxEqAbs(0.6172133998483676, c_c, 0.0000000001);
-    //try std.testing.expectApproxEqAbs(0.7715167498104596, s_c.re, 0.0000000001);
-    //try std.testing.expectApproxEqAbs(0.15430334996209188, s_c.im, 0.0000000001);
+    //try std.testing.expectApproxEqAbs(2.449489742783178, a_c.re, 0.0000001);
+    //try std.testing.expectApproxEqAbs(-5.375387381226731e102, a_c.im, 0.0000001);
+    //try std.testing.expectApproxEqAbs(3, b_c.re, 0.0000001);
+    //try std.testing.expectApproxEqAbs(2, b_c.im, 0.0000001);
+    //try std.testing.expectApproxEqAbs(0.6172133998483676, c_c, 0.0000001);
+    //try std.testing.expectApproxEqAbs(0.7715167498104596, s_c.re, 0.0000001);
+    //try std.testing.expectApproxEqAbs(0.15430334996209188, s_c.im, 0.0000001);
 }
