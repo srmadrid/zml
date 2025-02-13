@@ -218,6 +218,9 @@ void cblas_dgemm(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transA, const CB
 void cblas_cgemm(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB, const int m, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *B, const int ldb, const void   *beta, void   *C, const int ldc);
 void cblas_zgemm(const CBLAS_ORDER order, const CBLAS_TRANSPOSE transA, const CBLAS_TRANSPOSE transB, const int m, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *B, const int ldb, const void   *beta, void   *C, const int ldc);
 
+void cblas_chemm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const int m, const int n, const void *alpha, const void *A, const int lda, const void *B, const int ldb, const void *beta, void *C, const int ldc);
+void cblas_zhemm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const int m, const int n, const void *alpha, const void *A, const int lda, const void *B, const int ldb, const void *beta, void *C, const int ldc);
+
 
 #ifdef __cplusplus
 }

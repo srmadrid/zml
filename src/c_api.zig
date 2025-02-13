@@ -448,3 +448,10 @@ export fn cblas_cgemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS
 export fn cblas_zgemm(order: CBLAS_ORDER, transA: CBLAS_TRANSPOSE, transB: CBLAS_TRANSPOSE, m: c_int, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
     return zml.blas.gemm(Complex(f64), order, transA, transB, m, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
 }
+
+export fn cblas_chemm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.hemm(Complex(f32), order, side, uplo, m, n, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}
+export fn cblas_zhemm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.hemm(Complex(f64), order, side, uplo, m, n, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}

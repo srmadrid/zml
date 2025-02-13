@@ -1350,6 +1350,31 @@ pub fn zgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: is
     return gemm(Complex(f64), order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
+pub fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("hemm.zig").hemm(T, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
+    return hemm(Complex(f32), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
+    return hemm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
 test {
     // Level 1 BLAS
     _ = @import("asum.zig");
@@ -1399,6 +1424,7 @@ test {
 
     // Level 3 BLAS
     _ = @import("gemm.zig");
+    _ = @import("hemm.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }

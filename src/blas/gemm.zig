@@ -23,8 +23,6 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
     if (order == .RowMajor) {
         M = n;
         N = m;
-        //TRANSB = if (transA == .NoTrans) .Trans else if (transA == .ConjNoTrans) .ConjTrans else if (transA == .Trans) .NoTrans else .ConjNoTrans;
-        //TRANSA = if (transB == .NoTrans) .Trans else if (transB == .ConjNoTrans) .ConjTrans else if (transB == .Trans) .NoTrans else .ConjNoTrans;
         TRANSA = transB;
         TRANSB = transA;
         AA = B;
