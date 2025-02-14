@@ -2,7 +2,7 @@ const std = @import("std");
 const core = @import("../core/core.zig");
 const blas = @import("blas.zig");
 
-pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
+pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
@@ -11,7 +11,7 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
     switch (supported) {
         .BuiltinBool => @compileError("blas.axpy does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
-            if (a == 0) return;
+            if (alpha == 0) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
             var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
@@ -25,10 +25,10 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
                 const incy3 = incy * 3;
                 const incy4 = incy * 4;
                 while (ix != StX) {
-                    y[@intCast(iy)] += a * x[@intCast(ix)];
-                    y[@intCast(iy + incy)] += a * x[@intCast(ix + incx)];
-                    y[@intCast(iy + incy2)] += a * x[@intCast(ix + incx2)];
-                    y[@intCast(iy + incy3)] += a * x[@intCast(ix + incx3)];
+                    y[@intCast(iy)] += alpha * x[@intCast(ix)];
+                    y[@intCast(iy + incy)] += alpha * x[@intCast(ix + incx)];
+                    y[@intCast(iy + incy2)] += alpha * x[@intCast(ix + incx2)];
+                    y[@intCast(iy + incy3)] += alpha * x[@intCast(ix + incx3)];
 
                     ix += incx4;
                     iy += incy4;
@@ -36,14 +36,14 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
             }
 
             for (@intCast(nu)..@intCast(n)) |_| {
-                y[@intCast(iy)] += a * x[@intCast(ix)];
+                y[@intCast(iy)] += alpha * x[@intCast(ix)];
 
                 ix += incx;
                 iy += incy;
             }
         },
         .Complex => {
-            if (a.re == 0 and a.im == 0) return;
+            if (alpha.re == 0 and alpha.im == 0) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
             var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
@@ -53,10 +53,10 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
                 const incx2 = incx * 2;
                 const incy2 = incy * 2;
                 while (ix != StX) {
-                    y[@intCast(iy)].re += a.re * x[@intCast(ix)].re - a.im * x[@intCast(ix)].im;
-                    y[@intCast(iy)].im += a.re * x[@intCast(ix)].im + a.im * x[@intCast(ix)].re;
-                    y[@intCast(iy + incy)].re += a.re * x[@intCast(ix + incx)].re - a.im * x[@intCast(ix + incx)].im;
-                    y[@intCast(iy + incy)].im += a.re * x[@intCast(ix + incx)].im + a.im * x[@intCast(ix + incx)].re;
+                    y[@intCast(iy)].re += alpha.re * x[@intCast(ix)].re - alpha.im * x[@intCast(ix)].im;
+                    y[@intCast(iy)].im += alpha.re * x[@intCast(ix)].im + alpha.im * x[@intCast(ix)].re;
+                    y[@intCast(iy + incy)].re += alpha.re * x[@intCast(ix + incx)].re - alpha.im * x[@intCast(ix + incx)].im;
+                    y[@intCast(iy + incy)].im += alpha.re * x[@intCast(ix + incx)].im + alpha.im * x[@intCast(ix + incx)].re;
 
                     ix += incx2;
                     iy += incy2;
@@ -64,8 +64,8 @@ pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize,
             }
 
             for (@intCast(nu)..@intCast(n)) |_| {
-                y[@intCast(iy)].re += a.re * x[@intCast(ix)].re - a.im * x[@intCast(ix)].im;
-                y[@intCast(iy)].im += a.re * x[@intCast(ix)].im + a.im * x[@intCast(ix)].re;
+                y[@intCast(iy)].re += alpha.re * x[@intCast(ix)].re - alpha.im * x[@intCast(ix)].im;
+                y[@intCast(iy)].im += alpha.re * x[@intCast(ix)].im + alpha.im * x[@intCast(ix)].re;
 
                 ix += incx;
                 iy += incy;

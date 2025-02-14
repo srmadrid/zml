@@ -46,10 +46,10 @@ double cblas_dasum (const int n, const double *x, const int incx);
 float  cblas_scasum(const int n, const void   *x, const int incx);
 double cblas_dzasum(const int n, const void   *x, const int incx);
 
-void cblas_saxpy(const int n, const float   a, const float  *x, const int incx, float  *y, const int incy);
-void cblas_daxpy(const int n, const double  a, const double *x, const int incx, double *y, const int incy);
-void cblas_caxpy(const int n, const void   *a, const void   *x, const int incx, void   *y, const int incy);
-void cblas_zaxpy(const int n, const void   *a, const void   *x, const int incx, void   *y, const int incy);
+void cblas_saxpy(const int n, const float   alpha, const float  *x, const int incx, float  *y, const int incy);
+void cblas_daxpy(const int n, const double  alpha, const double *x, const int incx, double *y, const int incy);
+void cblas_caxpy(const int n, const void   *alpha, const void   *x, const int incx, void   *y, const int incy);
+void cblas_zaxpy(const int n, const void   *alpha, const void   *x, const int incx, void   *y, const int incy);
 
 void cblas_scopy(const int n, const float  *x, const int incx, float  *y, const int incy);
 void cblas_dcopy(const int n, const double *x, const int incx, double *y, const int incy);
@@ -92,12 +92,12 @@ void cblas_drotm(const int n, double *x, const int incx, double *y, const int in
 void cblas_srotmg(float  *d1, float  *d2, float  *x1, const float  y1, float  *param);
 void cblas_drotmg(double *d1, double *d2, double *x1, const double y1, double *param);
 
-void cblas_sscal(const int n, const float   a, float  *x, const int incx);
-void cblas_dscal(const int n, const double  a, double *x, const int incx);
-void cblas_cscal(const int n, const void   *a, void   *x, const int incx);
-void cblas_zscal(const int n, const void   *a, void   *x, const int incx);
-void cblas_csscal(const int n, const float  a, void *x, const int incx);
-void cblas_zdscal(const int n, const double a, void *x, const int incx);
+void cblas_sscal(const int n, const float   alpha, float  *x, const int incx);
+void cblas_dscal(const int n, const double  alpha, double *x, const int incx);
+void cblas_cscal(const int n, const void   *alpha, void   *x, const int incx);
+void cblas_zscal(const int n, const void   *alpha, void   *x, const int incx);
+void cblas_csscal(const int n, const float  alpha, void *x, const int incx);
+void cblas_zdscal(const int n, const double alpha, void *x, const int incx);
 
 void cblas_sswap(const int n, float  *x, const int incx, float  *y, const int incy);
 void cblas_dswap(const int n, double *x, const int incx, double *y, const int incy);

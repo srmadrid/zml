@@ -51,42 +51,42 @@ pub fn dzasum(n: isize, x: [*]const Complex(f64), incx: isize) f64 {
     return asum(Complex(f64), n, x, incx);
 }
 
-pub inline fn axpy(comptime T: type, n: isize, a: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
+pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
         switch (supported) {
             .BuiltinFloat => {
                 if (T == f32) {
-                    return ci.cblas_saxpy(@intCast(n), a, x, @intCast(incx), y, @intCast(incy));
+                    return ci.cblas_saxpy(@intCast(n), alpha, x, @intCast(incx), y, @intCast(incy));
                 } else if (T == f64) {
-                    return ci.cblas_daxpy(@intCast(n), a, x, @intCast(incx), y, @intCast(incy));
+                    return ci.cblas_daxpy(@intCast(n), alpha, x, @intCast(incx), y, @intCast(incy));
                 }
             },
             .Complex => {
                 if (scalar(T) == f32) {
-                    return ci.cblas_caxpy(@intCast(n), &a, x, @intCast(incx), y, @intCast(incy));
+                    return ci.cblas_caxpy(@intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy));
                 } else if (scalar(T) == f64) {
-                    return ci.cblas_zaxpy(@intCast(n), &a, x, @intCast(incx), y, @intCast(incy));
+                    return ci.cblas_zaxpy(@intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy));
                 }
             },
             else => {},
         }
     }
 
-    return @import("axpy.zig").axpy(T, n, a, x, incx, y, incy);
+    return @import("axpy.zig").axpy(T, n, alpha, x, incx, y, incy);
 }
-pub fn saxpy(n: isize, a: f32, x: [*]const f32, incx: isize, y: [*]f32, incy: isize) void {
-    return axpy(f32, n, a, x, incx, y, incy);
+pub fn saxpy(n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]f32, incy: isize) void {
+    return axpy(f32, n, alpha, x, incx, y, incy);
 }
-pub fn daxpy(n: isize, a: f64, x: [*]const f64, incx: isize, y: [*]f64, incy: isize) void {
-    return axpy(f64, n, a, x, incx, y, incy);
+pub fn daxpy(n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]f64, incy: isize) void {
+    return axpy(f64, n, alpha, x, incx, y, incy);
 }
-pub fn caxpy(n: isize, a: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize) void {
-    return axpy(Complex(f32), n, a, x, incx, y, incy);
+pub fn caxpy(n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize) void {
+    return axpy(Complex(f32), n, alpha, x, incx, y, incy);
 }
-pub fn zaxpy(n: isize, a: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize) void {
-    return axpy(Complex(f64), n, a, x, incx, y, incy);
+pub fn zaxpy(n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize) void {
+    return axpy(Complex(f64), n, alpha, x, incx, y, incy);
 }
 
 pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
@@ -441,23 +441,23 @@ pub inline fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void 
 
     return @import("scal.zig").scal(T, n, a, x, incx);
 }
-pub fn sscal(n: isize, a: f32, x: [*]f32, incx: isize) void {
-    return scal(f32, n, a, x, incx);
+pub fn sscal(n: isize, alpha: f32, x: [*]f32, incx: isize) void {
+    return scal(f32, n, alpha, x, incx);
 }
-pub fn dscal(n: isize, a: f64, x: [*]f64, incx: isize) void {
-    return scal(f64, n, a, x, incx);
+pub fn dscal(n: isize, alpha: f64, x: [*]f64, incx: isize) void {
+    return scal(f64, n, alpha, x, incx);
 }
-pub fn cscal(n: isize, a: Complex(f32), x: [*]Complex(f32), incx: isize) void {
-    return scal(Complex(f32), n, a, x, incx);
+pub fn cscal(n: isize, alpha: Complex(f32), x: [*]Complex(f32), incx: isize) void {
+    return scal(Complex(f32), n, alpha, x, incx);
 }
-pub fn zscal(n: isize, a: Complex(f64), x: [*]Complex(f64), incx: isize) void {
-    return scal(Complex(f64), n, a, x, incx);
+pub fn zscal(n: isize, alpha: Complex(f64), x: [*]Complex(f64), incx: isize) void {
+    return scal(Complex(f64), n, alpha, x, incx);
 }
-pub fn csscal(n: isize, a: f32, x: [*]Complex(f32), incx: isize) void {
-    return scal(Complex(f32), n, Complex(f32){ .re = a, .im = 0.0 }, x, incx);
+pub fn csscal(n: isize, alpha: f32, x: [*]Complex(f32), incx: isize) void {
+    return scal(Complex(f32), n, Complex(f32){ .re = alpha, .im = 0.0 }, x, incx);
 }
-pub fn zdscal(n: isize, a: f64, x: [*]Complex(f64), incx: isize) void {
-    return scal(Complex(f64), n, Complex(f64){ .re = a, .im = 0.0 }, x, incx);
+pub fn zdscal(n: isize, alpha: f64, x: [*]Complex(f64), incx: isize) void {
+    return scal(Complex(f64), n, Complex(f64){ .re = alpha, .im = 0.0 }, x, incx);
 }
 
 pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
@@ -1375,6 +1375,31 @@ pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Co
     return hemm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
+pub fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: scalar(T), A: [*]const T, lda: isize, beta: scalar(T), C: [*]T, ldc: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), alpha, A, @intCast(lda), beta, C, @intCast(ldc));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), alpha, A, @intCast(lda), beta, C, @intCast(ldc));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("herk.zig").herk(T, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+}
+pub fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, A: [*]const Complex(f32), lda: isize, beta: f32, C: [*]Complex(f32), ldc: isize) void {
+    return herk(Complex(f32), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+}
+pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const Complex(f64), lda: isize, beta: f64, C: [*]Complex(f64), ldc: isize) void {
+    return herk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+}
+
 test {
     // Level 1 BLAS
     _ = @import("asum.zig");
@@ -1425,6 +1450,7 @@ test {
     // Level 3 BLAS
     _ = @import("gemm.zig");
     _ = @import("hemm.zig");
+    _ = @import("herk.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }

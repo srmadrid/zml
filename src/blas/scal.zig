@@ -3,7 +3,7 @@ const core = @import("../core/core.zig");
 const blas = @import("blas.zig");
 const options = @import("options");
 
-pub inline fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void {
+pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) void {
     @setRuntimeSafety(false);
     const supported = core.supported.whatSupportedNumericType(T);
 
@@ -12,7 +12,7 @@ pub inline fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void 
     switch (supported) {
         .BuiltinBool => @compileError("blas.scal does not support bool."),
         .BuiltinInt, .BuiltinFloat => {
-            if (a == 1) return;
+            if (alpha == 1) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
             const nu = (n >> 3) << 3;
@@ -26,31 +26,31 @@ pub inline fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void 
                 const incx7 = incx * 7;
                 const incx8 = incx * 8;
                 while (ix != StX) {
-                    x[@intCast(ix)] *= a;
-                    x[@intCast(ix + incx)] *= a;
-                    x[@intCast(ix + incx2)] *= a;
-                    x[@intCast(ix + incx3)] *= a;
-                    x[@intCast(ix + incx4)] *= a;
-                    x[@intCast(ix + incx5)] *= a;
-                    x[@intCast(ix + incx6)] *= a;
-                    x[@intCast(ix + incx7)] *= a;
+                    x[@intCast(ix)] *= alpha;
+                    x[@intCast(ix + incx)] *= alpha;
+                    x[@intCast(ix + incx2)] *= alpha;
+                    x[@intCast(ix + incx3)] *= alpha;
+                    x[@intCast(ix + incx4)] *= alpha;
+                    x[@intCast(ix + incx5)] *= alpha;
+                    x[@intCast(ix + incx6)] *= alpha;
+                    x[@intCast(ix + incx7)] *= alpha;
 
                     ix += incx8;
                 }
             }
 
             for (@intCast(nu)..@intCast(n)) |_| {
-                x[@intCast(ix)] *= a;
+                x[@intCast(ix)] *= alpha;
 
                 ix += incx;
             }
         },
         .Complex => {
-            if (a.re == 1 and a.im == 0) return;
+            if (alpha.re == 1 and alpha.im == 0) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
             const nu = (n >> 2) << 2;
-            if (a.re == 0 and a.im == 0) {
+            if (alpha.re == 0 and alpha.im == 0) {
                 if (nu != 0) {
                     const StX = ix + nu * incx;
                     const incx2 = incx * 2;
@@ -88,21 +88,21 @@ pub inline fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void 
                         const x2 = x[@intCast(ix + incx2)];
                         const x3 = x[@intCast(ix + incx3)];
 
-                        x[@intCast(ix)].re = x0.re * a.re - x0.im * a.im;
-                        x[@intCast(ix)].im = x0.re * a.im + x0.im * a.re;
-                        x[@intCast(ix + incx)].re = x1.re * a.re - x1.im * a.im;
-                        x[@intCast(ix + incx)].im = x1.re * a.im + x1.im * a.re;
-                        x[@intCast(ix + incx2)].re = x2.re * a.re - x2.im * a.im;
-                        x[@intCast(ix + incx2)].im = x2.re * a.im + x2.im * a.re;
-                        x[@intCast(ix + incx3)].re = x3.re * a.re - x3.im * a.im;
-                        x[@intCast(ix + incx3)].im = x3.re * a.im + x3.im * a.re;
+                        x[@intCast(ix)].re = x0.re * alpha.re - x0.im * alpha.im;
+                        x[@intCast(ix)].im = x0.re * alpha.im + x0.im * alpha.re;
+                        x[@intCast(ix + incx)].re = x1.re * alpha.re - x1.im * alpha.im;
+                        x[@intCast(ix + incx)].im = x1.re * alpha.im + x1.im * alpha.re;
+                        x[@intCast(ix + incx2)].re = x2.re * alpha.re - x2.im * alpha.im;
+                        x[@intCast(ix + incx2)].im = x2.re * alpha.im + x2.im * alpha.re;
+                        x[@intCast(ix + incx3)].re = x3.re * alpha.re - x3.im * alpha.im;
+                        x[@intCast(ix + incx3)].im = x3.re * alpha.im + x3.im * alpha.re;
 
                         ix += incx4;
                     }
 
                     for (@intCast(nu)..@intCast(n)) |_| {
-                        x[@intCast(ix)].re *= a.re;
-                        x[@intCast(ix)].im *= a.im;
+                        x[@intCast(ix)].re *= alpha.re;
+                        x[@intCast(ix)].im *= alpha.im;
 
                         ix += incx;
                     }
