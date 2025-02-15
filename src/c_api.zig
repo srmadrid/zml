@@ -462,3 +462,10 @@ export fn cblas_cherk(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPO
 export fn cblas_zherk(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: f64, A: [*c]const anyopaque, lda: c_int, beta: f64, C: [*c]anyopaque, ldc: c_int) void {
     return zml.blas.herk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
+
+export fn cblas_cher2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.her2k(Complex(f32), order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}
+export fn cblas_zher2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.her2k(Complex(f64), order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}

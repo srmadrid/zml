@@ -1400,6 +1400,31 @@ pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alp
     return herk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
 
+pub fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: scalar(T), C: [*]T, ldc: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("her2k.zig").her2k(T, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: f32, C: [*]Complex(f32), ldc: isize) void {
+    return her2k(Complex(f32), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: f64, C: [*]Complex(f64), ldc: isize) void {
+    return her2k(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
 test {
     // Level 1 BLAS
     _ = @import("asum.zig");
@@ -1451,6 +1476,7 @@ test {
     _ = @import("gemm.zig");
     _ = @import("hemm.zig");
     _ = @import("herk.zig");
+    _ = @import("her2k.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }

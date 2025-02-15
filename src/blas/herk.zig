@@ -39,7 +39,8 @@ pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                             var i: isize = 0;
                             var icij: isize = jcj;
                             while (i <= j) {
-                                C[@intCast(icij)] = T.init(0, 0);
+                                C[@intCast(icij)].re = 0;
+                                C[@intCast(icij)].im = 0;
 
                                 i += 1;
                                 icij += 1;
@@ -77,7 +78,8 @@ pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                             var i: isize = j;
                             var icij: isize = jcj;
                             while (i < n) {
-                                C[@intCast(icij)] = T.init(0, 0);
+                                C[@intCast(icij)].re = 0;
+                                C[@intCast(icij)].im = 0;
 
                                 i += 1;
                                 icij += 1;
