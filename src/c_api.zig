@@ -469,3 +469,16 @@ export fn cblas_cher2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSP
 export fn cblas_zher2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
     return zml.blas.her2k(Complex(f64), order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
 }
+
+export fn cblas_ssymm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, m: c_int, n: c_int, alpha: f32, A: [*c]const f32, lda: c_int, B: [*c]const f32, ldb: c_int, beta: f32, C: [*c]f32, ldc: c_int) void {
+    return zml.blas.symm(f32, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+export fn cblas_dsymm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, m: c_int, n: c_int, alpha: f64, A: [*c]const f64, lda: c_int, B: [*c]const f64, ldb: c_int, beta: f64, C: [*c]f64, ldc: c_int) void {
+    return zml.blas.symm(f64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+export fn cblas_csymm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.symm(Complex(f32), order, side, uplo, m, n, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}
+export fn cblas_zsymm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.symm(Complex(f64), order, side, uplo, m, n, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}

@@ -43,7 +43,8 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                         var i: isize = 0;
                         var ijcj: isize = jcj;
                         while (i < M) {
-                            C[@intCast(ijcj)] = T.init(0, 0);
+                            C[@intCast(ijcj)].re = 0;
+                            C[@intCast(ijcj)].im = 0;
 
                             i += 1;
                             ijcj += 1;
@@ -108,8 +109,9 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                             }
 
                             if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)] = T.init(0, 0);
-                            } else {
+                                C[@intCast(icij)].re = 0;
+                                C[@intCast(icij)].im = 0;
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -161,8 +163,9 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                             }
 
                             if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)] = T.init(0, 0);
-                            } else {
+                                C[@intCast(icij)].re = 0;
+                                C[@intCast(icij)].im = 0;
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -201,8 +204,9 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                         var icij: isize = jcj;
                         while (i < M) {
                             if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)] = T.init(0, 0);
-                            } else {
+                                C[@intCast(icij)].re = 0;
+                                C[@intCast(icij)].im = 0;
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -287,8 +291,9 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                         var icij: isize = jcj;
                         while (i < M) {
                             if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)] = T.init(0, 0);
-                            } else {
+                                C[@intCast(icij)].re = 0;
+                                C[@intCast(icij)].im = 0;
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;

@@ -1273,7 +1273,7 @@ pub fn ztrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
     return trmv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
 }
 
-pub fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+pub inline fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1312,7 +1312,7 @@ pub fn ztrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 }
 
 // Level 3 BLAS
-pub fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1350,7 +1350,7 @@ pub fn zgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: is
     return gemm(Complex(f64), order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
-pub fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1375,7 +1375,7 @@ pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Co
     return hemm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
-pub fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: scalar(T), A: [*]const T, lda: isize, beta: scalar(T), C: [*]T, ldc: isize) void {
+pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: scalar(T), A: [*]const T, lda: isize, beta: scalar(T), C: [*]T, ldc: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1400,7 +1400,7 @@ pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alp
     return herk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
 
-pub fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: scalar(T), C: [*]T, ldc: isize) void {
+pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: scalar(T), C: [*]T, ldc: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1423,6 +1423,44 @@ pub fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, al
 }
 pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: f64, C: [*]Complex(f64), ldc: isize) void {
     return her2k(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_ssymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                } else if (T == f64) {
+                    return ci.cblas_dsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_csymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("symm.zig").symm(T, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]const f32, ldb: isize, beta: f32, C: [*]f32, ldc: isize) void {
+    return symm(f32, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
+    return symm(f64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
+    return symm(Complex(f32), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
+    return symm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 test {
@@ -1477,6 +1515,7 @@ test {
     _ = @import("hemm.zig");
     _ = @import("herk.zig");
     _ = @import("her2k.zig");
+    _ = @import("symm.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }
