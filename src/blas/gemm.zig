@@ -282,7 +282,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
                         j += 1;
                         jcj += ldc;
                     }
-                } else if (beta.re != 1 and beta.im != 0) {
+                } else if (beta.re != 1 or beta.im != 0) {
                     var j: isize = 0;
                     var jcj: isize = 0;
                     while (j < N) {
@@ -319,7 +319,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -373,7 +373,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -439,7 +439,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -482,7 +482,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -515,7 +515,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -569,7 +569,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -635,7 +635,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -678,7 +678,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -711,7 +711,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -765,7 +765,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -831,7 +831,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -874,7 +874,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -907,7 +907,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -961,7 +961,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                                 icij += 1;
                             }
-                        } else if (beta.re != 1 and beta.im != 0) {
+                        } else if (beta.re != 1 or beta.im != 0) {
                             var icij: isize = 0;
                             const Cpjcj: [*]T = @ptrCast(&C[@intCast(jcj)]);
                             while (icij < M) {
@@ -1027,7 +1027,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -1070,7 +1070,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
 
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)] = T.init(0, 0);
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;

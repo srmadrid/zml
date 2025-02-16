@@ -237,6 +237,11 @@ void cblas_dsyrk(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRA
 void cblas_csyrk(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE trans, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *beta, void   *C, const int ldc);
 void cblas_zsyrk(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE trans, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *beta, void   *C, const int ldc);
 
+void cblas_ssyr2k(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE trans, const int n, const int k, const float   alpha, const float  *A, const int lda, const float  *B, const int ldb, const float   beta, float  *C, const int ldc);
+void cblas_dsyr2k(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE trans, const int n, const int k, const double  alpha, const double *A, const int lda, const double *B, const int ldb, const double  beta, double *C, const int ldc);
+void cblas_csyr2k(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE trans, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *B, const int ldb, const void   *beta, void   *C, const int ldc);
+void cblas_zsyr2k(const CBLAS_ORDER order, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE trans, const int n, const int k, const void   *alpha, const void   *A, const int lda, const void   *B, const int ldb, const void   *beta, void   *C, const int ldc);
+
 
 #ifdef __cplusplus
 }

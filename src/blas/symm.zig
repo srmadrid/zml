@@ -341,7 +341,7 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                         j += 1;
                         jcj += ldc;
                     }
-                } else if (beta.re != 1 and beta.im != 0) {
+                } else if (beta.re != 1 or beta.im != 0) {
                     var j: isize = 0;
                     var jcj: isize = 0;
                     while (j < N) {
@@ -399,7 +399,7 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)].re = 0;
                                 C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -453,7 +453,7 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)].re = 0;
                                 C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -494,7 +494,7 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)].re = 0;
                                 C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;
@@ -581,7 +581,7 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                             if (beta.re == 0 and beta.im == 0) {
                                 C[@intCast(icij)].re = 0;
                                 C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 and beta.im != 0) {
+                            } else if (beta.re != 1 or beta.im != 0) {
                                 const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
                                 C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
                                 C[@intCast(icij)].re = tmp;

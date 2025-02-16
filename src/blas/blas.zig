@@ -1501,6 +1501,44 @@ pub fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alp
     return syrk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
 
+pub fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_ssyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                } else if (T == f64) {
+                    return ci.cblas_dsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_csyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_zsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("syr2k.zig").syr2k(T, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]const f32, ldb: isize, beta: f32, C: [*]f32, ldc: isize) void {
+    return syr2k(f32, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
+    return syr2k(f64, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
+    return syr2k(Complex(f32), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+pub fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
+    return syr2k(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
 test {
     // Level 1 BLAS
     _ = @import("asum.zig");
@@ -1555,6 +1593,7 @@ test {
     _ = @import("her2k.zig");
     _ = @import("symm.zig");
     _ = @import("syrk.zig");
+    _ = @import("syr2k.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }

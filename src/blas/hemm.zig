@@ -53,7 +53,7 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                         j += 1;
                         jcj += ldc;
                     }
-                } else if (beta.re != 1 and beta.im != 0) {
+                } else if (beta.re != 1 or beta.im != 0) {
                     var j: isize = 0;
                     var jcj: isize = 0;
                     while (j < N) {

@@ -175,7 +175,7 @@ pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, 
 
                         iy += incy;
                     }
-                } else if (beta.re != 1 and beta.im != 0) {
+                } else if (beta.re != 1 or beta.im != 0) {
                     while (iy != Sty) {
                         const tmp = y[@intCast(iy)].re * beta.re - y[@intCast(iy)].im * beta.im;
                         y[@intCast(iy)].im = y[@intCast(iy)].re * beta.im + y[@intCast(iy)].im * beta.re;
@@ -223,7 +223,7 @@ pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, 
 
                         iy += incy;
                     }
-                } else if (beta.re != 1 and beta.im != 0) {
+                } else if (beta.re != 1 or beta.im != 0) {
                     while (iy != Sty) {
                         const tmp = y[@intCast(iy)].re * beta.re - y[@intCast(iy)].im * beta.im;
                         y[@intCast(iy)].im = y[@intCast(iy)].re * beta.im + y[@intCast(iy)].im * beta.re;

@@ -495,3 +495,16 @@ export fn cblas_csyrk(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPO
 export fn cblas_zsyrk(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
     return zml.blas.syrk(Complex(f64), order, uplo, trans, n, k, alpha.*, A, lda, beta.*, C, ldc);
 }
+
+export fn cblas_ssyr2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.syr2k(f32, order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}
+export fn cblas_dsyr2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.syr2k(f64, order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}
+export fn cblas_csyr2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.syr2k(Complex(f32), order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}
+export fn cblas_zsyr2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
+    return zml.blas.syr2k(Complex(f64), order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
+}

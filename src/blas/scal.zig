@@ -76,7 +76,7 @@ pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) v
                         ix += incx;
                     }
                 }
-            } else {
+            } else if (alpha.re != 1 or alpha.im != 0) {
                 if (nu != 0) {
                     const StX = ix + nu * incx;
                     const incx2 = incx * 2;
@@ -101,8 +101,9 @@ pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) v
                     }
 
                     for (@intCast(nu)..@intCast(n)) |_| {
-                        x[@intCast(ix)].re *= alpha.re;
-                        x[@intCast(ix)].im *= alpha.im;
+                        const x0 = x[@intCast(ix)];
+                        x[@intCast(ix)].re = x0.re * alpha.re - x0.im * alpha.im;
+                        x[@intCast(ix)].im = x0.re * alpha.im + x0.im * alpha.re;
 
                         ix += incx;
                     }
