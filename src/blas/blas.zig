@@ -1463,7 +1463,7 @@ pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Co
     return symm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
-pub fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, beta: T, C: [*]T, ldc: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1501,7 +1501,7 @@ pub fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alp
     return syrk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
 
-pub fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
     const supported = core.supported.whatSupportedNumericType(T);
 
     if (options.link_cblas != null) {
@@ -1537,6 +1537,44 @@ pub fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, al
 }
 pub fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
     return syr2k(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+}
+
+pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]T, ldb: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_strmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), alpha, A, @intCast(lda), B, @intCast(ldb));
+                } else if (T == f64) {
+                    return ci.cblas_dtrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), alpha, A, @intCast(lda), B, @intCast(ldb));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_ctrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_ztrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("trmm.zig").trmm(T, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn strmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]f32, ldb: isize) void {
+    return trmm(f32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn dtrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]f64, ldb: isize) void {
+    return trmm(f64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn ctrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]Complex(f32), ldb: isize) void {
+    return trmm(Complex(f32), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn ztrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]Complex(f64), ldb: isize) void {
+    return trmm(Complex(f64), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }
 
 test {
@@ -1594,6 +1632,7 @@ test {
     _ = @import("symm.zig");
     _ = @import("syrk.zig");
     _ = @import("syr2k.zig");
+    _ = @import("trmm.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }

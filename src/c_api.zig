@@ -508,3 +508,13 @@ export fn cblas_csyr2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSP
 export fn cblas_zsyr2k(order: CBLAS_ORDER, uplo: CBLAS_UPLO, trans: CBLAS_TRANSPOSE, n: c_int, k: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]const anyopaque, ldb: c_int, beta: *const anyopaque, C: [*c]anyopaque, ldc: c_int) void {
     return zml.blas.syr2k(Complex(f64), order, uplo, trans, n, k, alpha.*, A, lda, B, ldb, beta.*, C, ldc);
 }
+
+export fn cblas_strmm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, m: c_int, n: c_int, alpha: f32, A: [*c]const f32, lda: c_int, B: [*c]f32, ldb: c_int) void {
+    return zml.blas.trmm(f32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+export fn cblas_dtrmm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, m: c_int, n: c_int, alpha: f64, A: [*c]const f64, lda: c_int, B: [*c]f64, ldb: c_int) void {
+    return zml.blas.trmm(f64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+export fn cblas_ctrmm(order: CBLAS_ORDER, side: CBLAS_SIDE, uplo: CBLAS_UPLO, transA: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, m: c_int, n: c_int, alpha: *const anyopaque, A: [*c]const anyopaque, lda: c_int, B: [*c]anyopaque, ldb: c_int) void {
+    return zml.blas.trmm(Complex(f32), order, side, uplo, transA, diag, m, n, alpha.*, A, lda, B, ldb);
+}
