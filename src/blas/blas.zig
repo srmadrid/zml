@@ -1577,6 +1577,44 @@ pub fn ztrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag
     return trmm(Complex(f64), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }
 
+pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]T, ldb: isize) void {
+    const supported = core.supported.whatSupportedNumericType(T);
+
+    if (options.link_cblas != null) {
+        switch (supported) {
+            .BuiltinFloat => {
+                if (T == f32) {
+                    return ci.cblas_strsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), alpha, A, @intCast(lda), B, @intCast(ldb));
+                } else if (T == f64) {
+                    return ci.cblas_dtrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), alpha, A, @intCast(lda), B, @intCast(ldb));
+                }
+            },
+            .Complex => {
+                if (scalar(T) == f32) {
+                    return ci.cblas_ctrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
+                } else if (scalar(T) == f64) {
+                    return ci.cblas_ztrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("trsm.zig").trsm(T, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn strsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]f32, ldb: isize) void {
+    return trsm(f32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn dtrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]f64, ldb: isize) void {
+    return trsm(f64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn ctrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]Complex(f32), ldb: isize) void {
+    return trsm(Complex(f32), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+pub fn ztrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]Complex(f64), ldb: isize) void {
+    return trsm(Complex(f64), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+}
+
 test {
     // Level 1 BLAS
     _ = @import("asum.zig");
@@ -1633,6 +1671,7 @@ test {
     _ = @import("syrk.zig");
     _ = @import("syr2k.zig");
     _ = @import("trmm.zig");
+    _ = @import("trsm.zig");
 
     std.testing.refAllDeclsRecursive(@This());
 }

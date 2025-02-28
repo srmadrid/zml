@@ -247,6 +247,11 @@ void cblas_dtrmm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPL
 void cblas_ctrmm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int m, const int n, const void   *alpha, const void   *A, const int lda, void   *B, const int ldb);
 void cblas_ztrmm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int m, const int n, const void   *alpha, const void   *A, const int lda, void   *B, const int ldb);
 
+void cblas_strsm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int m, const int n, const float   alpha, const float  *A, const int lda, float  *B, const int ldb);
+void cblas_dtrsm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int m, const int n, const double  alpha, const double *A, const int lda, double *B, const int ldb);
+void cblas_ctrsm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int m, const int n, const void   *alpha, const void   *A, const int lda, void   *B, const int ldb);
+void cblas_ztrsm(const CBLAS_ORDER order, const CBLAS_SIDE side, const CBLAS_UPLO uplo, const CBLAS_TRANSPOSE transA, const CBLAS_DIAG diag, const int m, const int n, const void   *alpha, const void   *A, const int lda, void   *B, const int ldb);
+
 
 #ifdef __cplusplus
 }
