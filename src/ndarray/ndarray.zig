@@ -933,37 +933,11 @@ pub const Flags = packed struct {
 };
 
 /// Order of the elements in the array.
-pub const Order = enum(u7) {
+pub const Order = enum(u1) {
     /// Row major element storage (right to left).
-    RowMajor = 101,
+    RowMajor,
     /// Column major element storage (left to right).
-    ColumnMajor = 102,
-};
-
-/// Transposition of matrices.
-pub const Transpose = enum(u7) {
-    NoTrans = 111,
-    Trans = 112,
-    ConjTrans = 113,
-    ConjNoTrans = 114,
-};
-
-/// Uplo parameter for symmetric matrices.
-pub const Uplo = enum(u7) {
-    Upper = 121,
-    Lower = 122,
-};
-
-/// Diag parameter for triangular matrices.
-pub const Diag = enum(u8) {
-    NonUnit = 131,
-    Unit = 132,
-};
-
-/// Side parameter for triangular matrices.
-pub const Side = enum(u8) {
-    Left = 141,
-    Right = 142,
+    ColumnMajor,
 };
 
 ///

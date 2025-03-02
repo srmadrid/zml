@@ -3,8 +3,7 @@ const std = @import("std");
 // Numerical computing.
 pub const ndarray = @import("ndarray/ndarray.zig");
 pub const NDArray = ndarray.NDArray;
-pub const blas = @import("blas/blas.zig");
-//pub const lapack = @import("lapack/lapack.zig");
+pub const linalg = @import("linalg.zig");
 
 // Core symbolic constructs.
 //pub const Expression = @import("expression/expression.zig").Expression;
