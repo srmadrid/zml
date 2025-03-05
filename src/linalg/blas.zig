@@ -7,29 +7,29 @@ const ndarray = @import("../ndarray/ndarray.zig");
 
 const scalar = core.supported.scalar;
 
-pub const Order = enum(u8) {
+pub const Order = enum(c_uint) {
     RowMajor = 101,
     ColumnMajor = 102,
 };
 
-pub const Transpose = enum(u8) {
+pub const Transpose = enum(c_uint) {
     NoTrans = 111,
     Trans = 112,
     ConjTrans = 113,
     ConjNoTrans = 114,
 };
 
-pub const Uplo = enum(u8) {
+pub const Uplo = enum(c_uint) {
     Upper = 121,
     Lower = 122,
 };
 
-pub const Diag = enum(u8) {
+pub const Diag = enum(c_uint) {
     NonUnit = 131,
     Unit = 132,
 };
 
-pub const Side = enum(u8) {
+pub const Side = enum(c_uint) {
     Left = 141,
     Right = 142,
 };

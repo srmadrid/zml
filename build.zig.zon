@@ -1,7 +1,7 @@
 .{
-    .name = "zml",
+    .name = .zml,
     .version = "0.0.0",
-    .minimum_zig_version = "0.13.0",
+    .minimum_zig_version = "0.14.0",
     .dependencies = .{},
     .paths = .{
         "build.zig",
@@ -10,4 +10,5 @@
         "LICENSE",
         "README.md",
     },
+    .fingerprint = 0x32700c0d526752ae,
 }

@@ -27,9 +27,9 @@ pub inline fn whatSupportedNumericType(comptime T: type) SupportedNumericType {
     const info = @typeInfo(T);
 
     return switch (info) {
-        .Int => .BuiltinInt,
-        .Float => .BuiltinFloat,
-        .Bool => .BuiltinBool,
+        .int => .BuiltinInt,
+        .float => .BuiltinFloat,
+        .bool => .BuiltinBool,
         else => { // Maybe just use the ones from the standard library, and fix so this works
             if (T == std.math.big.int.Managed) {
                 return .CustomInt;
@@ -139,7 +139,7 @@ pub fn scalar(comptime T: type) type {
     const supported = whatSupportedNumericType(T);
     switch (supported) {
         .BuiltinBool, .BuiltinInt, .BuiltinFloat => return T,
-        .Complex => return std.meta.FieldType(T, .re), // change with @FieldType in zig 0.14
+        .Complex => return @FieldType(T, "re"), // change with @FieldType in zig 0.14
         .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("Unsupported numeric type"),
         .Unsupported => unreachable,
     }

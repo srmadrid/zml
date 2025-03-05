@@ -941,6 +941,11 @@ pub const Order = enum(u1) {
 };
 
 ///
+pub const Storage = enum(u2) {
+    Packed,
+};
+
+///
 pub const Slice = struct {
     /// Start of the slice.
     start: usize,

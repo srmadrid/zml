@@ -2,6 +2,8 @@
 
 ## Priority
 
+Since we only accept certain types (for both the symbolic and numerical systems), in core have the `add`, `sub`, `mul`, `div`, `neg`, `abs`, `pow`, `sqrt`, `exp`, `log`, `sin`, `cos`, `tan`, etc. functions that add any two types and return the correct type, when possible. For instance, `add` can be used to add two `int`s, two `float`s, an `int` and a `float`, etc. The same for the other functions. This way, we can use them in the symbolic system and in the numerical system.
+
 Complex `rotg` does not work. `rotmg` fails when compiling with optimization `ReleaseFast`.
 
 Check all BLAS functions are correctly tested (add tests with alpha and beta with 0, especially alpha, to check the branches before the actual computation).
@@ -24,7 +26,9 @@ Allow the user to build only BLAS and LAPACK to create `libblas.so`, `liblapack.
 
 Add view functions: `reshape`, `slice`.
 
-Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `COO`), `Diagonal`, `Triangular`, `Symmetric`, `Hermitian`, etc.) instead of having different types for each one? If yes, a metadata field must be added to `NDArray` to store the extra information. Also, rename `RowMajor` and `ColumnMajor` to `RowMajorContiguous` and `ColumnMajorContiguous`, respectively.
+Since more storage options are being added, the `next()` function in iterators should take `axis` instead of `order`?
+
+Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `COO`), `Diagonal`, `Triangular`, `Symmetric`, `Hermitian`, etc.) instead of having different types for each one? If yes, a metadata field must be added to `NDArray` to store the extra information. Also, rename `RowMajor` and `ColumnMajor` to `RowMajorContiguous` and `ColumnMajorContiguous`, respectively. Maybe have `Order` with `RowMajor`, `ColumnMajor` and `Other` (not final name), and then `Storage` with `Packed` (`Packed` with row major or column major is like contiguous), `Sparse`, etc.?
 
 Make two inits: `init` without flags (default values) and `initFlags` with flags?
 
