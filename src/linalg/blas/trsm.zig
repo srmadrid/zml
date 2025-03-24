@@ -1,5 +1,5 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Side = blas.Side;
@@ -9,7 +9,7 @@ const Diag = blas.Diag;
 
 pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]T, ldb: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0 or m <= 0) return;
 
@@ -29,9 +29,9 @@ pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
     if (SIDE == .Right and lda < @max(1, N)) return;
     if (ldb < @max(1, M)) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.trsm does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.trsm does not support bool."),
+        .int, .float => {
             if (alpha == 0) {
                 var j: isize = 0;
                 var jbj: isize = 0;
@@ -702,7 +702,7 @@ pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
                 }
             }
         },
-        .Complex => {
+        .cfloat => {
             if (alpha.re == 0 and alpha.im == 0) {
                 var j: isize = 0;
                 var jbj: isize = 0;
@@ -2314,8 +2314,8 @@ pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.trsm only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.trsm only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

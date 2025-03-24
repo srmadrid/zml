@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
 pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0 or incx <= 0) return 0;
 
@@ -15,9 +15,9 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
     var imax: usize = 0;
     var i: usize = 0;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.iamax does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.iamax does not support bool."),
+        .int, .float => {
             var max: T = 0;
 
             var ix: isize = 0;
@@ -103,8 +103,8 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 ix += incx;
             }
         },
-        .Complex => {
-            var max: scalar(T) = 0;
+        .cfloat => {
+            var max: Numeric(T) = 0;
 
             var ix: isize = 0;
             const nu = (n >> 3) << 3;
@@ -189,8 +189,8 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 ix += incx;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.iamax only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.iamax only supports simple types."),
+        .unsupported => unreachable,
     }
 
     return imax;

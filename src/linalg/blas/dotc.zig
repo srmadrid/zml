@@ -1,20 +1,20 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
 pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     var sum: T = T.init(0, 0);
 
     if (n <= 0) return sum;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.dotc does not support bool."),
-        .BuiltinInt => @compileError("blas.dotc does not support integers. Use blas.dot instead."),
-        .BuiltinFloat => @compileError("blas.dotc does not support floats. Use blas.dot instead."),
-        .Complex => {
+    switch (numericType) {
+        .bool => @compileError("blas.dotc does not support bool."),
+        .int => @compileError("blas.dotc does not support integers. Use blas.dot instead."),
+        .float => @compileError("blas.dotc does not support floats. Use blas.dot instead."),
+        .cfloat => {
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
             var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
             const nu = (n >> 1) << 1;
@@ -39,8 +39,8 @@ pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
                 iy += incy;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.dotc only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.dotc only supports simple types."),
+        .unsupported => unreachable,
     }
 
     return sum;

@@ -1,14 +1,14 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
-pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Numeric(T), x: [*]const T, incx: isize, Ap: [*]T) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
@@ -20,9 +20,9 @@ pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: s
 
     const LENX = N;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.spr does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.spr does not support bool."),
+        .int, .float => {
             if (alpha == 0) return;
 
             if (UPLO == .Upper) {
@@ -77,9 +77,9 @@ pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: s
                 }
             }
         },
-        .Complex => @compileError("blas.spr does not support complex numbers."),
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.spr only supports simple types."),
-        .Unsupported => unreachable,
+        .cfloat => @compileError("blas.spr does not support complex numbers."),
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.spr only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

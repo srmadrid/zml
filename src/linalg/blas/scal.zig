@@ -1,17 +1,17 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const options = @import("options");
 
 pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.scal does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.scal does not support bool."),
+        .int, .float => {
             if (alpha == 1) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
@@ -45,7 +45,7 @@ pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) v
                 ix += incx;
             }
         },
-        .Complex => {
+        .cfloat => {
             if (alpha.re == 1 and alpha.im == 0) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
@@ -110,8 +110,8 @@ pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) v
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.scal only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.scal only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

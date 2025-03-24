@@ -1,15 +1,15 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 const Transpose = blas.Transpose;
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
-pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: scalar(T), C: [*]T, ldc: isize) void {
+pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: Numeric(T), C: [*]T, ldc: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0 or trans == .Trans or trans == .ConjNoTrans) return;
 
@@ -29,10 +29,10 @@ pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
     if (ldb < @max(1, NROWAB)) return;
     if (ldc < @max(1, n)) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.her2k does not support bool."),
-        .BuiltinInt, .BuiltinFloat => @compileError("blas.her2k does not support int or float."),
-        .Complex => {
+    switch (numericType) {
+        .bool => @compileError("blas.her2k does not support bool."),
+        .int, .float => @compileError("blas.her2k does not support int or float."),
+        .cfloat => {
             if (((ALPHA.re == 0 and ALPHA.im == 0) or k <= 0) and beta == 1) return;
 
             if (ALPHA.re == 0 and ALPHA.im == 0) {
@@ -413,8 +413,8 @@ pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.her2k only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.her2k only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

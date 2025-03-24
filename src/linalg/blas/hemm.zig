@@ -1,5 +1,5 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Side = blas.Side;
@@ -7,7 +7,7 @@ const Uplo = blas.Uplo;
 
 pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (m <= 0 or n <= 0) return;
 
@@ -27,10 +27,10 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
     if (ldb < @max(1, M)) return;
     if (ldc < @max(1, M)) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.hemm does not support bool."),
-        .BuiltinInt, .BuiltinFloat => @compileError("blas.hemm does not support int or float."),
-        .Complex => {
+    switch (numericType) {
+        .bool => @compileError("blas.hemm does not support bool."),
+        .int, .float => @compileError("blas.hemm does not support int or float."),
+        .cfloat => {
             if (alpha.re == 0 and alpha.im == 0 and beta.re == 1 and beta.im == 0) return;
 
             if (alpha.re == 0 and alpha.im == 0) {
@@ -362,8 +362,8 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.hemm only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.hemm only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

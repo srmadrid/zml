@@ -1,5 +1,5 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
@@ -7,7 +7,7 @@ const Transpose = blas.Transpose;
 
 pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0 or trans == .ConjTrans or trans == .ConjNoTrans) return;
 
@@ -25,9 +25,9 @@ pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
     if (ldb < @max(1, NROWAB)) return;
     if (ldc < @max(1, n)) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.syr2k does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.syr2k does not support bool."),
+        .int, .float => {
             if ((alpha == 0 or k <= 0) and beta == 1) return;
 
             if (alpha == 0) {
@@ -324,7 +324,7 @@ pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
                 }
             }
         },
-        .Complex => {
+        .cfloat => {
             if (((alpha.re == 0 and alpha.im == 0) or k <= 0) and beta.re == 1 and beta.im == 0) return;
 
             if (alpha.re == 0 and alpha.im == 0) {
@@ -663,8 +663,8 @@ pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.syr2k only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.syr2k only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

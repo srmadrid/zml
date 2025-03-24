@@ -1,51 +1,51 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
-pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
+pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numeric(T) {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return 0;
 
-    const huge = std.math.floatMax(scalar(T));
-    const tsml = std.math.pow(scalar(T), 2, @ceil((std.math.floatExponentMin(f64) - 1) * 0.5));
-    const tbig = std.math.pow(scalar(T), 2, @floor((std.math.floatExponentMax(f64) - @bitSizeOf(f64) + 1) * 0.5));
-    const ssml = std.math.pow(scalar(T), 2, -@floor((std.math.floatExponentMin(f64) - @bitSizeOf(f64)) * 0.5));
-    const sbig = std.math.pow(scalar(T), 2, -@ceil((std.math.floatExponentMax(f64) + @bitSizeOf(f64) - 1) * 0.5));
+    const huge = std.math.floatMax(Numeric(T));
+    const tsml = std.math.pow(Numeric(T), 2, @ceil((std.math.floatExponentMin(f64) - 1) * 0.5));
+    const tbig = std.math.pow(Numeric(T), 2, @floor((std.math.floatExponentMax(f64) - @bitSizeOf(f64) + 1) * 0.5));
+    const ssml = std.math.pow(Numeric(T), 2, -@floor((std.math.floatExponentMin(f64) - @bitSizeOf(f64)) * 0.5));
+    const sbig = std.math.pow(Numeric(T), 2, -@ceil((std.math.floatExponentMax(f64) + @bitSizeOf(f64) - 1) * 0.5));
 
-    var scl: scalar(T) = 1;
-    var sumsq: scalar(T) = 0;
+    var scl: Numeric(T) = 1;
+    var sumsq: Numeric(T) = 0;
 
-    var abig: scalar(T) = 0;
-    var amed: scalar(T) = 0;
-    var asml: scalar(T) = 0;
+    var abig: Numeric(T) = 0;
+    var amed: Numeric(T) = 0;
+    var asml: Numeric(T) = 0;
     var ix: isize = if (incx < 0) (1 - (n - 1) * incx) else 0;
 
     var notbig = true;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.nrm2 does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
-            var ax: scalar(T) = undefined;
+    switch (numericType) {
+        .bool => @compileError("blas.nrm2 does not support bool."),
+        .int, .float => {
+            var ax: Numeric(T) = undefined;
             for (0..@intCast(n)) |_| {
                 ax = @abs(x[@intCast(ix)]);
                 if (ax > tbig) {
-                    abig += std.math.pow(scalar(T), ax * sbig, 2);
+                    abig += std.math.pow(Numeric(T), ax * sbig, 2);
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += std.math.pow(scalar(T), ax * ssml, 2);
+                    if (notbig) asml += std.math.pow(Numeric(T), ax * ssml, 2);
                 } else {
-                    amed += std.math.pow(scalar(T), ax, 2);
+                    amed += std.math.pow(Numeric(T), ax, 2);
                 }
                 ix += incx;
             }
 
             if (abig > 0) {
                 if (amed > 0 or amed > huge or amed != amed) {
-                    abig += std.math.pow(scalar(T), amed * sbig, 2);
+                    abig += std.math.pow(Numeric(T), amed * sbig, 2);
                 }
                 scl = 1 / sbig;
                 sumsq = abig;
@@ -56,7 +56,7 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                     const ymin = if (sqrt_asml > sqrt_amed) sqrt_amed else sqrt_asml;
                     const ymax = if (sqrt_asml > sqrt_amed) sqrt_asml else sqrt_amed;
                     scl = 1;
-                    sumsq = std.math.pow(scalar(T), ymax, 2) * (1 + std.math.pow(scalar(T), ymin / ymax, 2));
+                    sumsq = std.math.pow(Numeric(T), ymax, 2) * (1 + std.math.pow(Numeric(T), ymin / ymax, 2));
                 } else {
                     scl = 1 / ssml;
                     sumsq = asml;
@@ -66,33 +66,33 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 sumsq = amed;
             }
         },
-        .Complex => {
-            var ax: scalar(T) = undefined;
+        .cfloat => {
+            var ax: Numeric(T) = undefined;
             for (0..@intCast(n)) |_| {
                 ax = @abs(x[@intCast(ix)].re);
                 if (ax > tbig) {
-                    abig += std.math.pow(scalar(T), ax * sbig, 2);
+                    abig += std.math.pow(Numeric(T), ax * sbig, 2);
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += std.math.pow(scalar(T), ax * ssml, 2);
+                    if (notbig) asml += std.math.pow(Numeric(T), ax * ssml, 2);
                 } else {
-                    amed += std.math.pow(scalar(T), ax, 2);
+                    amed += std.math.pow(Numeric(T), ax, 2);
                 }
                 ax = @abs(x[@intCast(ix)].im);
                 if (ax > tbig) {
-                    abig += std.math.pow(scalar(T), ax * sbig, 2);
+                    abig += std.math.pow(Numeric(T), ax * sbig, 2);
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += std.math.pow(scalar(T), ax * ssml, 2);
+                    if (notbig) asml += std.math.pow(Numeric(T), ax * ssml, 2);
                 } else {
-                    amed += std.math.pow(scalar(T), ax, 2);
+                    amed += std.math.pow(Numeric(T), ax, 2);
                 }
                 ix += incx;
             }
 
             if (abig > 0) {
                 if (amed > 0 or amed > huge or amed != amed) {
-                    abig += std.math.pow(scalar(T), amed * sbig, 2);
+                    abig += std.math.pow(Numeric(T), amed * sbig, 2);
                 }
                 scl = 1 / sbig;
                 sumsq = abig;
@@ -103,7 +103,7 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                     const ymin = if (sqrt_asml > sqrt_amed) sqrt_amed else sqrt_asml;
                     const ymax = if (sqrt_asml > sqrt_amed) sqrt_asml else sqrt_amed;
                     scl = 1;
-                    sumsq = std.math.pow(scalar(T), ymax, 2) * (1 + std.math.pow(scalar(T), ymin / ymax, 2));
+                    sumsq = std.math.pow(Numeric(T), ymax, 2) * (1 + std.math.pow(Numeric(T), ymin / ymax, 2));
                 } else {
                     scl = 1 / ssml;
                     sumsq = asml;
@@ -113,8 +113,8 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 sumsq = amed;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.nrm2 only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.nrm2 only supports simple types."),
+        .unsupported => unreachable,
     }
 
     return scl * @sqrt(sumsq);

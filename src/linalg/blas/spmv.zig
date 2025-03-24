@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 
 pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
@@ -19,9 +19,9 @@ pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     const LENX = N;
     const LENY = N;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.spmv does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.spmv does not support bool."),
+        .int, .float => {
             if (alpha == 0 and beta == 1) return;
 
             if (alpha == 0) {
@@ -142,9 +142,9 @@ pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
                 }
             }
         },
-        .Complex => @compileError("blas.spmv does not support complex numbers."),
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.spmv only supports simple types."),
-        .Unsupported => unreachable,
+        .cfloat => @compileError("blas.spmv does not support complex numbers."),
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.spmv only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

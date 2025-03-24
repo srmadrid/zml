@@ -1,16 +1,16 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
 pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, param: [*]const T) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n == 0 or param[0] == -2) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.rotm does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.rotm does not support bool."),
+        .int, .float => {
             const flag = param[0];
 
             if (flag == -1) {
@@ -140,9 +140,9 @@ pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
                 }
             }
         },
-        .Complex => @compileError("blas.rotm does not support complex numbers."),
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.rotm only supports simple types."),
-        .Unsupported => unreachable,
+        .cfloat => @compileError("blas.rotm does not support complex numbers."),
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.rotm only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

@@ -1,16 +1,16 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
 pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.axpy does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.axpy does not support bool."),
+        .int, .float => {
             if (alpha == 0) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
@@ -42,7 +42,7 @@ pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: is
                 iy += incy;
             }
         },
-        .Complex => {
+        .cfloat => {
             if (alpha.re == 0 and alpha.im == 0) return;
 
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
@@ -71,8 +71,8 @@ pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: is
                 iy += incy;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.axpy only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.axpy only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

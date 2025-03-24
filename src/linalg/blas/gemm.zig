@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Transpose = blas.Transpose;
 
 pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (m <= 0 or n <= 0) return;
 
@@ -35,9 +35,9 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
     if ((TRANSB == .Trans or TRANSB == .ConjTrans) and LDB < @max(1, N)) return;
     if (ldc < @max(1, M)) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.gemm does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.gemm does not support bool."),
+        .int, .float => {
             if ((alpha == 0 or k <= 0) and beta == 1) return;
 
             if (alpha == 0) {
@@ -260,7 +260,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
                 }
             }
         },
-        .Complex => {
+        .cfloat => {
             if (((alpha.re == 0 and alpha.im == 0) or k <= 0) and (beta.re == 1 and beta.im == 0)) return;
 
             if (alpha.re == 0 and alpha.im == 0) {
@@ -1089,8 +1089,8 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.gemm only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.gemm only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

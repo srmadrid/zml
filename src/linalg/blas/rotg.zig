@@ -1,19 +1,19 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
-pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
+pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Numeric(T), s: *T) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
-    const safmin = std.math.floatMin(scalar(T));
-    const safmax = std.math.floatMax(scalar(T));
+    const safmin = std.math.floatMin(Numeric(T));
+    const safmax = std.math.floatMax(Numeric(T));
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.rotg does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.rotg does not support bool."),
+        .int, .float => {
             const anorm: T = @abs(a.*);
             const bnorm: T = @abs(b.*);
 
@@ -46,7 +46,7 @@ pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
                 a.* = r;
             }
         },
-        .Complex => {
+        .cfloat => {
             const rtmin = @sqrt(safmin);
             const rtmax = @sqrt(safmax / 4);
 
@@ -102,8 +102,8 @@ pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *scalar(T), s: *T) void {
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.rotg only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.rotg only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

@@ -1,20 +1,20 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
-pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scalar(T) {
+pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Numeric(T) {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0 or incx < 0) return 0;
 
-    var sum: scalar(T) = 0;
+    var sum: Numeric(T) = 0;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.asum does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.asum does not support bool."),
+        .int, .float => {
             var ix: isize = 0;
             const nu = (n >> 3) << 3;
             if (nu != 0) {
@@ -39,7 +39,7 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 ix += incx;
             }
         },
-        .Complex => {
+        .cfloat => {
             var ix: isize = 0;
             const nu = (n >> 2) << 2;
             if (nu != 0) {
@@ -60,8 +60,8 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) scala
                 ix += incx;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.asum only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.asum only supports simple types."),
+        .unsupported => unreachable,
     }
 
     return sum;

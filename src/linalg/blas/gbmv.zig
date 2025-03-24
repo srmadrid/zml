@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Transpose = blas.Transpose;
 
 pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (m <= 0 or n <= 0 or kl < 0 or ku < 0 or lda < kl + ku + 1) return;
 
@@ -30,9 +30,9 @@ pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, 
         LENY = N;
     }
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.gbmv does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.gbmv does not support bool."),
+        .int, .float => {
             if (alpha == 0 and beta == 1) return;
 
             if (alpha == 0) {
@@ -137,7 +137,7 @@ pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, 
                 }
             }
         },
-        .Complex => {
+        .cfloat => {
             if (alpha.re == 0 and alpha.im == 0 and beta.re == 1 and beta.im == 0) return;
 
             if (alpha.re == 0 and alpha.im == 0) {
@@ -343,8 +343,8 @@ pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, 
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.gbmv only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.gbmv only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

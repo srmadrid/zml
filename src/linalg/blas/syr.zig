@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 
 pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
@@ -20,9 +20,9 @@ pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T
 
     const LENX = N;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.syr does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.syr does not support bool."),
+        .int, .float => {
             if (alpha == 0) return;
 
             if (UPLO == .Upper) {
@@ -79,9 +79,9 @@ pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T
                 }
             }
         },
-        .Complex => @compileError("blas.syr does not support complex numbers."),
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.syr only supports simple types."),
-        .Unsupported => unreachable,
+        .cfloat => @compileError("blas.syr does not support complex numbers."),
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.syr only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

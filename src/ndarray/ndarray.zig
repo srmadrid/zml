@@ -7,27 +7,19 @@
 // owner and the owner to the view.
 
 // Create a subarray view creator. Useful for i.e. LU decomposition
-
-// FOR MOST FUNCTIONS, MAKE TWO VERSIONS (NAMES NOT FINAL)?? MAYBE JUST OPTIONAL
-// PARAMETERS (?T)?
-// - add, addInPlace: (self: *NDArray(T), left: NDArray(T), right: NDArray(T)) void: adds left +
-//   right and stores the result in self
-// - addNew, add: (allocator: std.mem.Allocator, left: NDArray(T), right: NDArray(T)) NDArray(T):
-//   adds left + right and returns a newly allocated array with the result
 const std = @import("std");
 const zml = @import("../zml.zig");
-const core = @import("../core/core.zig");
 
 pub const Iterator = @import("iterators.zig").Iterator;
 pub const MultiIterator = @import("iterators.zig").MultiIterator;
 
 const ndarray = @This();
 
-const _add = core.supported._add;
-const _sub = core.supported._sub;
-const _mul = core.supported._mul;
-const _div = core.supported._div;
-const scalar = core.supported.scalar;
+const _add = zml.core.types._add;
+const _sub = zml.core.types._sub;
+const _mul = zml.core.types._mul;
+const _div = zml.core.types._div;
+const scalar = zml.core.types.scalar;
 
 /// Maximal number of dimensions.
 pub const MaxDimensions = 32;
@@ -46,7 +38,7 @@ pub const MaxDimensions = 32;
 /// Stores an allocator for internal memory management.
 pub fn NDArray(comptime T: type) type {
     // Catch any attempt to create with unsupported type.
-    _ = core.supported.whatSupportedNumericType(T);
+    _ = zml.core.types.numericType(T);
     return struct {
         /// The data of the array.
         data: []T,
@@ -68,6 +60,18 @@ pub fn NDArray(comptime T: type) type {
         /// The allocator used for internal memory management. Set to `null` if
         /// the array is a view.
         allocator: ?std.mem.Allocator,
+
+        pub const empty: NDArray(T) = .{
+            .data = &.{},
+            .ndim = 0,
+            .shape = [_]usize{0} ** MaxDimensions,
+            .strides = [_]isize{0} ** MaxDimensions,
+            .offset = 0,
+            .size = 0,
+            .base = null,
+            .flags = .{},
+            .allocator = null,
+        };
 
         /// Initializes an array.
         ///
@@ -251,7 +255,7 @@ pub fn NDArray(comptime T: type) type {
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
         pub fn set(self: *NDArray(T), position: []const usize, value: T) !void {
-            if (self.isScalar()) {
+            if (self.size == 1) {
                 self.data[self.offset] = value;
                 return;
             }
@@ -284,19 +288,19 @@ pub fn NDArray(comptime T: type) type {
             // WRONG
             self.data[self.offset] = value;
 
-            const supported = core.supported.whatSupportedNumericType(T);
+            const supported = zml.core.types.numericType(T);
             switch (supported) {
-                .BuiltinInt, .BuiltinFloat, .BuiltinBool, .Complex => {
+                .int, .float, .bool, .cfloat => {
                     for (1..self.size) |i| {
                         self.data[i] = value;
                     }
                 },
-                .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => {
+                .integer, .rational, .real, .complex, .expression => {
                     for (1..self.size) |i| {
                         self.data[i] = try T.init(self.allocator, value);
                     }
                 },
-                .Unsupported => unreachable,
+                .unsupported => unreachable,
             }
         }
 
@@ -326,7 +330,7 @@ pub fn NDArray(comptime T: type) type {
         /// - `PositionOutOfBounds`: the position is out of bounds.
         pub fn replace(self: *NDArray(T), position: []const usize, value: T) !T {
             var idx: usize = undefined;
-            if (self.isScalar()) {
+            if (self.size == 1) {
                 idx = self.offset;
             } else {
                 try self._checkPosition(position);
@@ -372,13 +376,13 @@ pub fn NDArray(comptime T: type) type {
         /// - `PositionOutOfBounds`: the position is out of bounds.
         pub fn update(self: *NDArray(T), position: []const usize, value: anytype) !void {
             var idx: usize = undefined;
-            if (self.isScalar()) {
+            if (self.size == 1) {
                 idx = self.offset;
             } else {
                 try self._checkPosition(position);
                 idx = self._index(position);
             }
-            const supported = core.supported.whatSupportedNumericType(T);
+            const supported = zml.core.types.whatSupportedNumericType(T);
             switch (supported) {
                 .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => {
                     self.data[idx] = value;
@@ -419,7 +423,7 @@ pub fn NDArray(comptime T: type) type {
         /// - ...
         pub fn updateAll(self: *NDArray(T), value: T) !void {
             // Wrong
-            const supported = core.supported.whatSupportedNumericType(T);
+            const supported = zml.core.types.whatSupportedNumericType(T);
             switch (supported) {
                 .BuiltinInt, .BuiltinFloat, .BuiltinBool, .CustomComplexFloat => {
                     for (0..self.size) |i| {
@@ -457,98 +461,13 @@ pub fn NDArray(comptime T: type) type {
         /// number of dimentions in `self`.
         /// - `PositionOutOfBounds`: the position is out of bounds.
         pub fn get(self: NDArray(T), position: []const usize) !T {
-            if (self.isScalar()) {
+            if (self.size == 1) {
                 return self.data[self.offset];
             }
 
             try self._checkPosition(position);
             return self.data[self._index(position)];
         }
-
-        /// Checks if the array is a scalar.
-        ///
-        /// **Description**:
-        ///
-        /// Checks if the array is a scalar, i.e., has only one element.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the array to check.
-        ///
-        /// **Return Values**:
-        /// - `bool`: whether the array is a scalar or not.
-        pub fn isScalar(self: NDArray(T)) bool {
-            return self.size == 1;
-        }
-
-        /// Checks if the array is a vector.
-        ///
-        /// **Description**:
-        ///
-        /// Checks if the array is a vector, i.e., has shape `{n}`.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the array to check.
-        ///
-        /// **Return Values**:
-        /// - `bool`: whether the array is a vector or not.
-        pub fn isVector(self: NDArray(T)) bool {
-            return self.shape.len == 1;
-        }
-
-        /// Checks if the array is a row vector.
-        ///
-        /// **Description**:
-        ///
-        /// Checks if the array is a vector, i.e., has shape `{ 1, n }`.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the array to check.
-        ///
-        /// **Return Values**:
-        /// - `bool`: whether the array is a row vector or not.
-        pub fn isRowVector(self: NDArray(T)) bool {
-            return self.shape.len == 2 and self.shape[0] == 1 and self.shape[1] > 1;
-        }
-
-        /// Checks if the array is a column vector.
-        ///
-        /// **Description**:
-        ///
-        /// Checks if the array is a vector, i.e., has shape `{ n, 1 }`.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the array to check.
-        ///
-        /// **Return Values**:
-        /// - `bool`: whether the array is a column vector or not.
-        pub fn isColVector(self: NDArray(T)) bool {
-            return self.shape.len == 2 and self.shape[0] > 1 and self.shape[1] == 1;
-        }
-
-        /// Checks if the array is a matrix.
-        ///
-        /// **Description**:
-        ///
-        /// Checks if the array is a matrix, i.e., has shape `{ m, n }`.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the array to check.
-        ///
-        /// **Return Values**:
-        /// - `bool`: whether the array is a matrix or not.
-        pub fn isMatrix(self: NDArray(T)) bool {
-            return self.shape.len == 2;
-        }
-
-        // TODO: Implement the following functions (only for matrices)
-        // - isSquare
-        // - isUpperTriangular
-        // - isLowerTriangular
-        // - isSymmetric
-        // - isSkewSymmetric
-        // - isHermitian
-        // - isSkewHermitian
-        // - more property checking functions
 
         /// Computes elementwise addition (self = left + right).
         ///
@@ -925,6 +844,7 @@ pub const Error = error{
 pub const Flags = packed struct {
     /// Row major element storage (right to left).
     order: Order = .RowMajor,
+    storage: Storage = .Dense,
     /// The array owns the data, and it will be freed when the array is
     /// deinitialized. If it does not own it, it is assumed to be a view.
     ownsData: bool = true,
@@ -933,16 +853,24 @@ pub const Flags = packed struct {
 };
 
 /// Order of the elements in the array.
-pub const Order = enum(u1) {
+pub const Order = enum(u2) {
     /// Row major element storage (right to left).
     RowMajor,
     /// Column major element storage (left to right).
     ColumnMajor,
+    Other,
 };
 
 ///
-pub const Storage = enum(u2) {
-    Packed,
+pub const Storage = enum(u3) {
+    Dense,
+    Triangular,
+    Symmetric,
+    Hermitian,
+    Banded,
+    CSR,
+    CSC,
+    COO,
 };
 
 ///

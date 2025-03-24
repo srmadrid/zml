@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
 pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0 or incx <= 0) return 0;
 
@@ -15,9 +15,9 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
     var imin: usize = std.math.maxInt(usize);
     var i: usize = 0;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.iamin does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.iamin does not support bool."),
+        .int, .float => {
             var min: T = std.math.floatMax(T);
 
             var ix: isize = 0;
@@ -103,8 +103,8 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 ix += incx;
             }
         },
-        .Complex => {
-            var min: scalar(T) = std.math.floatMax(scalar(T));
+        .cfloat => {
+            var min: Numeric(T) = std.math.floatMax(Numeric(T));
 
             var ix: isize = 0;
             const nu = (n >> 3) << 3;
@@ -189,8 +189,8 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 ix += incx;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.iamin only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.iamin only supports simple types."),
+        .unsupported => unreachable,
     }
 
     return imin;

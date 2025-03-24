@@ -1,11 +1,11 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 
 pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (m <= 0 or n <= 0) return;
 
@@ -21,9 +21,9 @@ pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, 
     const LENX = m;
     const LENY = n;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.ger does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.ger does not support bool."),
+        .int, .float => {
             if (alpha == 0) return;
 
             if (order == .ColumnMajor) {
@@ -72,9 +72,9 @@ pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, 
                 }
             }
         },
-        .Complex => @compileError("blas.ger does not support complex types."),
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.ger only supports simple types."),
-        .Unsupported => unreachable,
+        .cfloat => @compileError("blas.ger does not support complex types."),
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.ger only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

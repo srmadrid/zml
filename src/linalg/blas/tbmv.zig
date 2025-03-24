@@ -1,5 +1,5 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Transpose = blas.Transpose;
 const Order = blas.Order;
@@ -8,7 +8,7 @@ const Diag = blas.Diag;
 
 pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0 or k < 0) return;
 
@@ -24,9 +24,9 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
 
     const LENX = N;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.tbmv does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.tbmv does not support bool."),
+        .int, .float => {
             if (UPLO == .Upper) {
                 if (TRANSA == .NoTrans or TRANSA == .ConjNoTrans) {
                     if (diag == .NonUnit) {
@@ -247,7 +247,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             }
         },
-        .Complex => {
+        .cfloat => {
             if (UPLO == .Upper) {
                 if (TRANSA == .NoTrans) {
                     if (diag == .NonUnit) {
@@ -712,8 +712,8 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.tbmv only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.tbmv only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

@@ -1,6 +1,5 @@
 const std = @import("std");
 const zml = @import("../zml.zig");
-const core = @import("../core/core.zig");
 
 const ndarray = @import("ndarray.zig");
 const NDArray = ndarray.NDArray;

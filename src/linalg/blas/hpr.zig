@@ -1,20 +1,20 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 
-const scalar = core.supported.scalar;
+const Numeric = core.types.Numeric;
 
-pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Numeric(T), x: [*]const T, incx: isize, Ap: [*]T) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
     const N = n;
     var UPLO = uplo;
-    var conj: scalar(T) = 1;
+    var conj: Numeric(T) = 1;
     if (order == .RowMajor) {
         UPLO = if (uplo == .Upper) .Lower else .Upper;
         conj = -1;
@@ -22,10 +22,10 @@ pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: s
 
     const LENX = N;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.hpr does not support bool."),
-        .BuiltinInt, .BuiltinFloat => @compileError("blas.hpr does not support int or float."),
-        .Complex => {
+    switch (numericType) {
+        .bool => @compileError("blas.hpr does not support bool."),
+        .int, .float => @compileError("blas.hpr does not support int or float."),
+        .cfloat => {
             if (alpha == 0) return;
 
             if (UPLO == .Upper) {
@@ -84,8 +84,8 @@ pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: s
                 }
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.hpr only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.hpr only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

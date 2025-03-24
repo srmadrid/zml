@@ -1,11 +1,13 @@
 const std = @import("std");
 const zml = @import("zml.zig");
+const core = @import("core.zig");
 //const ci = @import("c.zig");
 
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const a = gpa.allocator();
+    _ = a;
 
     // try symbolicTesting(a);
 
@@ -23,9 +25,26 @@ pub fn main() !void {
 
     // try typeTesting(a);
 
-    try transposeTesting(a);
+    // try transposeTesting(a);
 
     // try blasPerfTesting(a);
+
+    coreTesting();
+}
+
+fn coreTesting() void {
+    std.debug.print("Arrays:\n", .{});
+    std.debug.print("{}\n", .{core.types.isNDArray(zml.NDArray(f32))});
+    std.debug.print("{}\n", .{core.types.isNDArray(zml.NDArray(f64))});
+    std.debug.print("{}\n", .{core.types.isNDArray(zml.NDArray(zml.core.types.cf64))});
+    std.debug.print("{}\n", .{core.types.isNDArray(f32)});
+
+    std.debug.print("Scalars:\n", .{});
+    std.debug.print("{}\n", .{core.types.Numeric(zml.NDArray(f32))});
+    std.debug.print("{}\n", .{core.types.Numeric(zml.NDArray(f64))});
+    std.debug.print("{}\n", .{core.types.Numeric(zml.NDArray(zml.core.types.cf64))});
+    std.debug.print("{}\n", .{core.types.Numeric(zml.core.types.cf64)});
+    std.debug.print("{}\n", .{core.types.Numeric(f32)});
 }
 
 fn ask_user(default: usize) !usize {

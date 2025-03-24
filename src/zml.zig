@@ -1,5 +1,8 @@
 const std = @import("std");
 
+// Core types and operations.
+pub const core = @import("core.zig");
+
 // Numerical computing.
 pub const ndarray = @import("ndarray/ndarray.zig");
 pub const NDArray = ndarray.NDArray;

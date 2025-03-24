@@ -4,6 +4,17 @@ const Symbol = zml.Symbol;
 const SymbolType = @import("../symbol.zig").SymbolType;
 const ExpressionTree = @import("exprtree.zig").ExpressionTree;
 
+pub const ExpressionUnmanaged = struct {
+    /// String representation of the expression.
+    string: []const u8,
+    /// Tree representation of the expression.
+    tree: ExpressionTree,
+    /// Dependencies.
+    dependencies: std.ArrayListUnmanaged(*Symbol),
+    /// Symbols used only inside the expression.
+    intdependencies: std.ArrayListUnmanaged(Symbol),
+};
+
 /// A mathematical expression.
 pub const Expression = struct {
     /// String representation of the expression.

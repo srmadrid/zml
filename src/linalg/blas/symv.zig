@@ -1,14 +1,12 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 
-const scalar = core.supported.scalar;
-
 pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
@@ -23,9 +21,9 @@ pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     const LENX = N;
     const LENY = N;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.symv does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.symv does not support bool."),
+        .int, .float => {
             if (alpha == 0 and beta == 1) return;
 
             if (alpha == 0) {
@@ -148,9 +146,9 @@ pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
                 }
             }
         },
-        .Complex => @compileError("blas.symv does not support complex numbers."),
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.symv only supports simple types."),
-        .Unsupported => unreachable,
+        .cfloat => @compileError("blas.symv does not support complex numbers."),
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.symv only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 

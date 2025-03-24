@@ -1,17 +1,17 @@
 const std = @import("std");
-const core = @import("../../core/core.zig");
+const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 const options = @import("options");
 
 pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
-    const supported = core.supported.whatSupportedNumericType(T);
+    const numericType = core.types.numericType(T);
 
     if (n <= 0) return;
 
-    switch (supported) {
-        .BuiltinBool => @compileError("blas.swap does not support bool."),
-        .BuiltinInt, .BuiltinFloat => {
+    switch (numericType) {
+        .bool => @compileError("blas.swap does not support bool."),
+        .int, .float => {
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
             var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
             const nu = (n >> 2) << 2;
@@ -53,7 +53,7 @@ pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
                 iy += incy;
             }
         },
-        .Complex => {
+        .cfloat => {
             var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
             var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
             const nu = (n >> 1) << 1;
@@ -85,8 +85,8 @@ pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
                 iy += incy;
             }
         },
-        .CustomInt, .CustomReal, .CustomComplex, .CustomExpression => @compileError("blas.swap only supports simple types."),
-        .Unsupported => unreachable,
+        .integer, .rational, .real, .complex, .expression => @compileError("blas.swap only supports simple types."),
+        .unsupported => unreachable,
     }
 }
 
