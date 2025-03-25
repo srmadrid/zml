@@ -33,18 +33,10 @@ pub fn main() !void {
 }
 
 fn coreTesting() void {
-    std.debug.print("Arrays:\n", .{});
-    std.debug.print("{}\n", .{core.types.isNDArray(zml.NDArray(f32))});
-    std.debug.print("{}\n", .{core.types.isNDArray(zml.NDArray(f64))});
-    std.debug.print("{}\n", .{core.types.isNDArray(zml.NDArray(zml.core.types.cf64))});
-    std.debug.print("{}\n", .{core.types.isNDArray(f32)});
-
-    std.debug.print("Scalars:\n", .{});
-    std.debug.print("{}\n", .{core.types.Numeric(zml.NDArray(f32))});
-    std.debug.print("{}\n", .{core.types.Numeric(zml.NDArray(f64))});
-    std.debug.print("{}\n", .{core.types.Numeric(zml.NDArray(zml.core.types.cf64))});
-    std.debug.print("{}\n", .{core.types.Numeric(zml.core.types.cf64)});
-    std.debug.print("{}\n", .{core.types.Numeric(f32)});
+    std.debug.print("{}\n", .{core.types.Coerce(
+        zml.core.types.ComplexUnmanaged(zml.core.types.IntegerUnmanaged),
+        zml.core.types.ComplexUnmanaged(zml.core.types.RationalUnmanaged),
+    )});
 }
 
 fn ask_user(default: usize) !usize {

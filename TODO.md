@@ -14,7 +14,6 @@ Create in ndarray/ops.zig simple operations. This will be used for functions lik
 
 Complex `rotg` does not work. `rotmg` fails when compiling with optimization `ReleaseFast`.
 
-
 When all BLAS and LAPACK functions are implemented, clean `NDArray`: remove unnecessary functions, and correct any wrong ones (focus especially on the newly added `offset` parameter). Do the same for the iterators. Maybe remove `allocator` from `NDArray` and ask for it only when needed (currently only needed for `init` and `deinit` as there is never a need to realloc the array). For instance, for the arithmetic operations, use the template `op(allocator: ?Allocator, A: NDArray, B: NDArray) NDArray`: if `allocator` is null, then the operation is done in place on `A`, and a shallow copy is returned; if not, a new `NDArray` is created with the given allocator (if done in place, `A`'s dimensions must be appropriate). Maybe just have `op` and `opInPlace` functions. Maybe use pytorch's style: Methods which mutate a tensor are marked with an underscore suffix. For example, `torch.FloatTensor.abs_()` computes the absolute value in-place and returns the modified tensor, while `torch.FloatTensor.abs()` computes the result in a new tensor.
 
 When changed, replace all `@setRuntimeSafety(false)` with `@optimizeFor(.ReleaseFast)`.

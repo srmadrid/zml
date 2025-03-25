@@ -1,6 +1,6 @@
 const numericType = @import("../types.zig").numericType;
 
-fn cfloat(comptime T: type) type {
+pub fn cfloat(comptime T: type) type {
     if (numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
 
     return struct {
