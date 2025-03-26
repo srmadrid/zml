@@ -6,6 +6,8 @@ const Rational = @import("rational.zig").Rational;
 const RealUnmanaged = @import("real.zig").RealUnmanaged;
 const Real = @import("real.zig").Real;
 
+// Limit Complex to Rational and Real? i.e., remove Integer? If so, edit coercion functions
+
 pub fn ComplexUnmanaged(comptime T: type) type {
     if (T != IntegerUnmanaged and T != Integer and T != RationalUnmanaged and T != Rational and T != RealUnmanaged and T != Real) @compileError("Unsupported type for ComplexUnmanaged: " ++ @typeName(T));
 

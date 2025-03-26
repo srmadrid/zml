@@ -722,7 +722,146 @@ pub fn Numeric(comptime T: type) type {
 /// check if the cast is valid, so it is up to the user to ensure that the cast
 /// is valid. The optional allocator is needed only if the type to be casted to
 /// requires allocation to be initialized.
-pub inline fn cast(comptime T: type, val: anytype) T {
-    std.debug.print("UNFINISHED: cast, val: {}\n", .{val});
-    return @floatFromInt(val);
+pub inline fn cast(
+    comptime T: type,
+    value: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) T {
+    const T1 = T;
+    const T2 = @TypeOf(value);
+
+    _ = options; // To be used to initialize arbitrary precision types
+
+    if (T1 == T2) {
+        return value;
+    }
+
+    const t1numeric = numericType(T1);
+    const t2numeric = numericType(T2);
+
+    switch (t2numeric) {
+        .bool => switch (t1numeric) {
+            .bool => return value,
+            .int => return @intFromBool(value),
+            .float => return @floatFromInt(@intFromBool(value)),
+            .cfloat => return .{
+                .re = @floatFromInt(@intFromBool(value)),
+                .im = 0,
+            },
+            .integer => @compileError("Not implemented yet: casting from bool to integer"),
+            .rational => @compileError("Not implemented yet: casting from bool to rational"),
+            .real => @compileError("Not implemented yet: casting from bool to real"),
+            .complex => @compileError("Not implemented yet: casting from bool to complex"),
+            .expression => @compileError("Not implemented yet: casting from bool to expression"),
+            .unsupported => unreachable,
+        },
+        .int => switch (t1numeric) {
+            .bool => return if (value != 0) true else false,
+            .int => return value,
+            .float => return @floatFromInt(value),
+            .cfloat => return .{
+                .re = @floatFromInt(value),
+                .im = 0,
+            },
+            .integer => @compileError("Not implemented yet: casting from int to integer"),
+            .rational => @compileError("Not implemented yet: casting from int to rational"),
+            .real => @compileError("Not implemented yet: casting from int to real"),
+            .complex => @compileError("Not implemented yet: casting from int to complex"),
+            .expression => @compileError("Not implemented yet: casting from int to expression"),
+            .unsupported => unreachable,
+        },
+        .float => switch (t1numeric) {
+            .bool => return if (value != 0) true else false,
+            .int => return @intFromFloat(value),
+            .float => return value,
+            .cfloat => return .{
+                .re = @floatCast(value),
+                .im = 0,
+            },
+            .integer => @compileError("Not implemented yet: casting from float to integer"),
+            .rational => @compileError("Not implemented yet: casting from float to rational"),
+            .real => @compileError("Not implemented yet: casting from float to real"),
+            .complex => @compileError("Not implemented yet: casting from float to complex"),
+            .expression => @compileError("Not implemented yet: casting from float to expression"),
+            .unsupported => unreachable,
+        },
+        .cfloat => switch (t1numeric) {
+            .bool => @compileError("Cannot cast cfloat to bool"),
+            .int => @compileError("Cannot cast cfloat to int"),
+            .float => @compileError("Cannot cast cfloat to float"),
+            .cfloat => return .{
+                .re = @floatCast(value.re),
+                .im = @floatCast(value.im),
+            },
+            .integer => @compileError("Not implemented yet: casting from cfloat to integer"),
+            .rational => @compileError("Not implemented yet: casting from cfloat to rational"),
+            .real => @compileError("Not implemented yet: casting from cfloat to real"),
+            .complex => @compileError("Not implemented yet: casting from cfloat to complex"),
+            .expression => @compileError("Not implemented yet: casting from cfloat to expression"),
+            .unsupported => unreachable,
+        },
+        .integer => switch (t1numeric) {
+            .bool => @compileError("Not implemented yet: casting from integer to bool"),
+            .int => @compileError("Not implemented yet: casting from integer to int"),
+            .float => @compileError("Not implemented yet: casting from integer to float"),
+            .cfloat => @compileError("Not implemented yet: casting from integer to cfloat"),
+            .integer => return value,
+            .rational => @compileError("Not implemented yet: casting from integer to rational"),
+            .real => @compileError("Not implemented yet: casting from integer to real"),
+            .complex => @compileError("Not implemented yet: casting from integer to complex"),
+            .expression => @compileError("Not implemented yet: casting from integer to expression"),
+            .unsupported => unreachable,
+        },
+        .rational => switch (t1numeric) {
+            .bool => @compileError("Not implemented yet: casting from rational to bool"),
+            .int => @compileError("Not implemented yet: casting from rational to int"),
+            .float => @compileError("Not implemented yet: casting from rational to float"),
+            .cfloat => @compileError("Not implemented yet: casting from rational to cfloat"),
+            .integer => @compileError("Not implemented yet: casting from rational to integer"),
+            .rational => return value,
+            .real => @compileError("Not implemented yet: casting from rational to real"),
+            .complex => @compileError("Not implemented yet: casting from rational to complex"),
+            .expression => @compileError("Not implemented yet: casting from rational to expression"),
+            .unsupported => unreachable,
+        },
+        .real => switch (t1numeric) {
+            .bool => @compileError("Not implemented yet: casting from real to bool"),
+            .int => @compileError("Not implemented yet: casting from real to int"),
+            .float => @compileError("Not implemented yet: casting from real to float"),
+            .cfloat => @compileError("Not implemented yet: casting from real to cfloat"),
+            .integer => @compileError("Not implemented yet: casting from real to integer"),
+            .rational => @compileError("Not implemented yet: casting from real to rational"),
+            .real => return value,
+            .complex => @compileError("Not implemented yet: casting from real to complex"),
+            .expression => @compileError("Not implemented yet: casting from real to expression"),
+            .unsupported => unreachable,
+        },
+        .complex => switch (t1numeric) {
+            .bool => @compileError("Not implemented yet: casting from complex to bool"),
+            .int => @compileError("Not implemented yet: casting from complex to int"),
+            .float => @compileError("Not implemented yet: casting from complex to float"),
+            .cfloat => @compileError("Not implemented yet: casting from complex to cfloat"),
+            .integer => @compileError("Not implemented yet: casting from complex to integer"),
+            .rational => @compileError("Not implemented yet: casting from complex to rational"),
+            .real => @compileError("Not implemented yet: casting from complex to real"),
+            .complex => return value,
+            .expression => @compileError("Not implemented yet: casting from complex to expression"),
+            .unsupported => unreachable,
+        },
+        .expression => switch (t1numeric) {
+            .bool => @compileError("Not implemented yet: casting from expression to bool"),
+            .int => @compileError("Not implemented yet: casting from expression to int"),
+            .float => @compileError("Not implemented yet: casting from expression to float"),
+            .cfloat => @compileError("Not implemented yet: casting from expression to cfloat"),
+            .integer => @compileError("Not implemented yet: casting from expression to integer"),
+            .rational => @compileError("Not implemented yet: casting from expression to rational"),
+            .real => @compileError("Not implemented yet: casting from expression to real"),
+            .complex => @compileError("Not implemented yet: casting from expression to complex"),
+            .expression => return value,
+            .unsupported => unreachable,
+        },
+        else => unreachable,
+    }
 }

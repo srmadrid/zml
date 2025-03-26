@@ -5,21 +5,39 @@ const types = @import("types.zig");
 /// output variable. `left` and `right` must be coercible by `Coerce`, and `out`
 /// must be a pointer of type `Coerce(@TypeOf(left), @TypeOf(right))`. The
 /// optional allocator is needed only if unmanaged types are used.
-pub inline fn add(allocator_out: anytype, out: anytype, allocator_left: anytype, left: anytype, allocator_right: anytype, right: anytype) void {
-    if (@TypeOf(allocator_out) != ?std.mem.Allocator or @TypeOf(allocator_left) != ?std.mem.Allocator or @TypeOf(allocator_right) != ?std.mem.Allocator)
-        @compileError("Allocators must be optional allocators.");
-
+pub inline fn add(
+    out: anytype,
+    left: anytype,
+    right: anytype,
+    options: struct {
+        allocator_out: ?std.mem.Allocator = null,
+        allocator_left: ?std.mem.Allocator = null,
+        allocator_right: ?std.mem.Allocator = null,
+    },
+) void {
+    // This implementations seems like the way to go?
     const T = @TypeOf(out);
     const K = @TypeOf(left);
     const V = @TypeOf(right);
 
-    const tnumeric = types.numericType(T);
-    const knumeric = types.numericType(K);
-    const vnumeric = types.numericType(V);
-    _ = tnumeric;
-    _ = knumeric;
-    _ = vnumeric;
-
     if (!types.canCoerce(K, T) or !types.canCoerce(V, T))
-        @compileError("Cannot coerce " ++ @typeName(K) ++ " and " ++ @typeName(V) ++ " to " ++ @typeName(T));
+        if (types.Coerce(types.Coerce(K, V), T) != T)
+            @compileError("Cannot coerce " ++ @typeName(K) ++ " and " ++ @typeName(V) ++ " to " ++ @typeName(T));
+
+    const o = out;
+    const l = types.cast(T, left, .{ .allocator = options.allocator_left });
+    const r = types.cast(T, right, .{ .allocator = options.allocator_right });
+
+    switch (types.numericType(T)) {
+        .bool => @compileError("Cannot add boolean types"),
+        .int => o.* = l + r,
+        .float => o.* = l + r,
+        .cfloat => o.* = T.add(l, r),
+        .integer => @compileError("Not implemented yet"),
+        .rational => @compileError("Not implemented yet"),
+        .real => @compileError("Not implemented yet"),
+        .complex => @compileError("Not implemented yet"),
+        .expression => @compileError("Not implemented yet"),
+        .unsupported => unreachable,
+    }
 }

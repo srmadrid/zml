@@ -1,5 +1,6 @@
 const std = @import("std");
 const types = @import("../types.zig");
+const math = @import("../math.zig");
 const Coerce = types.Coerce;
 
 pub fn Cfloat(comptime T: type) type {
@@ -10,91 +11,98 @@ pub fn Cfloat(comptime T: type) type {
         im: T,
 
         pub fn init(re: T, im: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = re,
                 .im = im,
             };
         }
 
         pub fn initReal(re: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = re,
                 .im = 0,
             };
         }
 
         pub fn initImag(im: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = 0,
                 .im = im,
             };
         }
 
         pub fn initPolar(r: T, theta: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = r * @cos(theta),
                 .im = r * @sin(theta),
             };
         }
 
         pub fn add(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re + right.re,
                 .im = left.im + right.im,
             };
         }
 
         pub fn addReal(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re + right,
                 .im = left.im,
             };
         }
 
         pub fn addImag(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re,
                 .im = left.im + right,
             };
         }
 
         pub fn sub(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re - right.re,
                 .im = left.im - right.im,
             };
         }
 
         pub fn subReal(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re - right,
                 .im = left.im,
             };
         }
 
         pub fn subImag(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re,
                 .im = left.im - right,
             };
         }
 
         pub fn mul(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
-            return Cfloat(T){
-                .re = left.re * right.re - left.im * right.im,
-                .im = left.re * right.im + left.im * right.re,
-            };
+            if (T == f80 or T == f128) {
+                return .{
+                    .re = left.re * right.re - left.im * right.im,
+                    .im = left.re * right.im + left.im * right.re,
+                };
+            } else {
+                return .{
+                    .re = @mulAdd(T, left.re, right.re, -left.im * right.im),
+                    .im = @mulAdd(T, left.re, right.im, left.im * right.re),
+                };
+            }
         }
 
         pub fn mulReal(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re * right,
                 .im = left.im * right,
             };
         }
 
         pub fn mulImag(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = -left.im * right,
                 .im = left.re * right,
             };
@@ -104,14 +112,14 @@ pub fn Cfloat(comptime T: type) type {
             if (@abs(right.im) < @abs(right.re)) {
                 const tmp1 = right.im / right.re;
                 const tmp2 = 1 / (right.re + tmp1 * right.im);
-                return Cfloat(T){
+                return .{
                     .re = (left.re + left.im * tmp1) * tmp2,
                     .im = (left.im - left.re * tmp1) * tmp2,
                 };
             } else {
                 const tmp1 = right.re / right.im;
                 const tmp2 = 1 / (right.im + tmp1 * right.re);
-                return Cfloat(T){
+                return .{
                     .re = (left.re * tmp1 + left.im) * tmp2,
                     .im = (left.im * tmp1 - left.re) * tmp2,
                 };
@@ -119,28 +127,28 @@ pub fn Cfloat(comptime T: type) type {
         }
 
         pub fn divReal(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.re / right,
                 .im = left.im / right,
             };
         }
 
         pub fn divImag(left: Cfloat(T), right: T) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = left.im / right,
                 .im = -left.re / right,
             };
         }
 
         pub fn conjugate(self: Cfloat(T)) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = self.re,
                 .im = -self.im,
             };
         }
 
         pub fn negative(self: Cfloat(T)) Cfloat(T) {
-            return Cfloat(T){
+            return .{
                 .re = -self.re,
                 .im = -self.im,
             };
@@ -148,13 +156,15 @@ pub fn Cfloat(comptime T: type) type {
 
         pub fn inverse(self: Cfloat(T)) Cfloat(T) {
             const s = 1 / std.math.hypot(self.re, self.im);
-            return Cfloat(T){
+            return .{
                 .re = self.re * s * s,
                 .im = -self.im * s * s,
             };
         }
     };
 }
+
+// Check all functions for any necessary casts
 
 pub fn add(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
     comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)))
@@ -171,7 +181,11 @@ pub fn arg(z: anytype) @TypeOf(z.re, z.im) {
         return 0;
     }
 
-    return std.math.atan2(z.im, z.re);
+    if (@TypeOf(z.re, z.im) == f128) {
+        return math.atan2_128(z.im, z.re);
+    } else {
+        return std.math.atan2(z.im, z.re);
+    }
 }
 
 pub fn abs(z: anytype) @TypeOf(z.re, z.im) {
@@ -196,7 +210,11 @@ pub fn logabs(z: anytype) @TypeOf(z.re, z.im) {
         u = rabs / iabs;
     }
 
-    return std.math.log(@TypeOf(z.re, z.im), std.math.e, max) + std.math.log1p(u * u) / 2;
+    if (@TypeOf(z.re, z.im) == f128) {
+        return @log(max) + math.log1p128(u * u) / 2;
+    } else {
+        return @log(max) + std.math.log1p(u * u) / 2;
+    }
 }
 
 pub fn sqrt(z: anytype) @TypeOf(z) {
@@ -250,85 +268,153 @@ pub fn pow(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
     comptime if (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right)))
         @compileError("Either left or right must be cfloat");
 
-    const lnumeric = types.numericType(@TypeOf(left));
-    const rnumeric = types.numericType(@TypeOf(right));
+    const l: Coerce(@TypeOf(left), @TypeOf(right)) = types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{});
+    const r: Coerce(@TypeOf(left), @TypeOf(right)) = types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{});
 
-    switch (lnumeric) {
-        .int => {
-            switch (rnumeric) {
-                .int => unreachable,
-                .float => unreachable,
-                .cfloat => {
-                    return pow(Coerce(@TypeOf(left), @TypeOf(right)){
-                        .re = types.cast(types.Numeric(Coerce(@TypeOf(left), @TypeOf(right))), left),
-                        .im = 0,
-                    }, right);
-                },
-                else => unreachable,
-            }
-        },
-        .float => {
-            switch (rnumeric) {
-                .int => unreachable,
-                .float => unreachable,
-                .cfloat => {
-                    return pow(Coerce(@TypeOf(left), @TypeOf(right)){
-                        .re = types.cast(types.Numeric(Coerce(@TypeOf(left), @TypeOf(right))), left),
-                        .im = 0,
-                    }, right);
-                },
-                else => unreachable,
-            }
-        },
-        .cfloat => {
-            switch (rnumeric) {
-                .int => {
-                    return pow(left, Coerce(@TypeOf(left), @TypeOf(right)){
-                        .re = types.cast(types.Numeric(Coerce(@TypeOf(left), @TypeOf(right))), right),
-                        .im = 0,
-                    });
-                },
-                .float => {
-                    return pow(left, Coerce(@TypeOf(left), @TypeOf(right)){
-                        .re = types.cast(types.Numeric(Coerce(@TypeOf(left), @TypeOf(right))), right),
-                        .im = 0,
-                    });
-                },
-                .cfloat => {
-                    if (left.re == 0 and left.im == 0) {
-                        if (right.re == 0 and right.im == 0) {
-                            return .{
-                                .re = 1,
-                                .im = 0,
-                            };
-                        } else {
-                            return .{
-                                .re = 0,
-                                .im = 0,
-                            };
-                        }
-                    } else if (right.re == 1 and right.im == 0) {
-                        return left;
-                    } else if (right.re == -1 and right.im == 0) {
-                        return right.inverse();
-                    } else {
-                        const logr = logabs(left);
-                        const theta = arg(left);
+    if (l.re == 0 and l.im == 0) {
+        if (r.re == 0 and r.im == 0) {
+            return .{
+                .re = 1,
+                .im = 0,
+            };
+        } else {
+            return .{
+                .re = 0,
+                .im = 0,
+            };
+        }
+    } else if (r.re == 1 and r.im == 0) {
+        return l;
+    } else if (r.re == -1 and r.im == 0) {
+        return r.inverse();
+    } else {
+        const logr = logabs(l);
+        const theta = arg(l);
 
-                        const rho = @exp(logr * right.re - theta * right.im);
-                        const beta = logr * right.im + theta * right.re;
+        const rho = @exp(logr * r.re - theta * r.im);
+        const beta = logr * r.im + theta * r.re;
 
-                        return .{
-                            .re = rho * @cos(beta),
-                            .im = rho * @sin(beta),
-                        };
-                    }
-                },
-                else => unreachable,
-            }
-        },
-        else => unreachable,
+        return .{
+            .re = rho * @cos(beta),
+            .im = rho * @sin(beta),
+        };
     }
+}
+
+pub fn log(z: anytype) @TypeOf(z) {
+    return .{
+        .re = logabs(z),
+        .im = arg(z),
+    };
+}
+
+pub fn log10(z: anytype) @TypeOf(z) {
+    return log(z).mulReal(1 / @log(10));
+}
+
+pub fn logBase(z: anytype, base: anytype) Coerce(@TypeOf(z), @TypeOf(base)) {
+    comptime if (!types.isFixedPrecision(@TypeOf(z)) or !types.isFixedPrecision(@TypeOf(base)))
+        @compileError("Unsupported types for cfloat.add: " ++ @typeName(@TypeOf(z)) ++ " and " ++ @typeName(@TypeOf(base)));
+
+    comptime if (!types.isComplex(@TypeOf(z)) and !types.isComplex(@TypeOf(z)))
+        @compileError("Either z or base must be cfloat");
+
+    const zz: Coerce(@TypeOf(z), @TypeOf(base)) = types.cast(Coerce(@TypeOf(z), @TypeOf(base)), z, .{});
+    const bb: Coerce(@TypeOf(z), @TypeOf(base)) = types.cast(Coerce(@TypeOf(z), @TypeOf(base)), base, .{});
+
+    return log(zz).div(log(bb));
+}
+
+pub fn sin(z: anytype) @TypeOf(z) {
+    if (z.im == 0) {
+        return .{
+            .re = @sin(z.re),
+            .im = 0,
+        };
+    } else {
+        if (@TypeOf(z.re, z.im) == f128) {
+            return .{
+                .re = @sin(z.re) * math.cosh128(z.im),
+                .im = @cos(z.re) * math.sinh128(z.im),
+            };
+        } else {
+            return .{
+                .re = @sin(z.re) * std.math.cosh(z.im),
+                .im = @cos(z.re) * std.math.sinh(z.im),
+            };
+        }
+    }
+}
+
+pub fn cos(z: anytype) @TypeOf(z) {
+    if (z.im == 0) {
+        return .{
+            .re = @cos(z.re),
+            .im = 0,
+        };
+    } else {
+        if (@TypeOf(z.re, z.im) == f128) {
+            return .{
+                .re = @cos(z.re) * math.cosh128(z.im),
+                .im = @sin(z.re) * math.sinh128(-z.im),
+            };
+        } else {
+            return .{
+                .re = @cos(z.re) * std.math.cosh(z.im),
+                .im = @sin(z.re) * std.math.sinh(-z.im),
+            };
+        }
+    }
+}
+
+pub fn tan(z: anytype) @TypeOf(z) {
+    if (@abs(z.im) < 1) {
+        if (@TypeOf(z.re, z.im) == f128) {
+            const D = 1 / (math.pow128(z.re, 2) + math.pow128(math.cosh128(z.im), 2));
+
+            return .{
+                .re = 0.5 * D * @sin(2 * z.re),
+                .im = 0.5 * D * math.sinh128(2 * z.im),
+            };
+        } else {
+            const D = 1 / (std.math.pow(z.re, 2) + std.math.pow(std.math.cosh(z.im), 2));
+
+            return .{
+                .re = 0.5 * D * @sin(2 * z.re),
+                .im = 0.5 * D * std.math.sinh(2 * z.im),
+            };
+        }
+    } else {
+        if (@TypeOf(z.re, z.im) == f128) {
+            const D = 1 / (math.pow128(z.re, 2) + math.pow128(math.sinh128(z.im), 2));
+            const F = 1 + math.pow128(@cos(z.re) / math.sinh128(z.im), 2);
+
+            return .{
+                .re = 0.5 * D * @sin(2 * z.re),
+                .im = 1 / (math.tanh128(z.im) * F),
+            };
+        } else {
+            const D = 1 / (std.math.pow(z.re, 2) + std.math.pow(std.math.sinh(z.im), 2));
+            const F = 1 + std.math.pow(@cos(z.re) / std.math.sinh(z.im), 2);
+
+            return .{
+                .re = 0.5 * D * @sin(2 * z.re),
+                .im = 1 / (std.math.tanh(z.im) * F),
+            };
+        }
+    }
+}
+
+pub fn sec(z: anytype) @TypeOf(z) {
+    return cos(z).inverse();
+}
+
+pub fn csc(z: anytype) @TypeOf(z) {
+    return sin(z).inverse();
+}
+
+pub fn cot(z: anytype) @TypeOf(z) {
+    return tan(z).inverse();
 }
 
 pub const cf16 = Cfloat(f16);
