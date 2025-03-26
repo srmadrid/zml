@@ -20,6 +20,6 @@ pub inline fn add(allocator_out: anytype, out: anytype, allocator_left: anytype,
     _ = knumeric;
     _ = vnumeric;
 
-    if (T != types.Coerce(K, V))
-        @compileError("Output type must be: Coerce(@TypeOf(left), @TypeOf(right)).");
+    if (!types.canCoerce(K, T) or !types.canCoerce(V, T))
+        @compileError("Cannot coerce " ++ @typeName(K) ++ " and " ++ @typeName(V) ++ " to " ++ @typeName(T));
 }

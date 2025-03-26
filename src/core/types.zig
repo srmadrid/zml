@@ -48,7 +48,7 @@ pub inline fn numericType(comptime T: type) NumericType {
     switch (@typeInfo(T)) {
         .bool => return .bool,
         .int, .comptime_int => {
-            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != comptime_int) {
+            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != comptime_int) {
                 @compileError("Unsupported integer type: " ++ @typeName(T));
             } else {
                 return .int;
@@ -139,29 +139,60 @@ pub fn isSlice(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is of fixed precision.
+pub fn isFixedPrecision(comptime T: type) bool {
+    switch (numericType(T)) {
+        .int => return true,
+        .float => return true,
+        .cfloat => return true,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is of arbitrary precision.
+pub fn isArbitraryPrecision(comptime T: type) bool {
+    switch (numericType(T)) {
+        .integer => return true,
+        .rational => return true,
+        .real => return true,
+        .complex => return true,
+        .expression => return true,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is complex without distunguishing between
+/// arbitrary and fixed precision.
+pub fn isComplex(comptime T: type) bool {
+    switch (numericType(T)) {
+        .cfloat => return true,
+        .complex => return true,
+        else => return false,
+    }
+}
+
 /// Coerces the input types to the smallest numeric type that can represent both
 /// types. If either type is a slice or an NDArray, the corresponding type of
 /// the elements is used for the coercion.
 pub fn Coerce(comptime K: type, comptime V: type) type {
-    //@compileLog("UNFINISHED: Coerce\n");
     comptime var T1: type = K;
     comptime var T2: type = V;
 
-    if (isNDArray(K)) {
+    comptime if (isNDArray(K)) {
         const t1: K = .empty;
         T1 = @typeInfo(@TypeOf(@field(t1, "data"))).pointer.child;
     } else if (isSlice(K)) {
         T1 = @typeInfo(K).pointer.child;
-    }
+    };
 
     const t1numeric = numericType(T1);
 
-    if (isNDArray(V)) {
+    comptime if (isNDArray(V)) {
         const t2: V = .empty;
         T2 = @typeInfo(@TypeOf(@field(t2, "data"))).pointer.child;
     } else if (isSlice(V)) {
         T2 = @typeInfo(V).pointer.child;
-    }
+    };
 
     const t2numeric = numericType(T2);
 
@@ -253,7 +284,7 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
                     const t2info = @typeInfo(@TypeOf(@field(t2, "re")));
 
                     if (t1info.float.bits > t2info.float.bits) {
-                        return cfloat.cfloat(T1);
+                        return cfloat.Cfloat(T1);
                     } else {
                         return T2;
                     }
@@ -270,11 +301,20 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
                 .cfloat => {
                     const t1: T1 = .{ .re = 0, .im = 0 };
                     const t2: T2 = .{ .re = 0, .im = 0 };
-                    return cfloat.cfloat(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
+                    return cfloat.Cfloat(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
                 },
-                .integer => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
-                .rational => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
-                .real => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
+                .integer => return ComplexUnmanaged(RationalUnmanaged),
+                .rational => return ComplexUnmanaged(RationalUnmanaged),
+                .real => return ComplexUnmanaged(RealUnmanaged),
+                .complex => {
+                    if (T2 == ComplexUnmanaged(IntegerUnmanaged)) {
+                        return ComplexUnmanaged(RationalUnmanaged);
+                    } else if (T2 == Complex(IntegerUnmanaged)) {
+                        return Complex(RationalUnmanaged);
+                    } else {
+                        return T2;
+                    }
+                },
                 .unsupported => unreachable,
                 else => return T2,
             }
@@ -283,7 +323,7 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .bool => return T1,
             .int => return T1,
             .float => return T1,
-            .cfloat => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
+            .cfloat => return ComplexUnmanaged(RationalUnmanaged),
             .integer => return T1,
             .unsupported => unreachable,
             else => return T2,
@@ -292,7 +332,7 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .bool => return T1,
             .int => return T1,
             .float => return T1,
-            .cfloat => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
+            .cfloat => return ComplexUnmanaged(RationalUnmanaged),
             .integer => return T1,
             .rational => return T1,
             .complex => {
@@ -311,7 +351,7 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .bool => return T1,
             .int => return T1,
             .float => return T1,
-            .cfloat => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
+            .cfloat => return ComplexUnmanaged(RealUnmanaged),
             .integer => return T1,
             .rational => return T1,
             .real => return T1,
@@ -335,7 +375,15 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .bool => return T1,
             .int => return T1,
             .float => return T1,
-            .cfloat => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
+            .cfloat => {
+                if (T1 == ComplexUnmanaged(IntegerUnmanaged)) {
+                    return ComplexUnmanaged(RationalUnmanaged);
+                } else if (T1 == Complex(IntegerUnmanaged)) {
+                    return Complex(RationalUnmanaged);
+                } else {
+                    return T1;
+                }
+            },
             .integer => return T1,
             .rational => return T1,
             .real => return T1,
@@ -355,7 +403,7 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .bool => return T1,
             .int => return T1,
             .float => return T1,
-            .cfloat => @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2)),
+            .cfloat => return T1,
             .integer => return T1,
             .rational => return T1,
             .real => return T1,
@@ -365,6 +413,255 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
         },
         .unsupported => unreachable,
     }
+}
+
+/// Checks if if `K` can be coerced to `V` without loss of information. This is
+/// a more flexible version of `Coerce`, as it does not require `V` to be to the
+/// smallest type that can represent both types. The only requirement is that
+/// `V` can represent all values of the first two types.
+pub fn canCoerce(comptime K: type, comptime V: type) bool {
+    comptime var T1: type = K;
+    comptime var T2: type = V;
+
+    comptime if (isNDArray(K)) {
+        const t1: K = .empty;
+        T1 = @typeInfo(@TypeOf(@field(t1, "data"))).pointer.child;
+    } else if (isSlice(K)) {
+        T1 = @typeInfo(K).pointer.child;
+    };
+
+    const t1numeric = numericType(T1);
+
+    comptime if (isNDArray(V)) {
+        const t2: V = .empty;
+        T2 = @typeInfo(@TypeOf(@field(t2, "data"))).pointer.child;
+    } else if (isSlice(V)) {
+        T2 = @typeInfo(V).pointer.child;
+    };
+
+    const t2numeric = numericType(T2);
+
+    comptime var T3: type = undefined;
+
+    if (T1 == T2) {
+        return true;
+    }
+
+    switch (t1numeric) {
+        .bool => switch (t2numeric) {
+            .bool => T3 = bool,
+            else => T3 = T2,
+        },
+        .int => switch (t2numeric) {
+            .bool => T3 = T1,
+            .int => {
+                if (T1 == comptime_int or T2 == comptime_int) {
+                    T3 = comptime_int;
+                } else {
+                    comptime var t1info = @typeInfo(T1);
+                    comptime var t2info = @typeInfo(T2);
+
+                    if (t1info.int.signedness == .unsigned) {
+                        if (t2info.int.signedness == .unsigned) {
+                            if (t1info.int.bits > t2info.int.bits) {
+                                T3 = T1;
+                            } else {
+                                T3 = T2;
+                            }
+                        } else {
+                            if (t1info.int.bits > t2info.int.bits) {
+                                if (t1info.int.bits == 128) {
+                                    return false;
+                                } else {
+                                    t2info.int.bits = t1info.int.bits * 2;
+                                    T3 = @Type(t2info);
+                                }
+                            } else if (t1info.int.bits == t2info.int.bits) {
+                                t2info.int.bits *= 2;
+                                T3 = @Type(t2info);
+                            } else {
+                                T3 = T2;
+                            }
+                        }
+                    } else {
+                        if (t2info.int.signedness == .unsigned) {
+                            if (t2info.int.bits > t1info.int.bits) {
+                                if (t2info.int.bits == 128) {
+                                    return false;
+                                } else {
+                                    t1info.int.bits = t2info.int.bits * 2;
+                                    T3 = @Type(t1info);
+                                }
+                            } else if (t1info.int.bits == t2info.int.bits) {
+                                t1info.int.bits *= 2;
+                                T3 = @Type(t1info);
+                            } else {
+                                T3 = T1;
+                            }
+                        } else {
+                            if (t1info.int.bits > t2info.int.bits) {
+                                T3 = T1;
+                            } else {
+                                T3 = T2;
+                            }
+                        }
+                    }
+                }
+            },
+            .unsupported => unreachable,
+            else => T3 = T2,
+        },
+        .float => {
+            switch (t2numeric) {
+                .bool => T3 = T1,
+                .int => T3 = T1,
+                .float => {
+                    const t1info = @typeInfo(T1);
+                    const t2info = @typeInfo(T2);
+
+                    if (t1info.float.bits > t2info.float.bits) {
+                        T3 = T1;
+                    } else {
+                        T3 = T2;
+                    }
+                },
+                .cfloat => {
+                    const t1info = @typeInfo(T1);
+                    const t2: T2 = .{ .re = 0, .im = 0 };
+                    const t2info = @typeInfo(@TypeOf(@field(t2, "re")));
+
+                    if (t1info.float.bits > t2info.float.bits) {
+                        T3 = cfloat.Cfloat(T1);
+                    } else {
+                        T3 = T2;
+                    }
+                },
+                .unsupported => unreachable,
+                else => T3 = T2,
+            }
+        },
+        .cfloat => {
+            switch (t2numeric) {
+                .bool => T3 = T1,
+                .int => T3 = T1,
+                .float => T3 = T1,
+                .cfloat => {
+                    const t1: T1 = .{ .re = 0, .im = 0 };
+                    const t2: T2 = .{ .re = 0, .im = 0 };
+                    T3 = cfloat.Cfloat(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
+                },
+                .integer => T3 = ComplexUnmanaged(RationalUnmanaged),
+                .rational => T3 = ComplexUnmanaged(RationalUnmanaged),
+                .real => T3 = ComplexUnmanaged(RealUnmanaged),
+                .complex => {
+                    if (T2 == ComplexUnmanaged(IntegerUnmanaged)) {
+                        T3 = ComplexUnmanaged(RationalUnmanaged);
+                    } else if (T2 == Complex(IntegerUnmanaged)) {
+                        T3 = Complex(RationalUnmanaged);
+                    } else {
+                        T3 = T2;
+                    }
+                },
+                .unsupported => unreachable,
+                else => T3 = T2,
+            }
+        },
+        .integer => switch (t2numeric) {
+            .bool => T3 = T1,
+            .int => T3 = T1,
+            .float => T3 = T1,
+            .cfloat => T3 = ComplexUnmanaged(RationalUnmanaged),
+            .integer => T3 = T1,
+            .unsupported => unreachable,
+            else => T3 = T2,
+        },
+        .rational => switch (t2numeric) {
+            .bool => T3 = T1,
+            .int => T3 = T1,
+            .float => T3 = T1,
+            .cfloat => T3 = ComplexUnmanaged(RationalUnmanaged),
+            .integer => T3 = T1,
+            .rational => T3 = T1,
+            .complex => {
+                if (T2 == ComplexUnmanaged(IntegerUnmanaged)) {
+                    T3 = ComplexUnmanaged(RationalUnmanaged);
+                } else if (T2 == Complex(IntegerUnmanaged)) {
+                    T3 = Complex(RationalUnmanaged);
+                } else {
+                    T3 = T2;
+                }
+            },
+            .unsupported => unreachable,
+            else => T3 = T2,
+        },
+        .real => switch (t2numeric) {
+            .bool => T3 = T1,
+            .int => T3 = T1,
+            .float => T3 = T1,
+            .cfloat => T3 = ComplexUnmanaged(RealUnmanaged),
+            .integer => T3 = T1,
+            .rational => T3 = T1,
+            .real => T3 = T1,
+            .complex => {
+                if (T2 == ComplexUnmanaged(IntegerUnmanaged)) {
+                    T3 = ComplexUnmanaged(RealUnmanaged);
+                } else if (T2 == Complex(IntegerUnmanaged)) {
+                    T3 = Complex(RealUnmanaged);
+                } else if (T2 == ComplexUnmanaged(RationalUnmanaged)) {
+                    T3 = ComplexUnmanaged(RealUnmanaged);
+                } else if (T2 == Complex(RationalUnmanaged)) {
+                    T3 = Complex(RealUnmanaged);
+                } else {
+                    T3 = T2;
+                }
+            },
+            .unsupported => unreachable,
+            else => T3 = T2,
+        },
+        .complex => switch (t2numeric) {
+            .bool => T3 = T1,
+            .int => T3 = T1,
+            .float => T3 = T1,
+            .cfloat => {
+                if (T1 == ComplexUnmanaged(IntegerUnmanaged)) {
+                    T3 = ComplexUnmanaged(RationalUnmanaged);
+                } else if (T1 == Complex(IntegerUnmanaged)) {
+                    T3 = Complex(RationalUnmanaged);
+                } else {
+                    T3 = T1;
+                }
+            },
+            .integer => T3 = T1,
+            .rational => T3 = T1,
+            .real => T3 = T1,
+            .complex => {
+                const t1: T1 = .empty;
+                const t2: T2 = .empty;
+                if (@hasField(T1, "allocator") or @hasField(T2, "allocator")) {
+                    T3 = Complex(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
+                } else {
+                    T3 = ComplexUnmanaged(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
+                }
+            },
+            .expression => T3 = T2,
+            else => unreachable,
+        },
+        .expression => switch (t2numeric) {
+            .bool => T3 = T1,
+            .int => T3 = T1,
+            .float => T3 = T1,
+            .cfloat => T3 = T1,
+            .integer => T3 = T1,
+            .rational => T3 = T1,
+            .real => T3 = T1,
+            .complex => T3 = T1,
+            .expression => T3 = T1,
+            else => unreachable,
+        },
+        .unsupported => unreachable,
+    }
+
+    return T2 == T3;
 }
 
 /// Returns the scalar type of a given numeric type:
@@ -421,10 +718,11 @@ pub fn Numeric(comptime T: type) type {
     }
 }
 
-/// Casts a value of any numeric type to any other numeric type. The optional
-/// allocator is needed only if the type to be casted to requires allocation.
+/// Casts a value of any numeric type to any other numeric type. It does not
+/// check if the cast is valid, so it is up to the user to ensure that the cast
+/// is valid. The optional allocator is needed only if the type to be casted to
+/// requires allocation to be initialized.
 pub inline fn cast(comptime T: type, val: anytype) T {
-    std.debug.print("UNFINISHED: cast\n", .{});
-    _ = val;
-    return 0;
+    std.debug.print("UNFINISHED: cast, val: {}\n", .{val});
+    return @floatFromInt(val);
 }

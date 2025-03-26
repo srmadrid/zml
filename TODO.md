@@ -36,8 +36,8 @@ For functions which require optional parameters, use a `options` argument with a
 // Add won't actually take options, but this is just an example
 pub fn add(
     allocator: Allocator,
-    A: anytype,
-    B: anytype,
+    left: anytype,
+    right: anytype,
     options: struct {
         alpha: f64 = 1.0,
         beta: f64 = 0.0,
@@ -51,8 +51,9 @@ pub fn add(
 
 // In place
 pub fn add_(
-    A: NDArray,
-    B: NDArray,
+    out: anytype,
+    left: anytype,
+    right: anytype,
     options: struct {
         alpha: f64 = 1.0,
         beta: f64 = 0.0,
@@ -60,10 +61,12 @@ pub fn add_(
         offsetB: usize = 0,
         offsetC: usize = 0,
     },
-) !NDArray(Coerce(@TypeOf(A), @TypeOf(B))) {
+) !void {
     // ...
 }
 ```
+
+In inplace functions, `out` should hold a type such that `canCoerce(@TypeOf(left), @TypeOf(right), @TypeOf(out))` is true.
 
 All functions should take scalars, slices or NDArrays. If a slice is passed, call fromSlice and use that NDArray (assume RowMajor Packed)
 

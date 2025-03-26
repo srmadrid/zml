@@ -33,10 +33,9 @@ pub fn main() !void {
 }
 
 fn coreTesting() void {
-    std.debug.print("{}\n", .{core.types.Coerce(
-        zml.core.types.ComplexUnmanaged(zml.core.types.IntegerUnmanaged),
-        zml.core.types.ComplexUnmanaged(zml.core.types.RationalUnmanaged),
-    )});
+    const a: zml.core.types.cf64 = .init(2, 3);
+    const b: isize = 1;
+    std.debug.print("{}\n", .{core.types.cfloat.pow(a, b)});
 }
 
 fn ask_user(default: usize) !usize {
@@ -73,7 +72,7 @@ fn blasPerfTesting(a: std.mem.Allocator) !void {
     for (0..n) |_| {
         std.debug.print(".", .{});
         start_time = std.time.nanoTimestamp();
-        std.mem.doNotOptimizeAway(zml.BLAS.asum(f64, @intCast(A.size), A.data.ptr, 1));
+        std.mem.doNotOptimizeAway(zml.linalg.blas.asum(f64, @intCast(A.size), A.data.ptr, 1));
         //std.mem.doNotOptimizeAway(zml.BLAS.asum(f64, @divTrunc(@as(isize, @intCast(A.size)), @as(isize, 2)), A.data.ptr, 2));
         end_time = std.time.nanoTimestamp();
 
