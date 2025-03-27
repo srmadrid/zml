@@ -2,6 +2,8 @@
 
 ## Priority
 
+Implement basic math functions based on `ref/glibc/sysdeps/ieee754/ldbl-128ibm` IBM implementations.
+
 Create arbitrary precision types: Integer, Rational, Real and Complex.
 
 Change `get` to return a pointer to the element instead of the element itself.

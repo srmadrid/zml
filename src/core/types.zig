@@ -763,7 +763,7 @@ pub inline fn cast(
         },
         .int => switch (t1numeric) {
             .bool => return if (value != 0) true else false,
-            .int => return value,
+            .int => return @intCast(value),
             .float => return @floatFromInt(value),
             .cfloat => return .{
                 .re = @floatFromInt(value),
@@ -779,7 +779,7 @@ pub inline fn cast(
         .float => switch (t1numeric) {
             .bool => return if (value != 0) true else false,
             .int => return @intFromFloat(value),
-            .float => return value,
+            .float => return @floatCast(value),
             .cfloat => return .{
                 .re = @floatCast(value),
                 .im = 0,
