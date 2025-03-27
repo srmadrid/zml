@@ -162,7 +162,7 @@ pub inline fn rotmg(comptime T: type, d1: *T, d2: *T, x1: *T, y1: T, param: [*]T
     }
 }
 
-test "rotmg" {
+test rotmg {
     var d1: f64 = 1;
     var d2: f64 = 2;
     var x1: f64 = 1;

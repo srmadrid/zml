@@ -785,7 +785,7 @@ pub inline fn tpsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
     }
 }
 
-test "tpsv" {
+test tpsv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

@@ -44,7 +44,7 @@ pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
     }
 }
 
-test "copy" {
+test copy {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

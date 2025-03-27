@@ -2041,7 +2041,7 @@ pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
     }
 }
 
-test "trmm" {
+test trmm {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

@@ -749,7 +749,7 @@ pub inline fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
     }
 }
 
-test "trsv" {
+test trsv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

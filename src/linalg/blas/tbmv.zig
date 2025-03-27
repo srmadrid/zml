@@ -717,7 +717,7 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
     }
 }
 
-test "tbmv" {
+test tbmv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

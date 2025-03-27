@@ -655,7 +655,7 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
     }
 }
 
-test "symm" {
+test symm {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

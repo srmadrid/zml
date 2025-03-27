@@ -171,7 +171,7 @@ pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
     }
 }
 
-test "hbmv" {
+test hbmv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

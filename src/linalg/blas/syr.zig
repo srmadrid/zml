@@ -85,7 +85,7 @@ pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T
     }
 }
 
-test "syr" {
+test syr {
     const a = std.testing.allocator;
 
     const n = 5;

@@ -100,7 +100,7 @@ pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "hpr2" {
+test hpr2 {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

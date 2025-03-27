@@ -394,7 +394,7 @@ pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
     }
 }
 
-test "herk" {
+test herk {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

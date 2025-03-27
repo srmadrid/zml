@@ -310,7 +310,7 @@ pub inline fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, 
     }
 }
 
-test "gemv" {
+test gemv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

@@ -1,6 +1,10 @@
 const std = @import("std");
 const NDArray = @import("../ndarray/ndarray.zig").NDArray;
 
+pub const default_uint = usize;
+pub const default_int = isize;
+pub const default_float = f64;
+
 pub const cfloat = @import("types/cfloat.zig");
 pub const cf16 = @import("types/cfloat.zig").cf16;
 pub const cf32 = @import("types/cfloat.zig").cf32;
@@ -664,12 +668,12 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
     return T2 == T3;
 }
 
-/// Returns the scalar type of a given numeric type:
+/// Returns the scalar type of a given numeric type, slice, or NDArray:
 /// - Atomic types, such as `u8`, `i16`, `f32`, etc., are returned as-is.
 /// - Complex types, such as `cf32`, `cf64`, etc., are returned as their real part.
 /// - Real arbitrary precision types, such as `Integer`, `Rational`, etc., are returned as-is.
 /// - Complex arbitrary precision types are returned as their real part.
-/// - Other types are returned as `unsupported`.
+/// - Slices and NDArray types are returned as their element type.
 pub fn Numeric(comptime T: type) type {
     if (isNDArray(T)) {
         const t: T = .empty;

@@ -146,7 +146,7 @@ pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
     }
 }
 
-test "rotm" {
+test rotm {
     const a: std.mem.Allocator = std.testing.allocator;
 
     const n = 1000;

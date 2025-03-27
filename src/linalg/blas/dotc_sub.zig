@@ -44,7 +44,7 @@ pub inline fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y
     }
 }
 
-test "dotc_sub" {
+test dotc_sub {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

@@ -80,7 +80,7 @@ pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
     }
 }
 
-test "geru" {
+test geru {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

@@ -348,7 +348,7 @@ pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, 
     }
 }
 
-test "gbmv" {
+test gbmv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

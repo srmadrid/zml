@@ -107,7 +107,7 @@ pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Numeric(T), s: *T) void {
     }
 }
 
-test "rotg" {
+test rotg {
     var a: f64 = 2;
     var b: f64 = 2;
     var c: f64 = undefined;

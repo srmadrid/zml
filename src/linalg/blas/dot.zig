@@ -46,7 +46,7 @@ pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]
     return sum;
 }
 
-test "dot" {
+test dot {
     const a: std.mem.Allocator = std.testing.allocator;
 
     const n = 1000;

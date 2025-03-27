@@ -675,7 +675,7 @@ pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
     }
 }
 
-test "trmv" {
+test trmv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

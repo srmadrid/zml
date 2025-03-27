@@ -46,7 +46,7 @@ pub inline fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y
     return;
 }
 
-test "dotu_sub" {
+test dotu_sub {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

@@ -668,7 +668,7 @@ pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
     }
 }
 
-test "syr2k" {
+test syr2k {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

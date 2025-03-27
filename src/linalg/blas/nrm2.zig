@@ -120,7 +120,7 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
     return scl * @sqrt(sumsq);
 }
 
-test "nrm2" {
+test nrm2 {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

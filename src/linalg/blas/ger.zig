@@ -78,7 +78,7 @@ pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, 
     }
 }
 
-test "ger" {
+test ger {
     const a = std.testing.allocator;
 
     const m = 4;

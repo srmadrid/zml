@@ -167,7 +167,7 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "hpmv" {
+test hpmv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

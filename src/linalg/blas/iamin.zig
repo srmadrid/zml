@@ -196,7 +196,7 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
     return imin;
 }
 
-test "iamin" {
+test iamin {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

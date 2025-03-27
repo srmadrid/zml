@@ -67,7 +67,7 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
     return sum;
 }
 
-test "asum" {
+test asum {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

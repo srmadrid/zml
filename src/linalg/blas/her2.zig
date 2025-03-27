@@ -104,7 +104,7 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "her2" {
+test her2 {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

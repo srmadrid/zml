@@ -33,9 +33,10 @@ pub fn main() !void {
 }
 
 fn coreTesting() void {
-    //const a: zml.core.types.cf128 = .init(2, 3);
-    const b: zml.core.types.cf128 = .init(3, 3);
-    std.debug.print("{}\n", .{core.types.cfloat.pow(2, b)});
+    std.debug.print("{}\n", .{core.types.cfloat.sqrt(2.0)});
+    const a: zml.core.types.cf128 = .init(2, 3);
+    const b: zml.core.types.cf16 = .init(3, 3);
+    std.debug.print("{}\n", .{core.types.cfloat.pow(a, b)});
     const c: std.math.Complex(f64) = .init(2, 3);
     const d: std.math.Complex(f64) = .init(3, 3);
     std.debug.print("{}\n", .{std.math.complex.pow(c, d)});

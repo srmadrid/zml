@@ -152,7 +152,7 @@ pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
     }
 }
 
-test "sbmv" {
+test sbmv {
     const a = std.testing.allocator;
 
     const n = 5;

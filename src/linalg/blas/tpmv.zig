@@ -707,7 +707,7 @@ pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
     }
 }
 
-test "tpmv" {
+test tpmv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

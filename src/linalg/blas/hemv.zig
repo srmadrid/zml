@@ -171,7 +171,7 @@ pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "hemv" {
+test hemv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

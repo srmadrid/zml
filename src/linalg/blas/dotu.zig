@@ -46,7 +46,7 @@ pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
     return sum;
 }
 
-test "dotu" {
+test dotu {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

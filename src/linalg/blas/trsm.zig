@@ -2319,7 +2319,7 @@ pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
     }
 }
 
-test "trsm" {
+test trsm {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

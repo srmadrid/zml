@@ -24,6 +24,10 @@ pub inline fn add(
         if (types.Coerce(types.Coerce(K, V), T) != T)
             @compileError("Cannot coerce " ++ @typeName(K) ++ " and " ++ @typeName(V) ++ " to " ++ @typeName(T));
 
+    // Casting may be expensive especially to arbitrary precision, invoke instead
+    // builtin functions to add fixed to arbitrary precision types without
+    // converting to arbitrary precision first. For now this is fine since
+    // arbitrary precision types are not supported yet.
     const o = out;
     const l = types.cast(T, left, .{ .allocator = options.allocator_left });
     const r = types.cast(T, right, .{ .allocator = options.allocator_right });
@@ -41,3 +45,43 @@ pub inline fn add(
         .unsupported => unreachable,
     }
 }
+
+// Include:
+// - sub
+// - mul
+// - div
+// - mod
+// - pow
+// - neg
+// - abs
+// - sqrt
+// - sin
+// - cos
+// - tan
+// - asin
+// - acos
+// - atan
+// - sinh
+// - cosh
+// - tanh
+// - asinh
+// - acosh
+// - atanh
+// - sec
+// - csc
+// - cot
+// - asec
+// - acsc
+// - acot
+// - sech
+// - csch
+// - coth
+// - asech
+// - acsch
+// - acoth
+// - log
+// - log10
+// - log2
+// - log1p
+// - exp
+// - any other basic math functions

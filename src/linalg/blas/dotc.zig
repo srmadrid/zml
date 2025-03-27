@@ -46,7 +46,7 @@ pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
     return sum;
 }
 
-test "dotc" {
+test dotc {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

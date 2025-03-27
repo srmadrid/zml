@@ -90,7 +90,7 @@ pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
     }
 }
 
-test "swap" {
+test swap {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

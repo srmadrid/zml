@@ -96,7 +96,7 @@ pub inline fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "syr2" {
+test syr2 {
     const a = std.testing.allocator;
 
     const n = 5;

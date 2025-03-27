@@ -1094,7 +1094,7 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
     }
 }
 
-test "gemm" {
+test gemm {
     @setEvalBranchQuota(2000);
     const a = std.testing.allocator;
     const Complex = std.math.Complex;

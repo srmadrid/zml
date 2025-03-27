@@ -115,7 +115,7 @@ pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) v
     }
 }
 
-test "scal" {
+test scal {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

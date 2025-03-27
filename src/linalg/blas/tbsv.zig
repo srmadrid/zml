@@ -805,7 +805,7 @@ pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
     }
 }
 
-test "tbsv" {
+test tbsv {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

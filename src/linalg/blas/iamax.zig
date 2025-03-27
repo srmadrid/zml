@@ -196,7 +196,7 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
     return imax;
 }
 
-test "iamax" {
+test iamax {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

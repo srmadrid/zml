@@ -103,7 +103,7 @@ pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, inc
     }
 }
 
-test "rot" {
+test rot {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

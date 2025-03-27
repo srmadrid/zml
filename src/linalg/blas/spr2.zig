@@ -92,7 +92,7 @@ pub inline fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "spr2" {
+test spr2 {
     const a = std.testing.allocator;
 
     const n = 5;

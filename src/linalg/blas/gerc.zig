@@ -80,7 +80,7 @@ pub inline fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
     }
 }
 
-test "gerc" {
+test gerc {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

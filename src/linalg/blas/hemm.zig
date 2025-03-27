@@ -367,7 +367,7 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
     }
 }
 
-test "hemm" {
+test hemm {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

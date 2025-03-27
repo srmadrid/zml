@@ -148,7 +148,7 @@ pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "spmv" {
+test spmv {
     const a = std.testing.allocator;
 
     const n = 5;

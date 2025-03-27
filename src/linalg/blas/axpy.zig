@@ -76,7 +76,7 @@ pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: is
     }
 }
 
-test "axpy" {
+test axpy {
     const a: std.mem.Allocator = std.testing.allocator;
     const Complex = std.math.Complex;
 

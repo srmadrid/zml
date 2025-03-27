@@ -418,7 +418,7 @@ pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
     }
 }
 
-test "her2k" {
+test her2k {
     const a = std.testing.allocator;
     const Complex = std.math.Complex;
 

@@ -152,7 +152,7 @@ pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     }
 }
 
-test "symv" {
+test symv {
     const a = std.testing.allocator;
 
     const n = 5;
