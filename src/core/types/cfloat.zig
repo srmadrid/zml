@@ -2,7 +2,7 @@ const std = @import("std");
 const types = @import("../types.zig");
 const math = @import("../math.zig");
 const Coerce = types.Coerce;
-const Numeric = types.Numeric;
+const Scalar = types.Scalar;
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -174,7 +174,7 @@ pub fn add(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
             switch (types.numericType(@TypeOf(right))) {
                 .float => unreachable,
                 .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).addReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).addReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
                 },
                 else => unreachable,
             }
@@ -182,7 +182,7 @@ pub fn add(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
         .cfloat => {
             switch (types.numericType(@TypeOf(right))) {
                 .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).addReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).addReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
                 },
                 .cfloat => {
                     return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).add(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
@@ -203,7 +203,7 @@ pub fn sub(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
             switch (types.numericType(@TypeOf(right))) {
                 .float => unreachable,
                 .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).negative().addReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).negative().addReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
                 },
                 else => unreachable,
             }
@@ -211,7 +211,7 @@ pub fn sub(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
         .cfloat => {
             switch (types.numericType(@TypeOf(right))) {
                 .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).subReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).subReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
                 },
                 .cfloat => {
                     return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).sub(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
@@ -232,7 +232,7 @@ pub fn mul(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
             switch (types.numericType(@TypeOf(right))) {
                 .float => unreachable,
                 .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).mulReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).mulReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
                 },
                 else => unreachable,
             }
@@ -240,7 +240,7 @@ pub fn mul(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
         .cfloat => {
             switch (types.numericType(@TypeOf(right))) {
                 .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).mulReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).mulReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
                 },
                 .cfloat => {
                     return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).mul(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
@@ -261,7 +261,7 @@ pub fn div(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
             switch (types.numericType(@TypeOf(right))) {
                 .float => unreachable,
                 .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).inverse().mulReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).inverse().mulReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
                 },
                 else => unreachable,
             }
@@ -269,7 +269,7 @@ pub fn div(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
         .cfloat => {
             switch (types.numericType(@TypeOf(right))) {
                 .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).divReal(types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
+                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).divReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
                 },
                 .cfloat => {
                     return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).div(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
@@ -281,7 +281,7 @@ pub fn div(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
     }
 }
 
-pub fn arg(z: anytype) Numeric(@TypeOf(z)) {
+pub fn arg(z: anytype) Scalar(@TypeOf(z)) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -294,7 +294,7 @@ pub fn arg(z: anytype) Numeric(@TypeOf(z)) {
                 return 0;
             }
 
-            if (Numeric(@TypeOf(z)) == f128) {
+            if (Scalar(@TypeOf(z)) == f128) {
                 return math.atan2_128(z.im, z.re);
             } else {
                 return std.math.atan2(z.im, z.re);
@@ -304,21 +304,21 @@ pub fn arg(z: anytype) Numeric(@TypeOf(z)) {
     }
 }
 
-pub fn abs(z: anytype) Numeric(@TypeOf(z)) {
+pub fn abs(z: anytype) Scalar(@TypeOf(z)) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return std.math.hypot(z.re, z.im);
 }
 
-pub fn abs2(z: anytype) Numeric(@TypeOf(z)) {
+pub fn abs2(z: anytype) Scalar(@TypeOf(z)) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return z.re * z.re + z.im * z.im;
 }
 
-pub fn logabs(z: anytype) Numeric(@TypeOf(z)) {
+pub fn logabs(z: anytype) Scalar(@TypeOf(z)) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
@@ -335,14 +335,14 @@ pub fn logabs(z: anytype) Numeric(@TypeOf(z)) {
         u = rabs / iabs;
     }
 
-    if (Numeric(@TypeOf(z)) == f128) {
+    if (Scalar(@TypeOf(z)) == f128) {
         return @log(max) + math.log1p128(u * u) / 2;
     } else {
         return @log(max) + std.math.log1p(u * u) / 2;
     }
 }
 
-pub fn sqrt(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn sqrt(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -397,7 +397,7 @@ pub fn sqrt(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn exp(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn exp(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
@@ -428,7 +428,7 @@ pub fn pow(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
             switch (types.numericType(@TypeOf(right))) {
                 .float => {
                     const l = types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{});
-                    const r = types.cast(Numeric(Coerce(@TypeOf(left), @TypeOf(right))), right, .{});
+                    const r = types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{});
 
                     if (l.re == 0 and l.im == 0) {
                         if (r == 0) {
@@ -494,7 +494,7 @@ pub fn pow(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
     }
 }
 
-pub fn log(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn log(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
@@ -504,7 +504,7 @@ pub fn log(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     };
 }
 
-pub fn log10(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn log10(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
@@ -521,7 +521,7 @@ pub fn logBase(z: anytype, base: anytype) Coerce(@TypeOf(z), @TypeOf(base)) {
     return log(zz).div(log(bb));
 }
 
-pub fn sin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn sin(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
@@ -531,7 +531,7 @@ pub fn sin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
             .im = 0,
         };
     } else {
-        if (Numeric(@TypeOf(z)) == f128) {
+        if (Scalar(@TypeOf(z)) == f128) {
             return .{
                 .re = @sin(z.re) * math.cosh128(z.im),
                 .im = @cos(z.re) * math.sinh128(z.im),
@@ -545,7 +545,7 @@ pub fn sin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn cos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn cos(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
@@ -555,7 +555,7 @@ pub fn cos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
             .im = 0,
         };
     } else {
-        if (Numeric(@TypeOf(z)) == f128) {
+        if (Scalar(@TypeOf(z)) == f128) {
             return .{
                 .re = @cos(z.re) * math.cosh128(z.im),
                 .im = @sin(z.re) * math.sinh128(-z.im),
@@ -569,12 +569,12 @@ pub fn cos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn tan(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn tan(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     if (@abs(z.im) < 1) {
-        if (Numeric(@TypeOf(z)) == f128) {
+        if (Scalar(@TypeOf(z)) == f128) {
             const D = 1 / (math.pow128(z.re, 2) + math.pow128(math.cosh128(z.im), 2));
 
             return .{
@@ -590,7 +590,7 @@ pub fn tan(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
             };
         }
     } else {
-        if (Numeric(@TypeOf(z)) == f128) {
+        if (Scalar(@TypeOf(z)) == f128) {
             const D = 1 / (math.pow128(z.re, 2) + math.pow128(math.sinh128(z.im), 2));
             const F = 1 + math.pow128(@cos(z.re) / math.sinh128(z.im), 2);
 
@@ -610,28 +610,28 @@ pub fn tan(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn sec(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn sec(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return cos(z).inverse();
 }
 
-pub fn csc(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn csc(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return sin(z).inverse();
 }
 
-pub fn cot(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn cot(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return tan(z).inverse();
 }
 
-pub fn asin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn asin(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -691,14 +691,14 @@ pub fn asin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                 const B = x / A;
                 const y2 = y * y;
 
-                const A_crossover: Numeric(@TypeOf(z)) = 1.5;
-                const B_crossover: Numeric(@TypeOf(z)) = 0.6417;
+                const A_crossover: Scalar(@TypeOf(z)) = 1.5;
+                const B_crossover: Scalar(@TypeOf(z)) = 0.6417;
 
-                var real: Numeric(@TypeOf(z)) = undefined;
-                var imag: Numeric(@TypeOf(z)) = undefined;
+                var real: Scalar(@TypeOf(z)) = undefined;
+                var imag: Scalar(@TypeOf(z)) = undefined;
 
                 if (B <= B_crossover) {
-                    if (Numeric(@TypeOf(z)) == f128) {
+                    if (Scalar(@TypeOf(z)) == f128) {
                         real = math.asin128(B);
                     } else {
                         real = std.math.asin(B);
@@ -706,7 +706,7 @@ pub fn asin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                 } else {
                     if (x <= 1) {
                         const D = 0.5 * (A + x) * (y2 / (r + x + 1) + (s + (1 - x)));
-                        if (Numeric(@TypeOf(z)) == f128) {
+                        if (Scalar(@TypeOf(z)) == f128) {
                             real = math.atan128(x / @sqrt(D));
                         } else {
                             real = std.math.atan(x / @sqrt(D));
@@ -714,7 +714,7 @@ pub fn asin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                     } else {
                         const Apx = A + x;
                         const D = 0.5 * (Apx / (r + x + 1) + Apx / (s + (x - 1)));
-                        if (Numeric(@TypeOf(z)) == f128) {
+                        if (Scalar(@TypeOf(z)) == f128) {
                             real = math.atan128(x / (y * @sqrt(D)));
                         } else {
                             real = std.math.atan(x / (y * @sqrt(D)));
@@ -723,7 +723,7 @@ pub fn asin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                 }
 
                 if (A <= A_crossover) {
-                    var Am1: Numeric(@TypeOf(z)) = undefined;
+                    var Am1: Scalar(@TypeOf(z)) = undefined;
 
                     if (x < 1) {
                         Am1 = 0.5 * (y2 / (r + (x + 1)) + y2 / (s + (1 - x)));
@@ -731,7 +731,7 @@ pub fn asin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                         Am1 = 0.5 * (y2 / (r + (x + 1)) + (s + (x - 1)));
                     }
 
-                    if (Numeric(@TypeOf(z)) == f128) {
+                    if (Scalar(@TypeOf(z)) == f128) {
                         imag = math.log1p128(Am1 + @sqrt(Am1 * (A + 1)));
                     } else {
                         imag = std.math.log1p(Am1 + @sqrt(Am1 * (A + 1)));
@@ -771,7 +771,7 @@ pub fn asin(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn acos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn acos(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -829,14 +829,14 @@ pub fn acos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                 const B = x / A;
                 const y2 = y * y;
 
-                const A_crossover: Numeric(@TypeOf(z)) = 1.5;
-                const B_crossover: Numeric(@TypeOf(z)) = 0.6417;
+                const A_crossover: Scalar(@TypeOf(z)) = 1.5;
+                const B_crossover: Scalar(@TypeOf(z)) = 0.6417;
 
-                var real: Numeric(@TypeOf(z)) = undefined;
-                var imag: Numeric(@TypeOf(z)) = undefined;
+                var real: Scalar(@TypeOf(z)) = undefined;
+                var imag: Scalar(@TypeOf(z)) = undefined;
 
                 if (B <= B_crossover) {
-                    if (Numeric(@TypeOf(z)) == f128) {
+                    if (Scalar(@TypeOf(z)) == f128) {
                         real = math.acos128(B);
                     } else {
                         real = std.math.acos(B);
@@ -844,7 +844,7 @@ pub fn acos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                 } else {
                     if (x <= 1) {
                         const D = 0.5 * (A + x) * (y2 / (r + x + 1) + (s + (1 - x)));
-                        if (Numeric(@TypeOf(z)) == f128) {
+                        if (Scalar(@TypeOf(z)) == f128) {
                             real = math.atan128(@sqrt(D) / x);
                         } else {
                             real = std.math.atan(@sqrt(D) / x);
@@ -852,7 +852,7 @@ pub fn acos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                     } else {
                         const Apx = A + x;
                         const D = 0.5 * (Apx / (r + x + 1) + Apx / (s + (x - 1)));
-                        if (Numeric(@TypeOf(z)) == f128) {
+                        if (Scalar(@TypeOf(z)) == f128) {
                             real = math.atan128((y * @sqrt(D)) / x);
                         } else {
                             real = std.math.atan((y * @sqrt(D)) / x);
@@ -861,7 +861,7 @@ pub fn acos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                 }
 
                 if (A <= A_crossover) {
-                    var Am1: Numeric(@TypeOf(z)) = undefined;
+                    var Am1: Scalar(@TypeOf(z)) = undefined;
 
                     if (x < 1) {
                         Am1 = 0.5 * (y2 / (r + (x + 1)) + y2 / (s + (1 - x)));
@@ -869,7 +869,7 @@ pub fn acos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                         Am1 = 0.5 * (y2 / (r + (x + 1)) + (s + (x - 1)));
                     }
 
-                    if (Numeric(@TypeOf(z)) == f128) {
+                    if (Scalar(@TypeOf(z)) == f128) {
                         imag = math.log1p128(Am1 + @sqrt(Am1 * (A + 1)));
                     } else {
                         imag = std.math.log1p(Am1 + @sqrt(Am1 * (A + 1)));
@@ -909,12 +909,12 @@ pub fn acos(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn atan(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn atan(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     if (z.im == 0) {
-        if (Numeric(@TypeOf(z)) == f128) {
+        if (Scalar(@TypeOf(z)) == f128) {
             return .{
                 .re = math.atan128(z.re),
                 .im = 0,
@@ -928,10 +928,10 @@ pub fn atan(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     } else {
         const r = std.math.hypot(z.re, z.im);
         const u = 2 * z.im / (1 + r * r);
-        var imag: Numeric(@TypeOf(z)) = undefined;
+        var imag: Scalar(@TypeOf(z)) = undefined;
 
         if (@abs(u) < 0.1) {
-            if (Numeric(@TypeOf(z)) == f128) {
+            if (Scalar(@TypeOf(z)) == f128) {
                 imag = 0.25 * (math.log1p128(u) - math.log1p128(-u));
             } else {
                 imag = 0.25 * (std.math.log1p(u) - std.math.log1p(-u));
@@ -960,7 +960,7 @@ pub fn atan(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
                 };
             }
         } else {
-            if (Numeric(@TypeOf(z)) == f128) {
+            if (Scalar(@TypeOf(z)) == f128) {
                 return .{
                     .re = 0.5 * math.atan2_128(2 * z.re, ((1 + r) * (1 - r))),
                     .im = imag,
@@ -975,7 +975,7 @@ pub fn atan(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn asec(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn asec(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -1028,7 +1028,7 @@ pub fn asec(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn acsc(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn acsc(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -1081,7 +1081,7 @@ pub fn acsc(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn acot(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn acot(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
@@ -1095,11 +1095,11 @@ pub fn acot(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn sinh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn sinh(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
-    if (Numeric(@TypeOf(z)) == f128) {
+    if (Scalar(@TypeOf(z)) == f128) {
         return .{
             .re = math.sinh128(z.re) * @cos(z.im),
             .im = math.cosh128(z.re) * @sin(z.im),
@@ -1112,11 +1112,11 @@ pub fn sinh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn cosh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn cosh(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
-    if (Numeric(@TypeOf(z)) == f128) {
+    if (Scalar(@TypeOf(z)) == f128) {
         return .{
             .re = math.cosh128(z.re) * @cos(z.im),
             .im = math.sinh128(z.re) * @sin(z.im),
@@ -1129,12 +1129,12 @@ pub fn cosh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn tanh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn tanh(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     if (@abs(z.re) < 1) {
-        if (Numeric(@TypeOf(z)) == f128) {
+        if (Scalar(@TypeOf(z)) == f128) {
             const D = 1 / (math.pow128(@cos(z.re), 2) + math.pow128(math.sinh128(z.im), 2));
 
             return .{
@@ -1150,7 +1150,7 @@ pub fn tanh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
             };
         }
     } else {
-        if (Numeric(@TypeOf(z)) == f128) {
+        if (Scalar(@TypeOf(z)) == f128) {
             const D = 1 / (math.pow128(@cos(z.re), 2) + math.pow128(math.sinh128(z.im), 2));
             const F = 1 + math.pow128(@cos(z.re) / math.sinh128(z.im), 2);
 
@@ -1170,35 +1170,35 @@ pub fn tanh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn sech(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn sech(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return cosh(z).inverse();
 }
 
-pub fn csch(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn csch(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return sinh(z).inverse();
 }
 
-pub fn coth(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn coth(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return tanh(z).inverse();
 }
 
-pub fn asinh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn asinh(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return asin(z.mulImag(1)).mulImag(-1);
 }
 
-pub fn acosh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn acosh(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -1253,7 +1253,7 @@ pub fn acosh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn atanh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn atanh(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
         @compileError("z must be a float or cfloat");
 
@@ -1296,21 +1296,21 @@ pub fn atanh(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
     }
 }
 
-pub fn asech(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn asech(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return acosh(z.inverse());
 }
 
-pub fn acsch(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn acsch(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 
     return asinh(z.inverse());
 }
 
-pub fn acoth(z: anytype) Cfloat(Numeric(@TypeOf(z))) {
+pub fn acoth(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
         @compileError("z must be a cfloat");
 

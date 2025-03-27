@@ -2,14 +2,14 @@ const std = @import("std");
 const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
-pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Numeric(T), s: *T) void {
+pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Scalar(T), s: *T) void {
     @setRuntimeSafety(false);
     const numericType = core.types.numericType(T);
 
-    const safmin = std.math.floatMin(Numeric(T));
-    const safmax = std.math.floatMax(Numeric(T));
+    const safmin = std.math.floatMin(Scalar(T));
+    const safmax = std.math.floatMax(Scalar(T));
 
     switch (numericType) {
         .bool => @compileError("blas.rotg does not support bool."),

@@ -2,7 +2,7 @@ const std = @import("std");
 const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
 pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     @setRuntimeSafety(false);
@@ -104,7 +104,7 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
             }
         },
         .cfloat => {
-            var max: Numeric(T) = 0;
+            var max: Scalar(T) = 0;
 
             var ix: isize = 0;
             const nu = (n >> 3) << 3;

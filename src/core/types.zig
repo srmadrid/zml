@@ -674,7 +674,7 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
 /// - Real arbitrary precision types, such as `Integer`, `Rational`, etc., are returned as-is.
 /// - Complex arbitrary precision types are returned as their real part.
 /// - Slices and NDArray types are returned as their element type.
-pub fn Numeric(comptime T: type) type {
+pub fn Scalar(comptime T: type) type {
     if (isNDArray(T)) {
         const t: T = .empty;
         return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;

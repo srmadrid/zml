@@ -2,9 +2,9 @@ const std = @import("std");
 const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
-pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: Numeric(T), s: Numeric(T)) void {
+pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: Scalar(T), s: Scalar(T)) void {
     @setRuntimeSafety(false);
     const numericType = core.types.numericType(T);
 

@@ -4,7 +4,7 @@ const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
 pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     @setRuntimeSafety(false);
@@ -14,7 +14,7 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
     const N = n;
     var UPLO = uplo;
-    var conj: Numeric(T) = 1;
+    var conj: Scalar(T) = 1;
     if (order == .RowMajor) {
         UPLO = if (uplo == .Upper) .Lower else .Upper;
         conj = -1;

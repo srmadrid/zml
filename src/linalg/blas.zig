@@ -5,7 +5,7 @@ const options = @import("options");
 const Complex = std.math.Complex;
 const ndarray = @import("../ndarray/ndarray.zig");
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
 pub const Order = enum(c_uint) {
     RowMajor = 101,
@@ -35,7 +35,7 @@ pub const Side = enum(c_uint) {
 };
 
 // Level 1 BLAS
-pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Numeric(T) {
+pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Scalar(T) {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
@@ -48,9 +48,9 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_scasum(@intCast(n), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_dzasum(@intCast(n), x, @intCast(incx));
                 }
             },
@@ -86,9 +86,9 @@ pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: is
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_caxpy(@intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zaxpy(@intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy));
                 }
             },
@@ -124,9 +124,9 @@ pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ccopy(@intCast(n), x, @intCast(incx), y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zcopy(@intCast(n), x, @intCast(incx), y, @intCast(incy));
                 }
             },
@@ -149,7 +149,7 @@ pub fn zcopy(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]Complex(f64)
     return copy(Complex(f64), n, x, incx, y, incy);
 }
 
-pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) Numeric(T) {
+pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) Scalar(T) {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
@@ -180,9 +180,9 @@ pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
     //if (options.link_cblas != null) {
     //    switch (supported) {
     //        .Complex => {
-    //            if (Numeric(T) == f32) {
+    //            if (Scalar(T) == f32) {
     //                return ci.cblas_cdotc(@intCast(n), x, @intCast(incx), y, @intCast(incy));
-    //            } else if (Numeric(T) == f64) {
+    //            } else if (Scalar(T) == f64) {
     //                return ci.cblas_zdotc(@intCast(n), x, @intCast(incx), y, @intCast(incy));
     //            }
     //        },
@@ -205,9 +205,9 @@ pub inline fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cdotc_sub(@intCast(n), x, @intCast(incx), y, @intCast(incy), ret);
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zdotc_sub(@intCast(n), x, @intCast(incx), y, @intCast(incy), ret);
                 }
             },
@@ -230,9 +230,9 @@ pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
     //if (options.link_cblas != null) {
     //    switch (supported) {
     //        .Complex => {
-    //            if (Numeric(T) == f32) {
+    //            if (Scalar(T) == f32) {
     //                return ci.cblas_cdotu(@intCast(n), x, @intCast(incx), y, @intCast(incy));
-    //            } else if (Numeric(T) == f64) {
+    //            } else if (Scalar(T) == f64) {
     //                return ci.cblas_zdotu(@intCast(n), x, @intCast(incx), y, @intCast(incy));
     //            }
     //        },
@@ -255,9 +255,9 @@ pub inline fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cdotu_sub(@intCast(n), x, @intCast(incx), y, @intCast(incy), ret);
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zdotu_sub(@intCast(n), x, @intCast(incx), y, @intCast(incy), ret);
                 }
             },
@@ -274,7 +274,7 @@ pub fn zdotu_sub(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Co
     return dotu_sub(Complex(f64), n, x, incx, y, incy, ret);
 }
 
-pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numeric(T) {
+pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Scalar(T) {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
@@ -287,9 +287,9 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_scnrm2(@intCast(n), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_dznrm2(@intCast(n), x, @intCast(incx));
                 }
             },
@@ -312,7 +312,7 @@ pub fn dznrm2(n: isize, x: [*]const Complex(f64), incx: isize) f64 {
     return nrm2(Complex(f64), n, x, incx);
 }
 
-pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: Numeric(T), s: Numeric(T)) void {
+pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: Scalar(T), s: Scalar(T)) void {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
@@ -325,9 +325,9 @@ pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, inc
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_csrot(@intCast(n), x, @intCast(incx), y, @intCast(incy), c, s);
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zdrot(@intCast(n), x, @intCast(incx), y, @intCast(incy), c, s);
                 }
             },
@@ -350,7 +350,7 @@ pub fn zdrot(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy
     return rot(Complex(f64), n, x, incx, y, incy, c, s);
 }
 
-pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Numeric(T), s: *T) void {
+pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Scalar(T), s: *T) void {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
@@ -363,9 +363,9 @@ pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Numeric(T), s: *T) void {
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_crotg(a, b, c, s);
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zrotg(a, b, c, s);
                 }
             },
@@ -451,9 +451,9 @@ pub inline fn scal(comptime T: type, n: isize, a: T, x: [*]T, incx: isize) void 
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cscal(@intCast(n), &a, x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zscal(@intCast(n), &a, x, @intCast(incx));
                 }
             },
@@ -495,9 +495,9 @@ pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cswap(@intCast(n), x, @intCast(incx), y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zswap(@intCast(n), x, @intCast(incx), y, @intCast(incy));
                 }
             },
@@ -533,9 +533,9 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_icamax(@intCast(n), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_izamax(@intCast(n), x, @intCast(incx));
                 }
             },
@@ -571,9 +571,9 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_icamin(@intCast(n), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_izamin(@intCast(n), x, @intCast(incx));
                 }
             },
@@ -610,9 +610,9 @@ pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, 
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(transA), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(transA), @intCast(m), @intCast(n), @intCast(kl), @intCast(ku), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
                 }
             },
@@ -648,9 +648,9 @@ pub inline fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, 
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cgemv(@intFromEnum(order), @intFromEnum(transA), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zgemv(@intFromEnum(order), @intFromEnum(transA), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
                 }
             },
@@ -704,9 +704,9 @@ pub inline fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cgerc(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zgerc(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
                 }
             },
@@ -729,9 +729,9 @@ pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cgeru(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zgeru(@intFromEnum(order), @intCast(m), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
                 }
             },
@@ -761,9 +761,9 @@ pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
                 }
             },
@@ -786,9 +786,9 @@ pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_chemv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zhemv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, A, @intCast(lda), x, @intCast(incx), &beta, y, @intCast(incy));
                 }
             },
@@ -805,15 +805,15 @@ pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), A: [*]cons
     return hemv(Complex(f64), order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
-pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Numeric(T), x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
+pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), A, @intCast(lda));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), A, @intCast(lda));
                 }
             },
@@ -836,9 +836,9 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), A, @intCast(lda));
                 }
             },
@@ -861,9 +861,9 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, Ap, x, @intCast(incx), &beta, y, @intCast(incy));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, Ap, x, @intCast(incx), &beta, y, @intCast(incy));
                 }
             },
@@ -880,15 +880,15 @@ pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), Ap: [*]con
     return hpmv(Complex(f64), order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
 }
 
-pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Numeric(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), Ap);
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), alpha, x, @intCast(incx), Ap);
                 }
             },
@@ -911,9 +911,9 @@ pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), Ap);
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), @intCast(n), &alpha, x, @intCast(incx), y, @intCast(incy), Ap);
                 }
             },
@@ -980,7 +980,7 @@ pub fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, Ap: [*]const f64, x
     return spmv(f64, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
 }
 
-pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Numeric(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
@@ -1118,9 +1118,9 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), @intCast(k), A, @intCast(lda), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), @intCast(k), A, @intCast(lda), x, @intCast(incx));
                 }
             },
@@ -1156,9 +1156,9 @@ pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), @intCast(k), A, @intCast(lda), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), @intCast(k), A, @intCast(lda), x, @intCast(incx));
                 }
             },
@@ -1194,9 +1194,9 @@ pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
                 }
             },
@@ -1232,9 +1232,9 @@ pub inline fn tpsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), Ap, x, @intCast(incx));
                 }
             },
@@ -1270,9 +1270,9 @@ pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
                 }
             },
@@ -1308,9 +1308,9 @@ pub inline fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(n), A, @intCast(lda), x, @intCast(incx));
                 }
             },
@@ -1347,9 +1347,9 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), @intCast(m), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), @intCast(m), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
                 }
             },
@@ -1378,9 +1378,9 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
                 }
             },
@@ -1397,15 +1397,15 @@ pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Co
     return hemm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
-pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Numeric(T), A: [*]const T, lda: isize, beta: Numeric(T), C: [*]T, ldc: isize) void {
+pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Scalar(T), A: [*]const T, lda: isize, beta: Scalar(T), C: [*]T, ldc: isize) void {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), alpha, A, @intCast(lda), beta, C, @intCast(ldc));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), alpha, A, @intCast(lda), beta, C, @intCast(ldc));
                 }
             },
@@ -1422,15 +1422,15 @@ pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alp
     return herk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
 
-pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: Numeric(T), C: [*]T, ldc: isize) void {
+pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: Scalar(T), C: [*]T, ldc: isize) void {
     const supported = core.types.numericType(T);
 
     if (options.link_cblas != null) {
         switch (supported) {
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), beta, C, @intCast(ldc));
                 }
             },
@@ -1460,9 +1460,9 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_csymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
                 }
             },
@@ -1498,9 +1498,9 @@ pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_csyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), &beta, C, @intCast(ldc));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), &beta, C, @intCast(ldc));
                 }
             },
@@ -1536,9 +1536,9 @@ pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_csyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_zsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), @intCast(n), @intCast(k), &alpha, A, @intCast(lda), B, @intCast(ldb), &beta, C, @intCast(ldc));
                 }
             },
@@ -1574,9 +1574,9 @@ pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
                 }
             },
@@ -1612,9 +1612,9 @@ pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
                 }
             },
             .Complex => {
-                if (Numeric(T) == f32) {
+                if (Scalar(T) == f32) {
                     return ci.cblas_ctrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
-                } else if (Numeric(T) == f64) {
+                } else if (Scalar(T) == f64) {
                     return ci.cblas_ztrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), @intCast(m), @intCast(n), &alpha, A, @intCast(lda), B, @intCast(ldb));
                 }
             },

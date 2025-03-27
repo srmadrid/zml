@@ -4,9 +4,9 @@ const blas = @import("../blas.zig");
 const Order = blas.Order;
 const Uplo = blas.Uplo;
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
-pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Numeric(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
     @setRuntimeSafety(false);
     const numericType = core.types.numericType(T);
 

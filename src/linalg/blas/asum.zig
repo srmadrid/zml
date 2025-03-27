@@ -2,15 +2,15 @@ const std = @import("std");
 const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
-pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Numeric(T) {
+pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Scalar(T) {
     @setRuntimeSafety(false);
     const numericType = core.types.numericType(T);
 
     if (n <= 0 or incx < 0) return 0;
 
-    var sum: Numeric(T) = 0;
+    var sum: Scalar(T) = 0;
 
     switch (numericType) {
         .bool => @compileError("blas.asum does not support bool."),

@@ -5,9 +5,9 @@ const Order = blas.Order;
 const Uplo = blas.Uplo;
 const Transpose = blas.Transpose;
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
-pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Numeric(T), A: [*]const T, lda: isize, beta: Numeric(T), C: [*]T, ldc: isize) void {
+pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Scalar(T), A: [*]const T, lda: isize, beta: Scalar(T), C: [*]T, ldc: isize) void {
     @setRuntimeSafety(false);
     const numericType = core.types.numericType(T);
 

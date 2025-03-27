@@ -2,26 +2,37 @@ const std = @import("std");
 const core = @import("../../core.zig");
 const blas = @import("../blas.zig");
 
-const Numeric = core.types.Numeric;
+const Scalar = core.types.Scalar;
 
-pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numeric(T) {
+pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Scalar(T) {
     @setRuntimeSafety(false);
     const numericType = core.types.numericType(T);
 
     if (n <= 0) return 0;
 
-    const huge = std.math.floatMax(Numeric(T));
-    const tsml = std.math.pow(Numeric(T), 2, @ceil((std.math.floatExponentMin(f64) - 1) * 0.5));
-    const tbig = std.math.pow(Numeric(T), 2, @floor((std.math.floatExponentMax(f64) - @bitSizeOf(f64) + 1) * 0.5));
-    const ssml = std.math.pow(Numeric(T), 2, -@floor((std.math.floatExponentMin(f64) - @bitSizeOf(f64)) * 0.5));
-    const sbig = std.math.pow(Numeric(T), 2, -@ceil((std.math.floatExponentMax(f64) + @bitSizeOf(f64) - 1) * 0.5));
+    const huge = std.math.floatMax(Scalar(T));
+    var tsml: Scalar(T) = undefined;
+    var tbig: Scalar(T) = undefined;
+    var ssml: Scalar(T) = undefined;
+    var sbig: Scalar(T) = undefined;
+    if (Scalar(T) == f128) {
+        tsml = core.math.pow128(2, @ceil((std.math.floatExponentMin(Scalar(T)) - 1) * 0.5));
+        tbig = core.math.pow128(2, @floor((std.math.floatExponentMax(Scalar(T)) - @bitSizeOf(Scalar(T)) + 1) * 0.5));
+        ssml = core.math.pow128(2, -@floor((std.math.floatExponentMin(Scalar(T)) - @bitSizeOf(Scalar(T))) * 0.5));
+        sbig = core.math.pow128(2, -@ceil((std.math.floatExponentMax(Scalar(T)) + @bitSizeOf(Scalar(T)) - 1) * 0.5));
+    } else {
+        tsml = std.math.pow(Scalar(T), 2, @ceil((std.math.floatExponentMin(Scalar(T)) - 1) * 0.5));
+        tbig = std.math.pow(Scalar(T), 2, @floor((std.math.floatExponentMax(Scalar(T)) - @bitSizeOf(Scalar(T)) + 1) * 0.5));
+        ssml = std.math.pow(Scalar(T), 2, -@floor((std.math.floatExponentMin(Scalar(T)) - @bitSizeOf(Scalar(T))) * 0.5));
+        sbig = std.math.pow(Scalar(T), 2, -@ceil((std.math.floatExponentMax(Scalar(T)) + @bitSizeOf(Scalar(T)) - 1) * 0.5));
+    }
 
-    var scl: Numeric(T) = 1;
-    var sumsq: Numeric(T) = 0;
+    var scl: Scalar(T) = 1;
+    var sumsq: Scalar(T) = 0;
 
-    var abig: Numeric(T) = 0;
-    var amed: Numeric(T) = 0;
-    var asml: Numeric(T) = 0;
+    var abig: Scalar(T) = 0;
+    var amed: Scalar(T) = 0;
+    var asml: Scalar(T) = 0;
     var ix: isize = if (incx < 0) (1 - (n - 1) * incx) else 0;
 
     var notbig = true;
@@ -29,23 +40,40 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
     switch (numericType) {
         .bool => @compileError("blas.nrm2 does not support bool."),
         .int, .float => {
-            var ax: Numeric(T) = undefined;
+            var ax: Scalar(T) = undefined;
             for (0..@intCast(n)) |_| {
                 ax = @abs(x[@intCast(ix)]);
                 if (ax > tbig) {
-                    abig += std.math.pow(Numeric(T), ax * sbig, 2);
+                    if (Scalar(T) == f128) {
+                        abig += core.math.pow128(ax * sbig, 2);
+                    } else {
+                        abig += std.math.pow(Scalar(T), ax * sbig, 2);
+                    }
+
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += std.math.pow(Numeric(T), ax * ssml, 2);
+                    if (Scalar(T) == f128) {
+                        if (notbig) asml += core.math.pow128(ax * ssml, 2);
+                    } else {
+                        if (notbig) asml += std.math.pow(Scalar(T), ax * ssml, 2);
+                    }
                 } else {
-                    amed += std.math.pow(Numeric(T), ax, 2);
+                    if (Scalar(T) == f128) {
+                        amed += core.math.pow128(ax, 2);
+                    } else {
+                        amed += std.math.pow(Scalar(T), ax, 2);
+                    }
                 }
                 ix += incx;
             }
 
             if (abig > 0) {
                 if (amed > 0 or amed > huge or amed != amed) {
-                    abig += std.math.pow(Numeric(T), amed * sbig, 2);
+                    if (Scalar(T) == f128) {
+                        abig += core.math.pow128(amed * sbig, 2);
+                    } else {
+                        abig += std.math.pow(Scalar(T), amed * sbig, 2);
+                    }
                 }
                 scl = 1 / sbig;
                 sumsq = abig;
@@ -56,7 +84,11 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
                     const ymin = if (sqrt_asml > sqrt_amed) sqrt_amed else sqrt_asml;
                     const ymax = if (sqrt_asml > sqrt_amed) sqrt_asml else sqrt_amed;
                     scl = 1;
-                    sumsq = std.math.pow(Numeric(T), ymax, 2) * (1 + std.math.pow(Numeric(T), ymin / ymax, 2));
+                    if (Scalar(T) == f128) {
+                        sumsq = core.math.pow128(ymax, 2) * (1 + core.math.pow128(ymin / ymax, 2));
+                    } else {
+                        sumsq = std.math.pow(Scalar(T), ymax, 2) * (1 + std.math.pow(Scalar(T), ymin / ymax, 2));
+                    }
                 } else {
                     scl = 1 / ssml;
                     sumsq = asml;
@@ -67,32 +99,60 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
             }
         },
         .cfloat => {
-            var ax: Numeric(T) = undefined;
+            var ax: Scalar(T) = undefined;
             for (0..@intCast(n)) |_| {
                 ax = @abs(x[@intCast(ix)].re);
                 if (ax > tbig) {
-                    abig += std.math.pow(Numeric(T), ax * sbig, 2);
+                    if (Scalar(T) == f128) {
+                        abig += core.math.pow128(ax * sbig, 2);
+                    } else {
+                        abig += std.math.pow(Scalar(T), ax * sbig, 2);
+                    }
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += std.math.pow(Numeric(T), ax * ssml, 2);
+                    if (Scalar(T) == f128) {
+                        if (notbig) asml += core.math.pow128(ax * ssml, 2);
+                    } else {
+                        if (notbig) asml += std.math.pow(Scalar(T), ax * ssml, 2);
+                    }
                 } else {
-                    amed += std.math.pow(Numeric(T), ax, 2);
+                    if (Scalar(T) == f128) {
+                        amed += core.math.pow128(ax, 2);
+                    } else {
+                        amed += std.math.pow(Scalar(T), ax, 2);
+                    }
                 }
                 ax = @abs(x[@intCast(ix)].im);
                 if (ax > tbig) {
-                    abig += std.math.pow(Numeric(T), ax * sbig, 2);
+                    if (Scalar(T) == f128) {
+                        abig += core.math.pow128(ax * sbig, 2);
+                    } else {
+                        abig += std.math.pow(Scalar(T), ax * sbig, 2);
+                    }
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += std.math.pow(Numeric(T), ax * ssml, 2);
+                    if (Scalar(T) == f128) {
+                        if (notbig) asml += core.math.pow128(ax * ssml, 2);
+                    } else {
+                        if (notbig) asml += std.math.pow(Scalar(T), ax * ssml, 2);
+                    }
                 } else {
-                    amed += std.math.pow(Numeric(T), ax, 2);
+                    if (Scalar(T) == f128) {
+                        amed += core.math.pow128(ax, 2);
+                    } else {
+                        amed += std.math.pow(Scalar(T), ax, 2);
+                    }
                 }
                 ix += incx;
             }
 
             if (abig > 0) {
                 if (amed > 0 or amed > huge or amed != amed) {
-                    abig += std.math.pow(Numeric(T), amed * sbig, 2);
+                    if (Scalar(T) == f128) {
+                        abig += core.math.pow128(amed * sbig, 2);
+                    } else {
+                        abig += std.math.pow(Scalar(T), amed * sbig, 2);
+                    }
                 }
                 scl = 1 / sbig;
                 sumsq = abig;
@@ -103,7 +163,11 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Numer
                     const ymin = if (sqrt_asml > sqrt_amed) sqrt_amed else sqrt_asml;
                     const ymax = if (sqrt_asml > sqrt_amed) sqrt_asml else sqrt_amed;
                     scl = 1;
-                    sumsq = std.math.pow(Numeric(T), ymax, 2) * (1 + std.math.pow(Numeric(T), ymin / ymax, 2));
+                    if (Scalar(T) == f128) {
+                        sumsq = core.math.pow128(ymax, 2) * (1 + core.math.pow128(ymin / ymax, 2));
+                    } else {
+                        sumsq = std.math.pow(Scalar(T), ymax, 2) * (1 + std.math.pow(Scalar(T), ymin / ymax, 2));
+                    }
                 } else {
                     scl = 1 / ssml;
                     sumsq = asml;
