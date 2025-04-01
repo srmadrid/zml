@@ -2,15 +2,25 @@
 
 ## Priority
 
+Make exhaustive (test all input combinations) tests for type functions (core/types)
+
 Implement basic math functions based on `ref/glibc/sysdeps/ieee754/ldbl-128ibm` IBM implementations.
+
+Make coercion functions coerce ints into suitably big floats, and same for floats to cfloats.
+
+Namespacing:
+
+- `zml.add`: given any two objects of any type supported in the library (can be `NDArray` (or slice), `Set`, `Function`, etc.), executes it promoting the types to the most general type
+- `zml.core.types.add`: given two numeric types, executes it promoting the types to the most general type
+- `zml.core.types.cfloat`: given two fixed precision type variables (at least one must be cfloat), returns the most general cfloat.
+
+This is the general idea
 
 Create arbitrary precision types: Integer, Rational, Real and Complex.
 
 Change `get` to return a pointer to the element instead of the element itself.
 
 Since we only accept certain types (for both the symbolic and numerical systems), in core have the `add`, `sub`, `mul`, `div`, `neg`, `abs`, `pow`, `sqrt`, `exp`, `log`, `sin`, `cos`, `tan`, etc. functions that add any two types and return the correct type, when possible. For instance, `add` can be used to add two `int`s, two `float`s, an `int` and a `float`, etc. The same for the other functions. This way, we can use them in the symbolic system and in the numerical system. In core.ops.
-
-Rename core.supported to core.types and supportedNumericTypes to supportedScalarTypes.
 
 Create in ndarray/ops.zig simple operations. This will be used for functions like add(a: anytype, b: anytype) NDArray(Coerce(@TypeOf(a), @TypeOf(b))) {}, where Coerce(comptime T: anytype, comptime U: anytype) type returns the scalar type which can coerce from addition (and T and U can be NDArrays or scañars themselves).
 
@@ -47,7 +57,7 @@ pub fn add(
         offsetB: usize = 0,
         offsetC: usize = 0,
     },
-) !NDArray(Coerce(@TypeOf(A), @TypeOf(B))) {
+) !NDArray(Coerce(Numeric(@TypeOf(left)), Numeric(@TypeOf(right)))) {
     // ...
 }
 
@@ -64,6 +74,25 @@ pub fn add_(
         offsetC: usize = 0,
     },
 ) !void {
+    // ...
+}
+```
+
+For the final all types included general function `zml.add`:
+
+```rs
+pub fn add(
+    allocator: Allocator,
+    left: anytype,
+    right: anytype,
+    options: struct {
+        alpha: f64 = 1.0,
+        beta: f64 = 0.0,
+        offsetA: usize = 0,
+        offsetB: usize = 0,
+        offsetC: usize = 0,
+    },
+) !Coerce(@TypeOf(left), @TypeOf(right)) {
     // ...
 }
 ```
@@ -93,3 +122,5 @@ Make a `<object>FromExpression` function. For instance, if I want to create the 
 `Set.cartesian(null, &[_]*Set{&S, &S})`, returns the set of cartesian product with "S \times S" as the default name (null was passed instead of a string). Same with other similar functions.
 
 For integrals, derivatives, etc. have anytype parameter inputs for the generic functions, and if the input is an expression of symbolic `Function` object, then calculate it symbolically, if it is a typical zig function, then calculate it numerically.
+
+Have custom symbols, such as `\variance`, `\expectation`, etc., with some default values. For instance, `\variance` can be defined as `\newcommand{\variance}{\mathbb{V}\text{ar}}`, but that can be changed by the user to their liking.

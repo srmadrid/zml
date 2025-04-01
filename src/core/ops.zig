@@ -1,11 +1,24 @@
 const std = @import("std");
 const types = @import("types.zig");
+const Coerce = types.Coerce;
+
+pub fn add(
+    left: anytype,
+    right: anytype,
+    options: struct {
+        allocator_left: ?std.mem.Allocator = null,
+        allocator_right: ?std.mem.Allocator = null,
+        allocator_out: ?std.mem.Allocator = null,
+    },
+) Coerce(@TypeOf(left), @TypeOf(right)) {
+    _ = options;
+}
 
 /// Adds two elements of any supported numeric type and stores the result in the
 /// output variable. `left` and `right` must be coercible by `Coerce`, and `out`
 /// must be a pointer of type `Coerce(@TypeOf(left), @TypeOf(right))`. The
 /// optional allocator is needed only if unmanaged types are used.
-pub inline fn add(
+pub inline fn add_(
     out: anytype,
     left: anytype,
     right: anytype,
@@ -85,3 +98,7 @@ pub inline fn add(
 // - log1p
 // - exp
 // - any other basic math functions
+
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}

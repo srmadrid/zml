@@ -33,7 +33,7 @@ pub fn main() !void {
 }
 
 fn coreTesting() void {
-    std.debug.print("{}\n", .{core.types.cfloat.sqrt(2.0)});
+    std.debug.print("{d}\n", .{@sizeOf(c_longlong)});
     const a: zml.core.types.cf128 = .init(2, 3);
     const b: zml.core.types.cf16 = .init(3, 3);
     std.debug.print("{}\n", .{core.types.cfloat.pow(a, b)});

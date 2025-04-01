@@ -4,6 +4,19 @@ const math = @import("../math.zig");
 const Coerce = types.Coerce;
 const Scalar = types.Scalar;
 
+pub const cf16 = Cfloat(f16);
+pub const cf32 = Cfloat(f32);
+pub const cf64 = Cfloat(f64);
+pub const cf80 = Cfloat(f80);
+pub const cf128 = Cfloat(f128);
+pub const comptime_complex = Cfloat(comptime_float);
+
+pub const add = @import("cfloat/add.zig").add;
+pub const sub = @import("cfloat/sub.zig").sub;
+pub const mul = @import("cfloat/mul.zig").mul;
+pub const div = @import("cfloat/div.zig").div;
+pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128
+
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
 
@@ -163,145 +176,6 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
     };
-}
-
-pub fn add(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)) or types.numericType(@TypeOf(left)) == .int or types.numericType(@TypeOf(right)) == .int or (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right))))
-        @compileError("At least one of left or right must be cfloat, the other must be a float or cfloat");
-
-    switch (types.numericType(@TypeOf(left))) {
-        .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => unreachable,
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).addReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        .cfloat => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).addReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
-                },
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).add(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        else => unreachable,
-    }
-}
-
-pub fn sub(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)) or types.numericType(@TypeOf(left)) == .int or types.numericType(@TypeOf(right)) == .int or (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right))))
-        @compileError("At least one of left or right must be cfloat, the other must be a float or cfloat");
-
-    switch (types.numericType(@TypeOf(left))) {
-        .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => unreachable,
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).negative().addReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        .cfloat => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).subReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
-                },
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).sub(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        else => unreachable,
-    }
-}
-
-pub fn mul(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)) or types.numericType(@TypeOf(left)) == .int or types.numericType(@TypeOf(right)) == .int or (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right))))
-        @compileError("At least one of left or right must be cfloat, the other must be a float or cfloat");
-
-    switch (types.numericType(@TypeOf(left))) {
-        .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => unreachable,
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).mulReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        .cfloat => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).mulReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
-                },
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).mul(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        else => unreachable,
-    }
-}
-
-pub fn div(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)) or types.numericType(@TypeOf(left)) == .int or types.numericType(@TypeOf(right)) == .int or (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right))))
-        @compileError("At least one of left or right must be cfloat, the other must be a float or cfloat");
-
-    switch (types.numericType(@TypeOf(left))) {
-        .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => unreachable,
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).inverse().mulReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        .cfloat => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).divReal(types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
-                },
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).div(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        else => unreachable,
-    }
-}
-
-pub fn arg(z: anytype) Scalar(@TypeOf(z)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
-        @compileError("z must be a float or cfloat");
-
-    switch (types.numericType(@TypeOf(z))) {
-        .float => {
-            return if (z >= 0) 0 else std.math.pi;
-        },
-        .cfloat => {
-            if (z.re == 0 and z.im == 0) {
-                return 0;
-            }
-
-            if (Scalar(@TypeOf(z)) == f128) {
-                return math.atan2_128(z.im, z.re);
-            } else {
-                return std.math.atan2(z.im, z.re);
-            }
-        },
-        else => unreachable,
-    }
 }
 
 pub fn abs(z: anytype) Scalar(@TypeOf(z)) {
@@ -1317,9 +1191,6 @@ pub fn acoth(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     return atanh(z.inverse());
 }
 
-pub const cf16 = Cfloat(f16);
-pub const cf32 = Cfloat(f32);
-pub const cf64 = Cfloat(f64);
-pub const cf80 = Cfloat(f80);
-pub const cf128 = Cfloat(f128);
-pub const comptime_complex = Cfloat(comptime_float);
+test {
+    std.testing.refAllDeclsRecursive(@This());
+}
