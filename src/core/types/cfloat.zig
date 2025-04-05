@@ -16,6 +16,7 @@ pub const sub = @import("cfloat/sub.zig").sub;
 pub const mul = @import("cfloat/mul.zig").mul;
 pub const div = @import("cfloat/div.zig").div;
 pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128
+// pub const abs = @import("cfloat/abs.zig").abs;
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -176,13 +177,6 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
     };
-}
-
-pub fn abs(z: anytype) Scalar(@TypeOf(z)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
-
-    return std.math.hypot(z.re, z.im);
 }
 
 pub fn abs2(z: anytype) Scalar(@TypeOf(z)) {

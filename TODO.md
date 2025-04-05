@@ -111,7 +111,9 @@ Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `CO
 
 Make two inits: `init` without flags (default values) and `initFlags` with flags?
 
-Make `NDArray` agnostic to the type of the elements.
+Test SPFM Lab7, Q1. Put as an example. Also maybe look at exercises from Statistical Signal Processing.
+
+`initFn` will initialize all values with a function, like `initFn(...,normal.pdf(0,1),...)` creates an array with values extracted from a normal distribution.
 
 ## Symbolic System
 

@@ -33,13 +33,7 @@ pub fn main() !void {
 }
 
 fn coreTesting() void {
-    std.debug.print("{d}\n", .{@sizeOf(c_longlong)});
-    const a: zml.core.types.cf128 = .init(2, 3);
-    const b: zml.core.types.cf16 = .init(3, 3);
-    std.debug.print("{}\n", .{core.types.cfloat.pow(a, b)});
-    const c: std.math.Complex(f64) = .init(2, 3);
-    const d: std.math.Complex(f64) = .init(3, 3);
-    std.debug.print("{}\n", .{std.math.complex.pow(c, d)});
+    std.debug.print("x: {x}\n", .{@as(u128, @bitCast(@as(f128, 0x2p-16384)))});
 }
 
 fn ask_user(default: usize) !usize {

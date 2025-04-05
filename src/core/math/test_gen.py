@@ -5,12 +5,13 @@ from collections import defaultdict
 
 def main():
     # Make it work with multiple test vector files?
-    if len(sys.argv) < 3:
-        print('Usage: python generate_tests.py <test_vector_file> <output_file>')
+    if len(sys.argv) < 4:
+        print('Usage: python generate_tests.py <arg_count> <test_vector_file> <output_file>')
         return
 
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
+    arg_count = int(sys.argv[1])
+    input_file = sys.argv[2]
+    output_file = sys.argv[3]
 
     with open(input_file, 'r') as f:
         lines = f.readlines()
@@ -27,14 +28,14 @@ def main():
             continue
             
         parts = line.split()
-        if len(parts) < 9:
+        if len(parts) < 7:
             continue
 
         func_name = parts[1]
         rounding = parts[2]
         fmt = parts[3]
-        args = parts[4]
-        expected = parts[6]
+        args = parts[4 : 4 + arg_count]
+        expected = parts[5 + arg_count]
 
         if rounding != 'tonearest':
             continue
@@ -50,15 +51,17 @@ def main():
             'intel96': 'f80',
             'binary128': 'f128'
         }
+        
         if fmt not in type_map:
             continue
             
         zig_type = type_map[fmt]
         
-        if args == 'plus_infty':
-            args = f'std.math.inf({zig_type})'
-        elif args == 'minus_infty':
-            args = f'-std.math.inf({zig_type})'
+        for i in range(arg_count):
+            if args[i] == 'plus_infty':
+                args[i] = f'std.math.inf({zig_type})'
+            elif args[i] == 'minus_infty':
+                args[i] = f'-std.math.inf({zig_type})'
         
         if expected == 'plus_infty':
             expected = f'std.math.inf({zig_type})'
@@ -67,16 +70,24 @@ def main():
 
         # Store test case with proper formatting
         if is_complex:
-            # Complex function: single argument with real/imag parts
-            if len(args) != 2:
+            # Complex function:
+            if len(args) % 2 != 0:
                 continue
-            test_args = f'types.c{zig_type}.init({args[0]}, {args[1]})'
+            test_args = ''
+            for i in range(0, len(args), 2):
+                if i > 0:
+                    test_args += ', '
+                test_args += f'types.c{zig_type}.init({args[i]}, {args[i + 1]})'
         else:
             # Real function: multiple arguments
-            if args == f'std.math.inf({zig_type})' or args == f'-std.math.inf({zig_type})':
-                test_args = args
-            else:
-                test_args = f'@as({zig_type}, {args})'
+            test_args = ''
+            for i in range(len(args)):
+                if i > 0:
+                    test_args += ', '
+                if args[i] == f'std.math.inf({zig_type})' or args[i] == f'-std.math.inf({zig_type})':
+                    test_args += args[i]
+                else:
+                    test_args += f'@as({zig_type}, {args[i]})'
 
         test_cases[func_name]['tests'][zig_type].append((test_args, expected))
 
