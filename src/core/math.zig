@@ -1,11 +1,30 @@
 const std = @import("std");
 // Make in-place variants
 
+// Edit all functions to use unified bit extraction
+
+// Add @branchHint to ifs
+
 // Math implementations will be based on glibc and openlibm, choosing the best
 // based on:
 // Brian Gladman, Vincenzo Innocente, John Mather, Paul Zimmermann. Accuracy of
 // Mathematical Functions in Single, Double, Double Extended, and Quadruple
 // Precision. 2025. hal-03141101v8
+//
+// Glibc implementations are based on:
+// f32:  glibc/sysdeps/ieee754/flt-32/*.c
+// f64:  glibc/sysdeps/ieee754/dbl-64/*.c
+// f80:  glibc/sysdeps/ieee754/ldbl-96/*.c
+// f128: glibc/sysdeps/ieee754/ldbl-128/*.c
+//
+// Openlibm implementations are based on:
+// f32:  openlibm/src/*f.c
+// f64:  openlibm/src/*.c
+// f80:  openlibm/ld80/*.c
+// f128: openlibm/src/*l.c, or openlibm/ld128/*.c
+//
+// Each function will state the source of the implementation, and the tests will
+// be based on the tests from glibc using tonearest rouding values.
 
 // pub const sin = @import("math/sin.zig").sin; // to implement
 // pub const cos = @import("math/cos.zig").cos; // to implement
@@ -34,7 +53,7 @@ pub const atan2 = @import("math/atan2.zig").atan2; // to implement: f80. 107/228
 // pub const exp = @import("math/exp.zig").exp; // to implement
 // pub const exp2 = @import("math/exp2.zig").exp2; // to implement
 // pub const expm1 = @import("math/expm1.zig").expm1; // to implement
-// pub const log = @import("math/log.zig").log; // to implement
+pub const log = @import("math/log.zig").log; // to implement: f80. 8/256 tests fail: 8 for f128
 // pub const log2 = @import("math/log2.zig").log2; // to implement
 // pub const log10 = @import("math/log10.zig").log10; // to implement
 // pub const log1p = @import("math/log1p.zig").log1p; // to implement
@@ -43,7 +62,7 @@ pub const atan2 = @import("math/atan2.zig").atan2; // to implement: f80. 107/228
 // pub const pow = @import("math/pow.zig").pow; // to implement
 pub const sqrt = @import("math/sqrt.zig").sqrt; // 58/655 tests fail: 1 for f80, 57 for f128
 // pub const cbrt = @import("math/cbrt.zig").cbrt; // to implement
-// pub const hypot = @import("math/hypot.zig").hypot; // to implement
+pub const hypot = @import("math/hypot.zig").hypot; // to implement: f80. 2/2281 tests fail: 1 for f32, 1 for f128
 // pub const fmod = @import("math/fmod.zig").fmod; // to implement
 // pub const remainder = @import("math/remainder.zig").remainder; // to implement
 // pub const fma = @import("math/fma.zig").fma; // to implement
@@ -69,7 +88,7 @@ pub const sqrt = @import("math/sqrt.zig").sqrt; // 58/655 tests fail: 1 for f80,
 // pub const lrint = @import("math/lrint.zig").lrint; // to implement
 // pub const llrint = @import("math/llrint.zig").llrint; // to implement
 
-// pub const frexp = @import("math/frexp.zig").frexp; // to implement
+pub const frexp = @import("math/frexp.zig").frexp;
 // pub const ldexp = @import("math/ldexp.zig").ldexp; // to implement
 // pub const modf = @import("math/modf.zig").modf; // to implement
 // pub const scalbn = @import("math/scalbn.zig").scalbn; // to implement

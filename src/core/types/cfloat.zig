@@ -16,7 +16,9 @@ pub const sub = @import("cfloat/sub.zig").sub;
 pub const mul = @import("cfloat/mul.zig").mul;
 pub const div = @import("cfloat/div.zig").div;
 pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128
-// pub const abs = @import("cfloat/abs.zig").abs;
+pub const abs = @import("cfloat/abs.zig").abs; // 0/106 tests fail
+pub const abs2 = @import("cfloat/abs2.zig").abs2;
+pub const logabs = @import("cfloat/logabs.zig").logabs;
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -177,37 +179,6 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
     };
-}
-
-pub fn abs2(z: anytype) Scalar(@TypeOf(z)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
-
-    return z.re * z.re + z.im * z.im;
-}
-
-pub fn logabs(z: anytype) Scalar(@TypeOf(z)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
-
-    const rabs = @abs(z.re);
-    const iabs = @abs(z.im);
-    var max: @TypeOf(z.re, z.im) = undefined;
-    var u: @TypeOf(z.re, z.im) = undefined;
-
-    if (rabs >= iabs) {
-        max = rabs;
-        u = iabs / rabs;
-    } else {
-        max = iabs;
-        u = rabs / iabs;
-    }
-
-    if (Scalar(@TypeOf(z)) == f128) {
-        return @log(max) + math.log1p128(u * u) / 2;
-    } else {
-        return @log(max) + std.math.log1p(u * u) / 2;
-    }
 }
 
 pub fn sqrt(z: anytype) Cfloat(Scalar(@TypeOf(z))) {

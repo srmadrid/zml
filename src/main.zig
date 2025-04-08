@@ -32,10 +32,6 @@ pub fn main() !void {
     coreTesting();
 }
 
-fn coreTesting() void {
-    std.debug.print("x: {x}\n", .{@as(u128, @bitCast(@as(f128, 0x2p-16384)))});
-}
-
 fn ask_user(default: usize) !usize {
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
@@ -49,6 +45,49 @@ fn ask_user(default: usize) !usize {
     } else {
         return default;
     }
+}
+
+fn coreTesting() void {
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.microTimestamp()));
+    var random = prng.random();
+    const n = random.int(u20);
+
+    std.debug.print("Number of iterations: {}\n", .{n});
+
+    var start_time: i128 = undefined;
+    var end_time: i128 = undefined;
+    var tot_time1: i128 = 0;
+    for (0..n) |i| {
+        const input: f64 = zml.core.types.cast(f64, i, .{});
+        start_time = std.time.nanoTimestamp();
+        std.mem.doNotOptimizeAway(zml.core.math.sqrt(input));
+        end_time = std.time.nanoTimestamp();
+        tot_time1 += end_time - start_time;
+    }
+
+    std.debug.print("\n", .{});
+    std.debug.print("zml.core.math.sqrt took:\n", .{});
+    std.debug.print("\t{d}\n", .{tot_time1});
+    std.debug.print("\n", .{});
+
+    start_time = 0;
+    end_time = 0;
+    var tot_time2: i128 = 0;
+    for (0..n) |i| {
+        const input: f64 = zml.core.types.cast(f64, i, .{});
+        start_time = std.time.nanoTimestamp();
+        std.mem.doNotOptimizeAway(@sqrt(input));
+        end_time = std.time.nanoTimestamp();
+        tot_time2 += end_time - start_time;
+    }
+
+    std.debug.print("\n", .{});
+    std.debug.print("@sqrt took:\n", .{});
+    std.debug.print("\t{d}\n", .{tot_time2});
+    std.debug.print("\n", .{});
+
+    const ratio: f128 = zml.core.types.cast(f128, tot_time1, .{}) / zml.core.types.cast(f128, tot_time2, .{});
+    std.debug.print("Ratio: {d}\n", .{ratio});
 }
 
 fn blasPerfTesting(a: std.mem.Allocator) !void {

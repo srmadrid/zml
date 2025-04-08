@@ -1,4 +1,4 @@
-const builtin = @import("builtin");
+const std = @import("std");
 
 const CN = 134217729.0;
 
@@ -13,7 +13,7 @@ pub inline fn esub(x: anytype, y: anytype, z: anytype, zz: anytype) void {
 }
 
 pub inline fn emulv(x: anytype, y: anytype, z: anytype, zz: anytype) void {
-    if (false) { // When target supports fma
+    if (false) {
         z.* = x * y;
         zz.* = @mulAdd(@TypeOf(x, y), x, y, -z.*);
     } else {

@@ -4,17 +4,17 @@ const types = @import("../types.zig");
 const math = @import("../math.zig");
 const dla = @import("dla.zig");
 const atnat2 = @import("atnat2.zig");
+const ldbl128 = @import("ldbl128.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
 
 pub fn atan2(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
-
     comptime if (!types.isFixedPrecision(@TypeOf(y)) or types.isComplex(@TypeOf(y)))
         @compileError("y must be an int or float");
 
-    // Make so it checks types of inputs. Ints are casted to floats, floats are casted to higher precision input type
+    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
+        @compileError("x must be an int or float");
+
     switch (types.numericType(@TypeOf(y))) {
         .int => {
             switch (types.numericType(@TypeOf(x))) {
@@ -24,28 +24,29 @@ pub fn atan2(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x)))
             }
         },
         .float => {
-            switch (types.numericType(@TypeOf(y))) {
+            switch (types.numericType(@TypeOf(x))) {
                 .int => return atan2(cast(Coerce(@TypeOf(y), @TypeOf(x)), y, .{}), cast(Coerce(@TypeOf(y), @TypeOf(x)), x, .{})),
                 .float => switch (Coerce(@TypeOf(y), @TypeOf(x))) {
                     f16 => return cast(f16, atan2_32(cast(f32, y, .{}), cast(f32, x, .{})), .{}),
-                    f32 => return atan2_32(y, x),
-                    f64 => return atan2_64(y, x),
+                    f32 => {
+                        // glibc/sysdeps/ieee754/flt-32/e_atan2f.c
+                        return atan2_32(y, x);
+                    },
+                    f64 => {
+                        // glibc/sysdeps/ieee754/dbl-64/e_atan2.c
+                        return atan2_64(y, x);
+                    },
                     f80 => return cast(f80, atan2_128(cast(f128, y, .{}), cast(f128, x, .{})), .{}),
-                    f128 => return atan2_128(y, x),
+                    f128 => {
+                        // glibc/sysdeps/ieee754/ldbl-128/e_atan2l.c
+                        return atan2_128(y, x);
+                    },
                     else => unreachable,
                 },
                 else => unreachable,
             }
         },
         else => unreachable,
-    }
-    switch (@TypeOf(y)) {
-        f16 => return cast(f16, atan2_32(cast(f32, y, .{}), cast(f32, x, .{})), .{}),
-        f32 => return atan2_32(y, x),
-        f64 => return atan2_64(y, x),
-        f80 => return cast(f80, atan2_128(cast(f64, y, .{}), cast(f64, x, .{})), .{}),
-        f128 => return atan2_128(y, x),
-        else => @compileError("x must be a float"),
     }
 }
 
@@ -536,14 +537,14 @@ fn atan2_128(y: f128, x: f128) f128 {
     const pi: f128 = 3.14159265358979323846264338327950280e+00; // 4000921fb54442d18469898cc51701b8
     const pi_lo: f128 = 8.67181013012378102479704402604335225e-35; // 3f8dcd129024e088a67cc74020bbea64
 
-    const ux: [2]i64 = @bitCast(x);
-    const hx: i64 = if (@import("builtin").cpu.arch.endian() == .big) ux[0] else ux[1];
-    const lx: i64 = if (@import("builtin").cpu.arch.endian() == .big) ux[1] else ux[0];
+    var hx: i64 = undefined;
+    var lx: i64 = undefined;
+    ldbl128.getWords(&hx, &lx, x);
     const ix: i64 = hx & 0x7fffffffffffffff;
 
-    const uy: [2]i64 = @bitCast(y);
-    const hy: i64 = if (@import("builtin").cpu.arch.endian() == .big) uy[0] else uy[1];
-    const ly: i64 = if (@import("builtin").cpu.arch.endian() == .big) uy[1] else uy[0];
+    var hy: i64 = undefined;
+    var ly: i64 = undefined;
+    ldbl128.getWords(&hy, &ly, y);
     const iy: i64 = hy & 0x7fffffffffffffff;
 
     if ((ix | ((lx | -lx) >> 63)) > 0x7fff000000000000 or (iy | ((ly | -ly) >> 63)) > 0x7fff000000000000) // x or y is NaN

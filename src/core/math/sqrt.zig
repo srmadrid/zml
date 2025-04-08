@@ -4,15 +4,131 @@ const types = @import("../types.zig");
 const math = @import("../math.zig");
 const dla = @import("dla.zig");
 const root = @import("root.zig");
+const flt32 = @import("flt32.zig");
 const EnsureFloat = types.EnsureFloat;
+const ta = @import("builtin").target.cpu.arch;
 
-const has_hardware_sqrt16: bool = @import("builtin").target.abi.float() == .hard;
-const has_hardware_sqrt32: bool = false;
-const has_hardware_sqrt64: bool = false;
-const has_hardware_sqrt80: bool = false;
-const has_hardware_sqrt128: bool = false;
+fn has_hardware_sqrt(comptime target_arch: std.Target.Cpu.Arch, comptime T: type) bool {
+    if (types.numericType(T) != .float)
+        @compileError("T must be a float");
 
-pub fn sqrt(x: anytype) EnsureFloat(@TypeOf(x)) {
+    const features = @import("builtin").target.cpu.features;
+
+    return switch (target_arch) {
+        .amdgcn => switch (T) {
+            f16 => true,
+            f32 => true,
+            f64 => std.Target.amdgcn.featureSetHas(features, .fp64),
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .arc => false,
+        .arm, .armeb, .thumb, .thumbeb => switch (T) {
+            f16 => std.Target.arm.featureSetHas(features, .fp16),
+            f32 => std.Target.arm.featureSetHas(features, .vfp2),
+            f64 => std.Target.arm.featureSetHas(features, .vfp3),
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .aarch64, .aarch64_be => switch (T) {
+            f16 => std.Target.aarch64.featureSetHas(features, .fp16),
+            f32 => true,
+            f64 => true,
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .avr => false,
+        .bpfeb, .bpfel => false,
+        .csky => false,
+        .hexagon => switch (T) {
+            f16 => false,
+            f32 => std.Target.hexagon.featureSetHas(features, .hvx),
+            f64 => false,
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .kalimba => false,
+        .lanai => false,
+        .loongarch32, .loongarch64 => switch (T) {
+            f16 => false,
+            f32 => true,
+            f64 => true,
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .m68k => false,
+        .mips, .mipsel, .mips64, .mips64el => switch (T) {
+            f16 => false,
+            f32 => std.Target.mips.featureSetHas(features, .fp64),
+            f64 => std.Target.mips.featureSetHas(features, .fp64),
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .msp430 => false,
+        .nvptx, .nvptx64 => false,
+        .powerpc, .powerpcle, .powerpc64, .powerpc64le => switch (T) {
+            f16 => false,
+            f32 => true,
+            f64 => true,
+            f80 => false,
+            f128 => std.Target.powerpc.featureSetHas(features, .vsx),
+            else => unreachable,
+        },
+        .propeller => false,
+        .riscv32, .riscv64 => switch (T) {
+            f16 => std.Target.riscv.featureSetHas(features, .zfh),
+            f32 => std.Target.riscv.featureSetHas(features, .f),
+            f64 => std.Target.riscv.featureSetHas(features, .d),
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .s390x => switch (T) {
+            f16 => false,
+            f32 => true,
+            f64 => true,
+            f80 => false,
+            f128 => std.Target.s390x.featureSetHas(features, .vector_enhancements_1),
+            else => unreachable,
+        },
+        .sparc, .sparc64 => switch (T) {
+            f16 => false,
+            f32 => true,
+            f64 => true,
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .spirv, .spirv32, .spirv64 => false,
+        .ve => false,
+        .wasm32, .wasm64 => switch (T) {
+            f16 => false,
+            f32 => true,
+            f64 => true,
+            f80 => false,
+            f128 => false,
+            else => unreachable,
+        },
+        .x86, .x86_64 => switch (T) {
+            f16 => std.Target.x86.featureSetHas(features, .avx512fp16),
+            f32 => std.Target.x86.featureSetHas(features, .sse),
+            f64 => std.Target.x86.featureSetHas(features, .sse2),
+            f80 => std.Target.x86.featureSetHas(features, .x87),
+            f128 => false,
+            else => unreachable,
+        },
+        .xcore => false,
+        .xtensa => false,
+    };
+}
+
+pub inline fn sqrt(x: anytype) EnsureFloat(@TypeOf(x)) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
         @compileError("x must be an int or float");
 
@@ -22,11 +138,20 @@ pub fn sqrt(x: anytype) EnsureFloat(@TypeOf(x)) {
         },
         .float => {
             switch (@TypeOf(x)) {
-                f16 => return cast(f16, sqrt32(cast(f32, x))),
-                f32 => return sqrt32(x),
-                f64 => return sqrt64(x),
-                f80 => return cast(f80, sqrt128(cast(f128, x, .{})), .{}),
-                f128 => return sqrt128(x),
+                f16 => return if (has_hardware_sqrt(ta, f16)) @sqrt(x) else cast(f16, sqrt32(cast(f32, x, .{})), .{}),
+                f32 => {
+                    // glibc/sysdeps/ieee754/flt-32/e_sqrtf.c
+                    return if (false) @sqrt(x) else sqrt32(x);
+                },
+                f64 => {
+                    // glibc/sysdeps/ieee754/dbl-64/e_sqrt.c
+                    return if (has_hardware_sqrt(ta, f64)) @sqrt(x) else sqrt64(x);
+                },
+                f80 => return if (has_hardware_sqrt(ta, f80)) @sqrt(x) else cast(f80, sqrt128(cast(f128, x, .{})), .{}),
+                f128 => {
+                    // Adapted from: glibc/sysdeps/ieee754/ldbl-128ibm/e_sqrtl.c
+                    return if (has_hardware_sqrt(ta, f128)) @sqrt(x) else sqrt128(x);
+                },
                 else => unreachable,
             }
         },
@@ -35,7 +160,8 @@ pub fn sqrt(x: anytype) EnsureFloat(@TypeOf(x)) {
 }
 
 fn sqrt32(x: f32) f32 {
-    var ix: i32 = @bitCast(x);
+    var ix: i32 = undefined;
+    flt32.getWord(&ix, x);
     const sign: u32 = 0x80000000;
 
     // take care of Inf and NaN

@@ -4,6 +4,7 @@ const types = @import("../types.zig");
 const math = @import("../math.zig");
 const dla = @import("dla.zig");
 const atnat = @import("atnat.zig");
+const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
 
 pub fn atan(x: anytype) EnsureFloat(@TypeOf(x)) {
@@ -17,10 +18,19 @@ pub fn atan(x: anytype) EnsureFloat(@TypeOf(x)) {
         .float => {
             switch (@TypeOf(x)) {
                 f16 => return cast(f16, atan32(cast(f32, x))),
-                f32 => return atan32(x),
-                f64 => return atan64(x),
+                f32 => {
+                    // glibc/sysdeps/ieee754/flt-32/s_atanf.c
+                    return atan32(x);
+                },
+                f64 => {
+                    // glibc/sysdeps/ieee754/dbl-64/s_atan.c
+                    return atan64(x);
+                },
                 f80 => return cast(f80, atan128(cast(f128, x, .{})), .{}),
-                f128 => return atan128(x),
+                f128 => {
+                    // glibc/sysdeps/ieee754/ldbl-128/s_atanl.c
+                    return atan128(x);
+                },
                 else => unreachable,
             }
         },
@@ -36,13 +46,16 @@ fn atan32(x: f32) f32 {
     const ta: u32 = t & 0x7fffffff;
 
     if (ta >= 0x4c700518) { // |x| > 0x1.e00a3p+25
+        @branchHint(.unlikely);
         if (ta > 0x7f800000)
             return x + x; // nan
 
         return cast(f32, math.copysign(pi2, x), .{});
     }
     if (e < 127 - 13) {
+        @branchHint(.unlikely);
         if (e < 127 - 25) {
+            @branchHint(.unlikely);
             if ((t << 1) == 0)
                 return x;
 
@@ -319,19 +332,14 @@ fn atan128(x: f128) f128 {
 
     const huge: f128 = 1.0e4930;
 
-    const s: u128 = @bitCast(x);
-    var s32: [4]u32 = @bitCast(s);
-    if (@import("builtin").cpu.arch.endian() == .little) {
-        const t: [4]u32 = .{ s32[3], s32[2], s32[1], s32[0] };
-        s32 = t;
-    }
-    const sign: bool = (s32[0] & 0x80000000) != 0;
+    const s: ldbl128.ieee_f128_shape32 = @bitCast(x);
+    const sign: bool = (s.w0 & 0x80000000) != 0;
 
     // Check for IEEE special cases.
-    var k: i32 = @bitCast(s32[0] & 0x7fffffff);
+    var k: i32 = @bitCast(s.w0 & 0x7fffffff);
     if (k >= 0x7fff0000) {
         // NaN.
-        if (((k & 0xffff) | @as(i32, @bitCast(s32[1])) | @as(i32, @bitCast(s32[2])) | @as(i32, @bitCast(s32[3]))) != 0)
+        if (((k & 0xffff) | @as(i32, @bitCast(s.w1)) | @as(i32, @bitCast(s.w2)) | @as(i32, @bitCast(s.w3))) != 0)
             return x + x;
 
         // Infinity.
@@ -344,7 +352,7 @@ fn atan128(x: f128) f128 {
 
     if (k <= 0x3fc50000) // |x| < 2**-58
     {
-        if (@abs(x) < std.math.floatMin(f64)) {
+        if (@abs(x) < std.math.floatMin(f128)) {
             const vx: f128 = if (x != 0) x else std.math.floatMin(f128);
             const force_underflow = vx * vx;
             std.mem.doNotOptimizeAway(force_underflow);
