@@ -18,16 +18,16 @@ pub fn log(x: anytype) EnsureFloat(@TypeOf(x)) {
             switch (@TypeOf(x)) {
                 f16 => return cast(f16, log32(cast(f32, x))),
                 f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/logf.c
+                    // glibc/sysdeps/ieee754/flt-32/e_logf.c
                     return log32(x);
                 },
                 f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/log.c
+                    // glibc/sysdeps/ieee754/dbl-64/e_log.c
                     return log64(x);
                 },
                 f80 => return cast(f80, log128(cast(f128, x, .{})), .{}),
                 f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/logl.c
+                    // glibc/sysdeps/ieee754/ldbl-128/e_logl.c
                     return log128(x);
                 },
                 else => unreachable,

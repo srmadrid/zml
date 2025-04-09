@@ -56,7 +56,7 @@ pub const atan2 = @import("math/atan2.zig").atan2; // to implement: f80. 107/228
 pub const log = @import("math/log.zig").log; // to implement: f80. 8/256 tests fail: 8 for f128
 // pub const log2 = @import("math/log2.zig").log2; // to implement
 // pub const log10 = @import("math/log10.zig").log10; // to implement
-// pub const log1p = @import("math/log1p.zig").log1p; // to implement
+pub const log1p = @import("math/log1p.zig").log1p; // to implement: f80. 30/421 tests fail: 8 for f64, 22 for f128
 // pub const logb = @import("math/logb.zig").logb; // to implement
 
 // pub const pow = @import("math/pow.zig").pow; // to implement
