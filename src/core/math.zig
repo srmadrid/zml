@@ -91,7 +91,7 @@ pub const hypot = @import("math/hypot.zig").hypot; // to implement: f80. 2/2281 
 pub const frexp = @import("math/frexp.zig").frexp;
 // pub const ldexp = @import("math/ldexp.zig").ldexp; // to implement
 // pub const modf = @import("math/modf.zig").modf; // to implement
-// pub const scalbn = @import("math/scalbn.zig").scalbn; // to implement
+pub const scalbn = @import("math/scalbn.zig").scalbn;
 pub const copysign = @import("math/copysign.zig").copysign;
 // pub const nextafter = @import("math/nextafter.zig").nextafter; // to implement
 

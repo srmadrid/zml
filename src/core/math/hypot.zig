@@ -1,11 +1,9 @@
-const cast = @import("../types.zig").cast;
 const std = @import("std");
 const types = @import("../types.zig");
 const math = @import("../math.zig");
-//const dla = @import("dla.zig");
-//const atnat2 = @import("atnat2.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
+const cast = types.cast;
 
 pub fn hypot(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))

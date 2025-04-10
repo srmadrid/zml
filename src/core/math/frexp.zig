@@ -1,12 +1,11 @@
-const cast = @import("../types.zig").cast;
 const std = @import("std");
 const types = @import("../types.zig");
-const math = @import("../math.zig");
 const flt32 = @import("flt32.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl80 = @import("ldbl80.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
+const cast = types.cast;
 
 pub fn frexp(x: anytype, e: *i32) EnsureFloat(@TypeOf(x)) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))

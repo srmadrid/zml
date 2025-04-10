@@ -1,10 +1,10 @@
-const cast = @import("../types.zig").cast;
 const std = @import("std");
 const types = @import("../types.zig");
 const math = @import("../math.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
+const cast = types.cast;
 
 pub fn log1p(x: anytype) EnsureFloat(@TypeOf(x)) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))

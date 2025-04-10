@@ -1,4 +1,3 @@
-const cast = @import("../types.zig").cast;
 const std = @import("std");
 const types = @import("../types.zig");
 const math = @import("../math.zig");
@@ -7,6 +6,7 @@ const atnat2 = @import("atnat2.zig");
 const ldbl128 = @import("ldbl128.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
+const cast = types.cast;
 
 pub fn atan2(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
     comptime if (!types.isFixedPrecision(@TypeOf(y)) or types.isComplex(@TypeOf(y)))

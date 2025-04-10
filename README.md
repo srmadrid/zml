@@ -9,8 +9,11 @@ This library is in the early stages of development and is not yet ready for use.
 ## Current Features
 
 - Core:
-  - Complex floats
-  - Arbitrary precision integers, rationals, reals, and complex numbers: not implemented yet
+  - Math:
+    - Limited libc math functions for all float precisions
+  - Types:
+    - Complex floats
+    - Arbitrary precision integers, rationals, reals, and complex numbers: not implemented yet
 - Numerical System:
   - N-dimensional arrays:
     - Broadcasting

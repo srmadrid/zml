@@ -1,11 +1,10 @@
-const cast = @import("../types.zig").cast;
 const std = @import("std");
 const types = @import("../types.zig");
-const math = @import("../math.zig");
 const dla = @import("dla.zig");
 const root = @import("root.zig");
 const flt32 = @import("flt32.zig");
 const EnsureFloat = types.EnsureFloat;
+const cast = types.cast;
 const ta = @import("builtin").target.cpu.arch;
 
 fn has_hardware_sqrt(comptime target_arch: std.Target.Cpu.Arch, comptime T: type) bool {
