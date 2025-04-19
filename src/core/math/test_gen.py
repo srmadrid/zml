@@ -21,6 +21,11 @@ def main():
         'is_complex': False,
         'tests': defaultdict(list)
     })
+    
+    is_complex = lines[0].startswith('c')
+    
+    if is_complex:
+        arg_count *= 2
 
     for line in lines:
         line = line.strip()
@@ -34,15 +39,20 @@ def main():
         func_name = parts[1]
         rounding = parts[2]
         fmt = parts[3]
-        args = parts[4 : 4 + arg_count]
-        expected = parts[5 + arg_count]
 
         if rounding != 'tonearest':
             continue
 
-        # Determine function type based on name prefix
-        is_complex = func_name.startswith('c')
         test_cases[func_name]['is_complex'] = is_complex
+        
+        args = parts[4 : 4 + arg_count]
+        
+        is_complex_output = parts[5 + arg_count + 1][:2] in ['0x', '-0', 'pl', 'mi']
+        
+        if is_complex_output:
+            expected = parts[5 + arg_count: 5 + arg_count + 2]
+        else:
+            expected = parts[5 + arg_count]
 
         # Get type mapping
         type_map = {
@@ -63,10 +73,20 @@ def main():
             elif args[i] == 'minus_infty':
                 args[i] = f'-std.math.inf({zig_type})'
         
-        if expected == 'plus_infty':
-            expected = f'std.math.inf({zig_type})'
-        elif expected == 'minus_infty':
-            expected = f'-std.math.inf({zig_type})'
+        if is_complex_output:
+            for i in range(2):
+                if expected[i] == 'plus_infty':
+                    expected[i] = f'std.math.inf({zig_type})'
+                elif expected[i] == 'minus_infty':
+                    expected[i] = f'-std.math.inf({zig_type})'
+        else:
+            if expected == 'plus_infty':
+                expected = f'std.math.inf({zig_type})'
+            elif expected == 'minus_infty':
+                expected = f'-std.math.inf({zig_type})'
+                
+        if is_complex_output:
+            expected = f'types.c{zig_type}.init({expected[0]}, {expected[1]})'
 
         # Store test case with proper formatting
         if is_complex:

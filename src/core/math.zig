@@ -88,6 +88,7 @@ pub const hypot = @import("math/hypot.zig").hypot; // to implement: f80. 2/2281 
 // pub const lrint = @import("math/lrint.zig").lrint; // to implement
 // pub const llrint = @import("math/llrint.zig").llrint; // to implement
 
+pub const abs = @import("math/abs.zig").abs;
 pub const frexp = @import("math/frexp.zig").frexp;
 // pub const ldexp = @import("math/ldexp.zig").ldexp; // to implement
 // pub const modf = @import("math/modf.zig").modf; // to implement

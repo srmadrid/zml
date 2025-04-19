@@ -4,7 +4,7 @@ const math = @import("../../math.zig");
 const Scalar = types.Scalar;
 const EnsureFloat = types.EnsureFloat;
 
-pub fn arg(z: anytype) Scalar(EnsureFloat(@TypeOf(z))) {
+pub fn arg(z: anytype) EnsureFloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)))
         @compileError("z must be an int, float, or cfloat");
 

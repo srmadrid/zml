@@ -8,7 +8,7 @@ const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
 const cast = types.cast;
 
-pub fn scalbn(x: anytype, n: *i32) EnsureFloat(@TypeOf(x)) {
+pub fn scalbn(x: anytype, n: i32) EnsureFloat(@TypeOf(x)) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
         @compileError("x must be an int or float");
 
@@ -20,19 +20,19 @@ pub fn scalbn(x: anytype, n: *i32) EnsureFloat(@TypeOf(x)) {
             switch (@TypeOf(x)) {
                 f16 => return cast(f16, scalbn32(cast(f32, x), n)),
                 f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/scalbnf.c
+                    // glibc/sysdeps/ieee754/flt-32/s_scalbnf.c
                     return scalbn32(x, n);
                 },
                 f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/scalbn.c
+                    // glibc/sysdeps/ieee754/dbl-64/s_scalbn.c
                     return scalbn64(x, n);
                 },
                 f80 => {
-                    // glibc/sysdeps/ieee754/ldbl-96/scalbnl.c
+                    // glibc/sysdeps/ieee754/ldbl-96/s_scalbnl.c
                     return scalbn80(x, n);
                 },
                 f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/scalbnl.c
+                    // glibc/sysdeps/ieee754/ldbl-128/s_scalbnl.c
                     return scalbn128(x, n);
                 },
                 else => unreachable,
@@ -82,7 +82,7 @@ fn scalbn32(x: f32, n: i32) f32 {
     k = k + n;
     if (k > 0) { // normal result
         @branchHint(.likely);
-        flt32.setWord(&xx, (ix & 0x807fffff) | (k << 23));
+        flt32.setWord(&xx, (@as(u32, @bitCast(ix)) & 0x807fffff) | (@as(u32, @bitCast(k)) << 23));
         return xx;
     }
 
@@ -90,7 +90,7 @@ fn scalbn32(x: f32, n: i32) f32 {
         return tiny * math.copysign(tiny, xx); // underflow
 
     k += 25; // subnormal result
-    flt32.setWord(&xx, (ix & 0x807fffff) | (k << 23));
+    flt32.setWord(&xx, (@as(u32, @bitCast(ix)) & 0x807fffff) | (@as(u32, @bitCast(k)) << 23));
     return xx * twom25;
 }
 
@@ -133,7 +133,7 @@ fn scalbn64(x: f64, n: i32) f64 {
     k = k + n;
     if (k > 0) { // normal result
         @branchHint(.likely);
-        dbl64.insertWords64(&xx, (ix & 0x800fffffffffffff) | (k << 52));
+        dbl64.insertWords64(&xx, (@as(u64, @bitCast(ix)) & 0x800fffffffffffff) | (@as(u64, @bitCast(k)) << 52));
         return xx;
     }
 
@@ -141,7 +141,7 @@ fn scalbn64(x: f64, n: i32) f64 {
         return tiny * math.copysign(tiny, xx); // underflow
 
     k += 54; // subnormal result
-    dbl64.insertWords64(&xx, (ix & 0x800fffffffffffff) | (k << 52));
+    dbl64.insertWords64(&xx, (@as(u64, @bitCast(ix)) & 0x800fffffffffffff) | (@as(u64, @bitCast(k)) << 52));
     return xx * twom54;
 }
 
@@ -230,7 +230,7 @@ fn scalbn128(x: f128, n: i32) f128 {
     // Now k and n are bounded we know that k = k+n does not overflow.
     k = k + n;
     if (k > 0) { // normal result
-        ldbl128.setMsw(&xx, (hx & 0x8000ffffffffffff) | (k << 48));
+        ldbl128.setMsw(&xx, (@as(u64, @bitCast(hx)) & 0x8000ffffffffffff) | (@as(u64, @bitCast(k)) << 48));
         return xx;
     }
 
@@ -238,6 +238,6 @@ fn scalbn128(x: f128, n: i32) f128 {
         return tiny * math.copysign(tiny, xx); // underflow
 
     k += 114; // subnormal result
-    ldbl128.setLsw(&xx, (hx & 0x8000ffffffffffff) | (k << 48));
+    ldbl128.setMsw(&xx, (@as(u64, @bitCast(hx)) & 0x8000ffffffffffff) | (@as(u64, @bitCast(k)) << 48));
     return xx * twom114;
 }

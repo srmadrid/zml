@@ -140,7 +140,7 @@ pub inline fn sqrt(x: anytype) EnsureFloat(@TypeOf(x)) {
                 f16 => return if (has_hardware_sqrt(ta, f16)) @sqrt(x) else cast(f16, sqrt32(cast(f32, x, .{})), .{}),
                 f32 => {
                     // glibc/sysdeps/ieee754/flt-32/e_sqrtf.c
-                    return if (false) @sqrt(x) else sqrt32(x);
+                    return if (has_hardware_sqrt(ta, f32)) @sqrt(x) else sqrt32(x);
                 },
                 f64 => {
                     // glibc/sysdeps/ieee754/dbl-64/e_sqrt.c

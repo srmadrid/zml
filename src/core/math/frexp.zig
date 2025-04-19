@@ -19,19 +19,19 @@ pub fn frexp(x: anytype, e: *i32) EnsureFloat(@TypeOf(x)) {
             switch (@TypeOf(x)) {
                 f16 => return cast(f16, frexp32(cast(f32, x), e)),
                 f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/frexpf.c
+                    // glibc/sysdeps/ieee754/flt-32/s_frexpf.c
                     return frexp32(x, e);
                 },
                 f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/frexp.c
+                    // glibc/sysdeps/ieee754/dbl-64/s_frexp.c
                     return frexp64(x, e);
                 },
                 f80 => {
-                    // glibc/sysdeps/ieee754/ldbl-96/frexpl.c
+                    // glibc/sysdeps/ieee754/ldbl-96/s_frexpl.c
                     return frexp80(x, e);
                 },
                 f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/frexpl.c
+                    // glibc/sysdeps/ieee754/ldbl-128/s_frexpl.c
                     return frexp128(x, e);
                 },
                 else => unreachable,

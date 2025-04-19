@@ -19,6 +19,7 @@ pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf12
 pub const abs = @import("cfloat/abs.zig").abs; // 0/106 tests fail
 pub const abs2 = @import("cfloat/abs2.zig").abs2;
 pub const logabs = @import("cfloat/logabs.zig").logabs;
+pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // 446/1695 tests fail: 17 for cf32, 68 for cf64, 141 for cf80, 220 for cf128
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -179,61 +180,6 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
     };
-}
-
-pub fn sqrt(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int)
-        @compileError("z must be a float or cfloat");
-
-    switch (types.numericType(@TypeOf(z))) {
-        .float => {
-            if (z >= 0) {
-                return .{
-                    .re = @sqrt(z),
-                    .im = 0,
-                };
-            } else {
-                return .{
-                    .re = 0,
-                    .im = @sqrt(-z),
-                };
-            }
-        },
-        .cfloat => {
-            if (z.re == 0 and z.im == 0) {
-                return .{
-                    .re = 0,
-                    .im = 0,
-                };
-            }
-
-            const rabs = @abs(z.re);
-            const iabs = @abs(z.im);
-            var w: @TypeOf(z.re, z.im) = undefined;
-
-            if (rabs >= iabs) {
-                const t = iabs / rabs;
-                w = @sqrt(rabs) * 0.5 * (1 + @sqrt(1 + t * t));
-            } else {
-                const t = rabs / iabs;
-                w = @sqrt(iabs) * 0.5 * (t + @sqrt(1 + t * t));
-            }
-
-            if (z.re >= 0) {
-                return .{
-                    .re = w,
-                    .im = z.im / (2 * w),
-                };
-            } else {
-                const v = if (z.im >= 0) w else -w;
-                return .{
-                    .re = z.im / (2 * v),
-                    .im = v,
-                };
-            }
-        },
-        else => unreachable,
-    }
 }
 
 pub fn exp(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
