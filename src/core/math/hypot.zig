@@ -5,7 +5,7 @@ const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
 const cast = types.cast;
 
-pub fn hypot(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
+pub inline fn hypot(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
         @compileError("x must be an int or float");
 

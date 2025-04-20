@@ -8,7 +8,7 @@ const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
 const cast = types.cast;
 
-pub fn atan2(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
+pub inline fn atan2(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
     comptime if (!types.isFixedPrecision(@TypeOf(y)) or types.isComplex(@TypeOf(y)))
         @compileError("y must be an int or float");
 

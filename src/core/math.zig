@@ -50,7 +50,7 @@ pub const atan2 = @import("math/atan2.zig").atan2; // to implement: f80. 107/228
 // pub const atanpi = @import("math/atanpi.zig").atanpi; // to implement
 // pub const atan2pi = @import("math/atan2pi.zig").atan2pi; // to implement
 
-// pub const exp = @import("math/exp.zig").exp; // to implement
+pub const exp = @import("math/exp.zig").exp; // to implement: f80. 5/768 tests fail: 1 for f32, 1 for f64, 3 for f128
 // pub const exp2 = @import("math/exp2.zig").exp2; // to implement
 // pub const expm1 = @import("math/expm1.zig").expm1; // to implement
 pub const log = @import("math/log.zig").log; // to implement: f80. 8/256 tests fail: 8 for f128

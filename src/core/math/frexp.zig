@@ -7,7 +7,7 @@ const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
 const cast = types.cast;
 
-pub fn frexp(x: anytype, e: *i32) EnsureFloat(@TypeOf(x)) {
+pub inline fn frexp(x: anytype, e: *i32) EnsureFloat(@TypeOf(x)) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
         @compileError("x must be an int or float");
 

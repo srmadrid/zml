@@ -6,7 +6,7 @@ const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
 const cast = types.cast;
 
-pub fn log(x: anytype) EnsureFloat(@TypeOf(x)) {
+pub inline fn log(x: anytype) EnsureFloat(@TypeOf(x)) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
         @compileError("x must be an int or float");
 

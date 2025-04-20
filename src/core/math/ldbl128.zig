@@ -10,6 +10,13 @@ pub const ieee_f128_shape32 = packed struct {
     w0: u32,
 };
 
+pub const ieee_f128_shape = packed struct {
+    mantissa1: u48,
+    mantissa0: u64,
+    exponent: u15,
+    negative: u1,
+};
+
 /// Get two 64 bit ints from a long double.
 pub inline fn getWords(ix0: anytype, ix1: anytype, d: f128) void {
     const qw_u: ieee_f128_shape64 = @bitCast(d);
