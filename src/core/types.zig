@@ -143,6 +143,18 @@ pub fn isSlice(comptime T: type) bool {
     }
 }
 
+/// Checks if the input is a one-item pointer.
+pub fn isOneItemPointer(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .pointer => |info| {
+            if (info.size != .one) return false;
+
+            return true;
+        },
+        else => return false,
+    }
+}
+
 /// Checks if the input type is of fixed precision.
 pub fn isFixedPrecision(comptime T: type) bool {
     switch (numericType(T)) {

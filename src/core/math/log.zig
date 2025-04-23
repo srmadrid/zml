@@ -49,13 +49,13 @@ fn log32(x: f32) f32 {
         @branchHint(.unlikely);
         // x < 0x1p-126 or inf or nan.
         if (ix * 2 == 0)
-            return std.math.inf(f32);
+            return 1 / x;
 
         if (ix == 0x7f800000) // log(inf) == inf.
             return x;
 
         if ((ix & 0x80000000) != 0 or ix * 2 >= 0xff000000)
-            return std.math.nan(f32);
+            return (x - x) / (x - x);
 
         // x is subnormal, normalize it.
         ix = @bitCast(cast(f32, x, .{}) * 0x1p23);

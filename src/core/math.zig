@@ -26,14 +26,14 @@ const std = @import("std");
 // Each function will state the source of the implementation, and the tests will
 // be based on the tests from glibc using tonearest rouding values.
 
-// pub const sin = @import("math/sin.zig").sin; // to implement
-// pub const cos = @import("math/cos.zig").cos; // to implement
+pub const sin = @import("math/sin.zig").sin; // to implement: f80. 20/609 tests fail: 1 for f32, 6 for f64, 13 for f128
+pub const cos = @import("math/cos.zig").cos; // to implement: f80. 16/532 tests fail: 2 for f32, 2 for f64, 12 for f128
 // pub const tan = @import("math/tan.zig").tan; // to implement
 // pub const asin = @import("math/asin.zig").asin; // to implement
 // pub const acos = @import("math/acos.zig").acos; // to implement
 pub const atan = @import("math/atan.zig").atan; // to implement: f80. 3/228 tests fail: 1 for f64, 2 for f128
 pub const atan2 = @import("math/atan2.zig").atan2; // to implement: f80. 107/228 tests fail: 2 for f80, 105 for f128
-// pub const sincos = @import("math/sincos.zig").sincos;  // to implement
+pub const sincos = @import("math/sincos.zig").sincos; // to implement: f80. 8/674 tests fail: 1 for f64, 7 for f128
 
 // pub const sinh = @import("math/sinh.zig").sinh; // to implement
 // pub const cosh = @import("math/cosh.zig").cosh; // to implement
@@ -80,7 +80,7 @@ pub const hypot = @import("math/hypot.zig").hypot; // to implement: f80. 2/2281 
 // pub const yn = @import("math/yn.zig").yn; // to implement
 
 // pub const ceil = @import("math/ceil.zig").ceil; // to implement
-// pub const floor = @import("math/floor.zig").floor; // to implement
+pub const floor = @import("math/floor.zig").floor;
 // pub const trunc = @import("math/trunc.zig").trunc; // to implement
 // pub const round = @import("math/round.zig").round; // to implement
 // pub const nearbyint = @import("math/nearbyint.zig").nearbyint; // to implement
