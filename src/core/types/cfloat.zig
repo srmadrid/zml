@@ -15,11 +15,13 @@ pub const add = @import("cfloat/add.zig").add;
 pub const sub = @import("cfloat/sub.zig").sub;
 pub const mul = @import("cfloat/mul.zig").mul;
 pub const div = @import("cfloat/div.zig").div;
+
 pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128
 pub const abs = @import("cfloat/abs.zig").abs; // 0/106 tests fail
 pub const abs2 = @import("cfloat/abs2.zig").abs2;
 pub const logabs = @import("cfloat/logabs.zig").logabs;
 pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // 446/1695 tests fail: 17 for cf32, 68 for cf64, 141 for cf80, 220 for cf128
+pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32, 4 for cf64, 8 for cf80, 12 for cf128
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -179,19 +181,6 @@ pub fn Cfloat(comptime T: type) type {
                 .im = -self.im * s * s,
             };
         }
-    };
-}
-
-pub fn exp(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
-
-    const rho = @exp(z.re);
-    const theta = z.im;
-
-    return .{
-        .re = rho * @cos(theta),
-        .im = rho * @sin(theta),
     };
 }
 

@@ -1,27 +1,10 @@
 const std = @import("std");
 const types = @import("../../types.zig");
 const math = @import("../../math.zig");
+const classify = @import("../../math/classify.zig");
 const Scalar = types.Scalar;
 const EnsureFloat = types.EnsureFloat;
 const Cfloat = types.cfloat.Cfloat;
-
-pub fn arg(z: anytype) Scalar(EnsureFloat(@TypeOf(z))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("z must be an int, float, or cfloat");
-
-    switch (types.numericType(@TypeOf(z))) {
-        .int => {
-            return if (z >= 0) 0 else std.math.pi;
-        },
-        .float => {
-            return if (z >= 0) 0 else std.math.pi;
-        },
-        .cfloat => {
-            return math.atan2(z.im, z.re);
-        },
-        else => unreachable,
-    }
-}
 
 pub fn sqrt(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)))
@@ -55,23 +38,26 @@ pub fn sqrt(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
             }
         },
         .cfloat => {
-            if (std.math.isNan(z.re) or std.math.isNan(z.im) or std.math.isInf(z.re) or std.math.isInf(z.im)) {
+            const rcls: u32 = classify.classify(z.re);
+            const icls: u32 = classify.classify(z.im);
+
+            if (rcls <= classify.INFINITE or icls <= classify.INFINITE) {
                 @branchHint(.unlikely);
-                if (std.math.isInf(z.im)) {
+                if (icls == classify.INFINITE) {
                     return .{
                         .re = std.math.inf(Scalar(@TypeOf(z))),
                         .im = z.im,
                     };
-                } else if (std.math.isInf(z.re)) {
+                } else if (rcls == classify.INFINITE) {
                     if (z.re < 0) {
                         return .{
-                            .re = if (std.math.isNan(z.im)) std.math.nan(Scalar(@TypeOf(z))) else 0,
+                            .re = if (icls == classify.NAN) std.math.nan(Scalar(@TypeOf(z))) else 0,
                             .im = math.copysign(std.math.inf(Scalar(@TypeOf(z))), z.im),
                         };
                     } else {
                         return .{
                             .re = z.re,
-                            .im = if (std.math.isNan(z.im)) std.math.nan(Scalar(@TypeOf(z))) else math.copysign(@as(Scalar(@TypeOf(z)), 0), z.im),
+                            .im = if (icls == classify.NAN) std.math.nan(Scalar(@TypeOf(z))) else math.copysign(@as(Scalar(@TypeOf(z)), 0), z.im),
                         };
                     }
                 } else {
@@ -81,7 +67,7 @@ pub fn sqrt(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
                     };
                 }
             } else {
-                if (std.math.isPositiveZero(z.im) or std.math.isNegativeZero(z.im)) {
+                if (icls == classify.ZERO) {
                     @branchHint(.unlikely);
                     if (z.re < 0) {
                         return .{
@@ -94,7 +80,7 @@ pub fn sqrt(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
                             .im = math.copysign(@as(Scalar(@TypeOf(z)), 0), z.im),
                         };
                     }
-                } else if (std.math.isPositiveZero(z.re) or std.math.isNegativeZero(z.re)) {
+                } else if (rcls == classify.ZERO) {
                     @branchHint(.unlikely);
                     var r: Scalar(@TypeOf(z)) = undefined;
                     if (math.abs(z.im) >= 2 * std.math.floatMin(Scalar(@TypeOf(z)))) {
