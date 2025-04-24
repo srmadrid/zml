@@ -23,7 +23,7 @@ pub inline fn cos(x: anytype) EnsureFloat(@TypeOf(x)) {
             switch (@TypeOf(x)) {
                 f16 => return cast(f16, cos32(cast(f32, x, .{})), .{}),
                 f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_sinf.c
+                    // glibc/sysdeps/ieee754/flt-32/s_cosf.c
                     return cos32(x);
                 },
                 f64 => {
@@ -32,7 +32,7 @@ pub inline fn cos(x: anytype) EnsureFloat(@TypeOf(x)) {
                 },
                 f80 => return cast(f80, cos128(cast(f128, x, .{})), .{}),
                 f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_sinl.c
+                    // glibc/sysdeps/ieee754/ldbl-128/s_cosl.c
                     return cos128(x);
                 },
                 else => unreachable,

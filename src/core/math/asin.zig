@@ -47,7 +47,7 @@ fn as_special(x: f32) f32 {
     return (0 - 0) / (0 - 0);
 }
 
-fn poly12(z: f64, c: *const [12]f64) f64 {
+inline fn poly12(z: f64, c: *const [12]f64) f64 {
     const z2: f64 = z * z;
     const z4: f64 = z2 * z2;
     var c0: f64 = c[0] + z * c[1];
