@@ -129,7 +129,7 @@ pub fn Cfloat(comptime T: type) type {
         }
 
         pub fn div(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
-            if (@abs(right.im) < @abs(right.re)) {
+            if (math.abs(right.im) < math.abs(right.re)) {
                 const tmp1 = right.im / right.re;
                 const tmp2 = 1 / (right.re + tmp1 * right.im);
                 return .{

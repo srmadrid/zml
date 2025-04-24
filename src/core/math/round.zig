@@ -1,13 +1,13 @@
-const cast = @import("../types.zig").cast;
-const std = @import("std");
+const types = @import("../types.zig");
 
-pub fn round(x: anytype) @TypeOf(x) {
-    switch (@TypeOf(x)) {
-        f16 => return @round(x),
-        f32 => return @round(x),
-        f64 => return @round(x),
-        f80 => return @round(x),
-        f128 => return @round(x),
-        else => @compileError("x must be a float"),
+pub inline fn round(x: anytype) @TypeOf(x) {
+    comptime if (types.numericType(@TypeOf(x)) != .float)
+        @compileError("x must be a float");
+
+    switch (types.numericType(@TypeOf(x))) {
+        .float => {
+            return @round(x);
+        },
+        else => unreachable,
     }
 }

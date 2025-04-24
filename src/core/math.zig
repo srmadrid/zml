@@ -28,7 +28,7 @@ const std = @import("std");
 
 pub const sin = @import("math/sin.zig").sin; // to implement: f80. 20/609 tests fail: 1 for f32, 6 for f64, 13 for f128
 pub const cos = @import("math/cos.zig").cos; // to implement: f80. 16/532 tests fail: 2 for f32, 2 for f64, 12 for f128
-// pub const tan = @import("math/tan.zig").tan; // to implement
+pub const tan = @import("math/tan.zig").tan; // to implement: f80. 3/546 tests fail: 3 for f128
 // pub const asin = @import("math/asin.zig").asin; // to implement
 // pub const acos = @import("math/acos.zig").acos; // to implement
 pub const atan = @import("math/atan.zig").atan; // to implement: f80. 3/228 tests fail: 1 for f64, 2 for f128
@@ -82,7 +82,7 @@ pub const hypot = @import("math/hypot.zig").hypot; // to implement: f80. 2/2281 
 // pub const ceil = @import("math/ceil.zig").ceil; // to implement
 pub const floor = @import("math/floor.zig").floor;
 // pub const trunc = @import("math/trunc.zig").trunc; // to implement
-// pub const round = @import("math/round.zig").round; // to implement
+pub const round = @import("math/round.zig").round; // to implement
 // pub const nearbyint = @import("math/nearbyint.zig").nearbyint; // to implement
 // pub const rint = @import("math/rint.zig").rint; // to implement
 // pub const lrint = @import("math/lrint.zig").lrint; // to implement
