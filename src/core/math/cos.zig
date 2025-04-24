@@ -10,7 +10,6 @@ const ldbl128 = @import("ldbl128.zig");
 const rem_pio2 = @import("rem_pio2.zig");
 const EnsureFloat = types.EnsureFloat;
 const cast = types.cast;
-const ta = @import("builtin").target.cpu.arch;
 
 pub inline fn cos(x: anytype) EnsureFloat(@TypeOf(x)) {
     comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
