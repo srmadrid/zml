@@ -35,7 +35,7 @@ pub const atan = @import("math/atan.zig").atan; // to implement: f80. 3/228 test
 pub const atan2 = @import("math/atan2.zig").atan2; // to implement: f80. 107/2672 tests fail: 2 for f80, 105 for f128
 pub const sincos = @import("math/sincos.zig").sincos; // to implement: f80. 8/674 tests fail: 1 for f64, 7 for f128
 
-// pub const sinh = @import("math/sinh.zig").sinh; // to implement
+pub const sinh = @import("math/sinh.zig").sinh; // to implement: f80. 67/577 tests fail: 29 for f64, 38 for f128
 // pub const cosh = @import("math/cosh.zig").cosh; // to implement
 // pub const tanh = @import("math/tanh.zig").tanh; // to implement
 // pub const asinh = @import("math/asinh.zig").asinh; // to implement
