@@ -37,7 +37,7 @@ pub const sincos = @import("math/sincos.zig").sincos; // to implement: f80. 8/67
 
 pub const sinh = @import("math/sinh.zig").sinh; // to implement: f80. 67/577 tests fail: 29 for f64, 38 for f128
 pub const cosh = @import("math/cosh.zig").cosh; // to implement: f80. 52/577 tests fail: 12 for f64, 40 for f128
-// pub const tanh = @import("math/tanh.zig").tanh; // to implement
+pub const tanh = @import("math/tanh.zig").tanh; // to implement: f80. 40/452 tests fail: 15 for f64, 25 for f128
 // pub const asinh = @import("math/asinh.zig").asinh; // to implement
 // pub const acosh = @import("math/acosh.zig").acosh; // to implement
 // pub const atanh = @import("math/atanh.zig").atanh; // to implement
