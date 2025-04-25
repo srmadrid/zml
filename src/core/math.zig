@@ -52,7 +52,7 @@ pub const sincos = @import("math/sincos.zig").sincos; // to implement: f80. 8/67
 
 pub const exp = @import("math/exp.zig").exp; // to implement: f80. 5/768 tests fail: 1 for f32, 1 for f64, 3 for f128
 // pub const exp2 = @import("math/exp2.zig").exp2; // to implement
-// pub const expm1 = @import("math/expm1.zig").expm1; // to implement
+pub const expm1 = @import("math/expm1.zig").expm1; // to implement: f80. 28/507 tests fail: 12 for f64, 16 for f128
 pub const log = @import("math/log.zig").log; // to implement: f80. 8/256 tests fail: 8 for f128
 // pub const log2 = @import("math/log2.zig").log2; // to implement
 // pub const log10 = @import("math/log10.zig").log10; // to implement
@@ -90,7 +90,7 @@ pub const round = @import("math/round.zig").round; // to implement
 
 pub const abs = @import("math/abs.zig").abs;
 pub const frexp = @import("math/frexp.zig").frexp;
-// pub const ldexp = @import("math/ldexp.zig").ldexp; // to implement
+pub const ldexp = @import("math/ldexp.zig").ldexp;
 // pub const modf = @import("math/modf.zig").modf; // to implement
 pub const scalbn = @import("math/scalbn.zig").scalbn;
 pub const copysign = @import("math/copysign.zig").copysign;
