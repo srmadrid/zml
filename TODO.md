@@ -107,7 +107,7 @@ Add view functions: `reshape`, `slice`.
 
 Since more storage options are being added, the `next()` function in iterators should take `axis` instead of `order`?
 
-Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `COO`), `Diagonal`, `Triangular`, `Symmetric`, `Hermitian`, etc.) instead of having different types for each one? If yes, a metadata field must be added to `NDArray` to store the extra information. Also, rename `RowMajor` and `ColumnMajor` to `RowMajorContiguous` and `ColumnMajorContiguous`, respectively. Maybe have `Order` with `RowMajor`, `ColumnMajor` and `Other` (not final name), and then `Storage` with `Packed` (`Packed` with row major or column major is like contiguous), `Sparse`, etc.?
+Offer storage options for `NDArray` (e.g., `Packed`, `Sparse` (`CSR`, `CSC`, `COO`), `Diagonal`, `Triangular`, `Symmetric`, `Hermitian`, etc.) instead of having different types for each one? If yes, a metadata field must be added to `NDArray` to store the extra information. Also, rename `RowMajor` and `ColumnMajor` to `RowMajorContiguous` and `ColumnMajorContiguous`, respectively. Maybe have `Order` with `RowMajor`, `ColumnMajor` and `Other` (not final name), and then `Storage` with `Packed` (`Packed` with row major or column major is like contiguous), `Sparse`, etc.? Also, Sparse Strided, when the data is not contiguous, but the indices are, so an efficient loop can still be made (like when using subarrays).
 
 Make two inits: `init` without flags (default values) and `initFlags` with flags?
 
