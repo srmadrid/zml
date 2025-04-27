@@ -47,7 +47,7 @@ pub const NumericType = enum {
 };
 
 pub inline fn numericType(comptime T: type) NumericType {
-    @setEvalBranchQuota(100000);
+    @setEvalBranchQuota(1000000);
 
     switch (@typeInfo(T)) {
         .bool => return .bool,

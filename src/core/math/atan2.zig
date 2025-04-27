@@ -30,16 +30,16 @@ pub inline fn atan2(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @Type
                     f16 => return cast(f16, atan2_32(cast(f32, y, .{}), cast(f32, x, .{})), .{}),
                     f32 => {
                         // glibc/sysdeps/ieee754/flt-32/e_atan2f.c
-                        return atan2_32(y, x);
+                        return atan2_32(cast(f32, y, .{}), cast(f32, x, .{}));
                     },
                     f64 => {
                         // glibc/sysdeps/ieee754/dbl-64/e_atan2.c
-                        return atan2_64(y, x);
+                        return atan2_64(cast(f64, y, .{}), cast(f64, x, .{}));
                     },
                     f80 => return cast(f80, atan2_128(cast(f128, y, .{}), cast(f128, x, .{})), .{}),
                     f128 => {
                         // glibc/sysdeps/ieee754/ldbl-128/e_atan2l.c
-                        return atan2_128(y, x);
+                        return atan2_128(cast(f128, y, .{}), cast(f128, x, .{}));
                     },
                     else => unreachable,
                 },

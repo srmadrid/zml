@@ -2,6 +2,8 @@
 
 ## Priority
 
+Add inplace variants for core.math functions (e.g., `add_`, `mul_`, etc.) that take a pointer to the result, and check that the input types can be coerced to the output type.
+
 Make exhaustive (test all input combinations) tests for type functions (core/types)
 
 Implement basic math functions based on `ref/glibc/sysdeps/ieee754/ldbl-128ibm` IBM implementations.

@@ -27,16 +27,16 @@ pub inline fn hypot(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(y), @Type
                     f16 => return cast(f16, hypot32(cast(f32, x, .{}), cast(f32, y, .{})), .{}),
                     f32 => {
                         // glibc/sysdeps/ieee754/flt-32/e_hypotf.c
-                        return hypot32(x, y);
+                        return hypot32(cast(f32, x, .{}), cast(f32, y, .{}));
                     },
                     f64 => {
                         // glibc/sysdeps/ieee754/dbl-64/e_hypot.c
-                        return hypot64(x, y);
+                        return hypot64(cast(f64, x, .{}), cast(f64, y, .{}));
                     },
                     f80 => return cast(f80, hypot128(cast(f128, x, .{}), cast(f128, y, .{})), .{}),
                     f128 => {
                         // glibc/sysdeps/ieee754/ldbl-128/e_hypotl.c
-                        return hypot128(x, y);
+                        return hypot128(cast(f128, x, .{}), cast(f128, y, .{}));
                     },
                     else => unreachable,
                 },

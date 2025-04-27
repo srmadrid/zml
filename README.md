@@ -10,7 +10,7 @@ This library is in the early stages of development and is not yet ready for use.
 
 - Core:
   - Math:
-    - Limited libc math functions for all float precisions
+    - Accurate math functions for all floating point types
   - Types:
     - Complex floats
     - Arbitrary precision integers, rationals, reals, and complex numbers: not implemented yet
