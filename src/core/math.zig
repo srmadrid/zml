@@ -9,7 +9,7 @@ pub const abs = @import("math/abs.zig").abs;
 
 // Exponential functions
 pub const exp = @import("math/exp.zig").exp; // to implement: f80. 5/768 tests fail: 1 for f32, 1 for f64, 3 for f128
-// pub const exp2 = @import("math/exp2.zig").exp2; // to implement
+pub const exp2 = @import("math/exp2.zig").exp2; // to implement: f80. 5/670 tests fail: 1 for f64, 4 for f128
 pub const expm1 = @import("math/expm1.zig").expm1; // to implement: f80. 28/507 tests fail: 12 for f64, 16 for f128
 pub const log = @import("math/log.zig").log; // to implement: f80. 8/256 tests fail: 8 for f128
 // pub const log10 = @import("math/log10.zig").log10; // to implement
