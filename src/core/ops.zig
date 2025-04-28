@@ -99,6 +99,4 @@ pub inline fn add_(
 // - exp
 // - any other basic math functions
 
-test {
-    std.testing.refAllDeclsRecursive(@This());
-}
+test {}

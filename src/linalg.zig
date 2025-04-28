@@ -4,5 +4,9 @@ pub const blas = @import("linalg/blas.zig");
 //pub const lapack = @import("linalg/lapack.zig");
 
 test {
-    std.testing.refAllDeclsRecursive(@This());
+    const test_blas = true;
+
+    if (test_blas) {
+        _ = @import("linalg/blas.zig");
+    }
 }

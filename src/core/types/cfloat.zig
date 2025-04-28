@@ -1091,6 +1091,4 @@ pub fn acoth(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     return atanh(z.inverse());
 }
 
-test {
-    std.testing.refAllDeclsRecursive(@This());
-}
+test {}

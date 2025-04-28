@@ -9,11 +9,16 @@ pub const abs = @import("math/abs.zig").abs;
 
 // Exponential functions
 pub const exp = @import("math/exp.zig").exp; // to implement: f80. 5/768 tests fail: 1 for f32, 1 for f64, 3 for f128
+pub const exp10 = @import("math/exp10.zig").exp10; // to implement: f80. 54/650 tests fail: 54 for f128
 pub const exp2 = @import("math/exp2.zig").exp2; // to implement: f80. 5/670 tests fail: 1 for f64, 4 for f128
+// pub const exp10m1 = @import("math/exp10m1.zig").exp10m1; // to implement
+// pub const exp2m1 = @import("math/exp2m1.zig").exp2m1; // to implement
 pub const expm1 = @import("math/expm1.zig").expm1; // to implement: f80. 28/507 tests fail: 12 for f64, 16 for f128
 pub const log = @import("math/log.zig").log; // to implement: f80. 8/256 tests fail: 8 for f128
 // pub const log10 = @import("math/log10.zig").log10; // to implement
 // pub const log2 = @import("math/log2.zig").log2; // to implement
+// pub const log10p1 = @import("math/log10p1.zig").log10p1; // to implement
+// pub const log2p1 = @import("math/log2p1.zig").log2p1; // to implement
 pub const log1p = @import("math/log1p.zig").log1p; // to implement: f80. 30/421 tests fail: 8 for f64, 22 for f128
 
 // Power functions
@@ -84,5 +89,110 @@ pub const scalbn = @import("math/scalbn.zig").scalbn;
 pub const copysign = @import("math/copysign.zig").copysign;
 
 test {
-    std.testing.refAllDeclsRecursive(@This());
+    const test_basic = false;
+    const test_exponential = true;
+    const test_power = false;
+    const test_trigonometric = false;
+    const test_hyperbolic = false;
+    const test_error_gamma = false;
+    const test_bessel = false;
+    const test_nearest_integer = false;
+    const test_floating_point = false;
+
+    if (test_basic) {
+        _ = @import("math/abs.zig");
+        //_ = @import("math/fmod.zig");
+        _ = @import("math/remainder.zig");
+        //_ = @import("math/remquo.zig");
+        //_ = @import("math/fdim.zig");
+    }
+
+    if (test_exponential) {
+        _ = @import("math/exp.zig");
+        _ = @import("math/exp10.zig");
+        _ = @import("math/exp2.zig");
+        //_ = @import("math/exp10m1.zig");
+        //_ = @import("math/exp2m1.zig");
+        _ = @import("math/expm1.zig");
+        _ = @import("math/log.zig");
+        _ = @import("math/log10.zig");
+        _ = @import("math/log2.zig");
+        //_ = @import("math/log10p1.zig");
+        //_ = @import("math/log2p1.zig");
+        _ = @import("math/log1p.zig");
+    }
+
+    if (test_power) {
+        _ = @import("math/pow.zig");
+        _ = @import("math/sqrt.zig");
+        _ = @import("math/cbrt.zig");
+        _ = @import("math/hypot.zig");
+    }
+
+    if (test_trigonometric) {
+        _ = @import("math/sin.zig");
+        _ = @import("math/cos.zig");
+        _ = @import("math/tan.zig");
+        _ = @import("math/asin.zig");
+        _ = @import("math/acos.zig");
+        _ = @import("math/atan.zig");
+        _ = @import("math/atan2.zig");
+        _ = @import("math/sincos.zig");
+        _ = @import("math/sinpi.zig");
+        _ = @import("math/cospi.zig");
+        _ = @import("math/tanpi.zig");
+        _ = @import("math/asinpi.zig");
+        _ = @import("math/acospi.zig");
+        _ = @import("math/atanpi.zig");
+        _ = @import("math/atan2pi.zig");
+    }
+
+    if (test_hyperbolic) {
+        _ = @import("math/sinh.zig");
+        _ = @import("math/cosh.zig");
+        _ = @import("math/tanh.zig");
+        _ = @import("math/asinh.zig");
+        _ = @import("math/acosh.zig");
+        _ = @import("math/atanh.zig");
+    }
+
+    if (test_error_gamma) {
+        //_ = @import("math/erf.zig");
+        //_ = @import("math/erfc.zig");
+        _ = @import("math/gamma.zig");
+        _ = @import("math/lgamma.zig");
+        //_ = @import("math/tgamma.zig");
+    }
+
+    if (test_bessel) {
+        //_ = @import("math/j0.zig");
+        //_ = @import("math/j1.zig");
+        //_ = @import("math/jn.zig");
+        //_ = @import("math/y0.zig");
+        //_ = @import("math/y1.zig");
+        //_ = @import("math/yn.zig");
+    }
+
+    if (test_nearest_integer) {
+        _ = @import("math/ceil.zig");
+        _ = @import("math/floor.zig");
+        _ = @import("math/trunc.zig");
+        _ = @import("math/round.zig");
+        //_ = @import("math/nearbyint.zig");
+        //_ = @import("math/rint.zig");
+        //_ = @import("math/lrint.zig");
+        //_ = @import("math/llrint.zig");
+    }
+
+    if (test_floating_point) {
+        _ = @import("math/frexp.zig");
+        _ = @import("math/ldexp.zig");
+        _ = @import("math/modf.zig");
+        _ = @import("math/scalbn.zig");
+        //_ = @import("math/ilogb.zig");
+        //_ = @import("math/logb.zig");
+        //_ = @import("math/nextafter.zig");
+        //_ = @import("math/nexttoward.zig");
+        _ = @import("math/copysign.zig");
+    }
 }

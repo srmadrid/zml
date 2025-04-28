@@ -80,9 +80,9 @@ fn exp32(x: f32) f32 {
     var t: u64 = exp2_data.T_32[ki % 32];
     t +%= ki << 47;
     const s: f64 = @bitCast(t);
-    z = exp2_data.C_32[0] * r + exp2_data.C_32[1];
+    z = exp2_data.poly_scaled_32[0] * r + exp2_data.poly_scaled_32[1];
     const r2: f64 = r * r;
-    var y: f64 = exp2_data.C_32[2] * r + 1;
+    var y: f64 = exp2_data.poly_scaled_32[2] * r + 1;
     y = z * r2 + y;
     y = y * s;
     return cast(f32, y, .{});

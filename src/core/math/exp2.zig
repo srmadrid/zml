@@ -45,7 +45,7 @@ inline fn top12_32(x: f32) u32 {
 fn exp2_32(x: f32) f32 {
     const xd: f64 = cast(f64, x, .{});
     const abstop: u32 = top12_32(x) & 0x7ff;
-    if (abstop >= top12_32(@as(f32, 128))) {
+    if (abstop >= top12_32(128)) {
         @branchHint(.unlikely);
         // |x| >= 128 or x is nan
         if (@as(u32, @bitCast(x)) == @as(u32, @bitCast(-std.math.inf(f32))))

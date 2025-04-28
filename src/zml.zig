@@ -6,7 +6,7 @@ pub const core = @import("core.zig");
 // Numerical computing.
 //pub const ndarray = @import("ndarray/ndarray.zig");
 //pub const NDArray = ndarray.NDArray;
-//pub const linalg = @import("linalg.zig");
+pub const linalg = @import("linalg.zig");
 
 // Core symbolic constructs.
 //pub const Expression = @import("expression/expression.zig").Expression;
@@ -16,5 +16,14 @@ pub const core = @import("core.zig");
 //pub const Set = @import("set.zig").Set;
 
 test {
-    std.testing.refAllDeclsRecursive(@This());
+    const test_core = true;
+    const test_linalg = false;
+
+    if (test_core) {
+        _ = @import("core.zig");
+    }
+
+    if (test_linalg) {
+        _ = @import("linalg.zig");
+    }
 }

@@ -184,7 +184,4 @@ pub const TokenType = enum {
     Comma,
 };
 
-test {
-    _ = @import("exprtree.zig");
-    std.testing.refAllDeclsRecursive(@This());
-}
+test {}

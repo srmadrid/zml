@@ -29,9 +29,9 @@ pub const exp2_poly: [5]f64 = .{
     0x1.3b2abd24650ccp-7,
     0x1.5d7e09b4e3a84p-10,
 };
-pub const invlog10_2N: f64 = 0x1.a934f0979a371p1 * 128;
-pub const neglog10_2hiN: f64 = -0x1.3441350ap-2 / 128;
-pub const neglog10_2loN: f64 = 0x1.0c0219dc1da99p-39 / 128;
+pub const invlog10_2N: f64 = 0x1.a934f0979a371p1 * 128.0;
+pub const neglog10_2hiN: f64 = -0x1.3441350ap-2 / 128.0;
+pub const neglog10_2loN: f64 = 0x1.0c0219dc1da99p-39 / 128.0;
 pub const exp10_poly: [5]f64 = .{
     // Coeffs generated using Remez in [-log10(2)/256, log10(2)/256 ].
     0x1.26bb1bbb55516p1,

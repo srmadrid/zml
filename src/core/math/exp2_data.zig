@@ -15,7 +15,7 @@ pub const shift_scaled_32: f64 = @as(f64, 0x1.8p+52) / 32.0;
 pub const poly_32: [3]f64 = .{ 0x1.c6af84b912394p-5, 0x1.ebfce50fac4f3p-3, 0x1.62e42ff0c52d6p-1 };
 pub const SHIFT_32: f64 = 0x1.8p+52;
 pub const InvLn2N_32: f64 = 0x1.71547652b82fep+0 * 32.0;
-pub const C_32: [3]f64 = .{ 0x1.c6af84b912394p-5 / 32.0 / 32.0 / 32.0, 0x1.ebfce50fac4f3p-3 / 32.0 / 32.0, 0x1.62e42ff0c52d6p-1 / 32.0 };
+pub const poly_scaled_32: [3]f64 = .{ 0x1.c6af84b912394p-5 / 32.0 / 32.0 / 32.0, 0x1.ebfce50fac4f3p-3 / 32.0 / 32.0, 0x1.62e42ff0c52d6p-1 / 32.0 };
 
 pub const twom10000_128: f128 = 0x1p-10000;
 pub const huge_128: f128 = 0x1p10000;

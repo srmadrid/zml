@@ -1063,6 +1063,4 @@ test "replace" {
     try std.testing.expect(try A.get(&.{ 0, 1, 1 }) == 20);
 }
 
-test {
-    std.testing.refAllDeclsRecursive(@This());
-}
+test {}

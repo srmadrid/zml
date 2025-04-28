@@ -944,5 +944,9 @@ pub inline fn cast(
 }
 
 test {
-    std.testing.refAllDeclsRecursive(@This());
+    const test_cfloat = true;
+
+    if (test_cfloat) {
+        _ = @import("types/cfloat.zig");
+    }
 }
