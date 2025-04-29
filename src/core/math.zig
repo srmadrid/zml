@@ -18,7 +18,7 @@ pub const log = @import("math/log.zig").log; // to implement: f80. 8/256 tests f
 pub const log10 = @import("math/log10.zig").log10; // to implement: f80. 33/264 tests fail: 16 for f64, 17 for f128
 pub const log2 = @import("math/log2.zig").log2; // to implement: f80. 35/326 tests fail: 5 for f32, 30 for f128
 pub const log10p1 = @import("math/log10p1.zig").log10p1; // 240/749 tests fail: 38 for f32, 55 for f64, 59 for f80, 88 for f128
-// pub const log2p1 = @import("math/log2p1.zig").log2p1; // to implement
+pub const log2p1 = @import("math/log2p1.zig").log2p1; // 122/473 tests fail: 16 for f32, 15 for f64, 25 for f80, 66 for f128
 pub const log1p = @import("math/log1p.zig").log1p; // to implement: f80. 30/421 tests fail: 8 for f64, 22 for f128
 
 // Power functions
@@ -118,7 +118,7 @@ test {
         _ = @import("math/log10.zig");
         _ = @import("math/log2.zig");
         _ = @import("math/log10p1.zig");
-        //_ = @import("math/log2p1.zig");
+        _ = @import("math/log2p1.zig");
         _ = @import("math/log1p.zig");
     }
 
