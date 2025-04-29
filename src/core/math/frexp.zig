@@ -67,9 +67,9 @@ fn frexp32(x: f32, e: *i32) f32 {
 }
 
 fn frexp64(x: f64, e: *i32) f64 {
-    var ix: i64 = undefined;
+    var ix: u64 = undefined;
     dbl64.extractWords64(&ix, x);
-    var ex: i32 = @truncate(0x7ff & (ix >> 52));
+    var ex: i32 = @bitCast(@as(u32, @truncate(0x7ff & (ix >> 52))));
     var ee: i32 = 0;
 
     var xx: f64 = x;
@@ -82,7 +82,7 @@ fn frexp64(x: f64, e: *i32) f64 {
             // Subnormal.
             xx *= 0x1p54;
             dbl64.extractWords64(&ix, xx);
-            ex = 0x7ff & (ix >> 52);
+            ex = @bitCast(@as(u32, @truncate(0x7ff & (ix >> 52))));
             ee = ex - 1022 - 54;
         }
 

@@ -24,7 +24,7 @@ pub const log1p = @import("math/log1p.zig").log1p; // to implement: f80. 30/421 
 // Power functions
 // pub const pow = @import("math/pow.zig").pow; // to implement
 pub const sqrt = @import("math/sqrt.zig").sqrt; // 58/655 tests fail: 1 for f80, 57 for f128
-// pub const cbrt = @import("math/cbrt.zig").cbrt; // to implement
+pub const cbrt = @import("math/cbrt.zig").cbrt; // to implement: f80. 23/233 tests fail: 21 for f64, 2 for f128
 pub const hypot = @import("math/hypot.zig").hypot; // to implement: f80. 2/2281 tests fail: 1 for f32, 1 for f128
 
 // Trigonometric functions
@@ -90,8 +90,8 @@ pub const copysign = @import("math/copysign.zig").copysign;
 
 test {
     const test_basic = false;
-    const test_exponential = true;
-    const test_power = false;
+    const test_exponential = false;
+    const test_power = true;
     const test_trigonometric = false;
     const test_hyperbolic = false;
     const test_error_gamma = false;

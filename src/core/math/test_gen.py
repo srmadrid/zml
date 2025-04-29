@@ -22,7 +22,7 @@ def main():
         'tests': defaultdict(list)
     })
     
-    is_complex = lines[0].startswith('c') and lines[0][:3] != 'cos'
+    is_complex = lines[0].startswith('c') and lines[0][:3] != 'cos' and lines[0][:4] != 'cbrt'
     
     if is_complex:
         arg_count *= 2
