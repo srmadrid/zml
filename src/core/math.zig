@@ -53,8 +53,8 @@ pub const acosh = @import("math/acosh.zig").acosh; // to implement: f80. 51/349 
 pub const atanh = @import("math/atanh.zig").atanh; // to implement: f80. 48/566 tests fail: 17 for f64, 31 for f128
 
 // Error and gamma functions
-// pub const erf = @import("math/erf.zig").erf; // to implement
-// pub const erfc = @import("math/erfc.zig").erfc; // to implement
+pub const erf = @import("math/erf.zig").erf; // to implement: f80. 11/532 tests fail: 1 for f64, 10 for f128
+pub const erfc = @import("math/erfc.zig").erfc; // to implement: f80. 142/705 tests fail: 36 for f64, 22 for f80, 84 for f128
 // pub const gamma = @import("math/gamma.zig").gamma; // to implement
 // pub const lgamma = @import("math/lgamma.zig").lgamma; // to implement
 // pub const tgamma = @import("math/tgamma.zig").tgamma; // to implement
@@ -91,10 +91,10 @@ pub const copysign = @import("math/copysign.zig").copysign;
 test {
     const test_basic = false;
     const test_exponential = false;
-    const test_power = true;
+    const test_power = false;
     const test_trigonometric = false;
     const test_hyperbolic = false;
-    const test_error_gamma = false;
+    const test_error_gamma = true;
     const test_bessel = false;
     const test_nearest_integer = false;
     const test_floating_point = false;
@@ -157,7 +157,7 @@ test {
     }
 
     if (test_error_gamma) {
-        //_ = @import("math/erf.zig");
+        _ = @import("math/erf.zig");
         //_ = @import("math/erfc.zig");
         _ = @import("math/gamma.zig");
         _ = @import("math/lgamma.zig");

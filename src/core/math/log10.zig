@@ -3,6 +3,7 @@ const types = @import("../types.zig");
 const math = @import("../math.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
+const erf_data = @import("erf_data.zig");
 const EnsureFloat = types.EnsureFloat;
 const cast = types.cast;
 
@@ -216,32 +217,6 @@ fn log10_64(x: f64) f64 {
     return z + y * log10_2hi;
 }
 
-// Evaluate P[n] x^n  +  P[n-1] x^(n-1)  +  ...  +  P[0]
-fn neval(x: f128, p: []const f128, n: i32) f128 {
-    var i: i32 = n;
-    var y: f128 = p[@intCast(i)];
-    i -= 1;
-    while (i >= 0) {
-        y = y * x + p[@intCast(i)];
-        i -= 1;
-    }
-
-    return y;
-}
-
-// Evaluate x^n+1  +  P[n] x^(n)  +  P[n-1] x^(n-1)  +  ...  +  P[0]
-fn deval(x: f128, p: []const f128, n: i32) f128 {
-    var i: i32 = n;
-    var y: f128 = p[@intCast(i)] + x;
-    i -= 1;
-    while (i >= 0) {
-        y = y * x + p[@intCast(i)];
-        i -= 1;
-    }
-
-    return y;
-}
-
 fn log10_128(x: f128) f128 {
     // Coefficients for ln(1+x) = x - x**2/2 + x**3 P(x)/Q(x)
     // 1/sqrt(2) <= x < sqrt(2)
@@ -347,7 +322,7 @@ fn log10_128(x: f128) f128 {
         }
         xx = z / y;
         z = xx * xx;
-        y = xx * (z * neval(z, &R, 5) / deval(z, &S, 5));
+        y = xx * (z * erf_data.neval(z, &R, 5) / erf_data.deval(z, &S, 5));
         done = true;
     }
 
@@ -360,7 +335,7 @@ fn log10_128(x: f128) f128 {
             xx = xx - 1;
         }
         z = xx * xx;
-        y = xx * (z * neval(xx, &P, 12) / deval(xx, &Q, 11));
+        y = xx * (z * erf_data.neval(xx, &P, 12) / erf_data.deval(xx, &Q, 11));
         y = y - 0.5 * z;
     }
 

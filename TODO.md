@@ -119,6 +119,8 @@ Test SPFM Lab7, Q1. Put as an example. Also maybe look at exercises from Statist
 
 ## Symbolic System
 
+You should be able to create operations at compile time from an `Expression`, for instance, `Expression.init("A + B C^\top")` (if the string is comptime and A, B and C are NDArrays) should be able to give something like `zml.add(A, zml.mul(B, C.transpose()))`. Obviously, this happens using a method from `Expression` (something like `Expression.compile(comptime expression: Expression, ...)`, although name not final). This will be useful also for the numeric system to create operations at compile time from more easily readable expressions.
+
 Make use of global context? Like, we have a type `zml.Context` that has to be initialized before using the symbolic system using something like `zml.Context.init(allocator, other stuff)`. Then you have to set a global context, like `zml.setGlobalContext(&context)`. The context will hold a `StringArrayHashMap` (hash map optimized for iteration) with symbols and their names. This way, the context stores all the symbols and the user can have several contexts at the same time and switch between them. The context will also store the allocator and other stuff.
 
 Make a `<object>FromExpression` function. For instance, if I want to create the product of a set (`S\times S`), then I can use `setFromExpression(...)`. The expression must evaluate to the correct type.
