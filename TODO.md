@@ -2,6 +2,12 @@
 
 ## Priority
 
+Make unmanaged versions default, and add `Managed` to the name of the managed versions.
+
+Create markdown templates for the documentation (on each function, then extract them to md files using a script).
+
+Functions like `zml.pi(comptime T: type, options: ...)` will return pi in the type `T` (if it is arbitrary precision, wanted precision is needed in options). The same for `e`, `phi`, etc.
+
 Add inplace variants for core.math functions (e.g., `add_`, `mul_`, etc.) that take a pointer to the result, and check that the input types can be coerced to the output type.
 
 Make exhaustive (test all input combinations) tests for type functions (core/types)
@@ -43,6 +49,8 @@ Make a Python package (especially for the symbolic system).
 Allow the user to build only BLAS and LAPACK to create `libblas.so`, `liblapack.so`, `libblas.a` and `liblapack.a` (also for Windows and MacOS) and export the necessary headers.
 
 ## `NDArray`
+
+`offset` should be in `metadata`? Since it only applies to packed arrays.
 
 For functions which require optional parameters, use a `options` argument with a custom struct, like:
 
@@ -130,3 +138,7 @@ Make a `<object>FromExpression` function. For instance, if I want to create the 
 For integrals, derivatives, etc. have anytype parameter inputs for the generic functions, and if the input is an expression of symbolic `Function` object, then calculate it symbolically, if it is a typical zig function, then calculate it numerically.
 
 Have custom symbols, such as `\variance`, `\expectation`, etc., with some default values. For instance, `\variance` can be defined as `\newcommand{\variance}{\mathbb{V}\text{ar}}`, but that can be changed by the user to their liking.
+
+## Math App
+
+Option to generate highly optimized zig code (with automatically generated C interface) from pure mathematical expressions. This will be a good selling point. Also, will probably use a variation of `Expression.compile` to generate the code. The code will be generated in a separate file, and the user can choose to compile it or not. The generated code will be highly optimized and will use the library's functions. The user can also choose to generate the code in C or C++?

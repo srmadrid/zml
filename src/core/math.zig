@@ -22,7 +22,7 @@ pub const log2p1 = @import("math/log2p1.zig").log2p1; // 122/473 tests fail: 16 
 pub const log1p = @import("math/log1p.zig").log1p; // to implement: f80. 30/421 tests fail: 8 for f64, 22 for f128
 
 // Power functions
-// pub const pow = @import("math/pow.zig").pow; // to implement
+pub const pow = @import("math/pow.zig").pow; // to implement: f80. 41/6896 tests fail: 2 for f32, 2 for f64, 2 for f80, 35 for f128
 pub const sqrt = @import("math/sqrt.zig").sqrt; // 58/655 tests fail: 1 for f80, 57 for f128
 pub const cbrt = @import("math/cbrt.zig").cbrt; // to implement: f80. 23/233 tests fail: 21 for f64, 2 for f128
 pub const hypot = @import("math/hypot.zig").hypot; // to implement: f80. 2/2281 tests fail: 1 for f32, 1 for f128
@@ -55,9 +55,8 @@ pub const atanh = @import("math/atanh.zig").atanh; // to implement: f80. 48/566 
 // Error and gamma functions
 pub const erf = @import("math/erf.zig").erf; // to implement: f80. 11/532 tests fail: 1 for f64, 10 for f128
 pub const erfc = @import("math/erfc.zig").erfc; // to implement: f80. 142/705 tests fail: 36 for f64, 22 for f80, 84 for f128
-// pub const gamma = @import("math/gamma.zig").gamma; // to implement
-// pub const lgamma = @import("math/lgamma.zig").lgamma; // to implement
-// pub const tgamma = @import("math/tgamma.zig").tgamma; // to implement
+pub const gamma = @import("math/gamma.zig").gamma; // to implement: f80. 943/4212 tests fail: 308 for f64, 635 for f128
+pub const lgamma = @import("math/lgamma.zig").lgamma; // to implement: f80. 874/3800 tests fail: 303 for f64, 571 for f128
 
 // Bessel functions
 // pub const j0 = @import("math/j0.zig").j0; // to implement
@@ -68,12 +67,12 @@ pub const erfc = @import("math/erfc.zig").erfc; // to implement: f80. 142/705 te
 // pub const yn = @import("math/yn.zig").yn; // to implement
 
 // Nearest integer floating-point operations
-// pub const ceil = @import("math/ceil.zig").ceil; // to implement
+pub const ceil = @import("math/ceil.zig").ceil;
 pub const floor = @import("math/floor.zig").floor;
-// pub const trunc = @import("math/trunc.zig").trunc; // to implement
-pub const round = @import("math/round.zig").round; // to implement
+pub const trunc = @import("math/trunc.zig").trunc;
+pub const round = @import("math/round.zig").round;
 // pub const nearbyint = @import("math/nearbyint.zig").nearbyint; // to implement
-// pub const rint = @import("math/rint.zig").rint; // to implement
+pub const rint = @import("math/rint.zig").rint;
 // pub const lrint = @import("math/lrint.zig").lrint; // to implement
 // pub const llrint = @import("math/llrint.zig").llrint; // to implement. Join the rint's and choose one depending on input integer type?
 
@@ -158,10 +157,9 @@ test {
 
     if (test_error_gamma) {
         _ = @import("math/erf.zig");
-        //_ = @import("math/erfc.zig");
+        _ = @import("math/erfc.zig");
         _ = @import("math/gamma.zig");
         _ = @import("math/lgamma.zig");
-        //_ = @import("math/tgamma.zig");
     }
 
     if (test_bessel) {
@@ -179,7 +177,7 @@ test {
         _ = @import("math/trunc.zig");
         _ = @import("math/round.zig");
         //_ = @import("math/nearbyint.zig");
-        //_ = @import("math/rint.zig");
+        _ = @import("math/rint.zig");
         //_ = @import("math/lrint.zig");
         //_ = @import("math/llrint.zig");
     }

@@ -20,6 +20,11 @@ pub const poly_32: [4]f64 = .{
     -0x1.712b6f70a7e4dp-2, 0x1.ecabf496832ep-2, -0x1.715479ffae3dep-1,
     0x1.715475f35c8b8p0,
 };
+pub const poly_pow_32: [5]f64 = .{
+    0x1.27616c9496e0bp-2, -0x1.71969a075c67ap-2,
+    0x1.ec70a6ca7baddp-2, -0x1.7154748bef6c8p-1,
+    0x1.71547652ab82bp0,
+};
 
 // First coefficient_64: 0x1.71547652b82fe1777d0ffda0d24p0
 pub const invln2hi_64: f64 = 0x1.7154765200000p+0;
