@@ -22,6 +22,7 @@ pub const abs2 = @import("cfloat/abs2.zig").abs2;
 pub const logabs = @import("cfloat/logabs.zig").logabs;
 pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // 446/1695 tests fail: 17 for cf32, 68 for cf64, 141 for cf80, 220 for cf128
 pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32, 4 for cf64, 8 for cf80, 12 for cf128
+pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for f32, 133 for f64, 217 for f80, 640 for f128
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -266,16 +267,6 @@ pub fn pow(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) 
         },
         else => unreachable,
     }
-}
-
-pub fn log(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
-
-    return .{
-        .re = logabs(z),
-        .im = arg(z),
-    };
 }
 
 pub fn log10(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
@@ -1091,4 +1082,17 @@ pub fn acoth(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
     return atanh(z.inverse());
 }
 
-test {}
+test {
+    _ = @import("cfloat/add.zig");
+    _ = @import("cfloat/sub.zig");
+    _ = @import("cfloat/mul.zig");
+    _ = @import("cfloat/div.zig");
+
+    _ = @import("cfloat/arg.zig");
+    _ = @import("cfloat/abs.zig");
+    _ = @import("cfloat/abs2.zig");
+    _ = @import("cfloat/logabs.zig");
+    _ = @import("cfloat/sqrt.zig");
+    _ = @import("cfloat/exp.zig");
+    _ = @import("cfloat/log.zig");
+}

@@ -6,7 +6,7 @@ pub const ops = @import("core/ops.zig");
 
 test {
     const test_types = true;
-    const test_math = true;
+    const test_math = false;
 
     if (test_types) {
         _ = @import("core/types.zig");

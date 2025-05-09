@@ -41,4 +41,4 @@ exe.root_module.addImport("zml", zml.module("zml"));
 
 ## Notes
 
-This library is in the early stages of development and is not yet ready for use. Breaking changes are to be expected every commit, and only the most basic functionality is currently implemented (see [Current Features](#current-features) for more information).
+This library is in the early stages of development and is not yet ready for use. Breaking changes are to be expected every commit, and only the most basic functionality is currently implemented (see [Current Features](#current-features) for more information). If you decide to use this library, please be aware that you may encounter bugs and incomplete features. If you find a bug, please report it via an issue on GitHub.
