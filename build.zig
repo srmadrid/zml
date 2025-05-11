@@ -4,10 +4,6 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const module = b.addModule("zml", .{
-        .root_source_file = b.path("src/zml.zig"),
-    });
-
     // Option to provide BLAS and LAPACK implementations
     const options = b.addOptions();
     const opt_link_cblas = b.option([]const u8, "link_cblas", "Link CBLAS implementation");
@@ -15,38 +11,10 @@ pub fn build(b: *std.Build) void {
     const opt_link_lapacke = b.option([]const u8, "link_lapacke", "Link LAPACKE implementation");
     options.addOption(?[]const u8, "link_apacke", opt_link_lapacke);
 
-    // Library
-    const alib = b.addStaticLibrary(.{
-        .name = "zml",
+    const module = b.addModule("zml", .{
         .root_source_file = b.path("src/zml.zig"),
-        .target = target,
-        .optimize = optimize,
     });
-    const slib = b.addSharedLibrary(.{
-        .name = "zml",
-        .root_source_file = b.path("src/zml.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    alib.root_module.addOptions("options", options);
-    slib.root_module.addOptions("options", options);
-
-    if (opt_link_cblas != null or opt_link_lapacke != null) {
-        alib.linkLibC();
-        slib.linkLibC();
-    }
-    if (opt_link_cblas != null) {
-        alib.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
-        slib.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
-    }
-    if (opt_link_lapacke != null) {
-        alib.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
-        slib.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
-    }
-
-    b.installArtifact(alib);
-    b.installArtifact(slib);
+    module.addOptions("options", options);
 
     // Executable (for testing)
     const exe = b.addExecutable(.{
@@ -56,7 +24,7 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    exe.root_module.addOptions("options", options);
+    exe.root_module.addImport("zml", module);
 
     if (opt_link_cblas != null or opt_link_lapacke != null) {
         exe.linkLibC();
@@ -77,12 +45,12 @@ pub fn build(b: *std.Build) void {
 
     // Tests
     const lib_unit_tests = b.addTest(.{
-        .root_source_file = b.path("src/zml.zig"),
+        .root_source_file = b.path("test/zml.zig"),
         .target = target,
         .optimize = optimize,
     });
 
-    lib_unit_tests.root_module.addOptions("options", options);
+    lib_unit_tests.root_module.addImport("zml", module);
 
     if (opt_link_cblas != null or opt_link_lapacke != null) {
         lib_unit_tests.linkLibC();
@@ -100,9 +68,7 @@ pub fn build(b: *std.Build) void {
 
     // Examples
     const example_step = b.step("examples", "Build examples");
-    for ([_][]const u8{
-        "ndarray_add",
-    }) |example_name| {
+    for ([_][]const u8{}) |example_name| {
         const example = b.addExecutable(.{
             .name = example_name,
             .root_source_file = b.path(b.fmt("examples/{s}.zig", .{example_name})),
@@ -114,16 +80,6 @@ pub fn build(b: *std.Build) void {
         example_step.dependOn(&example.step);
         example_step.dependOn(&install_example.step);
     }
-
-    // Documentation
-    const doc = b.addInstallDirectory(.{
-        .source_dir = alib.getEmittedDocs(),
-        .install_dir = .prefix,
-        .install_subdir = "docs",
-    });
-
-    const doc_step = b.step("docs", "Generate documentation");
-    doc_step.dependOn(&doc.step);
 
     // Steps
     const check_step = b.step("check", "Check if the code compiles; this is for ZLS");

@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core.zig");
+const types = @import("../../types.zig");
 const blas = @import("../blas.zig");
 
-const Scalar = core.types.Scalar;
+const Scalar = types.Scalar;
 
 pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     @setRuntimeSafety(false);
-    const numericType = core.types.numericType(T);
+    const numericType = types.numericType(T);
 
     if (n <= 0 or incx <= 0) return 0;
 
@@ -194,45 +194,4 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
     }
 
     return imax;
-}
-
-test iamax {
-    const a: std.mem.Allocator = std.testing.allocator;
-    const Complex = std.math.Complex;
-
-    const n = 1000;
-
-    var x1 = try a.alloc(f64, n);
-    defer a.free(x1);
-
-    for (0..n) |i| {
-        x1[i] = 0;
-    }
-
-    x1[127] = 1;
-    x1[456] = 1;
-
-    const result1 = blas.iamax(f64, n, x1.ptr, 1);
-    try std.testing.expectEqual(127, result1);
-    const result2 = blas.iamax(f64, n, x1.ptr, -1);
-    try std.testing.expectEqual(0, result2);
-    const result3 = blas.iamax(f64, n / 2, x1.ptr, 2);
-    try std.testing.expectEqual(228, result3);
-
-    var x2 = try a.alloc(Complex(f64), n);
-    defer a.free(x2);
-
-    for (0..n) |i| {
-        x2[i] = Complex(f64).init(0, 0);
-    }
-
-    x2[127] = Complex(f64).init(1, 1);
-    x2[456] = Complex(f64).init(1, 1);
-
-    const result4 = blas.iamax(Complex(f64), n, x2.ptr, 1);
-    try std.testing.expectEqual(127, result4);
-    const result5 = blas.iamax(Complex(f64), n, x2.ptr, -1);
-    try std.testing.expectEqual(0, result5);
-    const result6 = blas.iamax(Complex(f64), n / 2, x2.ptr, 2);
-    try std.testing.expectEqual(228, result6);
 }

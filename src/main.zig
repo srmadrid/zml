@@ -1,6 +1,5 @@
 const std = @import("std");
-const zml = @import("zml.zig");
-const core = @import("core.zig");
+const zml = @import("zml");
 //const ci = @import("c.zig");
 
 pub fn main() !void {
@@ -8,6 +7,8 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const a = gpa.allocator();
     _ = a;
+
+    constantTesting();
 
     // try symbolicTesting(a);
 
@@ -29,7 +30,23 @@ pub fn main() !void {
 
     // try blasPerfTesting(a);
 
-    coreTesting();
+    // coreTesting();
+}
+
+fn constantTesting() void {
+    const c_16: f16 = zml.float.pi(f16);
+    const c_32: f32 = zml.float.pi(f32);
+    const c_64: f64 = zml.float.pi(f64);
+    const c_80: f80 = zml.float.pi(f80);
+    const c_128: f128 = zml.float.pi(f128);
+    const c_comptime: comptime_float = zml.float.pi(comptime_float);
+
+    std.debug.print("f64 = {d}\n", .{c_16});
+    std.debug.print("f32 = {d}\n", .{c_32});
+    std.debug.print("f64 = {d}\n", .{c_64});
+    std.debug.print("f80 = {d}\n", .{c_80});
+    std.debug.print("f128 = {d}\n", .{c_128});
+    std.debug.print("comptime_float = {d}\n", .{c_comptime});
 }
 
 fn ask_user(default: usize) !usize {

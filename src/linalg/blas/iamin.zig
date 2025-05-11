@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core.zig");
+const types = @import("../../types.zig");
 const blas = @import("../blas.zig");
 
-const Scalar = core.types.Scalar;
+const Scalar = types.Scalar;
 
 pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
     @setRuntimeSafety(false);
-    const numericType = core.types.numericType(T);
+    const numericType = types.numericType(T);
 
     if (n <= 0 or incx <= 0) return 0;
 
@@ -194,45 +194,4 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
     }
 
     return imin;
-}
-
-test iamin {
-    const a: std.mem.Allocator = std.testing.allocator;
-    const Complex = std.math.Complex;
-
-    const n = 1000;
-
-    var x1 = try a.alloc(f64, n);
-    defer a.free(x1);
-
-    for (0..n) |i| {
-        x1[i] = std.math.floatMax(f64);
-    }
-
-    x1[127] = 0;
-    x1[456] = 0;
-
-    const result1 = blas.iamin(f64, n, x1.ptr, 1);
-    try std.testing.expectEqual(127, result1);
-    const result2 = blas.iamin(f64, n, x1.ptr, -1);
-    try std.testing.expectEqual(0, result2);
-    const result3 = blas.iamin(f64, n / 2, x1.ptr, 2);
-    try std.testing.expectEqual(228, result3);
-
-    var x2 = try a.alloc(Complex(f64), n);
-    defer a.free(x2);
-
-    for (0..n) |i| {
-        x2[i] = Complex(f64).init(std.math.floatMax(f64), std.math.floatMax(f64));
-    }
-
-    x2[127] = Complex(f64).init(0, 0);
-    x2[456] = Complex(f64).init(0, 0);
-
-    const result4 = blas.iamin(Complex(f64), n, x2.ptr, 1);
-    try std.testing.expectEqual(127, result4);
-    const result5 = blas.iamin(Complex(f64), n, x2.ptr, -1);
-    try std.testing.expectEqual(0, result5);
-    const result6 = blas.iamin(Complex(f64), n / 2, x2.ptr, 2);
-    try std.testing.expectEqual(228, result6);
 }

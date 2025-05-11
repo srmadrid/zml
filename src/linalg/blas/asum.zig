@@ -1,12 +1,12 @@
 const std = @import("std");
-const core = @import("../../core.zig");
+const types = @import("../../types.zig");
 const blas = @import("../blas.zig");
 
-const Scalar = core.types.Scalar;
+const Scalar = types.Scalar;
 
 pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Scalar(T) {
     @setRuntimeSafety(false);
-    const numericType = core.types.numericType(T);
+    const numericType = types.numericType(T);
 
     if (n <= 0 or incx < 0) return 0;
 
@@ -65,35 +65,4 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Scala
     }
 
     return sum;
-}
-
-test asum {
-    const a = std.testing.allocator;
-    const Complex = std.math.Complex;
-
-    const n = 1000;
-
-    var x1 = try a.alloc(f64, n);
-    defer a.free(x1);
-
-    for (0..n) |i| {
-        x1[i] = @floatFromInt(i + 1);
-    }
-
-    const result1 = blas.asum(f64, n, x1.ptr, 1);
-    try std.testing.expectEqual(500500, result1);
-    const result2 = blas.asum(f64, n / 2, x1.ptr, 2);
-    try std.testing.expectEqual(250000, result2);
-
-    var x2 = try a.alloc(Complex(f64), n);
-    defer a.free(x2);
-
-    for (0..n) |i| {
-        x2[i] = Complex(f64).init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast(i + 1))));
-    }
-
-    const result3 = blas.asum(Complex(f64), n, x2.ptr, 1);
-    try std.testing.expectEqual(1001000, result3);
-    const result4 = blas.asum(Complex(f64), n / 2, x2.ptr, 2);
-    try std.testing.expectEqual(500000, result4);
 }

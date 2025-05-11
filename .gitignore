@@ -11,7 +11,7 @@ lines.sh
 
 # Brian Gladman, Vincenzo Innocente, John Mather, Paul Zimmermann. Accuracy of Mathematical
 # Functions in Single, Double, Double Extended, and Quadruple Precision. 2025. hal-03141101v8
-src/core/math/accuracy.pdf
+src/float/accuracy.pdf
 
 TODO.md
 

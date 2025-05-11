@@ -1,10 +1,10 @@
 const std = @import("std");
-const core = @import("../../core.zig");
+const types = @import("../../types.zig");
 const blas = @import("../blas.zig");
 
 pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, param: [*]const T) void {
     @setRuntimeSafety(false);
-    const numericType = core.types.numericType(T);
+    const numericType = types.numericType(T);
 
     if (n == 0 or param[0] == -2) return;
 
@@ -143,50 +143,5 @@ pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
         .cfloat => @compileError("blas.rotm does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.rotm only supports simple types."),
         .unsupported => unreachable,
-    }
-}
-
-test rotm {
-    const a: std.mem.Allocator = std.testing.allocator;
-
-    const n = 1000;
-
-    var x1 = try a.alloc(f64, n);
-    defer a.free(x1);
-    var x2 = try a.alloc(f64, n);
-    defer a.free(x2);
-    var x3 = try a.alloc(f64, n);
-    defer a.free(x3);
-    var x4 = try a.alloc(f64, n);
-    defer a.free(x4);
-
-    for (0..n) |i| {
-        x1[i] = @floatFromInt(i + 1);
-        x2[i] = @floatFromInt(i + 1);
-        x3[i] = @floatFromInt(n - i);
-        x4[i] = @floatFromInt(i + 1);
-    }
-
-    blas.rotm(f64, n, x1.ptr, 1, x2.ptr, 1, &.{ 1, 2, 3, 4, 5 });
-    for (0..n) |i| {
-        try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + (i + 1))), x1[i]);
-        try std.testing.expectEqual(@as(f64, @floatFromInt(5 * (i + 1) - (i + 1))), x2[i]);
-        x1[i] = @floatFromInt(i + 1);
-    }
-    blas.rotm(f64, n, x1.ptr, 1, x3.ptr, -1, &.{ 0, 2, 3, 4, 5 });
-    for (0..n) |i| {
-        try std.testing.expectEqual(@as(f64, @floatFromInt((i + 1) + 4 * (i + 1))), x1[i]);
-        try std.testing.expectEqual(@as(f64, @floatFromInt(4 * (n - i))), x3[i]);
-        x1[i] = @floatFromInt(i + 1);
-    }
-    blas.rotm(f64, n / 2, x1.ptr, 2, x4.ptr, 2, &.{ -1, 2, 3, 4, 5 });
-    for (0..n) |i| {
-        if (i % 2 == 0) {
-            try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 4 * (i + 1))), x1[i]);
-            try std.testing.expectEqual(@as(f64, @floatFromInt(3 * (i + 1) + 5 * (i + 1))), x4[i]);
-        } else {
-            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x1[i]);
-            try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x4[i]);
-        }
     }
 }
