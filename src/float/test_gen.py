@@ -86,7 +86,7 @@ def main():
                 expected = f'-std.math.inf({zig_type})'
                 
         if is_complex_output:
-            expected = f'types.c{zig_type}.init({expected[0]}, {expected[1]})'
+            expected = f'c{zig_type}.init({expected[0]}, {expected[1]})'
 
         # Store test case with proper formatting
         if is_complex:
@@ -97,7 +97,7 @@ def main():
             for i in range(0, len(args), 2):
                 if i > 0:
                     test_args += ', '
-                test_args += f'types.c{zig_type}.init({args[i]}, {args[i + 1]})'
+                test_args += f'c{zig_type}.init({args[i]}, {args[i + 1]})'
         else:
             # Real function: multiple arguments
             test_args = ''

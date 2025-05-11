@@ -25,6 +25,7 @@ pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32,
 // pub const pow
 pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for f32, 133 for f64, 217 for f80, 640 for f128
 pub const log10 = @import("cfloat/log10.zig").log10; // 2427/4861 tests fail: 278 for f32, 596 for f64, 635 for f80, 918 for f128
+pub const sin = @import("cfloat/sin.zig").sin; // 36/260 tests fail: 6 for f32, 4 for f64, 3 for f80, 23 for f128
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -279,23 +280,6 @@ pub fn logBase(z: anytype, base: anytype) Coerce(@TypeOf(z), @TypeOf(base)) {
     const bb: Coerce(@TypeOf(z), @TypeOf(base)) = types.cast(Coerce(@TypeOf(z), @TypeOf(base)), base, .{});
 
     return log(zz).div(log(bb));
-}
-
-pub fn sin(z: anytype) Cfloat(Scalar(@TypeOf(z))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
-
-    if (z.im == 0) {
-        return .{
-            .re = float.sin(z.re),
-            .im = 0,
-        };
-    } else {
-        return .{
-            .re = float.sin(z.re) * float.cosh(z.im),
-            .im = float.cos(z.re) * float.sinh(z.im),
-        };
-    }
 }
 
 pub fn cos(z: anytype) Cfloat(Scalar(@TypeOf(z))) {

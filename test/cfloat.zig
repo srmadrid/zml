@@ -15,7 +15,8 @@ test {
         _ = @import("cfloat/sqrt.zig");
         _ = @import("cfloat/exp.zig");
         _ = @import("cfloat/log.zig");
+        _ = @import("cfloat/log10.zig");
     }
 
-    _ = @import("cfloat/log10.zig");
+    _ = @import("cfloat/sin.zig");
 }
