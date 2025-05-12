@@ -8,6 +8,20 @@ pub inline fn pi(comptime T: type) T {
     return 3.1415926535897932384626433832795028841971;
 }
 
+pub inline fn pi_2(comptime T: type) T {
+    comptime if (types.numericType(T) != .float)
+        @compileError("T must be a float type");
+
+    return 1.5707963267948966192313216916397514420985;
+}
+
+pub inline fn pi_4(comptime T: type) T {
+    comptime if (types.numericType(T) != .float)
+        @compileError("T must be a float type");
+
+    return 0.7853981633974483096156608458198757212951;
+}
+
 pub inline fn e(comptime T: type) T {
     comptime if (types.numericType(T) != .float)
         @compileError("T must be a float type");

@@ -36,7 +36,11 @@ def main():
         if len(parts) < 7:
             continue
 
-        func_name = parts[1]
+        if is_complex:
+            func_name = parts[1][1:]
+        else:
+            func_name = parts[1]
+        
         rounding = parts[2]
         fmt = parts[3]
 

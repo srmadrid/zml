@@ -23,7 +23,7 @@ pub fn sin(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
             const rcls: u32 = classify.classify(z.re);
             const icls: u32 = classify.classify(z.im);
 
-            const zz: @TypeOf(z) = .{ .re = float.abs(z.re), .im = z.im };
+            const x: @TypeOf(z) = .{ .re = float.abs(z.re), .im = z.im };
 
             if (icls >= classify.ZERO) {
                 @branchHint(.likely);
@@ -33,48 +33,48 @@ pub fn sin(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
                     // Real part is finite.
                     const t: i32 = cast(i32, (std.math.floatExponentMax(Scalar(@TypeOf(z))) - 1) * float.ln2(Scalar(@TypeOf(z))), .{});
 
-                    var sinizz: Scalar(@TypeOf(z)) = undefined;
-                    var cosizz: Scalar(@TypeOf(z)) = undefined;
-                    if (zz.re > std.math.floatMin(Scalar(@TypeOf(z)))) {
+                    var sinix: Scalar(@TypeOf(z)) = undefined;
+                    var cosix: Scalar(@TypeOf(z)) = undefined;
+                    if (x.re > std.math.floatMin(Scalar(@TypeOf(z)))) {
                         @branchHint(.likely);
-                        const tmp = float.sincos(zz.re);
-                        sinizz = tmp.sinx;
-                        cosizz = tmp.cosx;
+                        const tmp = float.sincos(x.re);
+                        sinix = tmp.sinx;
+                        cosix = tmp.cosx;
                     } else {
-                        sinizz = zz.re;
-                        cosizz = 1;
+                        sinix = x.re;
+                        cosix = 1;
                     }
 
                     if (negate)
-                        sinizz = -sinizz;
+                        sinix = -sinix;
 
                     var retval: @TypeOf(z) = undefined;
-                    if (float.abs(zz.im) > t) {
-                        const ezzp_t: Scalar(@TypeOf(z)) = float.exp(cast(Scalar(@TypeOf(z)), t, .{}));
-                        var izz: Scalar(@TypeOf(z)) = float.abs(zz.im);
-                        if (std.math.signbit(zz.im))
-                            cosizz = -cosizz;
-                        izz -= t;
-                        sinizz *= ezzp_t / 2;
-                        cosizz *= ezzp_t / 2;
-                        if (izz > t) {
-                            izz -= t;
-                            sinizz *= ezzp_t;
-                            cosizz *= ezzp_t;
+                    if (float.abs(x.im) > cast(Scalar(@TypeOf(z)), t, .{})) {
+                        const exp_t: Scalar(@TypeOf(z)) = float.exp(cast(Scalar(@TypeOf(z)), t, .{}));
+                        var ix: Scalar(@TypeOf(z)) = float.abs(x.im);
+                        if (std.math.signbit(x.im))
+                            cosix = -cosix;
+                        ix -= cast(Scalar(@TypeOf(z)), t, .{});
+                        sinix *= exp_t / 2;
+                        cosix *= exp_t / 2;
+                        if (ix > cast(Scalar(@TypeOf(z)), t, .{})) {
+                            ix -= cast(Scalar(@TypeOf(z)), t, .{});
+                            sinix *= exp_t;
+                            cosix *= exp_t;
                         }
 
-                        if (izz > t) {
-                            // Overflow (original imaginary part of zz > 3t).
-                            retval.re = std.math.floatMax(Scalar(@TypeOf(z))) * sinizz;
-                            retval.im = std.math.floatMax(Scalar(@TypeOf(z))) * cosizz;
+                        if (ix > cast(Scalar(@TypeOf(z)), t, .{})) {
+                            // Overflow (original imaginary part of x > 3t).
+                            retval.re = std.math.floatMax(Scalar(@TypeOf(z))) * sinix;
+                            retval.im = std.math.floatMax(Scalar(@TypeOf(z))) * cosix;
                         } else {
-                            const ezzp_val: Scalar(@TypeOf(z)) = float.exp(izz);
-                            retval.re = ezzp_val * sinizz;
-                            retval.im = ezzp_val * cosizz;
+                            const exp_val: Scalar(@TypeOf(z)) = float.exp(ix);
+                            retval.re = exp_val * sinix;
+                            retval.im = exp_val * cosix;
                         }
                     } else {
-                        retval.re = float.cosh(zz.im) * sinizz;
-                        retval.im = float.sinh(zz.im) * cosizz;
+                        retval.re = float.cosh(x.im) * sinix;
+                        retval.im = float.sinh(x.im) * cosix;
                     }
 
                     if (float.abs(retval.re) < std.math.floatMin(Scalar(@TypeOf(z)))) {
@@ -92,8 +92,8 @@ pub fn sin(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
                     if (icls == classify.ZERO) {
                         // Imaginary part is 0.
                         return .{
-                            .re = zz.re - zz.re,
-                            .im = zz.im,
+                            .re = x.re - x.re,
+                            .im = x.im,
                         };
                     } else {
                         return .{
@@ -108,37 +108,37 @@ pub fn sin(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
                     // Real part is 0.
                     return .{
                         .re = float.copysign(@as(Scalar(@TypeOf(z)), 0), @as(Scalar(@TypeOf(z)), if (negate) -1 else 1)),
-                        .im = zz.im,
+                        .im = x.im,
                     };
                 } else if (rcls > classify.ZERO) {
                     // Real part is finite.
-                    var sinizz: Scalar(@TypeOf(z)) = undefined;
-                    var cosizz: Scalar(@TypeOf(z)) = undefined;
-                    if (zz.re > std.math.floatMin(Scalar(@TypeOf(z)))) {
+                    var sinix: Scalar(@TypeOf(z)) = undefined;
+                    var cosix: Scalar(@TypeOf(z)) = undefined;
+                    if (x.re > std.math.floatMin(Scalar(@TypeOf(z)))) {
                         @branchHint(.likely);
-                        const tmp = float.sincos(zz.re);
-                        sinizz = tmp.sinx;
-                        cosizz = tmp.cosx;
+                        const tmp = float.sincos(x.re);
+                        sinix = tmp.sinx;
+                        cosix = tmp.cosx;
                     } else {
-                        sinizz = zz.re;
-                        cosizz = 1;
+                        sinix = x.re;
+                        cosix = 1;
                     }
 
                     var retval: @TypeOf(z) = .{
-                        .re = float.copysign(std.math.inf(Scalar(@TypeOf(z))), sinizz),
-                        .im = float.copysign(std.math.inf(Scalar(@TypeOf(z))), cosizz),
+                        .re = float.copysign(std.math.inf(Scalar(@TypeOf(z))), sinix),
+                        .im = float.copysign(std.math.inf(Scalar(@TypeOf(z))), cosix),
                     };
 
                     if (negate)
                         retval.re = -retval.re;
 
-                    if (std.math.signbit(zz.im))
+                    if (std.math.signbit(x.im))
                         retval.im = -retval.im;
 
                     return retval;
                 } else {
                     return .{
-                        .re = zz.re - zz.re,
+                        .re = x.re - x.re,
                         .im = std.math.inf(Scalar(@TypeOf(z))),
                     };
                 }
