@@ -23,20 +23,21 @@ pub const logabs = @import("cfloat/logabs.zig").logabs;
 pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // 446/1695 tests fail: 17 for cf32, 68 for cf64, 141 for cf80, 220 for cf128
 pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32, 4 for cf64, 8 for cf80, 12 for cf128
 // pub const pow
-pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for f32, 133 for f64, 217 for f80, 640 for f128
-pub const log10 = @import("cfloat/log10.zig").log10; // 2427/4861 tests fail: 278 for f32, 596 for f64, 635 for f80, 918 for f128
-pub const sin = @import("cfloat/sin.zig").sin; // 36/260 tests fail: 6 for f32, 4 for f64, 3 for f80, 23 for f128
-pub const cos = @import("cfloat/cos.zig").cos; // 37/176 tests fail: 6 for f32, 5 for f64, 2 for f80, 24 for f128
-pub const tan = @import("cfloat/tan.zig").tan; // 122/280 tests fail: 12 for f32, 16 for f64, 33 for f80, 61 for f128
-pub const asin = @import("cfloat/asin.zig").asin; // 2540/7087 tests fail: 332 for f32, 396 for f64, 713 for f80, 1126 for f128
-pub const acos = @import("cfloat/acos.zig").acos; // 2244/7087 tests fail: 312 for f32, 375 for f64, 537 for f80, 1020 for f128
-pub const atan = @import("cfloat/atan.zig").atan; // 449/5836 tests fail: 49 for f32, 105 for f64, 34 for f80, 261 for f128
-pub const sinh = @import("cfloat/sinh.zig").sinh; // 37/260 tests fail: 7 for f32, 5 for f64, 3 for f80, 22 for f128
-pub const cosh = @import("cfloat/cosh.zig").cosh; // 38/176 tests fail: 7 for f32, 5 for f64, 2 for f80, 24 for f128
-pub const tanh = @import("cfloat/tanh.zig").tanh; // 129/280 tests fail: 14 for f32, 18 for f64, 35 for f80, 62 for f128
-pub const asinh = @import("cfloat/asinh.zig").asinh; // 2543/7087 tests fail: 333 for f32, 396 for f64, 714 for f80, 1100 for f128
-pub const acosh = @import("cfloat/acosh.zig").acosh; // 2244/7087 tests fail: 312 for f32, 375 for f64, 537 for f80, 1020 for f128
-pub const atanh = @import("cfloat/atanh.zig").atanh; // 449/5836 tests fail: 48 for f32, 105 for f64, 34 for f80, 262 for f128
+pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for cf32, 133 for cf64, 217 for cf80, 640 for cf128
+pub const log10 = @import("cfloat/log10.zig").log10; // 2427/4861 tests fail: 278 for cf32, 596 for cf64, 635 for cf80, 918 for cf128
+pub const sin = @import("cfloat/sin.zig").sin; // 36/260 tests fail: 6 for cf32, 4 for cf64, 3 for cf80, 23 for cf128
+pub const cos = @import("cfloat/cos.zig").cos; // 37/176 tests fail: 6 for cf32, 5 for cf64, 2 for cf80, 24 for cf128
+pub const tan = @import("cfloat/tan.zig").tan; // 122/280 tests fail: 12 for cf32, 16 for cf64, 33 for cf80, 61 for cf128
+pub const asin = @import("cfloat/asin.zig").asin; // 2540/7087 tests fail: 332 for cf32, 396 for cf64, 713 for cf80, 1126 for cf128
+pub const acos = @import("cfloat/acos.zig").acos; // 2244/7087 tests fail: 312 for cf32, 375 for cf64, 537 for cf80, 1020 for cf128
+pub const atan = @import("cfloat/atan.zig").atan; // 449/5836 tests fail: 49 for cf32, 105 for cf64, 34 for cf80, 261 for cf128
+pub const sinh = @import("cfloat/sinh.zig").sinh; // 37/260 tests fail: 7 for cf32, 5 for cf64, 3 for cf80, 22 for cf128
+pub const cosh = @import("cfloat/cosh.zig").cosh; // 38/176 tests fail: 7 for cf32, 5 for cf64, 2 for cf80, 24 for cf128
+pub const tanh = @import("cfloat/tanh.zig").tanh; // 129/280 tests fail: 14 for cf32, 18 for cf64, 35 for cf80, 62 for cf128
+pub const asinh = @import("cfloat/asinh.zig").asinh; // 2543/7087 tests fail: 333 for cf32, 396 for cf64, 714 for cf80, 1100 for cf128
+pub const acosh = @import("cfloat/acosh.zig").acosh; // 2244/7087 tests fail: 312 for cf32, 375 for cf64, 537 for cf80, 1020 for cf128
+pub const atanh = @import("cfloat/atanh.zig").atanh; // 449/5836 tests fail: 48 for cf32, 105 for cf64, 34 for cf80, 262 for cf128
+pub const pow = @import("cfloat/pow.zig").pow; // 175/184 tests fail (MANY CATASTROFIC): 8 for cf32, 19 for cf64, 42 for cf80, 106 for cf128
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float) @compileError("Unsupported type for cfloat: " ++ @typeName(T));
@@ -190,90 +191,6 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
     };
-}
-
-pub fn pow(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)) or types.numericType(@TypeOf(left)) == .int or types.numericType(@TypeOf(right)) == .int or (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right))))
-        @compileError("At least one of left or right must be cfloat, the other must be a float or cfloat");
-
-    switch (types.numericType(@TypeOf(left))) {
-        .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => unreachable,
-                .cfloat => {
-                    return pow(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}), right);
-                },
-                else => unreachable,
-            }
-        },
-        .cfloat => {
-            switch (types.numericType(@TypeOf(right))) {
-                .float => {
-                    const l = types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{});
-                    const r = types.cast(Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{});
-
-                    if (l.re == 0 and l.im == 0) {
-                        if (r == 0) {
-                            return .{
-                                .re = 1,
-                                .im = 0,
-                            };
-                        } else {
-                            return .{
-                                .re = 0,
-                                .im = 0,
-                            };
-                        }
-                    } else {
-                        const logr = logabs(l);
-                        const theta = arg(l);
-                        const rho = @exp(logr * r);
-                        const beta = theta * r;
-
-                        return .{
-                            .re = rho * float.cos(beta),
-                            .im = rho * float.sin(beta),
-                        };
-                    }
-                },
-                .cfloat => {
-                    const l = types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{});
-                    const r = types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{});
-
-                    if (l.re == 0 and l.im == 0) {
-                        if (r.re == 0 and r.im == 0) {
-                            return .{
-                                .re = 1,
-                                .im = 0,
-                            };
-                        } else {
-                            return .{
-                                .re = 0,
-                                .im = 0,
-                            };
-                        }
-                    } else if (r.re == 1 and r.im == 0) {
-                        return l;
-                    } else if (r.re == -1 and r.im == 0) {
-                        return r.inverse();
-                    } else {
-                        const logr = logabs(l);
-                        const theta = arg(l);
-
-                        const rho = @exp(logr * r.re - theta * r.im);
-                        const beta = logr * r.im + theta * r.re;
-
-                        return .{
-                            .re = rho * float.cos(beta),
-                            .im = rho * float.sin(beta),
-                        };
-                    }
-                },
-                else => unreachable,
-            }
-        },
-        else => unreachable,
-    }
 }
 
 pub fn logBase(z: anytype, base: anytype) Coerce(@TypeOf(z), @TypeOf(base)) {

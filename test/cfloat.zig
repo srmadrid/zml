@@ -29,4 +29,6 @@ test {
         _ = @import("cfloat/acosh.zig");
         _ = @import("cfloat/atanh.zig");
     }
+
+    _ = @import("cfloat/pow.zig");
 }
