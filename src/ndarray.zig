@@ -1,6 +1,7 @@
 const std = @import("std");
 const types = @import("types.zig");
 const cast = types.cast;
+const int = @import("int.zig");
 
 const dense = @import("ndarray/dense.zig");
 const strided = @import("ndarray/strided.zig");
@@ -128,14 +129,7 @@ pub fn NDArray(comptime T: type) type {
             }
         }
 
-        pub fn set(
-            self: *NDArray(T),
-            position: []const usize,
-            value: anytype,
-            options: struct {
-                allocator: ?std.mem.Allocator = null,
-            },
-        ) !void {
+        pub fn set(self: *NDArray(T), position: []const usize, value: T) !void {
             _ = types.numericType(@TypeOf(value));
 
             switch (self.flags.storage) {
@@ -145,9 +139,9 @@ pub fn NDArray(comptime T: type) type {
                         return;
                     }
 
-                    try dense.checkPosition(self, position);
+                    try dense.checkPosition(T, self, position);
 
-                    self.data[dense.index(self, position)] = cast(T, value, .{ .allocator = options.allocator });
+                    self.data[dense.index(T, self, position)] = value;
                 },
                 .strided => {
                     if (self.size == 1) {
@@ -155,9 +149,9 @@ pub fn NDArray(comptime T: type) type {
                         return;
                     }
 
-                    try strided.checkPosition(position);
+                    try strided.checkPosition(T, self, position);
 
-                    self.data[strided.index(self, position)] = cast(T, value, .{ .allocator = options.allocator });
+                    self.data[strided.index(T, self, position)] = value;
                 },
                 .csr => {
                     std.debug.print("CSR storage not implemented yet", .{});
@@ -174,7 +168,7 @@ pub fn NDArray(comptime T: type) type {
             }
         }
 
-        pub fn get(self: *NDArray(T), position: []const usize) !*T {
+        pub fn get(self: *const NDArray(T), position: []const usize) !*T {
             switch (self.flags.storage) {
                 .dense => {
                     if (self.size == 1) {
@@ -190,9 +184,105 @@ pub fn NDArray(comptime T: type) type {
                         return &self.data[self.metadata.strided.offset];
                     }
 
-                    try dense.checkPosition(T, self, position);
+                    try strided.checkPosition(T, self, position);
 
-                    return &self.data[dense.index(T, self, position)];
+                    return &self.data[strided.index(T, self, position)];
+                },
+                .csr => {
+                    std.debug.print("CSR storage not implemented yet", .{});
+                    return Error.NotImplemented;
+                },
+                .csc => {
+                    std.debug.print("CSC storage not implemented yet", .{});
+                    return Error.NotImplemented;
+                },
+                .coo => {
+                    std.debug.print("COO storage not implemented yet", .{});
+                    return Error.NotImplemented;
+                },
+            }
+        }
+
+        pub fn slice(self: *const NDArray(T), slices: []const Slice) !NDArray(T) {
+            switch (self.flags.storage) {
+                .dense, .strided => {
+                    if (slices.len == 0 or slices.len > self.ndim) {
+                        return error.DimensionMismatch;
+                    }
+
+                    var ndim: usize = self.ndim;
+                    var size: usize = 1;
+                    var shapes: [maxDimensions]usize = .{0} ** maxDimensions;
+                    var strides: [maxDimensions]isize = .{0} ** maxDimensions;
+                    var offset: usize = if (self.flags.storage == .dense) 0 else self.metadata.strided.offset;
+
+                    var i: usize = 0;
+                    var j: usize = 0;
+                    while (i < self.ndim) {
+                        const stride: isize = if (self.flags.storage == .dense)
+                            cast(isize, self.metadata.dense.strides[i], .{})
+                        else
+                            self.metadata.strided.strides[i];
+
+                        if (i >= slices.len) {
+                            shapes[j] = self.shape[i];
+                            strides[j] = stride;
+                            size *= self.shape[i];
+                            j += 1;
+                            i += 1;
+                            continue;
+                        }
+
+                        if (slices[i].step > 0) {
+                            if (slices[i].start >= self.shape[i] or slices[i].stop > self.shape[i] + 1) {
+                                return Error.SliceOutOfBounds;
+                            }
+                        } else if (slices[i].step == 0) {
+                            if (slices[i].start >= self.shape[i]) {
+                                return Error.SliceOutOfBounds;
+                            }
+                        } else {
+                            if (slices[i].stop >= self.shape[i] or slices[i].start > self.shape[i] + 1) {
+                                return Error.SliceOutOfBounds;
+                            }
+                        }
+
+                        const len: usize = slices[i].len();
+                        if (len == 0 or len == 1) {
+                            ndim -= 1;
+                        } else {
+                            shapes[j] = len;
+                            strides[j] = stride * slices[i].step;
+                            size *= len;
+                            j += 1;
+                        }
+
+                        if (stride < 0) {
+                            offset -= slices[i].start * cast(usize, int.abs(stride), .{});
+                        } else {
+                            offset += slices[i].start * cast(usize, stride, .{});
+                        }
+
+                        i += 1;
+                    }
+
+                    return NDArray(T){
+                        .data = self.data,
+                        .ndim = ndim,
+                        .shape = shapes,
+                        .size = size,
+                        .base = if (self.flags.ownsData) self else self.base,
+                        .flags = .{
+                            .order = .other,
+                            .storage = .strided,
+                            .ownsData = false,
+                            .writeable = self.flags.writeable,
+                        },
+                        .metadata = .{ .strided = .{
+                            .strides = strides,
+                            .offset = offset,
+                        } },
+                    };
                 },
                 .csr => {
                     std.debug.print("CSR storage not implemented yet", .{});
@@ -218,6 +308,7 @@ pub const Error = error{
     NotImplemented,
     DimensionMismatch,
     PositionOutOfBounds,
+    SliceOutOfBounds,
 };
 
 pub const Flags = packed struct {
@@ -265,4 +356,40 @@ pub const Metadata = union(Storage) {
     pub const CSC = struct {};
 
     pub const COO = struct {};
+};
+
+pub const Slice = struct {
+    start: usize,
+    stop: usize,
+    step: isize,
+
+    pub fn init(start: usize, stop: usize, step: isize) !Slice {
+        if (step == 0 and start != stop) {
+            return Error.ZeroDimension;
+        }
+
+        if (step > 0) {
+            if (start >= stop) {
+                return Error.SliceOutOfBounds;
+            }
+        } else if (step < 0) {
+            if (start <= stop) {
+                return Error.SliceOutOfBounds;
+            }
+        }
+
+        return Slice{ .start = start, .stop = stop, .step = step };
+    }
+
+    pub fn len(self: Slice) usize {
+        if (self.step == 0 or self.start == self.stop) {
+            return 1;
+        }
+
+        if (self.step > 0) {
+            return (self.stop - self.start + cast(usize, self.step, .{}) - 1) / cast(usize, self.step, .{});
+        }
+
+        return (self.start - self.stop + cast(usize, int.abs(self.step), .{}) - 1) / cast(usize, int.abs(self.step), .{});
+    }
 };

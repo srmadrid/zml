@@ -80,7 +80,7 @@ pub fn Iterator(comptime T: type) type {
 
         pub fn nextAO(self: *Iterator(T), axis: usize, order: IterationOrder) ?usize {
             switch (self.array.flags.storage) {
-                .dense => {
+                .dense, .strided => {
                     var carry: bool = true;
                     var mustBreak: bool = false;
                     var change: isize = undefined;
@@ -92,7 +92,7 @@ pub fn Iterator(comptime T: type) type {
 
                     for (ax..self.array.ndim) |i| {
                         const idx = if (order == .rightToLeft) self.array.ndim - i - 1 else i;
-                        prev = @intCast(self.position[idx]);
+                        prev = cast(isize, self.position[idx], .{});
                         self.position[idx] += 1;
 
                         if (self.position[idx] >= self.array.shape[idx]) {
@@ -102,12 +102,11 @@ pub fn Iterator(comptime T: type) type {
                             mustBreak = true;
                         }
 
-                        change = cast(isize, self.position[idx], .{});
-                        change -= prev;
-                        index = @intCast(self.index);
-                        stride = @intCast(self.array.metadata.dense.strides[idx]);
+                        change = cast(isize, self.position[idx], .{}) - prev;
+                        index = cast(isize, self.index, .{});
+                        stride = if (self.array.flags.storage == .dense) cast(isize, self.array.metadata.dense.strides[idx], .{}) else self.array.metadata.strided.strides[idx];
                         index += change * stride;
-                        self.index = @intCast(index);
+                        self.index = cast(usize, index, .{});
 
                         if (mustBreak) {
                             break;
@@ -119,9 +118,6 @@ pub fn Iterator(comptime T: type) type {
                     }
 
                     return self.index;
-                },
-                .strided => {
-                    return null;
                 },
                 .csr => {
                     std.debug.print("CSR storage not implemented yet", .{});

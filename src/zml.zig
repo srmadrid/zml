@@ -2,6 +2,7 @@ const std = @import("std");
 
 pub const types = @import("types.zig");
 pub const ops = @import("ops.zig");
+pub const int = @import("int.zig");
 pub const float = @import("float.zig");
 pub const cfloat = @import("cfloat.zig");
 pub const cf16 = cfloat.cf16;

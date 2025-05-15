@@ -1,6 +1,6 @@
 const types = @import("../types.zig");
 const cast = types.cast;
-const float = @import("../float.zig");
+const int = @import("../int.zig");
 const ndarray = @import("../ndarray.zig");
 const NDArray = ndarray.NDArray;
 
@@ -9,7 +9,7 @@ pub inline fn index(comptime T: type, array: *const NDArray(T), position: []cons
     for (0..array.ndim) |i| {
         const stride: isize = array.metadata.strided.strides[i];
         if (stride < 0) {
-            idx -= position[i] * cast(usize, float.abs(stride), .{});
+            idx -= position[i] * cast(usize, int.abs(stride), .{});
         } else {
             idx += position[i] * cast(usize, stride, .{});
         }

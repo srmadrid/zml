@@ -2,6 +2,14 @@ const std = @import("std");
 const types = @import("types.zig");
 const Coerce = types.Coerce;
 
+const int = @import("int.zig");
+const float = @import("float.zig");
+const cfloat = @import("cfloat.zig");
+const integer = @import("integer.zig");
+const rational = @import("rational.zig");
+const real = @import("real.zig");
+const complex = @import("complex.zig");
+
 pub fn add(
     left: anytype,
     right: anytype,
@@ -98,5 +106,26 @@ pub inline fn add_(
 // - log1p
 // - exp
 // - any other basic math functions
+
+pub fn abs(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator,
+    },
+) @TypeOf(x) {
+    _ = options.allocator;
+    switch (types.numericType(@TypeOf(x))) {
+        .bool => @compileError("abs does not support bool arguments"),
+        .int => return int.abs,
+        .float => return float.abs(x),
+        .cfloat => return cfloat.abs(x),
+        .integer => @compileError("abs not implemented for integers yet"),
+        .rational => @compileError("abs not implemented for rationals yet"),
+        .real => @compileError("abs not implemented for reals yet"),
+        .complex => @compileError("abs not implemented for complexes yet"),
+        .expression => @compileError("abs not implemented for expressions yet"),
+        .unsupported => unreachable,
+    }
+}
 
 test {}
