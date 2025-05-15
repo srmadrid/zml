@@ -1,160 +1,144 @@
 const std = @import("std");
-const zml = @import("../zml.zig");
+const types = @import("../types.zig");
+const cast = types.cast;
 
-const ndarray = @import("ndarray.zig");
+const ndarray = @import("../ndarray.zig");
 const NDArray = ndarray.NDArray;
-const Flags = ndarray.Flags;
-const Error = ndarray.Error;
-const MaxDimensions = ndarray.MaxDimensions;
 
-/// Max number of arrays for a multiIteratior.
-const MaxArrays: usize = 8;
+const maxArrays: usize = 8;
 
-/// Iterator for one `NDArray`.
-///
-/// For now, iterators are associated to an array, but if, for example, we just
-/// want to use a transpose once, we have to create the transpose view, and
-/// then an iterator for that view. If iterators were associated with a shape
-/// and a stride, you would only need an iterator for the transpose case, but
-/// that iterator would be (considerably) heavier.
-///
-/// Maybe, make a standard next that doesnt take iteration order and instead
-/// calls `nextOrder` with the best order for the array?
 pub fn Iterator(comptime T: type) type {
     return struct {
-        /// The number dimensions of the iterator.
-        ndim: usize,
-        /// The shape of the iterator.
-        shape: [MaxDimensions]usize,
-        /// The strides of the iterator.
-        strides: [MaxDimensions]isize,
-        /// Offset of the first element of the iterator.
-        offset: usize,
-        /// The flags of the iterator.
-        flags: Flags,
-        /// Current position.
-        position: [MaxDimensions]usize,
-        /// Current index.
+        array: *const NDArray(T),
+        position: [ndarray.maxDimensions]usize,
         index: usize,
 
-        /// Initializes an iterator for a given array.
-        ///
-        /// **Description**:
-        ///
-        /// Initializes an iterator for a given array.
-        ///
-        /// **Input Parameters**:
-        /// - `array`: the array for the Iterator.
-        ///
-        /// **Return Values**:
-        /// - `Iterator(T)`: the initialized iterator.
-        pub fn init(array: NDArray(T)) Iterator(T) {
-            const ndim: usize = array.ndim;
-            var shape: [MaxDimensions]usize = .{0} ** MaxDimensions;
-            var strides: [MaxDimensions]isize = .{0} ** MaxDimensions;
-            for (0..ndim) |i| {
-                shape[i] = array.shape[i];
-                strides[i] = array.strides[i];
+        pub fn init(array: *const NDArray(T)) Iterator(T) {
+            switch (array.flags.storage) {
+                .dense => {
+                    return Iterator(T){
+                        .array = array,
+                        .position = .{0} ** ndarray.maxDimensions,
+                        .index = 0,
+                    };
+                },
+                .strided => {
+                    return Iterator(T){
+                        .array = array,
+                        .position = .{0} ** ndarray.maxDimensions,
+                        .index = array.metadata.strided.offset,
+                    };
+                },
+                .csr => {
+                    // Check if the elemnt in (0, 0) is default or a value. If
+                    // it is a value, then index = 1 (or wherever it is),
+                    // otherwise index = 0 (the position for the default value).
+                    std.debug.print("CSR storage not implemented yet", .{});
+                },
+                .csc => {
+                    std.debug.print("CSC storage not implemented yet", .{});
+                },
+                .coo => {
+                    std.debug.print("COO storage not implemented yet", .{});
+                },
             }
 
             return Iterator(T){
-                .ndim = ndim,
-                .shape = shape,
-                .strides = strides,
-                .offset = array.offset,
-                .flags = array.flags,
-                .position = [_]usize{0} ** MaxDimensions,
-                .index = array.offset,
+                .array = array,
+                .position = .{0} ** ndarray.maxDimensions,
+                .index = 0,
             };
         }
 
-        /// Iterates to the next element.
-        ///
-        /// **Description**:
-        ///
-        /// Iterates to the next element in the most efficient memory order, and
-        /// returns it if it exists, or null otherwise. Also updates `position`
-        /// and `index`.
-        ///
-        /// Due to the nature of the implementation, if the end of the iterator
-        /// is reached, apart from `null` being returned, `position` and `index`
-        /// are reset to 0, so there is no need to call `reset`.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the iterator.
-        ///
-        /// **Return Values**:
-        /// - `usize`: the index of the next item.
-        /// - `null`: reached end.
         pub fn next(self: *Iterator(T)) ?usize {
-            return self.nextOrder(self.flags.order);
+            switch (self.array.flags.storage) {
+                .dense, .strided => {
+                    switch (self.array.flags.order) {
+                        .rowMajor => {
+                            return self.nextAO(self.array.ndim - 1, .rightToLeft);
+                        },
+                        .columnMajor => {
+                            return self.nextAO(0, .leftToRight);
+                        },
+                        .other => unreachable,
+                    }
+                },
+                .csr => {
+                    std.debug.print("CSR storage not implemented yet", .{});
+                    return null;
+                },
+                .csc => {
+                    std.debug.print("CSC storage not implemented yet", .{});
+                    return null;
+                },
+                .coo => {
+                    std.debug.print("COO storage not implemented yet", .{});
+                    return null;
+                },
+            }
         }
 
-        /// Iterates to the next element.
-        ///
-        /// **Description**:
-        ///
-        /// Iterates to the next element in the chosen memory order, and returns
-        /// it if it exists, or null otherwise. Also updates `position` and
-        /// `index`.
-        ///
-        /// Due to the nature of the implementation, if the end of the iterator
-        /// is reached, apart from `null` being returned, `position` and `index`
-        /// are reset to 0, so there is no need to call `reset`.
-        ///
-        /// **Input Parameters**:
-        /// - `self`: the iterator.
-        /// - `rowMajorOrder`: what order to iterate with. If `true`, iterates
-        /// in row major order (right to left, `(...,0,0)->(...,0,1)->...->
-        /// (...,0,n)->(...,1,0))`, which is very efficient for arrays stored in
-        /// row major order; if `false`, iterates in column major order (left to
-        /// right, `(0,0,...)->(1,0,...)->...->(n,0,...)->(0,1,...)`), which is
-        /// very efficient for arrays stored in column major order.
-        ///
-        /// **Return Values**:
-        /// - `usize`: the index of the next item.
-        /// - `null`: reached end.
-        pub fn nextOrder(self: *Iterator(T), order: ndarray.Order) ?usize {
-            var carry: usize = 1;
-            var change: isize = undefined;
-            var prev: isize = undefined;
-            var index: isize = undefined;
-            var stride: isize = undefined;
-            var mustBreak: bool = false;
+        pub fn nextAO(self: *Iterator(T), axis: usize, order: IterationOrder) ?usize {
+            switch (self.array.flags.storage) {
+                .dense => {
+                    var carry: bool = true;
+                    var mustBreak: bool = false;
+                    var change: isize = undefined;
+                    var prev: isize = undefined;
+                    var index: isize = undefined;
+                    var stride: isize = undefined;
 
-            for (0..self.ndim) |i| {
-                const idx = if (order == .RowMajor) self.ndim - i - 1 else i;
-                prev = @intCast(self.position[idx]);
-                self.position[idx] += 1;
+                    const ax = if (order == .rightToLeft) self.array.ndim - axis - 1 else axis;
 
-                if (self.position[idx] >= self.shape[idx]) {
-                    self.position[idx] = 0;
-                } else {
-                    carry = 0;
-                    mustBreak = true;
-                }
+                    for (ax..self.array.ndim) |i| {
+                        const idx = if (order == .rightToLeft) self.array.ndim - i - 1 else i;
+                        prev = @intCast(self.position[idx]);
+                        self.position[idx] += 1;
 
-                change = @intCast(self.position[idx]);
-                change -= prev;
-                index = @intCast(self.index);
-                stride = @intCast(self.strides[idx]);
-                index += change * stride;
-                self.index = @intCast(index);
+                        if (self.position[idx] >= self.array.shape[idx]) {
+                            self.position[idx] = 0;
+                        } else {
+                            carry = false;
+                            mustBreak = true;
+                        }
 
-                if (mustBreak) {
-                    break;
-                }
+                        change = cast(isize, self.position[idx], .{});
+                        change -= prev;
+                        index = @intCast(self.index);
+                        stride = @intCast(self.array.metadata.dense.strides[idx]);
+                        index += change * stride;
+                        self.index = @intCast(index);
+
+                        if (mustBreak) {
+                            break;
+                        }
+                    }
+
+                    if (carry) {
+                        return null;
+                    }
+
+                    return self.index;
+                },
+                .strided => {
+                    return null;
+                },
+                .csr => {
+                    std.debug.print("CSR storage not implemented yet", .{});
+                    return null;
+                },
+                .csc => {
+                    std.debug.print("CSC storage not implemented yet", .{});
+                    return null;
+                },
+                .coo => {
+                    std.debug.print("COO storage not implemented yet", .{});
+                    return null;
+                },
             }
-
-            if (carry == 1) {
-                return null;
-            }
-
-            return self.index;
         }
     };
 }
-
 /// Iterator for multiple `NDArray`.
 pub fn MultiIterator(comptime T: type) type {
     return struct {
@@ -163,19 +147,19 @@ pub fn MultiIterator(comptime T: type) type {
         /// The number of dimetions of the broadcast.
         ndim: usize,
         /// Subiterators for the arrays.
-        iterators: [MaxArrays]Iterator(T),
+        iterators: [maxArrays]Iterator(T),
         /// Broadcasted shape.
-        shape: [MaxDimensions]usize,
+        shape: [ndarray.maxDimensions]usize,
         /// Broadcasted strides.
-        strides: [MaxDimensions]isize,
+        strides: [ndarray.maxDimensions]isize,
         /// Offset of the first element of the iterator.
         offset: usize,
         /// Broadcasted size.
         size: usize,
         /// Flags of the (theoretical) broadcasted array.
-        flags: Flags,
+        flags: ndarray.Flags,
         /// Current position.
-        position: [MaxDimensions]usize,
+        position: [ndarray.maxDimensions]usize,
         /// Current index.
         index: usize,
 
@@ -191,18 +175,18 @@ pub fn MultiIterator(comptime T: type) type {
         ///
         /// **Return Values**:
         /// - `MultiIterator(T)`: the initialized iterator.
-        pub fn init(arrays: []const NDArray(T), flags: Flags) !MultiIterator(T) {
+        pub fn init(arrays: []const NDArray(T), flags: ndarray.Flags) !MultiIterator(T) {
             if (arrays.len == 0) {
-                return IteratorError.NoArrays;
+                return Error.NoArrays;
             }
 
             const narray: usize = arrays.len;
-            if (narray > MaxArrays) {
-                return IteratorError.TooManyArrays;
+            if (narray > maxArrays) {
+                return Error.TooManyArrays;
             }
 
             var ndim: usize = 0;
-            var iterators: [MaxArrays]Iterator(T) = undefined;
+            var iterators: [maxArrays]Iterator(T) = undefined;
             for (0..narray) |i| {
                 iterators[i] = Iterator(T).init(arrays[i]);
                 if (arrays[i].ndim > ndim) {
@@ -210,7 +194,7 @@ pub fn MultiIterator(comptime T: type) type {
                 }
             }
 
-            var shape: [MaxDimensions]usize = .{0} ** MaxDimensions;
+            var shape: [ndarray.maxDimensions]usize = .{0} ** ndarray.maxDimensions;
             for (0..narray) |i| {
                 for (0..arrays[i].ndim) |j| {
                     if (shape[ndim - j - 1] != arrays[i].shape[arrays[i].ndim - j - 1]) {
@@ -218,14 +202,14 @@ pub fn MultiIterator(comptime T: type) type {
                         if (shape[ndim - j - 1] == 1 or shape[ndim - j - 1] == 0) {
                             shape[ndim - j - 1] = arrays[i].shape[arrays[i].ndim - j - 1];
                         } else if (arrays[i].shape[arrays[i].ndim - j - 1] != 1) {
-                            return IteratorError.NotBroadcastable;
+                            return Error.NotBroadcastable;
                         }
                     }
                 }
             }
 
             var size: usize = 1;
-            var strides: [MaxDimensions]isize = .{0} ** MaxDimensions;
+            var strides: [ndarray.maxDimensions]isize = .{0} ** ndarray.maxDimensions;
 
             for (0..ndim) |i| {
                 const idx = if (flags.order == .RowMajor) ndim - i - 1 else i;
@@ -242,7 +226,7 @@ pub fn MultiIterator(comptime T: type) type {
                 .offset = 0,
                 .size = size,
                 .flags = flags,
-                .position = [_]usize{0} ** MaxDimensions,
+                .position = [_]usize{0} ** ndarray.maxDimensions,
                 .index = 0,
             };
         }
@@ -405,11 +389,16 @@ pub fn MultiIterator(comptime T: type) type {
 }
 
 /// Errors that can occur when workin with array iterators.
-pub const IteratorError = error{
+pub const Error = error{
     /// Too many arrays.
     TooManyArrays,
     /// No input arrays.
     NoArrays,
     /// Incompatible shapes for broadcasting.
     NotBroadcastable,
+};
+
+pub const IterationOrder = enum {
+    leftToRight,
+    rightToLeft,
 };

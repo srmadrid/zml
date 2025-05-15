@@ -1,9 +1,9 @@
 const std = @import("std");
 const types = @import("../types.zig");
+const cf32 = types.cf32;
+const cf64 = types.cf64;
 const ci = @import("../c.zig");
 const options = @import("options");
-const Complex = std.math.cfloat;
-const ndarray = @import("../ndarray/ndarray.zig");
 
 const Scalar = types.Scalar;
 
@@ -66,11 +66,11 @@ pub fn sasum(n: isize, x: [*]const f32, incx: isize) f32 {
 pub fn dasum(n: isize, x: [*]const f64, incx: isize) f64 {
     return asum(f64, n, x, incx);
 }
-pub fn scasum(n: isize, x: [*]const Complex(f32), incx: isize) f32 {
-    return asum(Complex(f32), n, x, incx);
+pub fn scasum(n: isize, x: [*]const cf32, incx: isize) f32 {
+    return asum(cf32, n, x, incx);
 }
-pub fn dzasum(n: isize, x: [*]const Complex(f64), incx: isize) f64 {
-    return asum(Complex(f64), n, x, incx);
+pub fn dzasum(n: isize, x: [*]const cf64, incx: isize) f64 {
+    return asum(cf64, n, x, incx);
 }
 
 pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
@@ -104,11 +104,11 @@ pub fn saxpy(n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]f32, incy
 pub fn daxpy(n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]f64, incy: isize) void {
     return axpy(f64, n, alpha, x, incx, y, incy);
 }
-pub fn caxpy(n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize) void {
-    return axpy(Complex(f32), n, alpha, x, incx, y, incy);
+pub fn caxpy(n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]cf32, incy: isize) void {
+    return axpy(cf32, n, alpha, x, incx, y, incy);
 }
-pub fn zaxpy(n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize) void {
-    return axpy(Complex(f64), n, alpha, x, incx, y, incy);
+pub fn zaxpy(n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]cf64, incy: isize) void {
+    return axpy(cf64, n, alpha, x, incx, y, incy);
 }
 
 pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]T, incy: isize) void {
@@ -142,11 +142,11 @@ pub fn scopy(n: isize, x: [*]const f32, incx: isize, y: [*]f32, incy: isize) voi
 pub fn dcopy(n: isize, x: [*]const f64, incx: isize, y: [*]f64, incy: isize) void {
     return copy(f64, n, x, incx, y, incy);
 }
-pub fn ccopy(n: isize, x: [*]const Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize) void {
-    return copy(Complex(f32), n, x, incx, y, incy);
+pub fn ccopy(n: isize, x: [*]const cf32, incx: isize, y: [*]cf32, incy: isize) void {
+    return copy(cf32, n, x, incx, y, incy);
 }
-pub fn zcopy(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize) void {
-    return copy(Complex(f64), n, x, incx, y, incy);
+pub fn zcopy(n: isize, x: [*]const cf64, incx: isize, y: [*]cf64, incy: isize) void {
+    return copy(cf64, n, x, incx, y, incy);
 }
 
 pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) Scalar(T) {
@@ -192,11 +192,11 @@ pub inline fn dotc(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
 
     return @import("blas/dotc.zig").dotc(T, n, x, incx, y, incy);
 }
-pub fn cdotc(n: isize, x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize) Complex(f32) {
-    return dotc(Complex(f32), n, x, incx, y, incy);
+pub fn cdotc(n: isize, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize) cf32 {
+    return dotc(cf32, n, x, incx, y, incy);
 }
-pub fn zdotc(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize) Complex(f64) {
-    return dotc(Complex(f64), n, x, incx, y, incy);
+pub fn zdotc(n: isize, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize) cf64 {
+    return dotc(cf64, n, x, incx, y, incy);
 }
 
 pub inline fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
@@ -217,11 +217,11 @@ pub inline fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y
 
     return @import("blas/dotc_sub.zig").dotc_sub(T, n, x, incx, y, incy, ret);
 }
-pub fn cdotc_sub(n: isize, x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, ret: *Complex(f32)) void {
-    return dotc_sub(Complex(f32), n, x, incx, y, incy, ret);
+pub fn cdotc_sub(n: isize, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, ret: *cf32) void {
+    return dotc_sub(cf32, n, x, incx, y, incy, ret);
 }
-pub fn zdotc_sub(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, ret: *Complex(f64)) void {
-    return dotc_sub(Complex(f64), n, x, incx, y, incy, ret);
+pub fn zdotc_sub(n: isize, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, ret: *cf64) void {
+    return dotc_sub(cf64, n, x, incx, y, incy, ret);
 }
 
 pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize) T {
@@ -242,11 +242,11 @@ pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
 
     return @import("blas/dotu.zig").dotu(T, n, x, incx, y, incy);
 }
-pub fn cdotu(n: isize, x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize) Complex(f32) {
-    return dotu(Complex(f32), n, x, incx, y, incy);
+pub fn cdotu(n: isize, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize) cf32 {
+    return dotu(cf32, n, x, incx, y, incy);
 }
-pub fn zdotu(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize) Complex(f64) {
-    return dotu(Complex(f64), n, x, incx, y, incy);
+pub fn zdotu(n: isize, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize) cf64 {
+    return dotu(cf64, n, x, incx, y, incy);
 }
 
 pub inline fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
@@ -267,11 +267,11 @@ pub inline fn dotu_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y
 
     return @import("blas/dotu_sub.zig").dotu_sub(T, n, x, incx, y, incy, ret);
 }
-pub fn cdotu_sub(n: isize, x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, ret: *Complex(f32)) void {
-    return dotu_sub(Complex(f32), n, x, incx, y, incy, ret);
+pub fn cdotu_sub(n: isize, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, ret: *cf32) void {
+    return dotu_sub(cf32, n, x, incx, y, incy, ret);
 }
-pub fn zdotu_sub(n: isize, x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, ret: *Complex(f64)) void {
-    return dotu_sub(Complex(f64), n, x, incx, y, incy, ret);
+pub fn zdotu_sub(n: isize, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, ret: *cf64) void {
+    return dotu_sub(cf64, n, x, incx, y, incy, ret);
 }
 
 pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Scalar(T) {
@@ -305,11 +305,11 @@ pub fn snrm2(n: isize, x: [*]const f32, incx: isize) f32 {
 pub fn dnrm2(n: isize, x: [*]const f64, incx: isize) f64 {
     return nrm2(f64, n, x, incx);
 }
-pub fn scnrm2(n: isize, x: [*]const Complex(f32), incx: isize) f32 {
-    return nrm2(Complex(f32), n, x, incx);
+pub fn scnrm2(n: isize, x: [*]const cf32, incx: isize) f32 {
+    return nrm2(cf32, n, x, incx);
 }
-pub fn dznrm2(n: isize, x: [*]const Complex(f64), incx: isize) f64 {
-    return nrm2(Complex(f64), n, x, incx);
+pub fn dznrm2(n: isize, x: [*]const cf64, incx: isize) f64 {
+    return nrm2(cf64, n, x, incx);
 }
 
 pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: Scalar(T), s: Scalar(T)) void {
@@ -343,11 +343,11 @@ pub fn srot(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize, c: f32, s:
 pub fn drot(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, c: f64, s: f64) void {
     return rot(f64, n, x, incx, y, incy, c, s);
 }
-pub fn csrot(n: isize, x: [*]Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize, c: f32, s: f32) void {
-    return rot(Complex(f32), n, x, incx, y, incy, c, s);
+pub fn csrot(n: isize, x: [*]cf32, incx: isize, y: [*]cf32, incy: isize, c: f32, s: f32) void {
+    return rot(cf32, n, x, incx, y, incy, c, s);
 }
-pub fn zdrot(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize, c: f64, s: f64) void {
-    return rot(Complex(f64), n, x, incx, y, incy, c, s);
+pub fn zdrot(n: isize, x: [*]cf64, incx: isize, y: [*]cf64, incy: isize, c: f64, s: f64) void {
+    return rot(cf64, n, x, incx, y, incy, c, s);
 }
 
 pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Scalar(T), s: *T) void {
@@ -381,11 +381,11 @@ pub fn srotg(a: *f32, b: *f32, c: *f32, s: *f32) void {
 pub fn drotg(a: *f64, b: *f64, c: *f64, s: *f64) void {
     return rotg(f64, a, b, c, s);
 }
-pub fn crotg(a: *Complex(f32), b: *Complex(f32), c: *f32, s: *Complex(f32)) void {
-    return rotg(Complex(f32), a, b, c, s);
+pub fn crotg(a: *cf32, b: *cf32, c: *f32, s: *cf32) void {
+    return rotg(cf32, a, b, c, s);
 }
-pub fn zrotg(a: *Complex(f64), b: *Complex(f64), c: *f64, s: *Complex(f64)) void {
-    return rotg(Complex(f64), a, b, c, s);
+pub fn zrotg(a: *cf64, b: *cf64, c: *f64, s: *cf64) void {
+    return rotg(cf64, a, b, c, s);
 }
 
 pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, param: [*]const T) void {
@@ -469,17 +469,17 @@ pub fn sscal(n: isize, alpha: f32, x: [*]f32, incx: isize) void {
 pub fn dscal(n: isize, alpha: f64, x: [*]f64, incx: isize) void {
     return scal(f64, n, alpha, x, incx);
 }
-pub fn cscal(n: isize, alpha: Complex(f32), x: [*]Complex(f32), incx: isize) void {
-    return scal(Complex(f32), n, alpha, x, incx);
+pub fn cscal(n: isize, alpha: cf32, x: [*]cf32, incx: isize) void {
+    return scal(cf32, n, alpha, x, incx);
 }
-pub fn zscal(n: isize, alpha: Complex(f64), x: [*]Complex(f64), incx: isize) void {
-    return scal(Complex(f64), n, alpha, x, incx);
+pub fn zscal(n: isize, alpha: cf64, x: [*]cf64, incx: isize) void {
+    return scal(cf64, n, alpha, x, incx);
 }
-pub fn csscal(n: isize, alpha: f32, x: [*]Complex(f32), incx: isize) void {
-    return scal(Complex(f32), n, Complex(f32){ .re = alpha, .im = 0.0 }, x, incx);
+pub fn csscal(n: isize, alpha: f32, x: [*]cf32, incx: isize) void {
+    return scal(cf32, n, cf32{ .re = alpha, .im = 0.0 }, x, incx);
 }
-pub fn zdscal(n: isize, alpha: f64, x: [*]Complex(f64), incx: isize) void {
-    return scal(Complex(f64), n, Complex(f64){ .re = alpha, .im = 0.0 }, x, incx);
+pub fn zdscal(n: isize, alpha: f64, x: [*]cf64, incx: isize) void {
+    return scal(cf64, n, cf64{ .re = alpha, .im = 0.0 }, x, incx);
 }
 
 pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize) void {
@@ -513,11 +513,11 @@ pub fn sswap(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize) void {
 pub fn dswap(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize) void {
     return swap(f64, n, x, incx, y, incy);
 }
-pub fn cswap(n: isize, x: [*]Complex(f32), incx: isize, y: [*]Complex(f32), incy: isize) void {
-    return swap(Complex(f32), n, x, incx, y, incy);
+pub fn cswap(n: isize, x: [*]cf32, incx: isize, y: [*]cf32, incy: isize) void {
+    return swap(cf32, n, x, incx, y, incy);
 }
-pub fn zswap(n: isize, x: [*]Complex(f64), incx: isize, y: [*]Complex(f64), incy: isize) void {
-    return swap(Complex(f64), n, x, incx, y, incy);
+pub fn zswap(n: isize, x: [*]cf64, incx: isize, y: [*]cf64, incy: isize) void {
+    return swap(cf64, n, x, incx, y, incy);
 }
 
 pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
@@ -551,11 +551,11 @@ pub fn isamax(n: isize, x: [*]const f32, incx: isize) usize {
 pub fn idamax(n: isize, x: [*]const f64, incx: isize) usize {
     return iamax(f64, n, x, incx);
 }
-pub fn icamax(n: isize, x: [*]const Complex(f32), incx: isize) usize {
-    return iamax(Complex(f32), n, x, incx);
+pub fn icamax(n: isize, x: [*]const cf32, incx: isize) usize {
+    return iamax(cf32, n, x, incx);
 }
-pub fn izamax(n: isize, x: [*]const Complex(f64), incx: isize) usize {
-    return iamax(Complex(f64), n, x, incx);
+pub fn izamax(n: isize, x: [*]const cf64, incx: isize) usize {
+    return iamax(cf64, n, x, incx);
 }
 
 pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usize {
@@ -589,11 +589,11 @@ pub fn isamin(n: isize, x: [*]const f32, incx: isize) usize {
 pub fn idamin(n: isize, x: [*]const f64, incx: isize) usize {
     return iamin(f64, n, x, incx);
 }
-pub fn icamin(n: isize, x: [*]const Complex(f32), incx: isize) usize {
-    return iamin(Complex(f32), n, x, incx);
+pub fn icamin(n: isize, x: [*]const cf32, incx: isize) usize {
+    return iamin(cf32, n, x, incx);
 }
-pub fn izamin(n: isize, x: [*]const Complex(f64), incx: isize) usize {
-    return iamin(Complex(f64), n, x, incx);
+pub fn izamin(n: isize, x: [*]const cf64, incx: isize) usize {
+    return iamin(cf64, n, x, incx);
 }
 
 // Level 2 BLAS
@@ -628,11 +628,11 @@ pub fn sgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku:
 pub fn dgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
     return gbmv(f64, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn cgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
-    return gbmv(Complex(f32), order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+pub fn cgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return gbmv(cf32, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn zgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
-    return gbmv(Complex(f64), order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+pub fn zgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return gbmv(cf64, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
 }
 
 pub inline fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
@@ -666,11 +666,11 @@ pub fn sgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: f32, A:
 pub fn dgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
     return gemv(f64, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn cgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
-    return gemv(Complex(f32), order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
+pub fn cgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return gemv(cf32, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn zgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
-    return gemv(Complex(f64), order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
+pub fn zgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return gemv(cf64, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
 pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
@@ -716,11 +716,11 @@ pub inline fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
 
     return @import("blas/gerc.zig").gerc(T, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
-pub fn cgerc(order: Order, m: isize, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, A: [*]Complex(f32), lda: isize) void {
-    return gerc(Complex(f32), order, m, n, alpha, x, incx, y, incy, A, lda);
+pub fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, A: [*]cf32, lda: isize) void {
+    return gerc(cf32, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
-pub fn zgerc(order: Order, m: isize, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, A: [*]Complex(f64), lda: isize) void {
-    return gerc(Complex(f64), order, m, n, alpha, x, incx, y, incy, A, lda);
+pub fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, A: [*]cf64, lda: isize) void {
+    return gerc(cf64, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
 pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
@@ -741,11 +741,11 @@ pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
 
     return @import("blas/geru.zig").geru(T, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
-pub fn cgeru(order: Order, m: isize, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, A: [*]Complex(f32), lda: isize) void {
-    return geru(Complex(f32), order, m, n, alpha, x, incx, y, incy, A, lda);
+pub fn cgeru(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, A: [*]cf32, lda: isize) void {
+    return geru(cf32, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
-pub fn zgeru(order: Order, m: isize, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, A: [*]Complex(f64), lda: isize) void {
-    return geru(Complex(f64), order, m, n, alpha, x, incx, y, incy, A, lda);
+pub fn zgeru(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, A: [*]cf64, lda: isize) void {
+    return geru(cf64, order, m, n, alpha, x, incx, y, incy, A, lda);
 }
 
 pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
@@ -773,11 +773,11 @@ pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
 
     return @import("blas/hbmv.zig").hbmv(T, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
-    return hbmv(Complex(f32), order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+pub fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return hbmv(cf32, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
-    return hbmv(Complex(f64), order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return hbmv(cf64, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
 }
 
 pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
@@ -798,11 +798,11 @@ pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
     return @import("blas/hemv.zig").hemv(T, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn chemv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
-    return hemv(Complex(f32), order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
+pub fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return hemv(cf32, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
 }
-pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
-    return hemv(Complex(f64), order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
+pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return hemv(cf64, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
 }
 
 pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
@@ -823,11 +823,11 @@ pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: S
 
     return @import("blas/her.zig").her(T, order, uplo, n, alpha, x, incx, A, lda);
 }
-pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const Complex(f32), incx: isize, A: [*]Complex(f32), lda: isize) void {
-    return her(Complex(f32), order, uplo, n, alpha, x, incx, A, lda);
+pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, A: [*]cf32, lda: isize) void {
+    return her(cf32, order, uplo, n, alpha, x, incx, A, lda);
 }
-pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const Complex(f64), incx: isize, A: [*]Complex(f64), lda: isize) void {
-    return her(Complex(f64), order, uplo, n, alpha, x, incx, A, lda);
+pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, A: [*]cf64, lda: isize) void {
+    return her(cf64, order, uplo, n, alpha, x, incx, A, lda);
 }
 
 pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
@@ -848,11 +848,11 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
     return @import("blas/her2.zig").her2(T, order, uplo, n, alpha, x, incx, y, incy, A, lda);
 }
-pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, A: [*]Complex(f32), lda: isize) void {
-    return her2(Complex(f32), order, uplo, n, alpha, x, incx, y, incy, A, lda);
+pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, A: [*]cf32, lda: isize) void {
+    return her2(cf32, order, uplo, n, alpha, x, incx, y, incy, A, lda);
 }
-pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, A: [*]Complex(f64), lda: isize) void {
-    return her2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, A, lda);
+pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, A: [*]cf64, lda: isize) void {
+    return her2(cf64, order, uplo, n, alpha, x, incx, y, incy, A, lda);
 }
 
 pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
@@ -873,11 +873,11 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
     return @import("blas/hpmv.zig").hpmv(T, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
 }
-pub fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f32), Ap: [*]const Complex(f32), x: [*]const Complex(f32), incx: isize, beta: Complex(f32), y: [*]Complex(f32), incy: isize) void {
-    return hpmv(Complex(f32), order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+pub fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: cf32, Ap: [*]const cf32, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return hpmv(cf32, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
 }
-pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), Ap: [*]const Complex(f64), x: [*]const Complex(f64), incx: isize, beta: Complex(f64), y: [*]Complex(f64), incy: isize) void {
-    return hpmv(Complex(f64), order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: cf64, Ap: [*]const cf64, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return hpmv(cf64, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
 }
 
 pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
@@ -898,11 +898,11 @@ pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: S
 
     return @import("blas/hpr.zig").hpr(T, order, uplo, n, alpha, x, incx, Ap);
 }
-pub fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const Complex(f32), incx: isize, Ap: [*]Complex(f32)) void {
-    return hpr(Complex(f32), order, uplo, n, alpha, x, incx, Ap);
+pub fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, Ap: [*]cf32) void {
+    return hpr(cf32, order, uplo, n, alpha, x, incx, Ap);
 }
-pub fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const Complex(f64), incx: isize, Ap: [*]Complex(f64)) void {
-    return hpr(Complex(f64), order, uplo, n, alpha, x, incx, Ap);
+pub fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, Ap: [*]cf64) void {
+    return hpr(cf64, order, uplo, n, alpha, x, incx, Ap);
 }
 
 pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
@@ -923,11 +923,11 @@ pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
 
     return @import("blas/hpr2.zig").hpr2(T, order, uplo, n, alpha, x, incx, y, incy, Ap);
 }
-pub fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f32), x: [*]const Complex(f32), incx: isize, y: [*]const Complex(f32), incy: isize, Ap: [*]Complex(f32)) void {
-    return hpr2(Complex(f32), order, uplo, n, alpha, x, incx, y, incy, Ap);
+pub fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, Ap: [*]cf32) void {
+    return hpr2(cf32, order, uplo, n, alpha, x, incx, y, incy, Ap);
 }
-pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: Complex(f64), x: [*]const Complex(f64), incx: isize, y: [*]const Complex(f64), incy: isize, Ap: [*]Complex(f64)) void {
-    return hpr2(Complex(f64), order, uplo, n, alpha, x, incx, y, incy, Ap);
+pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, Ap: [*]cf64) void {
+    return hpr2(cf64, order, uplo, n, alpha, x, incx, y, incy, Ap);
 }
 
 pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
@@ -1136,11 +1136,11 @@ pub fn stbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 pub fn dtbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
     return tbmv(f64, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
-pub fn ctbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const Complex(f32), lda: isize, x: [*]Complex(f32), incx: isize) void {
-    return tbmv(Complex(f32), order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ctbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return tbmv(cf32, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
-pub fn ztbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const Complex(f64), lda: isize, x: [*]Complex(f64), incx: isize) void {
-    return tbmv(Complex(f64), order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ztbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return tbmv(cf64, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
 
 pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
@@ -1174,11 +1174,11 @@ pub fn stbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 pub fn dtbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
     return tbsv(f64, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
-pub fn ctbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const Complex(f32), lda: isize, x: [*]Complex(f32), incx: isize) void {
-    return tbsv(Complex(f32), order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ctbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return tbsv(cf32, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
-pub fn ztbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const Complex(f64), lda: isize, x: [*]Complex(f64), incx: isize) void {
-    return tbsv(Complex(f64), order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ztbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return tbsv(cf64, order, uplo, transA, diag, n, k, A, lda, x, incx);
 }
 
 pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
@@ -1212,11 +1212,11 @@ pub fn stpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 pub fn dtpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f64, x: [*]f64, incx: isize) void {
     return tpmv(f64, order, uplo, transA, diag, n, Ap, x, incx);
 }
-pub fn ctpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f32), x: [*]Complex(f32), incx: isize) void {
-    return tpmv(Complex(f32), order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ctpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf32, x: [*]cf32, incx: isize) void {
+    return tpmv(cf32, order, uplo, transA, diag, n, Ap, x, incx);
 }
-pub fn ztpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f64), x: [*]Complex(f64), incx: isize) void {
-    return tpmv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ztpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf64, x: [*]cf64, incx: isize) void {
+    return tpmv(cf64, order, uplo, transA, diag, n, Ap, x, incx);
 }
 
 pub inline fn tpsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
@@ -1250,11 +1250,11 @@ pub fn stpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 pub fn dtpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f64, x: [*]f64, incx: isize) void {
     return tpsv(f64, order, uplo, transA, diag, n, Ap, x, incx);
 }
-pub fn ctpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f32), x: [*]Complex(f32), incx: isize) void {
-    return tpsv(Complex(f32), order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ctpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf32, x: [*]cf32, incx: isize) void {
+    return tpsv(cf32, order, uplo, transA, diag, n, Ap, x, incx);
 }
-pub fn ztpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const Complex(f64), x: [*]Complex(f64), incx: isize) void {
-    return tpsv(Complex(f64), order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ztpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf64, x: [*]cf64, incx: isize) void {
+    return tpsv(cf64, order, uplo, transA, diag, n, Ap, x, incx);
 }
 
 pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
@@ -1288,11 +1288,11 @@ pub fn strmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 pub fn dtrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
     return trmv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
 }
-pub fn ctrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f32), lda: isize, x: [*]Complex(f32), incx: isize) void {
-    return trmv(Complex(f32), order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ctrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return trmv(cf32, order, uplo, transA, diag, n, A, lda, x, incx);
 }
-pub fn ztrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f64), lda: isize, x: [*]Complex(f64), incx: isize) void {
-    return trmv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ztrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return trmv(cf64, order, uplo, transA, diag, n, A, lda, x, incx);
 }
 
 pub inline fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
@@ -1326,11 +1326,11 @@ pub fn strsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, 
 pub fn dtrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
     return trsv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
 }
-pub fn ctrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f32), lda: isize, x: [*]Complex(f32), incx: isize) void {
-    return trsv(Complex(f32), order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ctrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return trsv(cf32, order, uplo, transA, diag, n, A, lda, x, incx);
 }
-pub fn ztrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const Complex(f64), lda: isize, x: [*]Complex(f64), incx: isize) void {
-    return trsv(Complex(f64), order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ztrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return trsv(cf64, order, uplo, transA, diag, n, A, lda, x, incx);
 }
 
 // Level 3 BLAS
@@ -1365,11 +1365,11 @@ pub fn sgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: is
 pub fn dgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
     return gemm(f64, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn cgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
-    return gemm(Complex(f32), order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn cgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
+    return gemm(cf32, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn zgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
-    return gemm(Complex(f64), order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
+    return gemm(cf64, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
@@ -1390,11 +1390,11 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
 
     return @import("blas/hemm.zig").hemm(T, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
-    return hemm(Complex(f32), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
+    return hemm(cf32, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
-    return hemm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
+    return hemm(cf64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Scalar(T), A: [*]const T, lda: isize, beta: Scalar(T), C: [*]T, ldc: isize) void {
@@ -1415,11 +1415,11 @@ pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
 
     return @import("blas/herk.zig").herk(T, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
-pub fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, A: [*]const Complex(f32), lda: isize, beta: f32, C: [*]Complex(f32), ldc: isize) void {
-    return herk(Complex(f32), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, A: [*]const cf32, lda: isize, beta: f32, C: [*]cf32, ldc: isize) void {
+    return herk(cf32, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
-pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const Complex(f64), lda: isize, beta: f64, C: [*]Complex(f64), ldc: isize) void {
-    return herk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const cf64, lda: isize, beta: f64, C: [*]cf64, ldc: isize) void {
+    return herk(cf64, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
 
 pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: Scalar(T), C: [*]T, ldc: isize) void {
@@ -1440,11 +1440,11 @@ pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
 
     return @import("blas/her2k.zig").her2k(T, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: f32, C: [*]Complex(f32), ldc: isize) void {
-    return her2k(Complex(f32), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: f32, C: [*]cf32, ldc: isize) void {
+    return her2k(cf32, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: f64, C: [*]Complex(f64), ldc: isize) void {
-    return her2k(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: f64, C: [*]cf64, ldc: isize) void {
+    return her2k(cf64, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
@@ -1478,11 +1478,11 @@ pub fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f3
 pub fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
     return symm(f64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
-    return symm(Complex(f32), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
+    return symm(cf32, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
-    return symm(Complex(f64), order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
+    return symm(cf64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, beta: T, C: [*]T, ldc: isize) void {
@@ -1516,11 +1516,11 @@ pub fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alp
 pub fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, beta: f64, C: [*]f64, ldc: isize) void {
     return syrk(f64, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
-pub fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
-    return syrk(Complex(f32), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
+    return syrk(cf32, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
-pub fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
-    return syrk(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
+    return syrk(cf64, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
 }
 
 pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
@@ -1554,11 +1554,11 @@ pub fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, al
 pub fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
     return syr2k(f64, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]const Complex(f32), ldb: isize, beta: Complex(f32), C: [*]Complex(f32), ldc: isize) void {
-    return syr2k(Complex(f32), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
+    return syr2k(cf32, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
-pub fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]const Complex(f64), ldb: isize, beta: Complex(f64), C: [*]Complex(f64), ldc: isize) void {
-    return syr2k(Complex(f64), order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
+    return syr2k(cf64, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 }
 
 pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]T, ldb: isize) void {
@@ -1592,11 +1592,11 @@ pub fn strmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag
 pub fn dtrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]f64, ldb: isize) void {
     return trmm(f64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }
-pub fn ctrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]Complex(f32), ldb: isize) void {
-    return trmm(Complex(f32), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ctrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]cf32, ldb: isize) void {
+    return trmm(cf32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }
-pub fn ztrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]Complex(f64), ldb: isize) void {
-    return trmm(Complex(f64), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ztrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]cf64, ldb: isize) void {
+    return trmm(cf64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }
 
 pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]T, ldb: isize) void {
@@ -1630,9 +1630,9 @@ pub fn strsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag
 pub fn dtrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]f64, ldb: isize) void {
     return trsm(f64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }
-pub fn ctrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f32), A: [*]const Complex(f32), lda: isize, B: [*]Complex(f32), ldb: isize) void {
-    return trsm(Complex(f32), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ctrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]cf32, ldb: isize) void {
+    return trsm(cf32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }
-pub fn ztrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: Complex(f64), A: [*]const Complex(f64), lda: isize, B: [*]Complex(f64), ldb: isize) void {
-    return trsm(Complex(f64), order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ztrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]cf64, ldb: isize) void {
+    return trsm(cf64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
 }

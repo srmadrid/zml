@@ -1,5 +1,5 @@
 const std = @import("std");
-const NDArray = @import("ndarray/ndarray.zig").NDArray;
+const NDArray = @import("ndarray.zig").NDArray;
 
 pub const default_uint = usize;
 pub const default_int = isize;
@@ -20,7 +20,6 @@ const Real = @import("real.zig").Real;
 const RealManaged = @import("real.zig").RealManaged;
 const Complex = @import("complex.zig").Complex;
 const ComplexManaged = @import("complex.zig").ComplexManaged;
-
 //pub const Expression = @import("../expression/expression.zig").Expression;
 //pub const Expression = @import("../expression/expression.zig").Expression;
 
