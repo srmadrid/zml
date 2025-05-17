@@ -1,4 +1,7 @@
 const types = @import("types.zig");
+const cast = types.cast;
+const Coerce = types.Coerce;
+const EnsureFloat = types.EnsureFloat;
 
 // Constant functions
 pub inline fn pi(comptime T: type) T {
@@ -44,6 +47,50 @@ pub inline fn log10e(comptime T: type) T {
 }
 
 // Basic functions
+pub fn add(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
+    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
+        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
+        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
+        @compileError("At least one of left or right must be float, the other must be an int or float");
+
+    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+
+    return cast(R, left, .{}) + cast(R, right, .{});
+}
+
+pub fn sub(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
+    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
+        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
+        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
+        @compileError("At least one of left or right must be float, the other must be an int or float");
+
+    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+
+    return cast(R, left, .{}) - cast(R, right, .{});
+}
+
+pub fn mul(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
+    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
+        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
+        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
+        @compileError("At least one of left or right must be float, the other must be an int or float");
+
+    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+
+    return cast(R, left, .{}) * cast(R, right, .{});
+}
+
+pub fn div(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
+    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
+        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
+        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
+        @compileError("At least one of left or right must be float, the other must be an int or float");
+
+    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+
+    return cast(R, left, .{}) / cast(R, right, .{});
+}
+
 pub const abs = @import("float/abs.zig").abs;
 // pub const fmod = @import("float/fmod.zig").fmod; // to implement
 // pub const remainder = @import("float/remainder.zig").remainder; // to implement

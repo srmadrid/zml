@@ -234,7 +234,7 @@ pub fn NDArray(comptime T: type) type {
                         }
 
                         if (slices[i].step > 0) {
-                            if (slices[i].start >= self.shape[i] or slices[i].stop > self.shape[i] + 1) {
+                            if (slices[i].start >= self.shape[i] or slices[i].stop > self.shape[i]) {
                                 return Error.SliceOutOfBounds;
                             }
                         } else if (slices[i].step == 0) {
@@ -242,7 +242,7 @@ pub fn NDArray(comptime T: type) type {
                                 return Error.SliceOutOfBounds;
                             }
                         } else {
-                            if (slices[i].stop >= self.shape[i] or slices[i].start > self.shape[i] + 1) {
+                            if (slices[i].stop >= self.shape[i] or slices[i].start > self.shape[i]) {
                                 return Error.SliceOutOfBounds;
                             }
                         }

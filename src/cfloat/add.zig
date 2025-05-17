@@ -1,41 +1,30 @@
 const types = @import("../types.zig");
+const cast = types.cast;
+const Scalar = types.Scalar;
 const Coerce = types.Coerce;
 
 pub fn add(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
     comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)) or (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right))))
         @compileError("At least one of left or right must be cfloat, the other must be an int, float, or cfloat");
 
+    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+
     switch (types.numericType(@TypeOf(left))) {
-        .int => {
+        .int, .float => {
             switch (types.numericType(@TypeOf(right))) {
-                .int => unreachable,
-                .float => unreachable,
                 .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).addReal(types.cast(types.Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .int => unreachable,
-                .float => unreachable,
-                .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}).addReal(types.cast(types.Scalar(Coerce(@TypeOf(left), @TypeOf(right))), left, .{}));
+                    return cast(R, right, .{}).addReal(cast(Scalar(R), left, .{}));
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
             switch (types.numericType(@TypeOf(right))) {
-                .int => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).addReal(types.cast(types.Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
-                },
-                .float => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).addReal(types.cast(types.Scalar(Coerce(@TypeOf(left), @TypeOf(right))), right, .{}));
+                .int, .float => {
+                    return cast(R, left, .{}).addReal(cast(Scalar(R), right, .{}));
                 },
                 .cfloat => {
-                    return types.cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}).add(types.cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
+                    return cast(R, left, .{}).add(cast(R, right, .{}));
                 },
                 else => unreachable,
             }

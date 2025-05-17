@@ -10,15 +10,3 @@ pub const Rational = struct {
         .denominator = .empty,
     };
 };
-
-pub const RationalManaged = struct {
-    numerator: Integer,
-    denominator: Integer,
-    allocator: std.mem.Allocator,
-
-    pub const empty: RationalManaged = .{
-        .numerator = .empty,
-        .denominator = .empty,
-        .allocator = undefined,
-    };
-};

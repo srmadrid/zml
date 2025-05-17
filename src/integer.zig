@@ -9,15 +9,3 @@ pub const Integer = struct {
         .metadata = 0,
     };
 };
-
-pub const IntegerManaged = struct {
-    limbs: []usize,
-    metadata: usize,
-    allocator: std.mem.Allocator,
-
-    pub const empty: IntegerManaged = .{
-        .limbs = &.{},
-        .metadata = 0,
-        .allocator = undefined,
-    };
-};

@@ -1,5 +1,6 @@
 const std = @import("std");
 const types = @import("../types.zig");
+const int = @import("../int.zig");
 const float = @import("../float.zig");
 const exp2_data = @import("exp2_data.zig");
 const exp_data = @import("exp_data.zig");
@@ -252,7 +253,7 @@ fn exp128(x: f128) f128 {
         var ex2_u: ldbl128.ieee_f128_shape = @bitCast(exp_data.__expl_table[@intCast(((2 * (2 * 89) + 2 + 2 * 65) + 2 + 2 * 65 + 89) + tval1)] * exp_data.__expl_table[@intCast((((2 * (2 * 89) + 2 + 2 * 65) + 2 + 2 * 65 + 89) + 1 + 89 + 65) + tval2)]);
         const n_i: i32 = cast(i32, n, .{});
         // 'unsafe' is 1 iff n_1 != 0.
-        const unsafe: i32 = cast(i32, float.abs(n_i) >= 15000, .{});
+        const unsafe: i32 = cast(i32, int.abs(n_i) >= 15000, .{});
         {
             @setRuntimeSafety(false);
             ex2_u.exponent += @intCast(n_i >> @intCast(unsafe));

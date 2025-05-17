@@ -9,14 +9,3 @@ pub const Real = struct {
         .rational = .empty,
     };
 };
-
-pub const RealManaged = struct {
-    rational: Rational,
-    //irrational: []Irrational,
-    allocator: std.mem.Allocator,
-
-    pub const empty: RealManaged = .{
-        .rational = .empty,
-        .allocator = undefined,
-    };
-};

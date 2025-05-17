@@ -13,14 +13,9 @@ const cf80 = @import("cfloat.zig").cf80;
 const cf128 = @import("cfloat.zig").cf128;
 const comptime_complex = @import("cfloat.zig").comptime_complex;
 const Integer = @import("integer.zig").Integer;
-const IntegerManaged = @import("integer.zig").IntegerManaged;
 const Rational = @import("rational.zig").Rational;
-const RationalManaged = @import("rational.zig").RationalManaged;
 const Real = @import("real.zig").Real;
-const RealManaged = @import("real.zig").RealManaged;
 const Complex = @import("complex.zig").Complex;
-const ComplexManaged = @import("complex.zig").ComplexManaged;
-//pub const Expression = @import("../expression/expression.zig").Expression;
 //pub const Expression = @import("../expression/expression.zig").Expression;
 
 pub const NumericType = enum {
@@ -61,13 +56,13 @@ pub inline fn numericType(comptime T: type) NumericType {
         else => {
             if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_complex)) {
                 return .cfloat;
-            } else if (T == Integer or T == IntegerManaged) {
+            } else if (T == Integer) {
                 return .integer;
-            } else if (T == Rational or T == RationalManaged) {
+            } else if (T == Rational) {
                 return .rational;
-            } else if (T == Real or T == RealManaged) {
+            } else if (T == Real) {
                 return .real;
-            } else if (T == Complex(Integer) or T == ComplexManaged(Integer) or T == Complex(Rational) or T == ComplexManaged(Rational) or T == Complex(Real) or T == ComplexManaged(Real)) {
+            } else if (T == Complex(Integer) or T == Complex(Rational) or T == Complex(Real)) {
                 return .complex;
                 //} else if (T == Expression or T == Expression) {
                 //    return .expression;
@@ -342,8 +337,6 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
                 .complex => {
                     if (T2 == Complex(Integer)) {
                         return Complex(Rational);
-                    } else if (T2 == ComplexManaged(Integer)) {
-                        return ComplexManaged(Rational);
                     } else {
                         return T2;
                     }
@@ -371,8 +364,6 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .complex => {
                 if (T2 == Complex(Integer)) {
                     return Complex(Rational);
-                } else if (T2 == ComplexManaged(Integer)) {
-                    return ComplexManaged(Rational);
                 } else {
                     return T2;
                 }
@@ -391,12 +382,8 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .complex => {
                 if (T2 == Complex(Integer)) {
                     return Complex(Real);
-                } else if (T2 == ComplexManaged(Integer)) {
-                    return ComplexManaged(Real);
                 } else if (T2 == Complex(Rational)) {
                     return Complex(Real);
-                } else if (T2 == ComplexManaged(Rational)) {
-                    return ComplexManaged(Real);
                 } else {
                     return T2;
                 }
@@ -411,8 +398,6 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .cfloat => {
                 if (T1 == Complex(Integer)) {
                     return Complex(Rational);
-                } else if (T1 == ComplexManaged(Integer)) {
-                    return ComplexManaged(Rational);
                 } else {
                     return T1;
                 }
@@ -423,11 +408,7 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
             .complex => {
                 const t1: T1 = .empty;
                 const t2: T2 = .empty;
-                if (@hasField(T1, "allocator") or @hasField(T2, "allocator")) {
-                    return ComplexManaged(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
-                } else {
-                    return Complex(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
-                }
+                return Complex(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
             },
             .expression => return T2,
             else => unreachable,
@@ -599,8 +580,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                 .complex => {
                     if (T2 == Complex(Integer)) {
                         T3 = Complex(Rational);
-                    } else if (T2 == ComplexManaged(Integer)) {
-                        T3 = ComplexManaged(Rational);
                     } else {
                         T3 = T2;
                     }
@@ -628,8 +607,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             .complex => {
                 if (T2 == Complex(Integer)) {
                     T3 = Complex(Rational);
-                } else if (T2 == ComplexManaged(Integer)) {
-                    T3 = ComplexManaged(Rational);
                 } else {
                     T3 = T2;
                 }
@@ -648,12 +625,8 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             .complex => {
                 if (T2 == Complex(Integer)) {
                     T3 = Complex(Real);
-                } else if (T2 == ComplexManaged(Integer)) {
-                    T3 = ComplexManaged(Real);
                 } else if (T2 == Complex(Rational)) {
                     T3 = Complex(Real);
-                } else if (T2 == ComplexManaged(Rational)) {
-                    T3 = ComplexManaged(Real);
                 } else {
                     T3 = T2;
                 }
@@ -765,9 +738,6 @@ pub fn Scalar(comptime T: type) type {
             Complex(Integer) => return Integer,
             Complex(Rational) => return Rational,
             Complex(Real) => return Real,
-            ComplexManaged(Integer) => return Integer,
-            ComplexManaged(Rational) => return Rational,
-            ComplexManaged(Real) => return Real,
             else => unreachable,
         },
         //.expression => return Expression,

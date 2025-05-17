@@ -13,16 +13,12 @@ pub const cf128 = cfloat.cf128;
 pub const comptime_complex = cfloat.comptime_complex;
 pub const integer = @import("integer.zig");
 pub const Integer = integer.Integer;
-pub const IntegerManaged = integer.IntegerManaged;
 pub const rational = @import("rational.zig");
 pub const Rational = rational.Rational;
-pub const RationalManaged = rational.RationalManaged;
 pub const real = @import("real.zig");
 pub const Real = real.Real;
-pub const RealManaged = real.RealManaged;
 pub const complex = @import("complex.zig");
 pub const Complex = complex.Complex;
-pub const ComplexManaged = complex.ComplexManaged;
 pub const ndarray = @import("ndarray.zig");
 pub const NDArray = ndarray.NDArray;
 

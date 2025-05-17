@@ -1,5 +1,5 @@
 test {
-    const test_ops = false;
+    const test_ops = true;
     const tmp = false;
 
     if (test_ops) {

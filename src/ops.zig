@@ -1,5 +1,7 @@
 const std = @import("std");
 const types = @import("types.zig");
+const cast = types.cast;
+const Scalar = types.Scalar;
 const Coerce = types.Coerce;
 
 const int = @import("int.zig");
@@ -20,6 +22,64 @@ pub fn add(
     },
 ) Coerce(@TypeOf(left), @TypeOf(right)) {
     _ = options;
+    switch (types.numericType(@TypeOf(left))) {
+        .bool => @compileError("add not defined for bool"),
+        .int => {
+            switch (types.numericType(@TypeOf(right))) {
+                .int => return int.add(left, right),
+                .float => return float.add(left, right),
+                .cfloat => return cfloat.add(left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .float => {
+            switch (types.numericType(@TypeOf(right))) {
+                .int, .float => return float.add(left, right),
+                .cfloat => return cfloat.add(left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .cfloat => {
+            switch (types.numericType(@TypeOf(right))) {
+                .int, .float, .cfloat => return cfloat.add(left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .integer => {
+            switch (types.numericType(@TypeOf(right))) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .rational => {
+            switch (types.numericType(@TypeOf(right))) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .real => {
+            switch (types.numericType(@TypeOf(right))) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .complex => {
+            switch (types.numericType(@TypeOf(right))) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .expression => {
+            switch (types.numericType(@TypeOf(right))) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+            }
+        },
+        .unsupported => unreachable,
+    }
 }
 
 /// Adds two elements of any supported numeric type and stores the result in the
