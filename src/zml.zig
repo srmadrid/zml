@@ -1,7 +1,6 @@
 const std = @import("std");
 
 pub const types = @import("types.zig");
-pub const ops = @import("ops.zig");
 pub const int = @import("int.zig");
 pub const float = @import("float.zig");
 pub const cfloat = @import("cfloat.zig");
@@ -21,6 +20,9 @@ pub const complex = @import("complex.zig");
 pub const Complex = complex.Complex;
 pub const ndarray = @import("ndarray.zig");
 pub const NDArray = ndarray.NDArray;
+
+const ops = @import("ops.zig");
+pub const add = ops.add;
 
 pub const linalg = @import("linalg.zig");
 

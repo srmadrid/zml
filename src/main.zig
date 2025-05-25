@@ -240,7 +240,7 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         }
     }
 
-    const x1 = try x.slice(&.{ try zml.ndarray.Slice.init(1, 5, 1), try zml.ndarray.Slice.init(2, 5, 1), try zml.ndarray.Slice.init(2, 3, 1) });
+    const x1 = try x.slice(&.{ try .init(1, 5, 1), try .init(2, 5, 1), try .init(2, 3, 1) });
 
     std.debug.print("x1 = x[1:5, 2:5, 2:3]\n", .{});
     std.debug.print("x1.shape = [\n", .{});

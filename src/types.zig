@@ -73,6 +73,46 @@ pub inline fn numericType(comptime T: type) NumericType {
     }
 }
 
+/// Checks if the input type is a one-item pointer.
+pub fn isPointer(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .pointer => |info| {
+            if (info.size != .one) return false;
+
+            return true;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is a constant one-item pointer.
+pub fn isConstPointer(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .pointer => |info| {
+            if (info.size != .one) return false;
+
+            if (info.is_const) {
+                return true;
+            } else {
+                return false;
+            }
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input is a slice.
+pub fn isSlice(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .pointer => |info| {
+            if (info.size != .slice) return false;
+
+            return true;
+        },
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of an NDArray.
 pub fn isNDArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
@@ -118,18 +158,6 @@ pub fn isNDArray(comptime T: type) bool {
             }
 
             if (tinfo.is_tuple != ninfo.is_tuple) return false;
-
-            return true;
-        },
-        else => return false,
-    }
-}
-
-/// Checks if the input is a slice.
-pub fn isSlice(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .pointer => |info| {
-            if (info.size != .slice) return false;
 
             return true;
         },
@@ -680,6 +708,206 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
     return T2 == T3;
 }
 
+/// Checks if t`L` can be cast to `R` safely, meaning that the cast
+/// will not result in a runtime panic. For instance, casting signed integers to
+/// unsigned integers is not safe, as it can result in a panic if the value is
+/// negative.
+pub fn canCastSafely(comptime L: type, comptime R: type) bool {
+    if (L == R) {
+        return true;
+    }
+
+    const lnumeric = numericType(L);
+    const rnumeric = numericType(R);
+
+    switch (lnumeric) {
+        .bool => switch (rnumeric) {
+            .bool => return true,
+            .int => return true,
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .int => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const linfo = @typeInfo(L);
+                const rinfo = @typeInfo(R);
+
+                if (linfo.int.signedness == .unsigned and rinfo.int.signedness == .signed) {
+                    return false; // Casting unsigned to signed is not safe
+                }
+
+                if (linfo.int.signedness == .unsigned and rinfo.int.signedness == .signed) {
+                    if (linfo.int.bits >= rinfo.int.bits) {
+                        return false; // Casting unsigned to signed is not safe if the unsigned type has more or equal bits
+                    }
+                }
+
+                if (linfo.int.bits > rinfo.int.bits) {
+                    return false; // Casting to a smaller integer type is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .float => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const rinfo = @typeInfo(R);
+
+                if (rinfo.int.signedness == .unsigned) {
+                    return false; // Casting float to unsigned int is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .cfloat => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const rinfo = @typeInfo(R);
+
+                if (rinfo.int.signedness == .unsigned) {
+                    return false; // Casting cfloat to unsigned int is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .integer => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const rinfo = @typeInfo(R);
+
+                if (rinfo.int.signedness == .unsigned) {
+                    return false; // Casting integer to unsigned int is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .rational => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const rinfo = @typeInfo(R);
+
+                if (rinfo.int.signedness == .unsigned) {
+                    return false; // Casting rational to unsigned int is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .real => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const rinfo = @typeInfo(R);
+
+                if (rinfo.int.signedness == .unsigned) {
+                    return false; // Casting real to unsigned int is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .complex => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const rinfo = @typeInfo(R);
+
+                if (rinfo.int.signedness == .unsigned) {
+                    return false; // Casting complex to unsigned int is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .expression => switch (rnumeric) {
+            .bool => return true,
+            .int => {
+                const rinfo = @typeInfo(R);
+
+                if (rinfo.int.signedness == .unsigned) {
+                    return false; // Casting expression to unsigned int is not safe
+                }
+
+                return true;
+            },
+            .float => return true,
+            .cfloat => return true,
+            .integer => return true,
+            .rational => return true,
+            .real => return true,
+            .complex => return true,
+            .expression => return true,
+            .unsupported => unreachable,
+        },
+        .unsupported => unreachable,
+    }
+}
+
 /// Coerces the input type to a floating point type if it is not already a
 /// higher range type.
 pub fn EnsureFloat(comptime T: type) type {
@@ -909,5 +1137,15 @@ pub inline fn cast(
             .unsupported => unreachable,
         },
         else => unreachable,
+    }
+}
+
+/// Returns the pointer child type of a given pointer type.
+pub fn Child(comptime T: type) type {
+    switch (@typeInfo(T)) {
+        .pointer => |info| {
+            return info.child;
+        },
+        else => @compileError("Expected a pointer type, but got " ++ @typeName(T)),
     }
 }

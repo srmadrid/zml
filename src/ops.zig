@@ -11,118 +11,179 @@ const integer = @import("integer.zig");
 const rational = @import("rational.zig");
 const real = @import("real.zig");
 const complex = @import("complex.zig");
+const ndarray = @import("ndarray.zig");
 
-pub fn add(
+pub inline fn add(
     left: anytype,
     right: anytype,
     options: struct {
-        allocator_left: ?std.mem.Allocator = null,
-        allocator_right: ?std.mem.Allocator = null,
-        allocator_out: ?std.mem.Allocator = null,
+        allocator: ?std.mem.Allocator = null,
     },
-) Coerce(@TypeOf(left), @TypeOf(right)) {
+) !Coerce(@TypeOf(left), @TypeOf(right)) {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    if (types.isNDArray(L) or types.isSlice(L) or
+        types.isNDArray(R) or types.isSlice(R))
+        @compileError("zml.add not implemented for ndarrays or slices yet.");
+    // return ndarray.add(left, right, options.allocator);
+
     _ = options;
-    switch (types.numericType(@TypeOf(left))) {
-        .bool => @compileError("add not defined for bool"),
-        .int => {
-            switch (types.numericType(@TypeOf(right))) {
+    switch (types.numericType(L)) {
+        .bool => {
+            switch (types.numericType(R)) {
+                .bool => @compileError("add not defined for two bools"),
                 .int => return int.add(left, right),
                 .float => return float.add(left, right),
                 .cfloat => return cfloat.add(left, right),
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .int => {
+            switch (types.numericType(R)) {
+                .bool, .int => return int.add(left, right),
+                .float => return float.add(left, right),
+                .cfloat => return cfloat.add(left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .int, .float => return float.add(left, right),
+            switch (types.numericType(R)) {
+                .bool, .int, .float => return float.add(left, right),
                 .cfloat => return cfloat.add(left, right),
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .cfloat => {
-            switch (types.numericType(@TypeOf(right))) {
-                .int, .float, .cfloat => return cfloat.add(left, right),
+            switch (types.numericType(R)) {
+                .bool, .int, .float, .cfloat => return cfloat.add(left, right),
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .integer => {
-            switch (types.numericType(@TypeOf(right))) {
+            switch (types.numericType(R)) {
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .rational => {
-            switch (types.numericType(@TypeOf(right))) {
+            switch (types.numericType(R)) {
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .real => {
-            switch (types.numericType(@TypeOf(right))) {
+            switch (types.numericType(R)) {
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .complex => {
-            switch (types.numericType(@TypeOf(right))) {
+            switch (types.numericType(R)) {
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .expression => {
-            switch (types.numericType(@TypeOf(right))) {
+            switch (types.numericType(R)) {
                 .unsupported => unreachable,
-                else => @compileError("add between " ++ @typeName(@TypeOf(left)) ++ " and " ++ @typeName(@TypeOf(right)) ++ " not implemented yet"),
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .unsupported => unreachable,
     }
 }
 
-/// Adds two elements of any supported numeric type and stores the result in the
-/// output variable. `left` and `right` must be coercible by `Coerce`, and `out`
-/// must be a pointer of type `Coerce(@TypeOf(left), @TypeOf(right))`. The
-/// optional allocator is needed only if unmanaged types are used.
 pub inline fn add_(
     out: anytype,
     left: anytype,
     right: anytype,
     options: struct {
-        allocator_out: ?std.mem.Allocator = null,
-        allocator_left: ?std.mem.Allocator = null,
-        allocator_right: ?std.mem.Allocator = null,
+        comptime mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
     },
 ) void {
-    // This implementations seems like the way to go?
-    const T = @TypeOf(out);
-    const K = @TypeOf(left);
-    const V = @TypeOf(right);
+    const O: type = types.Child(@TypeOf(out));
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
 
-    if (!types.canCoerce(K, T) or !types.canCoerce(V, T))
-        if (types.Coerce(types.Coerce(K, V), T) != T)
-            @compileError("Cannot coerce " ++ @typeName(K) ++ " and " ++ @typeName(V) ++ " to " ++ @typeName(T));
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
-    // Casting may be expensive especially to arbitrary precision, invoke instead
-    // builtin functions to add fixed to arbitrary precision types without
-    // converting to arbitrary precision first. For now this is fine since
-    // arbitrary precision types are not supported yet.
-    const o = out;
-    const l = types.cast(T, left, .{ .allocator = options.allocator_left });
-    const r = types.cast(T, right, .{ .allocator = options.allocator_right });
+    if (types.isNDArray(L) or types.isSlice(L) or
+        types.isNDArray(R) or types.isSlice(R))
+        @compileError("zml.add not implemented for ndarrays or slices yet.");
+    // return ndarray.add(left, right, options.allocator);
 
-    switch (types.numericType(T)) {
-        .bool => @compileError("Cannot add boolean types"),
-        .int => o.* = l + r,
-        .float => o.* = l + r,
-        .cfloat => o.* = T.add(l, r),
-        .integer => @compileError("Not implemented yet"),
-        .rational => @compileError("Not implemented yet"),
-        .real => @compileError("Not implemented yet"),
-        .complex => @compileError("Not implemented yet"),
-        .expression => @compileError("Not implemented yet"),
+    switch (types.numericType(L)) {
+        .bool => {
+            switch (types.numericType(R)) {
+                .bool => @compileError("add not defined for two bools"),
+                .int => return int.add_(out, left, right, .{ .mode = options.mode }),
+                .float => return float.add_(out, left, right),
+                .cfloat => {}, // return cfloat.add_(out, left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .int => {
+            switch (types.numericType(R)) {
+                .bool, .int => return int.add_(out, left, right, .{ .mode = options.mode }),
+                .float => return float.add_(out, left, right),
+                .cfloat => {}, // return cfloat.add_(out, left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .float => {
+            switch (types.numericType(R)) {
+                .bool, .int, .float => return float.add_(out, left, right),
+                .cfloat => {}, // return cfloat.add_(out, left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .cfloat => {
+            switch (types.numericType(R)) {
+                .bool, .int, .float, .cfloat => {}, // return cfloat.add_(out, left, right),
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .integer => {
+            switch (types.numericType(R)) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .rational => {
+            switch (types.numericType(R)) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .real => {
+            switch (types.numericType(R)) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .complex => {
+            switch (types.numericType(R)) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
+        .expression => {
+            switch (types.numericType(R)) {
+                .unsupported => unreachable,
+                else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
+            }
+        },
         .unsupported => unreachable,
     }
 }

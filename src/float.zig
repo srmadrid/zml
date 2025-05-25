@@ -47,48 +47,184 @@ pub inline fn log10e(comptime T: type) T {
 }
 
 // Basic functions
-pub fn add(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
-        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
-        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
-        @compileError("At least one of left or right must be float, the other must be an int or float");
+pub inline fn add(
+    left: anytype,
+    right: anytype,
+) Coerce(@TypeOf(left), @TypeOf(right)) {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
 
-    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.add requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
 
-    return cast(R, left, .{}) + cast(R, right, .{});
+    return cast(C, left, .{}) + cast(C, right, .{});
 }
 
-pub fn sub(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
-        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
-        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
-        @compileError("At least one of left or right must be float, the other must be an int or float");
+pub inline fn add_(
+    out: anytype,
+    left: anytype,
+    right: anytype,
+) void {
+    comptime var O: type = @TypeOf(out);
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
 
-    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("float.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
-    return cast(R, left, .{}) - cast(R, right, .{});
+    O = types.Child(O);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.add_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    comptime if (!types.canCastSafely(C, O))
+        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
+            @typeName(O) ++ " safely");
+
+    out.* = cast(O, cast(C, left, .{}) + cast(C, right, .{}), .{});
 }
 
-pub fn mul(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
-        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
-        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
-        @compileError("At least one of left or right must be float, the other must be an int or float");
+pub inline fn sub(
+    left: anytype,
+    right: anytype,
+) Coerce(@TypeOf(left), @TypeOf(right)) {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
 
-    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.sub requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
 
-    return cast(R, left, .{}) * cast(R, right, .{});
+    return cast(C, left, .{}) - cast(C, right, .{});
 }
 
-pub fn div(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if ((types.numericType(@TypeOf(left)) != .int and types.numericType(@TypeOf(left)) != .float) or
-        (types.numericType(@TypeOf(right)) != .int and types.numericType(@TypeOf(right)) != .float) or
-        (types.numericType(@TypeOf(left)) != .float and types.numericType(@TypeOf(right)) != .float))
-        @compileError("At least one of left or right must be float, the other must be an int or float");
+pub inline fn sub_(
+    out: anytype,
+    left: anytype,
+    right: anytype,
+) void {
+    comptime var O: type = @TypeOf(out);
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
 
-    const R: type = Coerce(@TypeOf(left), @TypeOf(right));
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("float.sub_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
-    return cast(R, left, .{}) / cast(R, right, .{});
+    O = types.Child(O);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.sub_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    comptime if (!types.canCastSafely(C, O))
+        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
+            @typeName(O) ++ " safely");
+
+    out.* = cast(O, cast(C, left, .{}) - cast(C, right, .{}), .{});
+}
+
+pub inline fn mul(
+    left: anytype,
+    right: anytype,
+) Coerce(@TypeOf(left), @TypeOf(right)) {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.mul requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return cast(C, left, .{}) * cast(C, right, .{});
+}
+
+pub inline fn mul_(
+    out: anytype,
+    left: anytype,
+    right: anytype,
+) void {
+    comptime var O: type = @TypeOf(out);
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("float.mul_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.mul_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    comptime if (!types.canCastSafely(C, O))
+        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
+            @typeName(O) ++ " safely");
+
+    out.* = cast(O, cast(C, left, .{}) * cast(C, right, .{}), .{});
+}
+
+pub inline fn div(
+    left: anytype,
+    right: anytype,
+) Coerce(@TypeOf(left), @TypeOf(right)) {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.div requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return cast(C, left, .{}) / cast(C, right, .{});
+}
+
+pub inline fn div_(
+    out: anytype,
+    left: anytype,
+    right: anytype,
+) void {
+    comptime var O: type = @TypeOf(out);
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("float.div_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
+        (types.numericType(L) != .float and types.numericType(R) != .float))
+        @compileError("float.div_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    comptime if (!types.canCastSafely(C, O))
+        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
+            @typeName(O) ++ " safely");
+
+    out.* = cast(O, cast(C, left, .{}) / cast(C, right, .{}), .{});
 }
 
 pub const abs = @import("float/abs.zig").abs;
