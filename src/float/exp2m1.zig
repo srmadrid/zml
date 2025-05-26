@@ -2,35 +2,28 @@ const std = @import("std");
 const types = @import("../types.zig");
 const float = @import("../float.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn exp2m1(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.exp2m1: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return exp2m1(cast(EnsureFloat(@TypeOf(x)), x, .{}));
-        },
-        .float => {
-            if (x >= -1 and x <= 1) {
-                const ret: @TypeOf(x) = float.expm1(std.math.ln2 * x);
+    const xx: EnsureFloat(@TypeOf(x)) = scast(EnsureFloat(@TypeOf(x)), x);
 
-                if (float.abs(ret) < std.math.floatMin(@TypeOf(x))) {
-                    const vret: @TypeOf(x) = ret * ret;
-                    std.mem.doNotOptimizeAway(vret);
-                }
+    if (xx >= -1 and xx <= 1) {
+        const ret: @TypeOf(xx) = float.expm1(std.math.ln2 * xx);
 
-                return ret;
-            } else if (x > std.math.floatMantissaBits(@TypeOf(x)) + 2) {
-                const ret: @TypeOf(x) = float.exp2(x);
-                return ret;
-            } else if (x < -std.math.floatMantissaBits(@TypeOf(x)) - 2) {
-                return -1;
-            } else {
-                return float.exp2(x) - 1;
-            }
-        },
-        else => unreachable,
+        if (float.abs(ret) < std.math.floatMin(@TypeOf(xx))) {
+            const vret: @TypeOf(xx) = ret * ret;
+            std.mem.doNotOptimizeAway(vret);
+        }
+
+        return ret;
+    } else if (xx > std.math.floatMantissaBits(@TypeOf(xx)) + 2) {
+        return float.exp2(xx);
+    } else if (xx < -std.math.floatMantissaBits(@TypeOf(xx)) - 2) {
+        return -1;
+    } else {
+        return float.exp2(xx) - 1;
     }
 }

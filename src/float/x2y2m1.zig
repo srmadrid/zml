@@ -4,54 +4,38 @@ const float = @import("../float.zig");
 const mul_split = @import("mul_split.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
-pub inline fn x2y2m1(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(y)) or types.isComplex(@TypeOf(y)))
-        @compileError("y must be an int or float");
+pub inline fn x2y2m1(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))) {
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.x2y2m1: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(y)) != .int and types.numericType(@TypeOf(y)) != .float)
+        @compileError("float.x2y2m1: y must be an int or float, got " ++ @typeName(@TypeOf(y)));
 
-    switch (types.numericType(@TypeOf(y))) {
-        .int => {
-            switch (types.numericType(@TypeOf(x))) {
-                .int => return x2y2m1(cast(EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))), y, .{}), cast(EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))), x, .{})),
-                .float => return x2y2m1(cast(Coerce(@TypeOf(y), @TypeOf(x)), y, .{}), cast(Coerce(@TypeOf(y), @TypeOf(x)), x, .{})),
-                else => unreachable,
-            }
+    switch (EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y)))) {
+        f16 => return scast(f16, x2y2m1_32(scast(f32, x), scast(f32, y))),
+        f32 => {
+            // glibc/sysdeps/ieee754/dbl-64/x2y2m1f.c
+            return x2y2m1_32(scast(f32, x), scast(f32, y));
         },
-        .float => {
-            switch (types.numericType(@TypeOf(x))) {
-                .int => return x2y2m1(cast(Coerce(@TypeOf(y), @TypeOf(x)), y, .{}), cast(Coerce(@TypeOf(y), @TypeOf(x)), x, .{})),
-                .float => switch (Coerce(@TypeOf(y), @TypeOf(x))) {
-                    f16 => return cast(f16, x2y2m1_32(cast(f32, y, .{}), cast(f32, x, .{})), .{}),
-                    f32 => {
-                        // glibc/sysdeps/ieee754/dbl-64/x2y2m1f.c
-                        return x2y2m1_32(cast(f32, y, .{}), cast(f32, x, .{}));
-                    },
-                    f64 => {
-                        // glibc/sysdeps/ieee754/dbl-64/x2y2m1.c
-                        return x2y2m1_64(cast(f64, y, .{}), cast(f64, x, .{}));
-                    },
-                    f80 => return cast(f80, x2y2m1_128(cast(f128, y, .{}), cast(f128, x, .{})), .{}),
-                    f128 => {
-                        // glibc/sysdeps/ieee754/ldbl-128/x2y2m1l.c
-                        return x2y2m1_128(cast(f128, y, .{}), cast(f128, x, .{}));
-                    },
-                    else => unreachable,
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/x2y2m1.c
+            return x2y2m1_64(scast(f64, x), scast(f64, y));
+        },
+        f80 => return scast(f80, x2y2m1_128(scast(f128, x), scast(f128, y))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/x2y2m1l.c
+            return x2y2m1_128(scast(f128, x), scast(f128, y));
         },
         else => unreachable,
     }
 }
 
 fn x2y2m1_32(x: f32, y: f32) f32 {
-    const dx: f64 = cast(f64, x, .{});
-    const dy: f64 = cast(f64, y, .{});
-    return cast(f32, (dx - 1) * (dx + 1) + dy * dy, .{});
+    const dx: f64 = scast(f64, x);
+    const dy: f64 = scast(f64, y);
+    return scast(f32, (dx - 1) * (dx + 1) + dy * dy);
 }
 
 // Calculate X + Y exactly and store the result in *HI + *LO.  It is

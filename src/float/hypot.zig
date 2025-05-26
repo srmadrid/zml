@@ -3,45 +3,29 @@ const types = @import("../types.zig");
 const float = @import("../float.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn hypot(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.hypot: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    comptime if (!types.isFixedPrecision(@TypeOf(y)) or types.isComplex(@TypeOf(y)))
-        @compileError("y must be an int or float");
+    comptime if (types.numericType(@TypeOf(y)) != .int and types.numericType(@TypeOf(y)) != .float)
+        @compileError("float.hypot: y must be an int or float, got " ++ @typeName(@TypeOf(y)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            switch (types.numericType(@TypeOf(y))) {
-                .int => return hypot(cast(EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))), x, .{}), cast(EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))), y, .{})),
-                .float => return hypot(cast(Coerce(@TypeOf(x), @TypeOf(y)), x, .{}), cast(Coerce(@TypeOf(x), @TypeOf(y)), y, .{})),
-                else => unreachable,
-            }
+    switch (EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y)))) {
+        f16 => return scast(f16, hypot32(scast(f32, x), scast(f32, y))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_hypotf.c
+            return hypot32(scast(f32, x), scast(f32, y));
         },
-        .float => {
-            switch (types.numericType(@TypeOf(y))) {
-                .int => return hypot(cast(Coerce(@TypeOf(x), @TypeOf(y)), x, .{}), cast(Coerce(@TypeOf(x), @TypeOf(y)), y, .{})),
-                .float => switch (Coerce(@TypeOf(x), @TypeOf(y))) {
-                    f16 => return cast(f16, hypot32(cast(f32, x, .{}), cast(f32, y, .{})), .{}),
-                    f32 => {
-                        // glibc/sysdeps/ieee754/flt-32/e_hypotf.c
-                        return hypot32(cast(f32, x, .{}), cast(f32, y, .{}));
-                    },
-                    f64 => {
-                        // glibc/sysdeps/ieee754/dbl-64/e_hypot.c
-                        return hypot64(cast(f64, x, .{}), cast(f64, y, .{}));
-                    },
-                    f80 => return cast(f80, hypot128(cast(f128, x, .{}), cast(f128, y, .{})), .{}),
-                    f128 => {
-                        // glibc/sysdeps/ieee754/ldbl-128/e_hypotl.c
-                        return hypot128(cast(f128, x, .{}), cast(f128, y, .{}));
-                    },
-                    else => unreachable,
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_hypot.c
+            return hypot64(scast(f64, x), scast(f64, y));
+        },
+        f80 => return scast(f80, hypot128(scast(f128, x), scast(f128, y))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_hypotl.c
+            return hypot128(scast(f128, x), scast(f128, y));
         },
         else => unreachable,
     }
@@ -55,7 +39,7 @@ fn hypot32(x: f32, y: f32) f32 {
         return x + y;
     }
 
-    return cast(f32, float.sqrt(cast(f64, x, .{}) * cast(f64, x, .{}) + cast(f64, y, .{}) * cast(f64, y, .{})), .{});
+    return scast(f32, float.sqrt(scast(f64, x) * scast(f64, x) + scast(f64, y) * scast(f64, y)));
 }
 
 inline fn kernel64(ax: f64, ay: f64) f64 {

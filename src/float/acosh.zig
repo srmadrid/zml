@@ -5,34 +5,26 @@ const roundeven = @import("roundeven.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn acosh(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.acosh: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return acosh(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, acosh32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_acoshf.c
+            return acosh32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, acosh32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_acoshf.c
-                    return acosh32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_acosh.c
-                    return acosh64(x);
-                },
-                f80 => return cast(f80, acosh128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_acoshl.c
-                    return acosh128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_acosh.c
+            return acosh64(scast(f64, x));
+        },
+        f80 => return scast(f80, acosh128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_acoshl.c
+            return acosh128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -142,7 +134,7 @@ fn acosh32(x: f32) f32 {
     } else if (t <= 0x3f99db23) { // x <= 0x1.33b646p+0
         @branchHint(.unlikely);
         const zf: f32 = x - 1;
-        const z: f64 = cast(f64, zf, .{});
+        const z: f64 = scast(f64, zf);
         const a = float.sqrt(2 * z);
         const c: [8]f64 = .{
             -0x1.555555555491ep-4,  0x1.333333319c2p-6,
@@ -154,20 +146,20 @@ fn acosh32(x: f32) f32 {
         const z4: f64 = z2 * z2;
         const f: f64 = ((c[0] + z * c[1]) + z2 * (c[2] + z * c[3])) + z4 * ((c[4] + z * c[5]) + z2 * (c[6] + z * c[7]));
         const r: f64 = a + (a * z) * f;
-        return cast(f32, r, .{});
+        return scast(f32, r);
     } else if (t < 0x7f800000) {
         @branchHint(.likely);
-        const xd: f64 = cast(f64, x, .{});
+        const xd: f64 = scast(f64, x);
         const x2: f64 = xd * xd;
         const tp: u64 = @bitCast(xd + float.sqrt(x2 - 1));
         const m: u64 = tp & (~@as(u64, 0) >> 12);
-        const j: i32 = cast(i32, (m + (1 << (52 - 8))) >> (52 - 7), .{});
-        const e: i32 = cast(i32, (tp >> 52) - 0x3ff, .{});
+        const j: i32 = scast(i32, (m + (1 << (52 - 8))) >> (52 - 7));
+        const e: i32 = scast(i32, (tp >> 52) - 0x3ff);
         const w: f64 = @bitCast(m | 0x3ff << 52);
         const z: f64 = w * ix[@intCast(j)] - 1;
         const c: [3]f64 = .{ 0x1.0000000066947p+0, -0x1.00007f053d8cbp-1, 0x1.555280111d914p-2 };
         var z2: f64 = z * z;
-        var r: f64 = ((lix[128] * cast(f64, e, .{}) + lix[@intCast(j)]) + z * c[0]) + z2 * (c[1] + z * c[2]);
+        var r: f64 = ((lix[128] * scast(f64, e) + lix[@intCast(j)]) + z * c[0]) + z2 * (c[1] + z * c[2]);
         if (((@as(u64, @bitCast(r)) + 259000) & 0xfffffff) < 260000) { // accurate path
             @branchHint(.unlikely);
             const cp: [6]f64 = .{
@@ -182,8 +174,8 @@ fn acosh32(x: f32) f32 {
             c0 += z2 * (c2 + z2 * c4);
             const ln2l: f64 = 0x1.7f7d1cf79abcap-20;
             const ln2h: f64 = 0x1.62e4p-1;
-            const Lh: f64 = ln2h * cast(f64, e, .{});
-            const Ll: f64 = ln2l * cast(f64, e, .{});
+            const Lh: f64 = ln2h * scast(f64, e);
+            const Ll: f64 = ln2l * scast(f64, e);
             r = @mulAdd(f64, z, c0, Ll + lix[@intCast(j)]) + Lh;
             if ((@as(u64, @bitCast(r)) & 0xfffffff) == 0) {
                 @branchHint(.unlikely);
@@ -192,7 +184,7 @@ fn acosh32(x: f32) f32 {
             }
         }
 
-        return cast(f32, r, .{});
+        return scast(f32, r);
     } else {
         return as_special(x);
     }

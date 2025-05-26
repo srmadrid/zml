@@ -8,7 +8,7 @@ const Cfloat = @import("../cfloat.zig").Cfloat;
 
 pub fn sqrt(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("z must be an int, float or cfloat");
+        @compileError("cfloat.sqrt: z must be a bool, int, float or cfloat, got " ++ @typeName(@TypeOf(z)));
 
     switch (types.numericType(@TypeOf(z))) {
         .int => {

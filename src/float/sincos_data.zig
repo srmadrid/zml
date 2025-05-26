@@ -3,7 +3,7 @@ pub const sin = @import("sin.zig");
 pub const cos = @import("cos.zig");
 pub const atnat = @import("atnat.zig");
 pub const usncs = @import("usncs.zig");
-pub const cast = types.cast;
+pub const scast = types.scast;
 pub const endian = @import("builtin").cpu.arch.endian();
 
 pub const Sincos32 = struct {
@@ -74,9 +74,9 @@ pub inline fn reduce_fast(x: f64, p: *const Sincos32, np: *i32) f64 {
     // hpi_inv is prescaled by 2^24 so the quadrant ends up in bits 24..31.
     // This avoids inaccuracies introduced by truncating negative values.
     const r: f64 = x * p.hpi_inv;
-    const n: i32 = (cast(i32, r, .{}) + 0x800000) >> 24;
+    const n: i32 = (scast(i32, r) + 0x800000) >> 24;
     np.* = n;
-    return x - cast(f64, n, .{}) * p.hpi;
+    return x - scast(f64, n) * p.hpi;
 }
 
 // Reduce the range of XI to a multiple of PI/2 using fast integer arithmetic.
@@ -91,21 +91,21 @@ pub inline fn reduce_large(xi: u32, np: *i32) f64 {
     const pi63: f64 = 0x1.921fb54442d18p-62;
 
     const arr: [*]const u32 = @ptrCast(&__inv_pio4[(xi >> 26) & 15]);
-    const shift: i32 = cast(i32, (xi >> 23) & 7, .{});
+    const shift: i32 = scast(i32, (xi >> 23) & 7);
 
     var xxi: u32 = (xi & 0xffffff) | 0x800000;
     xxi <<= @as(u5, @intCast(shift));
 
     var res0: u64 = xxi *% arr[0];
-    const res1: u64 = cast(u64, xxi, .{}) * arr[4];
-    const res2: u64 = cast(u64, xxi, .{}) * arr[8];
+    const res1: u64 = scast(u64, xxi) * arr[4];
+    const res2: u64 = scast(u64, xxi) * arr[8];
     res0 = (res2 >> 32) | (res0 << 32);
     res0 +%= res1;
 
     const n: u64 = (res0 +% (1 << 61)) >> 62;
     res0 -%= n << 62;
-    const x: f64 = cast(f64, @as(i64, @bitCast(res0)), .{});
-    np.* = cast(i32, n, .{});
+    const x: f64 = scast(f64, @as(i64, @bitCast(res0)));
+    np.* = scast(i32, n);
     return x * pi63;
 }
 
@@ -133,8 +133,8 @@ pub inline fn sincos32_poly(x: f64, x2: f64, p: *const Sincos32, n: i32, sinp: *
 
     var vsincos: @Vector(2, f64) = vxc1 + vx3x4 * p.s1c2;
     vsincos = vsincos + vx5x6 * vs1c2;
-    ss.* = cast(f32, vsincos[0], .{});
-    cc.* = cast(f32, vsincos[1], .{});
+    ss.* = scast(f32, vsincos[0]);
+    cc.* = scast(f32, vsincos[1]);
 }
 
 // Return the sine of inputs X and X2 (X squared) using the polynomial P.
@@ -147,7 +147,7 @@ pub inline fn sin32_poly(x: f64, x2: f64, p: *const Sincos32, n: i32) f32 {
         const x7: f64 = x3 * x2;
         const s: f64 = x + x3 * p.s1c2[0];
 
-        return cast(f32, s + x7 * s1, .{});
+        return scast(f32, s + x7 * s1);
     } else {
         const x4: f64 = x2 * x2;
         const c2: f64 = p.s2c3[1] + x2 * p.s3c4[1];
@@ -156,7 +156,7 @@ pub inline fn sin32_poly(x: f64, x2: f64, p: *const Sincos32, n: i32) f32 {
         const x6: f64 = x4 * x2;
         const c: f64 = c1 + x4 * p.s1c2[1];
 
-        return cast(f32, c + x6 * c2, .{});
+        return scast(f32, c + x6 * c2);
     }
 }
 

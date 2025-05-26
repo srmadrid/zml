@@ -6,30 +6,22 @@ const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const erf_data = @import("erf_data.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn lgamma(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.lgamma: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return lgamma(cast(EnsureFloat(@TypeOf(x)), x, .{}));
-        },
-        .float => {
-            var local_signgam: i32 = undefined;
-            const y: @TypeOf(x) = switch (@TypeOf(x)) {
-                f16 => cast(f16, lgamma_r32(cast(f32, x, .{}), &local_signgam), .{}),
-                f32 => lgamma_r32(x, &local_signgam),
-                f64 => lgamma_r64(x, &local_signgam),
-                f80 => cast(f80, lgamma_r128(cast(f128, x, .{}), &local_signgam), .{}),
-                f128 => lgamma_r128(x, &local_signgam),
-                else => unreachable,
-            };
-            return y;
-        },
+    var local_signgam: i32 = undefined;
+    const y: EnsureFloat(@TypeOf(x)) = switch (EnsureFloat(@TypeOf(x))) {
+        f16 => scast(f16, lgamma_r32(scast(f32, x), &local_signgam)),
+        f32 => lgamma_r32(scast(f32, x), &local_signgam),
+        f64 => lgamma_r64(scast(f64, x), &local_signgam),
+        f80 => scast(f80, lgamma_r128(scast(f128, x), &local_signgam)),
+        f128 => lgamma_r128(scast(f128, x), &local_signgam),
         else => unreachable,
-    }
+    };
+    return y;
 }
 
 fn as_r7(x: f64, c: []const f64) f64 {
@@ -82,7 +74,7 @@ fn as_ln(x: f64) f64 {
     const z: f64 = ix[@intCast(i)] * @as(f64, @bitCast(t)) - 1;
     const z2: f64 = z * z;
     const z4: f64 = z2 * z2;
-    return cast(f64, e, .{}) * 0x1.62e42fefa39efp-1 + il[@intCast(i)] + z * ((c[0] + z * c[1]) + z2 * (c[2] + z * c[3]) + z4 * ((c[4] + z * c[5]) + z2 * (c[6] + z * c[7])));
+    return scast(f64, e) * 0x1.62e42fefa39efp-1 + il[@intCast(i)] + z * ((c[0] + z * c[1]) + z2 * (c[2] + z * c[3]) + z4 * ((c[4] + z * c[5]) + z2 * (c[6] + z * c[7])));
 }
 
 fn lgamma_r32(x: f32, signgamp: *i32) f32 {
@@ -157,10 +149,10 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
         signgamp.* = 1;
     } else {
         // gamma(x) is negative in (-2n-1,-2n), thus when fx is odd.
-        signgamp.* = 1 - (((cast(i32, fx, .{})) & 1) << 1);
+        signgamp.* = 1 - (((scast(i32, fx)) & 1) << 1);
     }
 
-    const z: f64 = cast(f64, ax, .{});
+    const z: f64 = scast(f64, ax);
     var f: f64 = undefined;
     if (ax < 0x1.52p-1) {
         @branchHint(.unlikely);
@@ -177,7 +169,7 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
             -0x1.7dd25af0b83d4p+0, -0x1.36bf1880125fcp+0,
             -0x1.1379fc8023d9cp+0, -0x1.03712e41525d2p+0,
         };
-        const s: f64 = cast(f64, x, .{});
+        const s: f64 = scast(f64, x);
         f = (c0 * s) * as_r8(s, &rn) / as_r8(s, &rd) - as_ln(z);
     } else {
         if (ax > 0x1.afc1ap+1) {
@@ -236,8 +228,8 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
             };
 
             if (x < 0) {
-                const ni: i32 = cast(i32, float.floor(-2 * x), .{});
-                if ((ni & 1) == 0 and cast(f32, ni, .{}) == -2 * x)
+                const ni: i32 = scast(i32, float.floor(-2 * x));
+                if ((ni & 1) == 0 and scast(f32, ni) == -2 * x)
                     return 1 / @as(f32, 0);
             }
 
@@ -253,7 +245,7 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
             if (x < 0) {
                 if (t < 0x40301b93 and t > 0x402f95c2) {
                     @branchHint(.unlikely);
-                    const h: f64 = (cast(f64, x, .{}) + 0x1.5fb410a1bd901p+1) - 0x1.a19a96d2e6f85p-54;
+                    const h: f64 = (scast(f64, x) + 0x1.5fb410a1bd901p+1) - 0x1.a19a96d2e6f85p-54;
                     const h2: f64 = h * h;
                     const h4: f64 = h2 * h2;
                     const c: [8]f64 = .{
@@ -265,7 +257,7 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
                     f = h * ((c[0] + h * c[1]) + h2 * (c[2] + h * c[3]) + h4 * ((c[4] + h * c[5]) + h2 * (c[6] + h * c[7])));
                 } else if (t > 0x401ceccb and t < 0x401d95ca) {
                     @branchHint(.unlikely);
-                    const h: f64 = (cast(f64, x, .{}) + 0x1.3a7fc9600f86cp+1) + 0x1.55f64f98af8dp-55;
+                    const h: f64 = (scast(f64, x) + 0x1.3a7fc9600f86cp+1) + 0x1.55f64f98af8dp-55;
                     const h2: f64 = h * h;
                     const h4: f64 = h2 * h2;
                     const c: [7]f64 = .{
@@ -277,7 +269,7 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
                     f = h * ((c[0] + h * c[1]) + h2 * (c[2] + h * c[3]) + h4 * ((c[4] + h * c[5]) + h2 * (c[6])));
                 } else if (t > 0x40492009 and t < 0x404940ef) {
                     @branchHint(.unlikely);
-                    const h: f64 = (cast(f64, x, .{}) + 0x1.9260dbc9e59afp+1) + 0x1.f717cd335a7b3p-53;
+                    const h: f64 = (scast(f64, x) + 0x1.9260dbc9e59afp+1) + 0x1.f717cd335a7b3p-53;
                     const h2: f64 = h * h;
                     const h4: f64 = h2 * h2;
                     const c: [7]f64 = .{
@@ -289,7 +281,7 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
                     f = h * ((c[0] + h * c[1]) + h2 * (c[2] + h * c[3]) + h4 * ((c[4] + h * c[5]) + h2 * (c[6])));
                 } else {
                     f = 0x1.250d048e7a1bdp+0 - f;
-                    const lp: f64 = as_ln(as_sinpi(cast(f64, x - fx, .{})) * z);
+                    const lp: f64 = as_ln(as_sinpi(scast(f64, x - fx)) * z);
                     f -= lp;
                 }
             }
@@ -297,7 +289,7 @@ fn lgamma_r32(x: f32, signgamp: *i32) f32 {
     }
 
     const tl: u64 = (@as(u64, @bitCast(f)) + 5) & 0xfffffff;
-    const r: f32 = cast(f32, f, .{});
+    const r: f32 = scast(f32, f);
     if (tl <= 31) {
         @branchHint(.unlikely);
         t = @bitCast(x);
@@ -322,7 +314,7 @@ fn lgamma_product64(t: f64, x: f64, x_eps: f64, n: i32) f64 {
     var ret_eps: f64 = 0;
     var i: i32 = 0;
     while (i < n) {
-        const xi: f64 = x + cast(f64, i, .{});
+        const xi: f64 = x + scast(f64, i);
         const quot: f64 = t / xi;
         var mhi: f64 = undefined;
         var mlo: f64 = undefined;
@@ -588,11 +580,11 @@ fn lgamma_neg64(x: f64, signgamp: *i32) f64 {
 
     // Determine the half-integer region X lies in, handle exact
     // integers and determine the sign of the result.
-    var i: i32 = cast(i32, float.floor(-2 * x), .{});
-    if ((i & 1) == 0 and cast(f64, i, .{}) == -2 * x)
+    var i: i32 = scast(i32, float.floor(-2 * x));
+    if ((i & 1) == 0 and scast(f64, i) == -2 * x)
         return 1 / @as(f64, 0);
 
-    const xn: f64 = cast(f64, if ((i & 1) == 0) @divFloor(-i, 2) else @divFloor(-i - 1, 2), .{});
+    const xn: f64 = scast(f64, if ((i & 1) == 0) @divFloor(-i, 2) else @divFloor(-i - 1, 2));
     i -= 4;
     signgamp.* = if ((i & 2) == 0) -1 else 1;
 
@@ -604,15 +596,15 @@ fn lgamma_neg64(x: f64, signgamp: *i32) f64 {
     // For arguments in the range -3 to -2, use polynomial
     // approximations to an adjusted version of the gamma function.
     if (i < 2) {
-        var j: i32 = cast(i32, float.floor(-8 * x) - 16, .{});
-        const xm: f64 = (-33 - 2 * cast(f64, j, .{})) * 0.0625;
+        var j: i32 = scast(i32, float.floor(-8 * x) - 16);
+        const xm: f64 = (-33 - 2 * scast(f64, j)) * 0.0625;
         const x_adj: f64 = x - xm;
         const deg: u32 = poly_deg[@intCast(j)];
         const end: u32 = poly_end[@intCast(j)];
         var g: f64 = poly_coeff[end];
         j = 1;
         while (j <= deg) {
-            g = g * x_adj + poly_coeff[end - cast(u32, j, .{})];
+            g = g * x_adj + poly_coeff[end - scast(u32, j)];
             j += 1;
         }
 
@@ -651,15 +643,15 @@ fn lgamma_neg64(x: f64, signgamp: *i32) f64 {
     var log_gamma_adj: f64 = 0;
     if (i < 6) {
         const n_up: i32 = @divFloor(7 - i, 2);
-        const ny0: f64 = y0 + cast(f64, n_up, .{});
-        const ny0_eps: f64 = y0 - (ny0 - cast(f64, n_up, .{})) + y0_eps;
+        const ny0: f64 = y0 + scast(f64, n_up);
+        const ny0_eps: f64 = y0 - (ny0 - scast(f64, n_up)) + y0_eps;
         y0 = ny0;
         y0_eps = ny0_eps;
-        const ny: f64 = y + cast(f64, n_up, .{});
-        const ny_eps: f64 = y - (ny - cast(f64, n_up, .{})) + y_eps;
+        const ny: f64 = y + scast(f64, n_up);
+        const ny_eps: f64 = y - (ny - scast(f64, n_up)) + y_eps;
         y = ny;
         y_eps = ny_eps;
-        const prodm1: f64 = lgamma_product64(xdiff, y - cast(f64, n_up, .{}), y_eps, n_up);
+        const prodm1: f64 = lgamma_product64(xdiff, y - scast(f64, n_up), y_eps, n_up);
         log_gamma_adj = -float.log1p(prodm1);
     }
 
@@ -776,7 +768,7 @@ fn sin_pi64(x: f64) f64 {
     if (z != y) { // inexact anyway
         y *= 0.5;
         y = 2.0 * (y - float.floor(y)); // y = |x| mod 2.0
-        n = cast(i32, y * 4.0, .{});
+        n = scast(i32, y * 4.0);
     } else {
         if (ix >= 0x43400000) {
             y = 0;
@@ -785,7 +777,7 @@ fn sin_pi64(x: f64) f64 {
             if (ix < 0x43300000) z = y + two52; // exact
             dbl64.getLowWord(&n, z);
             n &= 1;
-            y = cast(f64, n, .{});
+            y = scast(f64, n);
             n <<= 2;
         }
     }
@@ -914,8 +906,8 @@ pub fn lgamma_r64(x: f64, signgamp: *i32) f64 {
             else => unreachable,
         }
     } else if (ix < 0x40200000) { // x < 8.0
-        const i: i32 = cast(i32, xx, .{});
-        const y: f64 = xx - cast(f64, i, .{});
+        const i: i32 = scast(i32, xx);
+        const y: f64 = xx - scast(f64, i);
         const p: f64 = y * (s0 + y * (s1 + y * (s2 + y * (s3 + y * (s4 + y * (s5 + y * s6))))));
         const q: f64 = 1 + y * (r1 + y * (r2 + y * (r3 + y * (r4 + y * (r5 + y * r6)))));
         r = 0.5 * y + p / q;
@@ -970,7 +962,7 @@ fn lgamma_product128(t: f128, x: f128, x_eps: f128, n: i32) f128 {
     var ret_eps: f128 = 0;
     var i: i32 = 0;
     while (i < n) {
-        const xi: f128 = x + cast(f128, i, .{});
+        const xi: f128 = x + scast(f128, i);
         const quot: f128 = t / xi;
         var mhi: f128 = undefined;
         var mlo: f128 = undefined;
@@ -1401,11 +1393,11 @@ fn lgamma_neg128(x: f128, signgamp: *i32) f128 {
 
     // Determine the half-integer region X lies in, handle exact
     // integers and determine the sign of the result.
-    var i: i32 = cast(i32, float.floor(-2 * x), .{});
-    if ((i & 1) == 0 and cast(f128, i, .{}) == -2 * x)
+    var i: i32 = scast(i32, float.floor(-2 * x));
+    if ((i & 1) == 0 and scast(f128, i) == -2 * x)
         return 1 / @as(f128, 0);
 
-    const xn: f128 = cast(f128, if ((i & 1) == 0) @divFloor(-i, 2) else @divFloor(-i - 1, 2), .{});
+    const xn: f128 = scast(f128, if ((i & 1) == 0) @divFloor(-i, 2) else @divFloor(-i - 1, 2));
     i -= 4;
     signgamp.* = if ((i & 2) == 0) -1 else 1;
 
@@ -1417,15 +1409,15 @@ fn lgamma_neg128(x: f128, signgamp: *i32) f128 {
     // For arguments in the range -3 to -2, use polynomial
     // approximations to an adjusted version of the gamma function.
     if (i < 2) {
-        var j: i32 = cast(i32, float.floor(-8 * x) - 16, .{});
-        const xm: f128 = (-33 - 2 * cast(f128, j, .{})) * 0.0625;
+        var j: i32 = scast(i32, float.floor(-8 * x) - 16);
+        const xm: f128 = (-33 - 2 * scast(f128, j)) * 0.0625;
         const x_adj: f128 = x - xm;
         const deg: u32 = poly_deg[@intCast(j)];
         const end: u32 = poly_end[@intCast(j)];
         var g: f128 = poly_coeff[end];
         j = 1;
         while (j <= deg) {
-            g = g * x_adj + poly_coeff[@intCast(cast(i32, end, .{}) - j)];
+            g = g * x_adj + poly_coeff[@intCast(scast(i32, end) - j)];
 
             j += 1;
         }
@@ -1465,15 +1457,15 @@ fn lgamma_neg128(x: f128, signgamp: *i32) f128 {
     var log_gamma_adj: f128 = 0;
     if (i < 20) {
         const n_up: i32 = @divFloor(21 - i, 2);
-        const ny0: f128 = y0 + cast(f128, n_up, .{});
-        const ny0_eps: f128 = y0 - (ny0 - cast(f128, n_up, .{})) + y0_eps;
+        const ny0: f128 = y0 + scast(f128, n_up);
+        const ny0_eps: f128 = y0 - (ny0 - scast(f128, n_up)) + y0_eps;
         y0 = ny0;
         y0_eps = ny0_eps;
-        const ny: f128 = y + cast(f128, n_up, .{});
-        const ny_eps: f128 = y - (ny - cast(f128, n_up, .{})) + y_eps;
+        const ny: f128 = y + scast(f128, n_up);
+        const ny_eps: f128 = y - (ny - scast(f128, n_up)) + y_eps;
         y = ny;
         y_eps = ny_eps;
-        const prodm1: f128 = lgamma_product128(xdiff, y - cast(f128, n_up, .{}), y_eps, n_up);
+        const prodm1: f128 = lgamma_product128(xdiff, y - scast(f128, n_up), y_eps, n_up);
         log_gamma_adj = -float.log1p(prodm1);
     }
 
@@ -2070,7 +2062,7 @@ pub fn lgamma_r128(x: f128, signgamp: *i32) f128 {
     if (x < 13.5) {
         var p: f128 = 0;
         const nx: f128 = float.floor(x + 0.5);
-        const nn: i32 = cast(i32, nx, .{});
+        const nn: i32 = scast(i32, nx);
         switch (nn) {
             0 => {
                 // log gamma (x + 1) = log(x) + log gamma(x)
@@ -2247,7 +2239,7 @@ pub fn lgamma_r128(x: f128, signgamp: *i32) f128 {
     }
 
     if (x > MAXLGM)
-        return (cast(f128, signgamp.*, .{}) * huge * huge);
+        return (scast(f128, signgamp.*) * huge * huge);
 
     if (x > 0x1p120)
         return x * (float.log(x) - 1);

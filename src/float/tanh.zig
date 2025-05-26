@@ -5,41 +5,33 @@ const roundeven = @import("roundeven.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn tanh(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.tanh: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return tanh(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (@TypeOf(x)) {
+        f16 => return scast(f16, tanh32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_tanhf.c
+            return tanh32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, tanh32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_tanhf.c
-                    return tanh32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_tanh.c
-                    return tanh64(x);
-                },
-                f80 => return cast(f80, tanh128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_tanhl.c
-                    return tanh128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_tanh.c
+            return tanh64(scast(f64, x));
+        },
+        f80 => return scast(f80, tanh128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_tanhl.c
+            return tanh128(scast(f128, x));
         },
         else => unreachable,
     }
 }
 
 fn tanh32(x: f32) f32 {
-    const z: f64 = cast(f64, x, .{});
+    const z: f64 = scast(f64, x);
     const ux: u32 = @bitCast(x);
     const e: i32 = @bitCast((ux >> 23) & 0xff);
     if (e == 0xff) {
@@ -95,7 +87,7 @@ fn tanh32(x: f32) f32 {
     d4 += z4 * d6;
     d0 += z8 * d4;
     const r: f64 = z * n0 / d0;
-    return cast(f32, r, .{});
+    return scast(f32, r);
 }
 
 fn tanh64(x: f64) f64 {

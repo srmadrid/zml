@@ -4,34 +4,26 @@ const exp2_data = @import("exp2_data.zig");
 const exp_data = @import("exp_data.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
-pub fn exp2(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+pub inline fn exp2(x: anytype) EnsureFloat(@TypeOf(x)) {
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.exp2: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return exp2(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, exp2_32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_exp2f.c
+            return exp2_32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, exp2_32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_exp2f.c
-                    return exp2_32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_exp2.c
-                    return exp2_64(x);
-                },
-                f80 => return cast(f80, exp2_128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // openlibm/ld128/s_exp2l.c
-                    return exp2_128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_exp2.c
+            return exp2_64(scast(f64, x));
+        },
+        f80 => return scast(f80, exp2_128(scast(f128, x))),
+        f128 => {
+            // openlibm/ld128/s_exp2l.c
+            return exp2_128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -42,7 +34,7 @@ inline fn top12_32(x: f32) u32 {
 }
 
 fn exp2_32(x: f32) f32 {
-    const xd: f64 = cast(f64, x, .{});
+    const xd: f64 = scast(f64, x);
     const abstop: u32 = top12_32(x) & 0x7ff;
     if (abstop >= top12_32(128)) {
         @branchHint(.unlikely);
@@ -78,7 +70,7 @@ fn exp2_32(x: f32) f32 {
     var y: f64 = exp2_data.poly_32[2] * r + 1;
     y = z * r2 + y;
     y = y * s;
-    return cast(f32, y, .{});
+    return scast(f32, y);
 }
 
 // Handle cases that may overflow or underflow when computing the result that

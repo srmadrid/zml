@@ -6,34 +6,26 @@ const root_tbl = @import("root_tbl.zig");
 const powtwo_tbl = @import("powtwo_tbl.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn asin(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.asin: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return asin(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, asin32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_asinf.c
+            return asin32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, asin32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_asinf.c
-                    return asin32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_asin.c
-                    return asin64(x);
-                },
-                f80 => return cast(f80, asin128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_asinl.c
-                    return asin128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_asin.c
+            return asin64(scast(f64, x));
+        },
+        f80 => return scast(f80, asin128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_asinl.c
+            return asin128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -67,7 +59,7 @@ fn asin32(x: f32) f32 {
     const pi2: f64 = 0x1.921fb54442d18p+0;
 
     const ax: u32 = @as(u32, @bitCast(x)) << 1;
-    const xs: f64 = cast(f64, x, .{});
+    const xs: f64 = scast(f64, x);
     if (ax > 0x7f << 24) {
         @branchHint(.unlikely);
         return as_special(x);
@@ -93,12 +85,12 @@ fn asin32(x: f32) f32 {
         const z8: f64 = z4 * z4;
         const z16: f64 = z8 * z8;
         const r: f64 = z * ((((b[0] + z2 * b[1]) + z4 * (b[2] + z2 * b[3])) + z8 * ((b[4] + z2 * b[5]) + z4 * (b[6] + z2 * b[7]))) + z16 * (((b[8] + z2 * b[9]) + z4 * (b[10] + z2 * b[11])) + z8 * ((b[12] + z2 * b[13]) + z4 * (b[14] + z2 * b[15]))));
-        const ub: f32 = cast(f32, r, .{});
-        const lb: f32 = cast(f32, r - z * 0x1.efa8ebp-31, .{});
+        const ub: f32 = scast(f32, r);
+        const lb: f32 = scast(f32, r - z * 0x1.efa8ebp-31);
         if (ub == lb)
             return ub;
 
-        return cast(f32, r, .{});
+        return scast(f32, r);
     }
 
     if (ax < (0x7e << 24)) {
@@ -111,7 +103,7 @@ fn asin32(x: f32) f32 {
         const z: f64 = xs;
         const z2: f64 = z * z;
         const c0: f64 = poly12(z2, &c);
-        return cast(f32, z + (z * z2) * c0, .{});
+        return scast(f32, z + (z * z2) * c0);
     } else {
         if (ax == 0x7e55688a) {
             @branchHint(.unlikely);
@@ -134,7 +126,7 @@ fn asin32(x: f32) f32 {
         };
 
         const r: f64 = pi2 - s * poly12(z, &c);
-        return cast(f32, float.copysign(r, xs), .{});
+        return scast(f32, float.copysign(r, xs));
     }
 }
 

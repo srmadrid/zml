@@ -5,34 +5,26 @@ const log2_data = @import("log2_data.zig");
 const ldbl128 = @import("ldbl128.zig");
 const erf_data = @import("erf_data.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn log2(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.log2: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return log2(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, log2_32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_log2f.c
+            return log2_32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, log2_32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_log2f.c
-                    return log2_32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_log2.c
-                    return log2_64(x);
-                },
-                f80 => return cast(f80, log2_128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_log2l.c
-                    return log2_128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_log2.c
+            return log2_64(scast(f64, x));
+        },
+        f80 => return scast(f80, log2_128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_log2l.c
+            return log2_128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -77,11 +69,11 @@ fn log2_32(x: f32) f32 {
     }
     const invc: f64 = log2_data.tab_32[i].invc;
     const logc: f64 = log2_data.tab_32[i].logc;
-    const z = cast(f64, @as(f32, @bitCast(iz)), .{});
+    const z = scast(f64, @as(f32, @bitCast(iz)));
 
     // log2(x) = log1p(z/c-1)/ln2 + log2(c) + k
     const r: f64 = z * invc - 1;
-    const y0: f64 = logc + cast(f64, k, .{});
+    const y0: f64 = logc + scast(f64, k);
 
     // Pipelined polynomial evaluation to approximate log1p(r)/ln2.
     const r2: f64 = r * r;
@@ -89,7 +81,7 @@ fn log2_32(x: f32) f32 {
     y = log2_data.poly_32[0] * r2 + y;
     const p: f64 = log2_data.poly_32[3] * r + y0;
     y = y * r2 + p;
-    return cast(f32, y, .{});
+    return scast(f32, y);
 }
 
 // Top 16 bits of a double.
@@ -165,7 +157,7 @@ fn log2_64(x: f64) f64 {
     const invc: f64 = log2_data.tab_64[i].invc;
     const logc: f64 = log2_data.tab_64[i].logc;
     const z: f64 = @bitCast(iz);
-    const kd: f64 = cast(f64, k, .{});
+    const kd: f64 = scast(f64, k);
 
     // log2(x) = log2(z/c) + log2(c) + k.
     // r ~= z/c - 1, |r| < 1/(2*N).
@@ -325,6 +317,6 @@ fn log2_128(x: f128) f128 {
     z += xx * LOG2EA;
     z += y;
     z += xx;
-    z += cast(f128, e, .{});
+    z += scast(f128, e);
     return z;
 }

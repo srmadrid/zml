@@ -2,8 +2,8 @@ const types = @import("../types.zig");
 const Scalar = types.Scalar;
 
 pub fn abs2(z: anytype) Scalar(@TypeOf(z)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
+    comptime if (types.numericType(@TypeOf(z)) == .cfloat)
+        @compileError("cfloat.abs2: z must be an int or float, got " ++ @typeName(@TypeOf(z)));
 
     return z.re * z.re + z.im * z.im;
 }

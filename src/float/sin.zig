@@ -9,34 +9,26 @@ const branred = @import("branred.zig");
 const ldbl128 = @import("ldbl128.zig");
 const rem_pio2 = @import("rem_pio2.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn sin(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.sin: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return sin(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, sin32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_sinf.c
+            return sin32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, sin32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_sinf.c
-                    return sin32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_sin.c
-                    return sin64(x);
-                },
-                f80 => return cast(f80, sin128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_sinl.c
-                    return sin128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_sin.c
+            return sin64(scast(f64, x));
+        },
+        f80 => return scast(f80, sin128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_sinl.c
+            return sin128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -47,7 +39,7 @@ pub inline fn sin(x: anytype) EnsureFloat(@TypeOf(x)) {
 // small values.  Large inputs have their range reduced using fast integer
 // arithmetic.
 fn sin32(y: f32) f32 {
-    var x: f64 = cast(f64, y, .{});
+    var x: f64 = scast(f64, y);
     var p: *const sincos_data.Sincos32 = &sincos_data.__sincos32_table[0];
 
     if (sincos_data.abstop12(y) < sincos_data.abstop12(sincos_data.pio4)) {
@@ -58,7 +50,7 @@ fn sin32(y: f32) f32 {
             // Force underflow for tiny y.
             if (sincos_data.abstop12(y) < sincos_data.abstop12(0x1p-126)) {
                 @branchHint(.unlikely);
-                std.mem.doNotOptimizeAway(cast(f32, s, .{}));
+                std.mem.doNotOptimizeAway(scast(f32, s));
             }
 
             return y;
@@ -187,7 +179,7 @@ pub fn kernel_sin128(x: f128, y: f128, iy: i32) f128 {
                 std.mem.doNotOptimizeAway(vx);
             }
 
-            if (cast(i32, x, .{}) == 0)
+            if (scast(i32, x) == 0)
                 return x; // generate inexact
         }
         const z: f128 = x * x;
@@ -210,7 +202,7 @@ pub fn kernel_sin128(x: f128, y: f128, iy: i32) f128 {
         }
 
         var h: f128 = undefined;
-        ldbl128.setWords(&h, cast(u64, hix, .{}) << 32, @as(u64, 0));
+        ldbl128.setWords(&h, scast(u64, hix) << 32, @as(u64, 0));
         var l: f128 = undefined;
         if (iy != 0) {
             l = (if (ix < 0) -y else y) - (h - xx);

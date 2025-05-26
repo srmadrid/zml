@@ -6,53 +6,44 @@ const classify = @import("../float/classify.zig");
 const Scalar = types.Scalar;
 const EnsureFloat = types.EnsureFloat;
 const Cfloat = @import("../cfloat.zig").Cfloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn asinh(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("z must be an int, float or cfloat");
+        @compileError("cfloat.asinh: z must be a bool, int, float or cfloat, got " ++ @typeName(@TypeOf(z)));
 
-    switch (types.numericType(@TypeOf(z))) {
-        .int => {
-            return asinh(cast(Cfloat(EnsureFloat(Scalar(@TypeOf(z)))), z, .{}));
-        },
-        .float => {
-            return asinh(cast(Cfloat(@TypeOf(z)), z, .{}));
-        },
-        .cfloat => {
-            const rcls: u32 = classify.classify(z.re);
-            const icls: u32 = classify.classify(z.im);
+    const zz: Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) = scast(Cfloat(EnsureFloat(Scalar(@TypeOf(z)))), z);
 
-            if (rcls <= classify.INFINITE or icls <= classify.INFINITE) {
-                var res: @TypeOf(z) = undefined;
-                if (icls == classify.INFINITE) {
-                    res.re = float.copysign(std.math.inf(Scalar(@TypeOf(z))), z.re);
+    const rcls: u32 = classify.classify(zz.re);
+    const icls: u32 = classify.classify(zz.im);
 
-                    if (rcls == classify.NAN) {
-                        res.im = std.math.nan(Scalar(@TypeOf(z)));
-                    } else {
-                        res.im = float.copysign(if (rcls >= classify.ZERO) float.pi_2(Scalar(@TypeOf(z))) else float.pi_4(Scalar(@TypeOf(z))), z.im);
-                    }
-                } else if (rcls <= classify.INFINITE) {
-                    res.re = z.re;
-                    if ((rcls == classify.INFINITE and icls >= classify.ZERO) or (rcls == classify.NAN and icls == classify.ZERO)) {
-                        res.im = float.copysign(@as(Scalar(@TypeOf(z)), 0), z.im);
-                    } else {
-                        res.im = std.math.nan(Scalar(@TypeOf(z)));
-                    }
-                } else {
-                    res.re = std.math.nan(Scalar(@TypeOf(z)));
-                    res.im = std.math.nan(Scalar(@TypeOf(z)));
-                }
+    if (rcls <= classify.INFINITE or icls <= classify.INFINITE) {
+        var res: @TypeOf(zz) = undefined;
+        if (icls == classify.INFINITE) {
+            res.re = float.copysign(std.math.inf(Scalar(@TypeOf(zz))), zz.re);
 
-                return res;
-            } else if (rcls == classify.ZERO and icls == classify.ZERO) {
-                return z;
+            if (rcls == classify.NAN) {
+                res.im = std.math.nan(Scalar(@TypeOf(zz)));
             } else {
-                return kernel_asinh(z, 0);
+                res.im = float.copysign(if (rcls >= classify.ZERO) float.pi_2(Scalar(@TypeOf(zz))) else float.pi_4(Scalar(@TypeOf(zz))), zz.im);
             }
-        },
-        else => unreachable,
+        } else if (rcls <= classify.INFINITE) {
+            res.re = zz.re;
+            if ((rcls == classify.INFINITE and icls >= classify.ZERO) or (rcls == classify.NAN and icls == classify.ZERO)) {
+                res.im = float.copysign(@as(Scalar(@TypeOf(zz)), 0), zz.im);
+            } else {
+                res.im = std.math.nan(Scalar(@TypeOf(zz)));
+            }
+        } else {
+            res.re = std.math.nan(Scalar(@TypeOf(zz)));
+            res.im = std.math.nan(Scalar(@TypeOf(zz)));
+        }
+
+        return res;
+    } else if (rcls == classify.ZERO and icls == classify.ZERO) {
+        return zz;
+    } else {
+        return kernel_asinh(zz, 0);
     }
 }
 

@@ -2,35 +2,29 @@ const std = @import("std");
 const types = @import("../types.zig");
 const float = @import("../float.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
-pub inline fn asinpi(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+pub fn asinpi(x: anytype) EnsureFloat(@TypeOf(x)) {
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.asinpi: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return asinpi(cast(EnsureFloat(@TypeOf(x)), x, .{}));
-        },
-        .float => {
-            if (float.abs(x) > 1) {
-                @branchHint(.unlikely);
+    const xx: EnsureFloat(@TypeOf(x)) = scast(EnsureFloat(@TypeOf(x)), x);
 
-                return (x - x) / (x - x);
-            }
+    if (float.abs(xx) > 1) {
+        @branchHint(.unlikely);
 
-            const ret: @TypeOf(x) = float.asin(x) / float.pi(@TypeOf(x));
-
-            if (float.abs(ret) < std.math.floatMin(@TypeOf(x))) {
-                const vret: @TypeOf(x) = ret * ret;
-                std.mem.doNotOptimizeAway(vret);
-            }
-
-            // Ensure that rounding away from zero for both asin and the
-            // division cannot yield a return value from asinpi with absolute
-            // value greater than 0.5.
-            return if (float.abs(ret) > 0.5) float.copysign(@as(@TypeOf(x), 0.5), ret) else ret;
-        },
-        else => unreachable,
+        return (xx - xx) / (xx - xx);
     }
+
+    const ret: @TypeOf(xx) = float.asin(xx) / float.pi(@TypeOf(xx));
+
+    if (float.abs(ret) < std.math.floatMin(@TypeOf(xx))) {
+        const vret: @TypeOf(xx) = ret * ret;
+        std.mem.doNotOptimizeAway(vret);
+    }
+
+    // Ensure that rounding away from zero for both asin and the
+    // division cannot yield a return value from asinpi with absolute
+    // value greater than 0.5.
+    return if (float.abs(ret) > 0.5) float.copysign(@as(@TypeOf(xx), 0.5), ret) else ret;
 }

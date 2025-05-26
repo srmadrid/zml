@@ -1,7 +1,7 @@
 const types = @import("../types.zig");
 const float = @import("../float.zig");
 const atnat = @import("atnat.zig");
-const cast = types.cast;
+const scast = types.scast;
 const endian = @import("builtin").cpu.arch.endian();
 
 const t576: [2]u32 = if (endian == .big) .{ 0x63f00000, 0x00000000 } else .{ 0x00000000, 0x63f00000 }; // 2 ^ 576
@@ -146,5 +146,5 @@ pub fn branred(x: f64, a: *f64, aa: *f64) i32 {
     t = (b - s) + bb;
     a.* = s;
     aa.* = t;
-    return (cast(i32, sum, .{})) & 3; // return quarter of unit circle
+    return (scast(i32, sum)) & 3; // return quarter of unit circle
 }

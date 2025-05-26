@@ -11,58 +11,50 @@ const ldbl128 = @import("ldbl128.zig");
 const rem_pio2 = @import("rem_pio2.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn sincos(x: anytype) struct { sinx: EnsureFloat(@TypeOf(x)), cosx: EnsureFloat(@TypeOf(x)) } {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.sincos: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return sincos(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (@TypeOf(x)) {
+        f16 => {
+            const res = sincos32(scast(f32, x));
+            return .{
+                .sinx = scast(f16, res.sinx),
+                .cosx = scast(f16, res.cosx),
+            };
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => {
-                    const res = sincos32(cast(f32, x));
-                    return .{
-                        .sinx = cast(f16, res.sinx, .{}),
-                        .cosx = cast(f16, res.cosx, .{}),
-                    };
-                },
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_sincosf.c
-                    const res = sincos32(x);
-                    return .{
-                        .sinx = res.sinx,
-                        .cosx = res.cosx,
-                    };
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_sincos.c
-                    const res = sincos64(x);
-                    return .{
-                        .sinx = res.sinx,
-                        .cosx = res.cosx,
-                    };
-                },
-                f80 => {
-                    const res = sincos128(cast(f128, x, .{}));
-                    return .{
-                        .sinx = cast(f80, res.sinx, .{}),
-                        .cosx = cast(f80, res.cosx, .{}),
-                    };
-                },
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_sincosl.c
-                    const res = sincos128(x);
-                    return .{
-                        .sinx = res.sinx,
-                        .cosx = res.cosx,
-                    };
-                },
-                else => unreachable,
-            }
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_sincosf.c
+            const res = sincos32(scast(f32, x));
+            return .{
+                .sinx = res.sinx,
+                .cosx = res.cosx,
+            };
+        },
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_sincos.c
+            const res = sincos64(scast(f64, x));
+            return .{
+                .sinx = res.sinx,
+                .cosx = res.cosx,
+            };
+        },
+        f80 => {
+            const res = sincos128(scast(f128, x));
+            return .{
+                .sinx = scast(f80, res.sinx),
+                .cosx = scast(f80, res.cosx),
+            };
+        },
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_sincosl.c
+            const res = sincos128(scast(f128, x));
+            return .{
+                .sinx = res.sinx,
+                .cosx = res.cosx,
+            };
         },
         else => unreachable,
     }
@@ -83,7 +75,7 @@ fn sincos32(x: f32) struct { sinx: f32, cosx: f32 } {
             // Force underflow for tiny y.
             if (sincos_data.abstop12(x) < sincos_data.abstop12(0x1p-126)) {
                 @branchHint(.unlikely);
-                std.mem.doNotOptimizeAway(cast(f32, x2, .{}));
+                std.mem.doNotOptimizeAway(scast(f32, x2));
             }
 
             return .{
@@ -289,7 +281,7 @@ fn kernel_sincos128(x: f128, y: f128, sinx: *f128, cosx: *f128, iy: i32) void {
         }
 
         var h: f128 = undefined;
-        ldbl128.setWords(&h, cast(u64, hix, .{}) << 32, @as(u64, 0));
+        ldbl128.setWords(&h, scast(u64, hix) << 32, @as(u64, 0));
         var l: f128 = undefined;
         if (iy != 0) {
             l = yy - (h - xx);

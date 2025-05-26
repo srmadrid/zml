@@ -1,5 +1,5 @@
 const types = @import("types.zig");
-const cast = types.cast;
+const scast = types.scast;
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
 
@@ -58,10 +58,10 @@ pub inline fn add(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.add requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.add requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
-    return cast(C, left, .{}) + cast(C, right, .{});
+    return scast(C, left) + scast(C, right);
 }
 
 pub inline fn add_(
@@ -82,14 +82,14 @@ pub inline fn add_(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.add_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.add_ requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    out.* = cast(O, cast(C, left, .{}) + cast(C, right, .{}), .{});
+    out.* = scast(O, scast(C, left) + scast(C, right));
 }
 
 pub inline fn sub(
@@ -103,10 +103,10 @@ pub inline fn sub(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.sub requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.sub requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
-    return cast(C, left, .{}) - cast(C, right, .{});
+    return scast(C, left) - scast(C, right);
 }
 
 pub inline fn sub_(
@@ -127,14 +127,14 @@ pub inline fn sub_(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.sub_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.sub_ requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    out.* = cast(O, cast(C, left, .{}) - cast(C, right, .{}), .{});
+    out.* = scast(O, scast(C, left) - scast(C, right));
 }
 
 pub inline fn mul(
@@ -148,10 +148,10 @@ pub inline fn mul(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.mul requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.mul requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
-    return cast(C, left, .{}) * cast(C, right, .{});
+    return scast(C, left) * scast(C, right);
 }
 
 pub inline fn mul_(
@@ -172,14 +172,14 @@ pub inline fn mul_(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.mul_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.mul_ requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    out.* = cast(O, cast(C, left, .{}) * cast(C, right, .{}), .{});
+    out.* = scast(O, scast(C, left) * scast(C, right));
 }
 
 pub inline fn div(
@@ -193,10 +193,10 @@ pub inline fn div(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.div requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.div requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
-    return cast(C, left, .{}) / cast(C, right, .{});
+    return scast(C, left) / scast(C, right);
 }
 
 pub inline fn div_(
@@ -217,14 +217,14 @@ pub inline fn div_(
     comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
         (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float) or
         (types.numericType(L) != .float and types.numericType(R) != .float))
-        @compileError("float.div_ requires at least one of left or right to be an int, the other must be a bool, int or float, got " ++
+        @compileError("float.div_ requires at least one of left or right to be a float, the other must be a bool, int or float, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    out.* = cast(O, cast(C, left, .{}) / cast(C, right, .{}), .{});
+    out.* = scast(O, scast(C, left) / scast(C, right));
 }
 
 pub const abs = @import("float/abs.zig").abs;

@@ -6,34 +6,26 @@ const root_tbl = @import("root_tbl.zig");
 const powtwo_tbl = @import("powtwo_tbl.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn acos(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.acos: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return acos(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, acos32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_acosf.c
+            return acos32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, acos32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_acosf.c
-                    return acos32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_asin.c
-                    return acos64(x);
-                },
-                f80 => return cast(f80, acos128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_acosl.c
-                    return acos128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_asin.c
+            return acos64(scast(f64, x));
+        },
+        f80 => return scast(f80, acos128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_acosl.c
+            return acos128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -75,7 +67,7 @@ inline fn poly12(z: f64, c: *const [12]f64) f64 {
 fn acos32(x: f32) f32 {
     const pi2: f64 = 0x1.921fb54442d18p+0;
     const o: [2]f64 = .{ 0, 0x1.921fb54442d18p+1 };
-    const xs: f64 = cast(f64, x, .{});
+    const xs: f64 = scast(f64, x);
 
     const t: u32 = @bitCast(x);
     const ax: u32 = t << 1;
@@ -96,7 +88,7 @@ fn acos32(x: f32) f32 {
         };
         if (ax <= 0x40000000) { // |x| < 2^-63
             @branchHint(.unlikely);
-            return cast(f32, pi2, .{});
+            return scast(f32, pi2);
         }
 
         const z: f64 = xs;
@@ -105,8 +97,8 @@ fn acos32(x: f32) f32 {
         const z8: f64 = z4 * z4;
         const z16: f64 = z8 * z8;
         const r: f64 = z * ((((b[0] + z2 * b[1]) + z4 * (b[2] + z2 * b[3])) + z8 * ((b[4] + z2 * b[5]) + z4 * (b[6] + z2 * b[7]))) + z16 * (((b[8] + z2 * b[9]) + z4 * (b[10] + z2 * b[11])) + z8 * ((b[12] + z2 * b[13]) + z4 * (b[14] + z2 * b[15]))));
-        const ub: f32 = cast(f32, 0x1.921fb54574191p+0 - r, .{});
-        const lb: f32 = cast(f32, 0x1.921fb543118ap+0 - r, .{});
+        const ub: f32 = scast(f32, 0x1.921fb54574191p+0 - r);
+        const lb: f32 = scast(f32, 0x1.921fb543118ap+0 - r);
         if (ub == lb)
             return ub;
     }
@@ -125,14 +117,14 @@ fn acos32(x: f32) f32 {
 
         const x2: f64 = xs * xs;
         const r: f64 = (pi2 - xs) - (xs * x2) * poly12(x2, &c);
-        return cast(f32, r, .{});
+        return scast(f32, r);
     } else {
         const c: [12]f64 = .{ 0x1.6a09e667f3bcbp+0, 0x1.e2b7dddff2db9p-4, 0x1.b27247ab42dbcp-6, 0x1.02995cc4e0744p-7, 0x1.5ffb0276ec8eap-9, 0x1.033885a928decp-10, 0x1.911f2be23f8c7p-12, 0x1.4c3c55d2437fdp-13, 0x1.af477e1d7b461p-15, 0x1.abd6bdff67dcbp-15, -0x1.1717e86d0fa28p-16, 0x1.6ff526de46023p-16 };
         const bx: f64 = float.abs(xs);
         const z: f64 = 1 - bx;
         const s: f64 = float.copysign(float.sqrt(z), xs);
         const r: f64 = o[t >> 31] + s * poly12(z, &c);
-        return cast(f32, r, .{});
+        return scast(f32, r);
     }
 }
 

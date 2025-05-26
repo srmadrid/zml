@@ -5,34 +5,26 @@ const erf_data = @import("erf_data.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn erfc(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.erfc: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return erfc(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (@TypeOf(x)) {
+        f16 => return scast(f16, erfc32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_erfcf.c
+            return erfc32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, erfc32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_erfcf.c
-                    return erfc32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_erf.c
-                    return erfc64(x);
-                },
-                f80 => return cast(f80, erfc128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_erfl.c
-                    return erfc128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_erf.c
+            return erfc64(scast(f64, x));
+        },
+        f80 => return scast(f80, erfc128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_erfl.c
+            return erfc128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -40,7 +32,7 @@ pub inline fn erfc(x: anytype) EnsureFloat(@TypeOf(x)) {
 
 fn erfc32(xf: f32) f32 {
     const axf: f32 = float.abs(xf);
-    const axd: f64 = cast(f64, axf, .{});
+    const axd: f64 = scast(f64, axf);
     const x2: f64 = axd * axd;
     const t: u32 = @bitCast(xf);
     const at: u32 = t & (~@as(u32, 0) >> 1);
@@ -99,7 +91,7 @@ fn erfc32(xf: f32) f32 {
         const c: [5]f64 = .{ 0x1.20dd750429b6dp+0, -0x1.812746b03610bp-2, 0x1.ce2f218831d2fp-4, -0x1.b82c609607dcbp-6, 0x1.553af09b8008ep-8 };
         const f0: f64 = xf * (c[0] + x2 * (c[1] + x2 * (c[2] + x2 * (c[3] + x2 * (c[4])))));
 
-        return cast(f32, 1 - f0, .{});
+        return scast(f32, 1 - f0);
     }
 
     // now -0x1.ea8f94p+1 <= x <= 0x1.41bbf8p+3, with |x| > 0x1.7p-4
@@ -112,9 +104,9 @@ fn erfc32(xf: f32) f32 {
         @setRuntimeSafety(false);
         j = @as(i64, @intCast(jt << 12)) >> 48;
     }
-    const S: f64 = @bitCast(((j >> 7) + cast(i64, 0x3ff | sgn << 11, .{})) << 52);
+    const S: f64 = @bitCast(((j >> 7) + scast(i64, 0x3ff | sgn << 11)) << 52);
     const ch: [4]f64 = .{ -0x1.ffffffffff333p-2, 0x1.5555555556a14p-3, -0x1.55556666659b4p-5, 0x1.1111074cc7b22p-7 };
-    const d: f64 = (x2 + ln2h * cast(f64, j, .{})) + ln2l * cast(f64, j, .{});
+    const d: f64 = (x2 + ln2h * scast(f64, j)) + ln2l * scast(f64, j);
     const d2: f64 = d * d;
     const e0: f64 = erf_data.E_32[@intCast(j & 127)];
     const f: f64 = d + d2 * ((ch[0] + d * ch[1]) + d2 * (ch[2] + d * ch[3]));
@@ -147,7 +139,7 @@ fn erfc32(xf: f32) f32 {
     const r: f64 = (S * (e0 - f * e0)) * s;
     const y: f64 = off[sgn] + r;
 
-    return cast(f32, y, .{});
+    return scast(f32, y);
 }
 
 fn erfc64(x: f64) f64 {
@@ -155,7 +147,7 @@ fn erfc64(x: f64) f64 {
     dbl64.getHighWord(&hx, x);
     const ix: i32 = hx & 0x7fffffff;
     if (ix >= 0x7ff00000) { // erfc(nan)=nan, erfc(+-inf)=0,2
-        const ret: f64 = cast(f64, ((hx >> 31) << 1) + 1, .{}) / x;
+        const ret: f64 = scast(f64, ((hx >> 31) << 1) + 1) / x;
 
         if (ret == 0)
             return 0;
@@ -272,7 +264,7 @@ fn erfc128(x: f128) f128 {
 
     if (ix >= 0x7fff0000) { // erfc(nan)=nan
         // erfc(+-inf)=0,2
-        return cast(f128, ((@as(u32, @intCast(sign)) >> 31) << 1) + 1, .{}) / x;
+        return scast(f128, ((@as(u32, @intCast(sign)) >> 31) << 1) + 1) / x;
     }
 
     if (ix < 0x3ffd0000) { // |x| <1/4
@@ -284,7 +276,7 @@ fn erfc128(x: f128) f128 {
 
     if (ix < 0x3fff4000) { // 1.25
         const xx: f128 = @bitCast(u);
-        const i: i32 = cast(i32, 8.0 * xx, .{});
+        const i: i32 = scast(i32, 8.0 * xx);
         var y: f128 = undefined;
         switch (i) {
             2 => {
@@ -343,7 +335,7 @@ fn erfc128(x: f128) f128 {
 
         const xx: f128 = float.abs(x);
         var z: f128 = 1 / (xx * xx);
-        const i: i32 = cast(i32, 8.0 / xx, .{});
+        const i: i32 = scast(i32, 8.0 / xx);
         var p: f128 = undefined;
         switch (i) {
             1 => {

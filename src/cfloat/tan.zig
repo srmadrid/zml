@@ -4,118 +4,109 @@ const float = @import("../float.zig");
 const Scalar = types.Scalar;
 const EnsureFloat = types.EnsureFloat;
 const Cfloat = @import("../cfloat.zig").Cfloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn tan(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("z must be an int, float or cfloat");
+        @compileError("cfloat.tan: z must be a bool, int, float or cfloat, got " ++ @typeName(@TypeOf(z)));
 
-    switch (types.numericType(@TypeOf(z))) {
-        .int => {
-            return tan(cast(Cfloat(EnsureFloat(Scalar(@TypeOf(z)))), z, .{}));
-        },
-        .float => {
-            return tan(cast(Cfloat(@TypeOf(z)), z, .{}));
-        },
-        .cfloat => {
-            if (!std.math.isFinite(z.re) or !std.math.isFinite(z.im)) {
-                @branchHint(.unlikely);
-                var res: @TypeOf(z) = undefined;
-                if (std.math.isInf(z.im)) {
-                    if (std.math.isFinite(z.re) and float.abs(z.re) > 1) {
-                        const tmp = float.sincos(z.re);
-                        const sinrz: Scalar(@TypeOf(z)) = tmp.sinx;
-                        const cosrz: Scalar(@TypeOf(z)) = tmp.cosx;
+    const zz: Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) = scast(Cfloat(EnsureFloat(Scalar(@TypeOf(z)))), z);
 
-                        res.re = float.copysign(@as(Scalar(@TypeOf(z)), 0), sinrz * cosrz);
-                    } else {
-                        res.re = float.copysign(@as(Scalar(@TypeOf(z)), 0), z.re);
-                    }
+    if (!std.math.isFinite(zz.re) or !std.math.isFinite(zz.im)) {
+        @branchHint(.unlikely);
+        var res: @TypeOf(zz) = undefined;
+        if (std.math.isInf(zz.im)) {
+            if (std.math.isFinite(zz.re) and float.abs(zz.re) > 1) {
+                const tmp = float.sincos(zz.re);
+                const sinrzz: Scalar(@TypeOf(zz)) = tmp.sinx;
+                const cosrzz: Scalar(@TypeOf(zz)) = tmp.cosx;
 
-                    res.im = float.copysign(@as(Scalar(@TypeOf(z)), 1), z.im);
-                } else if (z.re == 0) {
-                    res = z;
-                } else {
-                    res.re = std.math.nan(Scalar(@TypeOf(z)));
-                    if (z.im == 0) {
-                        res.im = z.im;
-                    } else {
-                        res.im = std.math.nan(Scalar(@TypeOf(z)));
-                    }
-                }
-
-                return res;
+                res.re = float.copysign(@as(Scalar(@TypeOf(zz)), 0), sinrzz * cosrzz);
             } else {
-                const t: i32 = cast(i32, (std.math.floatExponentMax(Scalar(@TypeOf(z))) - 1) * float.ln2(Scalar(@TypeOf(z))) / 2, .{});
-
-                // tan(z+iy) = (sin(2z) + i*sinh(2y))/(cos(2z) + cosh(2y))
-                // = (sin(z)*cos(z) + i*sinh(y)*cosh(y)/(cos(z)^2 + sinh(y)^2).
-                var sinrz: Scalar(@TypeOf(z)) = undefined;
-                var cosrz: Scalar(@TypeOf(z)) = undefined;
-                if (float.abs(z.re) > std.math.floatMin(Scalar(@TypeOf(z)))) {
-                    @branchHint(.likely);
-                    const tmp = float.sincos(z.re);
-                    sinrz = tmp.sinx;
-                    cosrz = tmp.cosx;
-                } else {
-                    sinrz = z.re;
-                    cosrz = 1;
-                }
-
-                var res: @TypeOf(z) = undefined;
-                if (float.abs(z.im) > cast(Scalar(@TypeOf(z)), t, .{})) {
-                    // Avoid intermediate overflow when the real part of the
-                    // result may be subnormal.  Ignoring negligible terms, the
-                    // imaginary part is +/- 1, the real part is
-                    // sin(z)*cos(z)/sinh(y)^2 = 4*sin(z)*cos(z)/exp(2y).
-                    const exp_2t: Scalar(@TypeOf(z)) = float.exp(2 * cast(Scalar(@TypeOf(z)), t, .{}));
-
-                    res.im = float.copysign(@as(Scalar(@TypeOf(z)), 1), z.im);
-                    res.re = 4 * sinrz * cosrz;
-                    const zz: Scalar(@TypeOf(z)) = float.abs(z.im) - cast(Scalar(@TypeOf(z)), t, .{});
-                    res.re /= exp_2t;
-                    if (zz > cast(Scalar(@TypeOf(z)), t, .{})) {
-                        // Underflow (original imaginary part of z has absolute
-                        // value > 2t).
-                        res.re /= exp_2t;
-                    } else {
-                        res.re /= float.exp(2 * zz);
-                    }
-                } else {
-                    var sinhiz: Scalar(@TypeOf(z)) = undefined;
-                    var coshiz: Scalar(@TypeOf(z)) = undefined;
-                    if (float.abs(z.im) > std.math.floatMin(Scalar(@TypeOf(z)))) {
-                        sinhiz = float.sinh(z.im);
-                        coshiz = float.cosh(z.im);
-                    } else {
-                        sinhiz = z.im;
-                        coshiz = 1;
-                    }
-
-                    var den: Scalar(@TypeOf(z)) = undefined;
-                    if (float.abs(sinhiz) > float.abs(cosrz) * std.math.floatEps(Scalar(@TypeOf(z)))) {
-                        den = cosrz * cosrz + sinhiz * sinhiz;
-                    } else {
-                        den = cosrz * cosrz;
-                    }
-
-                    res.re = sinrz * cosrz / den;
-                    res.im = sinhiz * coshiz / den;
-                }
-
-                if (float.abs(res.re) < std.math.floatMin(Scalar(@TypeOf(z)))) {
-                    const vresr: Scalar(@TypeOf(z)) = res.re * res.re;
-                    std.mem.doNotOptimizeAway(vresr);
-                }
-
-                if (float.abs(res.im) < std.math.floatMin(Scalar(@TypeOf(z)))) {
-                    const vresi: Scalar(@TypeOf(z)) = res.im * res.im;
-                    std.mem.doNotOptimizeAway(vresi);
-                }
-
-                return res;
+                res.re = float.copysign(@as(Scalar(@TypeOf(zz)), 0), zz.re);
             }
-        },
-        else => unreachable,
+
+            res.im = float.copysign(@as(Scalar(@TypeOf(zz)), 1), zz.im);
+        } else if (zz.re == 0) {
+            res = zz;
+        } else {
+            res.re = std.math.nan(Scalar(@TypeOf(zz)));
+            if (zz.im == 0) {
+                res.im = zz.im;
+            } else {
+                res.im = std.math.nan(Scalar(@TypeOf(zz)));
+            }
+        }
+
+        return res;
+    } else {
+        const t: i32 = scast(i32, (std.math.floatExponentMax(Scalar(@TypeOf(zz))) - 1) * float.ln2(Scalar(@TypeOf(zz))) / 2);
+
+        // tan(zz+iy) = (sin(2zz) + i*sinh(2y))/(cos(2zz) + cosh(2y))
+        // = (sin(zz)*cos(zz) + i*sinh(y)*cosh(y)/(cos(zz)^2 + sinh(y)^2).
+        var sinrzz: Scalar(@TypeOf(zz)) = undefined;
+        var cosrzz: Scalar(@TypeOf(zz)) = undefined;
+        if (float.abs(zz.re) > std.math.floatMin(Scalar(@TypeOf(zz)))) {
+            @branchHint(.likely);
+            const tmp = float.sincos(zz.re);
+            sinrzz = tmp.sinx;
+            cosrzz = tmp.cosx;
+        } else {
+            sinrzz = zz.re;
+            cosrzz = 1;
+        }
+
+        var res: @TypeOf(zz) = undefined;
+        if (float.abs(zz.im) > scast(Scalar(@TypeOf(zz)), t)) {
+            // Avoid intermediate overflow when the real part of the
+            // result may be subnormal.  Ignoring negligible terms, the
+            // imaginary part is +/- 1, the real part is
+            // sin(zz)*cos(zz)/sinh(y)^2 = 4*sin(zz)*cos(zz)/exp(2y).
+            const exp_2t: Scalar(@TypeOf(zz)) = float.exp(2 * scast(Scalar(@TypeOf(zz)), t));
+
+            res.im = float.copysign(@as(Scalar(@TypeOf(zz)), 1), zz.im);
+            res.re = 4 * sinrzz * cosrzz;
+            const zzzz: Scalar(@TypeOf(zz)) = float.abs(zz.im) - scast(Scalar(@TypeOf(zz)), t);
+            res.re /= exp_2t;
+            if (zzzz > scast(Scalar(@TypeOf(zz)), t)) {
+                // Underflow (original imaginary part of zz has absolute
+                // value > 2t).
+                res.re /= exp_2t;
+            } else {
+                res.re /= float.exp(2 * zzzz);
+            }
+        } else {
+            var sinhizz: Scalar(@TypeOf(zz)) = undefined;
+            var coshizz: Scalar(@TypeOf(zz)) = undefined;
+            if (float.abs(zz.im) > std.math.floatMin(Scalar(@TypeOf(zz)))) {
+                sinhizz = float.sinh(zz.im);
+                coshizz = float.cosh(zz.im);
+            } else {
+                sinhizz = zz.im;
+                coshizz = 1;
+            }
+
+            var den: Scalar(@TypeOf(zz)) = undefined;
+            if (float.abs(sinhizz) > float.abs(cosrzz) * std.math.floatEps(Scalar(@TypeOf(zz)))) {
+                den = cosrzz * cosrzz + sinhizz * sinhizz;
+            } else {
+                den = cosrzz * cosrzz;
+            }
+
+            res.re = sinrzz * cosrzz / den;
+            res.im = sinhizz * coshizz / den;
+        }
+
+        if (float.abs(res.re) < std.math.floatMin(Scalar(@TypeOf(zz)))) {
+            const vresr: Scalar(@TypeOf(zz)) = res.re * res.re;
+            std.mem.doNotOptimizeAway(vresr);
+        }
+
+        if (float.abs(res.im) < std.math.floatMin(Scalar(@TypeOf(zz)))) {
+            const vresi: Scalar(@TypeOf(zz)) = res.im * res.im;
+            std.mem.doNotOptimizeAway(vresi);
+        }
+
+        return res;
     }
 }

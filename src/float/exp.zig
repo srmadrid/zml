@@ -6,34 +6,26 @@ const exp2_data = @import("exp2_data.zig");
 const exp_data = @import("exp_data.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
-pub fn exp(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+pub inline fn exp(x: anytype) EnsureFloat(@TypeOf(x)) {
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.exp: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return exp(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, exp32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_expf.c
+            return exp32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, exp32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_expf.c
-                    return exp32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_exp.c
-                    return exp64(x);
-                },
-                f80 => return cast(f80, exp128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_expl.c
-                    return exp128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_exp.c
+            return exp64(scast(f64, x));
+        },
+        f80 => return scast(f80, exp128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_expl.c
+            return exp128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -44,7 +36,7 @@ inline fn top12(x: f32) u32 {
 }
 
 fn exp32(x: f32) f32 {
-    const xd: f64 = cast(f64, x, .{});
+    const xd: f64 = scast(f64, x);
     const abstop: u32 = (@as(u32, @bitCast(x)) >> 20) & 0x7ff;
     if (abstop >= @as(u32, @bitCast(@as(f32, (88)))) >> 20) {
         @branchHint(.unlikely);
@@ -86,7 +78,7 @@ fn exp32(x: f32) f32 {
     var y: f64 = exp2_data.poly_scaled_32[2] * r + 1;
     y = z * r2 + y;
     y = y * s;
-    return cast(f32, y, .{});
+    return scast(f32, y);
 }
 
 // Handle cases that may overflow or underflow when computing the result that
@@ -232,7 +224,7 @@ fn exp128(x: f128) f128 {
         t -= THREEp103;
 
         // Compute tval1 = t.
-        const tval1: i32 = cast(i32, t * TWO8, .{});
+        const tval1: i32 = scast(i32, t * TWO8);
 
         xx -= exp_data.__expl_table[@intCast(2 * 89 + 2 * tval1)];
         xl -= exp_data.__expl_table[@intCast(2 * 89 + 2 * tval1 + 1)];
@@ -242,7 +234,7 @@ fn exp128(x: f128) f128 {
         t -= THREEp96;
 
         // Compute tval2 = t.
-        const tval2: i32 = cast(i32, t * TWO15, .{});
+        const tval2: i32 = scast(i32, t * TWO15);
 
         xx -= exp_data.__expl_table[@intCast((2 * (2 * 89) + 2 + 2 * 65) + 2 * tval2)];
         xl -= exp_data.__expl_table[@intCast((2 * (2 * 89) + 2 + 2 * 65) + 2 * tval2 + 1)];
@@ -251,9 +243,9 @@ fn exp128(x: f128) f128 {
 
         // Compute ex2 = 2^n_0 e^(argtable[tval1]) e^(argtable[tval2]).
         var ex2_u: ldbl128.ieee_f128_shape = @bitCast(exp_data.__expl_table[@intCast(((2 * (2 * 89) + 2 + 2 * 65) + 2 + 2 * 65 + 89) + tval1)] * exp_data.__expl_table[@intCast((((2 * (2 * 89) + 2 + 2 * 65) + 2 + 2 * 65 + 89) + 1 + 89 + 65) + tval2)]);
-        const n_i: i32 = cast(i32, n, .{});
+        const n_i: i32 = scast(i32, n);
         // 'unsafe' is 1 iff n_1 != 0.
-        const unsafe: i32 = cast(i32, int.abs(n_i) >= 15000, .{});
+        const unsafe: i32 = scast(i32, int.abs(n_i) >= 15000);
         {
             @setRuntimeSafety(false);
             ex2_u.exponent += @intCast(n_i >> @intCast(unsafe));

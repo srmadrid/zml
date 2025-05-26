@@ -9,34 +9,26 @@ const branred = @import("branred.zig");
 const ldbl128 = @import("ldbl128.zig");
 const rem_pio2 = @import("rem_pio2.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn cos(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.cos: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return cos(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, cos32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_cosf.c
+            return cos32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, cos32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_cosf.c
-                    return cos32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_sin.c
-                    return cos64(x);
-                },
-                f80 => return cast(f80, cos128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_cosl.c
-                    return cos128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_sin.c
+            return cos64(scast(f64, x));
+        },
+        f80 => return scast(f80, cos128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_cosl.c
+            return cos128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -47,7 +39,7 @@ pub inline fn cos(x: anytype) EnsureFloat(@TypeOf(x)) {
 // small values.  Large inputs have their range reduced using fast integer
 // arithmetic.
 fn cos32(y: f32) f32 {
-    var x: f64 = cast(f64, y, .{});
+    var x: f64 = scast(f64, y);
     var p: *const sincos_data.Sincos32 = &sincos_data.__sincos32_table[0];
 
     if (sincos_data.abstop12(y) < sincos_data.abstop12(sincos_data.pio4)) {
@@ -159,7 +151,7 @@ pub fn kernel_cos128(x: f128, y: f128) f128 {
         // Argument is small enough to approximate it by a Chebyshev
         // polynomial of degree 16.
         if (tix < 0x3fc60000) { // |x| < 2^-57
-            if (cast(i32, x, .{}) == 1)
+            if (scast(i32, x) == 1)
                 return 1; // generate inexact
         }
 
@@ -188,7 +180,7 @@ pub fn kernel_cos128(x: f128, y: f128) f128 {
         }
 
         var h: f128 = undefined;
-        ldbl128.setWords(&h, cast(u64, hix, .{}) << 32, @as(u64, 0));
+        ldbl128.setWords(&h, scast(u64, hix) << 32, @as(u64, 0));
         const l: f128 = yy - (h - xx);
         const z: f128 = l * l;
         const sin_l: f128 = l * (1 + z * (sincos_data.SSIN1 + z * (sincos_data.SSIN2 + z * (sincos_data.SSIN3 + z * (sincos_data.SSIN4 + z * sincos_data.SSIN5)))));

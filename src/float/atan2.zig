@@ -6,45 +6,29 @@ const atnat2 = @import("atnat2.zig");
 const ldbl128 = @import("ldbl128.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn atan2(y: anytype, x: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(y)) or types.isComplex(@TypeOf(y)))
-        @compileError("y must be an int or float");
+    comptime if (types.numericType(@TypeOf(y)) != .int and types.numericType(@TypeOf(y)) != .float)
+        @compileError("float.atan2: y must be an int or float, got " ++ @typeName(@TypeOf(y)));
 
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.atan2: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(y))) {
-        .int => {
-            switch (types.numericType(@TypeOf(x))) {
-                .int => return atan2(cast(EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))), y, .{}), cast(EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))), x, .{})),
-                .float => return atan2(cast(Coerce(@TypeOf(y), @TypeOf(x)), y, .{}), cast(Coerce(@TypeOf(y), @TypeOf(x)), x, .{})),
-                else => unreachable,
-            }
+    switch (EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x)))) {
+        f16 => return scast(f16, atan2_32(scast(f32, y), scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_atan2f.c
+            return atan2_32(scast(f32, y), scast(f32, x));
         },
-        .float => {
-            switch (types.numericType(@TypeOf(x))) {
-                .int => return atan2(cast(Coerce(@TypeOf(y), @TypeOf(x)), y, .{}), cast(Coerce(@TypeOf(y), @TypeOf(x)), x, .{})),
-                .float => switch (Coerce(@TypeOf(y), @TypeOf(x))) {
-                    f16 => return cast(f16, atan2_32(cast(f32, y, .{}), cast(f32, x, .{})), .{}),
-                    f32 => {
-                        // glibc/sysdeps/ieee754/flt-32/e_atan2f.c
-                        return atan2_32(cast(f32, y, .{}), cast(f32, x, .{}));
-                    },
-                    f64 => {
-                        // glibc/sysdeps/ieee754/dbl-64/e_atan2.c
-                        return atan2_64(cast(f64, y, .{}), cast(f64, x, .{}));
-                    },
-                    f80 => return cast(f80, atan2_128(cast(f128, y, .{}), cast(f128, x, .{})), .{}),
-                    f128 => {
-                        // glibc/sysdeps/ieee754/ldbl-128/e_atan2l.c
-                        return atan2_128(cast(f128, y, .{}), cast(f128, x, .{}));
-                    },
-                    else => unreachable,
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_atan2.c
+            return atan2_64(scast(f64, y), scast(f64, x));
+        },
+        f80 => return scast(f80, atan2_128(scast(f128, y), scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_atan2l.c
+            return atan2_128(scast(f128, y), scast(f128, x));
         },
         else => unreachable,
     }
@@ -62,7 +46,7 @@ inline fn muldd(xh: f64, xl: f64, ch: f64, cl: f64, l: *f64) f64 {
 }
 
 fn polydd(xh: f64, xl: f64, n: i64, c: []const [2]f64, l: *f64) f64 {
-    var i: u64 = cast(u64, n - 2, .{});
+    var i: u64 = scast(u64, n - 2);
     var ch: f64 = c[i][0];
     var cl: f64 = c[i][1];
     while (i >= 0) {
@@ -103,7 +87,7 @@ fn atan2_32_tiny(y: f32, x: f32) f32 {
         }
     }
 
-    return cast(f32, @as(f64, @bitCast(t)), .{});
+    return scast(f32, @as(f64, @bitCast(t)));
 }
 
 fn atan2_32(y: f32, x: f32) f32 {
@@ -136,38 +120,38 @@ fn atan2_32(y: f32, x: f32) f32 {
         const xinf: bool = ax == (0xff << 23);
         if (yinf and xinf) {
             if ((ux >> 31) != 0) {
-                return cast(f32, 0x1.2d97c7f3321d2p+1 * sgn[uy >> 31], .{}); // +/-3pi/4
+                return scast(f32, 0x1.2d97c7f3321d2p+1 * sgn[uy >> 31]); // +/-3pi/4
             } else {
-                return cast(f32, 0x1.921fb54442d18p-1 * sgn[uy >> 31], .{}); // +/-pi/4
+                return scast(f32, 0x1.921fb54442d18p-1 * sgn[uy >> 31]); // +/-pi/4
             }
         }
 
         if (xinf) {
             if ((ux >> 31) != 0) {
-                return cast(f32, pi * sgn[uy >> 31], .{});
+                return scast(f32, pi * sgn[uy >> 31]);
             } else {
-                return cast(f32, 0 * sgn[uy >> 31], .{});
+                return scast(f32, 0 * sgn[uy >> 31]);
             }
         }
         if (yinf)
-            return cast(f32, pi2 * sgn[uy >> 31], .{});
+            return scast(f32, pi2 * sgn[uy >> 31]);
     }
 
     if (ay == 0) {
         if (ax == 0) {
             const i: u32 = (uy >> 31) * 4 + (ux >> 31) * 2;
             if ((ux >> 31) != 0) {
-                return cast(f32, off[i] + offl[i], .{});
+                return scast(f32, off[i] + offl[i]);
             } else {
-                return cast(f32, off[i], .{});
+                return scast(f32, off[i]);
             }
         }
 
         if ((ux >> 31) == 0)
-            return cast(f32, 0.0 * sgn[uy >> 31], .{});
+            return scast(f32, 0.0 * sgn[uy >> 31]);
     }
 
-    const gt: u32 = cast(u32, ay > ax, .{});
+    const gt: u32 = scast(u32, ay > ax);
     const i: u32 = (uy >> 31) * 4 + (ux >> 31) * 2 + gt;
 
     const zx: f64 = x;
@@ -175,7 +159,7 @@ fn atan2_32(y: f32, x: f32) f32 {
     var z: f64 = (m[gt] * zx + m[1 - gt] * zy) / (m[gt] * zy + m[1 - gt] * zx);
     // z = x/y if |y| > |x|, and z = y/x otherwise
     var r: f64 = undefined;
-    const d: i64 = cast(i64, ax, .{}) - cast(i64, ay, .{});
+    const d: i64 = scast(i64, ax) - scast(i64, ay);
     if (d < (27 << 23) and d > (-(27 << 23))) {
         const z2: f64 = z * z;
         const z4: f64 = z2 * z2;
@@ -265,7 +249,7 @@ fn atan2_32(y: f32, x: f32) f32 {
         ph = muldd(zh, zl, ph, pl, &pl);
         const sh: f64 = ph + off[i];
         const sl: f64 = ((off[i] - sh) + ph) + pl + offl[i];
-        const rf: f32 = cast(f32, sh, .{});
+        const rf: f32 = scast(f32, sh);
         const th: f64 = rf;
         const dh: f64 = sh - th;
         var tm: f64 = dh + sl;
@@ -283,7 +267,7 @@ fn atan2_32(y: f32, x: f32) f32 {
         r = th + tm;
     }
 
-    return cast(f32, r, .{});
+    return scast(f32, r);
 }
 
 // atan2 with max ULP of ~0.524 based on random sampling.
@@ -386,7 +370,7 @@ fn atan2_64(y: f64, x: f64) f64 {
     // either x/y or y/x is very close to zero
     var ax: f64 = if (x < 0) -x else x;
     var ay: f64 = if (y < 0) -y else y;
-    const de: i32 = cast(i32, uy & 0x7ff00000, .{}) - cast(i32, ux & 0x7ff00000, .{});
+    const de: i32 = scast(i32, uy & 0x7ff00000) - scast(i32, ux & 0x7ff00000);
     if (de >= ep) {
         return if (y > 0) @bitCast(atnat2.hpi) else @bitCast(atnat2.mhpi);
     } else if (de <= em) {
@@ -445,7 +429,7 @@ fn atan2_64(y: f64, x: f64) f64 {
                 return float.copysign(z, y);
             }
 
-            var i: i32 = cast(i32, (TWO52 + 256 * u) - TWO52, .{});
+            var i: i32 = scast(i32, (TWO52 + 256 * u) - TWO52);
             i -= 16;
             const t3: f64 = u - @as(f64, @bitCast(atnat2.cij[@intCast(i)][0]));
             var dv: f64 = undefined;
@@ -471,7 +455,7 @@ fn atan2_64(y: f64, x: f64) f64 {
             return float.copysign(z, y);
         }
 
-        var i: i32 = cast(i32, (TWO52 + 256 * u) - TWO52, .{});
+        var i: i32 = scast(i32, (TWO52 + 256 * u) - TWO52);
         i -= 16;
         v = (u - @as(f64, @bitCast(atnat2.cij[@intCast(i)][0]))) + du;
 
@@ -496,7 +480,7 @@ fn atan2_64(y: f64, x: f64) f64 {
             return float.copysign(z, y);
         }
 
-        var i: i32 = cast(i32, (TWO52 + 256 * u) - TWO52, .{});
+        var i: i32 = scast(i32, (TWO52 + 256 * u) - TWO52);
         i -= 16;
         v = (u - @as(f64, @bitCast(atnat2.cij[@intCast(i)][0]))) + du;
         const zz: f64 = @as(f64, @bitCast(atnat2.hpi1)) + v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][2])) + v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][3])) + v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][4])) + v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][5])) + v * @as(f64, @bitCast(atnat2.cij[@intCast(i)][6]))))));
@@ -519,7 +503,7 @@ fn atan2_64(y: f64, x: f64) f64 {
         return float.copysign(z, y);
     }
 
-    var i: i32 = cast(i32, (TWO52 + 256 * u) - TWO52, .{});
+    var i: i32 = scast(i32, (TWO52 + 256 * u) - TWO52);
     i -= 16;
     v = (u - @as(f64, @bitCast(atnat2.cij[@intCast(i)][0]))) + du;
     const zz: f64 = @as(f64, @bitCast(atnat2.opi1)) - v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][2])) + v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][3])) + v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][4])) + v * (@as(f64, @bitCast(atnat2.cij[@intCast(i)][5])) + v * @as(f64, @bitCast(atnat2.cij[@intCast(i)][6]))))));

@@ -2,31 +2,25 @@ const std = @import("std");
 const types = @import("../types.zig");
 const float = @import("../float.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn log2p1(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.log2p1: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return log2p1(cast(EnsureFloat(@TypeOf(x)), x, .{}));
-        },
-        .float => {
-            if (float.abs(x) < std.math.floatEps(@TypeOf(x)) / 4) {
-                // Avoid spurious underflows when log1p underflows but log2p1
-                // should not.
-                const ret: @TypeOf(x) = std.math.log2e * x;
+    const xx: EnsureFloat(@TypeOf(x)) = scast(EnsureFloat(@TypeOf(x)), x);
 
-                if (float.abs(ret) < std.math.floatMin(@TypeOf(x))) {
-                    const vret: @TypeOf(x) = ret * ret;
-                    std.mem.doNotOptimizeAway(vret);
-                }
+    if (float.abs(xx) < std.math.floatEps(@TypeOf(xx)) / 4) {
+        // Avoid spurious underflows when log1p underflows but log2p1
+        // should not.
+        const ret: @TypeOf(xx) = std.math.log2e * xx;
 
-                return ret;
-            }
-            return std.math.log2e * float.log1p(x);
-        },
-        else => unreachable,
+        if (float.abs(ret) < std.math.floatMin(@TypeOf(xx))) {
+            const vret: @TypeOf(xx) = ret * ret;
+            std.mem.doNotOptimizeAway(vret);
+        }
+
+        return ret;
     }
+    return std.math.log2e * float.log1p(xx);
 }

@@ -5,37 +5,29 @@ const dbl64 = @import("dbl64.zig");
 const ldbl80 = @import("ldbl80.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn frexp(x: anytype, e: *i32) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.frexp: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return frexp(cast(EnsureFloat(@TypeOf(x)), x, .{}), e);
+    switch (@TypeOf(x)) {
+        f16 => return scast(f16, frexp32(scast(f32, x), e)),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_frexpf.c
+            return frexp32(scast(f32, x), e);
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, frexp32(cast(f32, x), e)),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_frexpf.c
-                    return frexp32(x, e);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_frexp.c
-                    return frexp64(x, e);
-                },
-                f80 => {
-                    // glibc/sysdeps/ieee754/ldbl-96/s_frexpl.c
-                    return frexp80(x, e);
-                },
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_frexpl.c
-                    return frexp128(x, e);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_frexp.c
+            return frexp64(scast(f64, x), e);
+        },
+        f80 => {
+            // glibc/sysdeps/ieee754/ldbl-96/s_frexpl.c
+            return frexp80(scast(f80, x), e);
+        },
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_frexpl.c
+            return frexp128(scast(f128, x), e);
         },
         else => unreachable,
     }
@@ -143,7 +135,7 @@ fn frexp128(x: f128, e: *i32) f128 {
         e.* = -114;
     }
 
-    e.* += cast(i32, ix >> 48, .{}) -% 16382;
+    e.* += scast(i32, ix >> 48) -% 16382;
     hx = (hx & 0x8000ffffffffffff) | 0x3ffe000000000000;
     ldbl128.setMsw(&xx, hx);
 

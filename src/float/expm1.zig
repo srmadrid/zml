@@ -5,34 +5,26 @@ const roundeven = @import("roundeven.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn expm1(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.expm1: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return expm1(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, expm1_32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_expm1f.c
+            return expm1_32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, expm1_32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_expm1f.c
-                    return expm1_32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_expm1.c
-                    return expm1_64(x);
-                },
-                f80 => return cast(f80, expm1_128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_expm1l.c
-                    return expm1_128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_expm1.c
+            return expm1_64(scast(f64, x));
+        },
+        f80 => return scast(f80, expm1_128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_expm1l.c
+            return expm1_128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -59,7 +51,7 @@ fn expm1_32(x: f32) f32 {
     };
     const iln2: f64 = 0x1.71547652b82fep+5;
     const big: f64 = 0x1.8p52;
-    const z: f64 = cast(f64, x, .{});
+    const z: f64 = scast(f64, x);
     const ux: u32 = @bitCast(x);
     const ax: u32 = ux << 1;
     if (ax < 0x7c400000) { // |x| < 0.15625
@@ -82,7 +74,7 @@ fn expm1_32(x: f32) f32 {
         const z2: f64 = z * z;
         const z4: f64 = z2 * z2;
         const r: f64 = z + z2 * ((b[0] + z * b[1]) + z2 * (b[2] + z * b[3]) + z4 * ((b[4] + z * b[5]) + z2 * (b[6] + z * b[7])));
-        return cast(f32, r, .{});
+        return scast(f32, r);
     }
 
     if (ax >= 0x8562e430) { // |x| > 88.72
@@ -112,8 +104,8 @@ fn expm1_32(x: f32) f32 {
     const c0: f64 = c[0] + h * c[1];
     const sv: f64 = @bitCast(@as(u64, @bitCast(td[u & 0x1f])) +% ((u >> 5) << 52));
     var r: f64 = (c0 + h2 * c2) * sv - 1.0;
-    var ub: f32 = cast(f32, r, .{});
-    const lb: f32 = cast(f32, r - sv * 0x1.3b3p-33, .{});
+    var ub: f32 = scast(f32, r);
+    const lb: f32 = scast(f32, r - sv * 0x1.3b3p-33);
     if (ub != lb) {
         @branchHint(.unlikely);
         if (ux > 0xc18aa123) { // x < -17.32
@@ -128,7 +120,7 @@ fn expm1_32(x: f32) f32 {
         h2 = h * h;
         const w: f64 = s * h;
         r = (s - 1) + w * ((ch[0] + h * ch[1]) + h2 * ((ch[2] + h * ch[3]) + h2 * (ch[4] + h * ch[5])));
-        ub = cast(f32, r, .{});
+        ub = scast(f32, r);
     }
     return ub;
 }
@@ -197,8 +189,8 @@ fn expm1_64(x: f64) f64 {
                 k = -1;
             }
         } else {
-            k = cast(i32, invln2 * x + (if (xsb == 0) @as(f64, 0.5) else @as(f64, -0.5)), .{});
-            const t: f64 = cast(f64, k, .{});
+            k = scast(i32, invln2 * x + (if (xsb == 0) @as(f64, 0.5) else @as(f64, -0.5)));
+            const t: f64 = scast(f64, k);
             hi = x - t * ln2_hi; // t*ln2_hi is exact here
             lo = t * ln2_lo;
         }
@@ -337,7 +329,7 @@ fn expm1_128(x: f128) f128 {
     // Express x = ln 2 (k + remainder), remainder not exceeding 1/2.
     var xx: f128 = C1 + C2; // ln 2.
     var px: f128 = float.floor(0.5 + x / xx);
-    const k: i32 = cast(i32, px, .{});
+    const k: i32 = scast(i32, px);
     // remainder times ln 2
     var y: f128 = x - px * C1;
     y -= px * C2;

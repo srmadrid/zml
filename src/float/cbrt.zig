@@ -3,34 +3,26 @@ const types = @import("../types.zig");
 const float = @import("../float.zig");
 const classify = @import("classify.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn cbrt(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.cbrt: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return cbrt(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, cbrt32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_cbrtf.c
+            return cbrt32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, cbrt32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_cbrtf.c
-                    return cbrt32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_cbrt.c
-                    return cbrt64(x);
-                },
-                f80 => return cast(f80, cbrt128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_cbrtl.c
-                    return cbrt128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_cbrt.c
+            return cbrt64(scast(f64, x));
+        },
+        f80 => return scast(f80, cbrt128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_cbrtl.c
+            return cbrt128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -57,7 +49,7 @@ fn cbrt32(x: f32) f32 {
 
         const nz: i32 = @clz(au) - 7; // subnormal
         au <<= @as(u5, @intCast(nz));
-        e -%= cast(u32, nz -% 1, .{});
+        e -%= scast(u32, nz -% 1);
     }
 
     const mant: u32 = au & 0xffffff;
@@ -65,22 +57,22 @@ fn cbrt32(x: f32) f32 {
     const et: u32 = @divFloor(e, 3);
     const it: u32 = e % 3;
     var isc: u64 = @bitCast(escale[it]);
-    isc +%= cast(u64, (et -% 342), .{}) << 52;
-    isc |= cast(u64, sgn, .{}) << 63;
+    isc +%= scast(u64, (et -% 342)) << 52;
+    isc |= scast(u64, sgn) << 63;
     const cvt2: f64 = @bitCast(isc);
     const c: [8]f64 = .{
         0x1.2319d352ea5d5p-1,  0x1.67ad8ee258d1ap-1,  -0x1.9342edf9cbad9p-2,
         0x1.b6388fc510a75p-3,  -0x1.6002455599e2fp-4, 0x1.7b096936192c4p-6,
         -0x1.e5577187e8bf8p-9, 0x1.169ef81d6c34ep-12,
     };
-    const z: f64 = @bitCast(cast(u64, mant, .{}) << 28 | 0x3ff << 52);
+    const z: f64 = @bitCast(scast(u64, mant) << 28 | 0x3ff << 52);
     const r0: f64 = -0x1.9931c6c2d19d1p-6 / z;
     const z2: f64 = z * z;
     const z4: f64 = z2 * z2;
     var f: f64 = ((c[0] + z * c[1]) + z2 * (c[2] + z * c[3])) + z4 * ((c[4] + z * c[5]) + z2 * (c[6] + z * c[7])) + r0;
     var r: f64 = f * cvt2;
-    var ub: f32 = cast(f32, r, .{});
-    const lb: f32 = cast(f32, r - cvt2 * 1.4182e-9, .{});
+    var ub: f32 = scast(f32, r);
+    const lb: f32 = scast(f32, r - cvt2 * 1.4182e-9);
     if (ub == lb) {
         @branchHint(.likely);
         return ub;
@@ -91,13 +83,13 @@ fn cbrt32(x: f32) f32 {
     f -= (f * r0 * U0) * h;
     r = f * cvt2;
     var cvt1: u64 = @bitCast(r);
-    ub = cast(f32, r, .{});
+    ub = scast(f32, r);
     const m0: i64 = @bitCast(cvt1 << 19);
     const m1: i64 = m0 >> 63;
     if ((m0 ^ m1) < (1 << 31)) {
         @branchHint(.unlikely);
         cvt1 = (cvt1 + (1 << 31)) & 0xffffffff00000000;
-        ub = cast(f32, @as(f64, @bitCast(cvt1)), .{});
+        ub = scast(f32, @as(f64, @bitCast(cvt1)));
     }
     return ub;
 }

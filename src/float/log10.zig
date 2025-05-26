@@ -5,34 +5,26 @@ const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const erf_data = @import("erf_data.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn log10(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.log10: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return log10(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, log10_32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_log10f.c
+            return log10_32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, log10_32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_log10f.c
-                    return log10_32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_log10.c
-                    return log10_64(x);
-                },
-                f80 => return cast(f80, log10_128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_log10l.c
-                    return log10_128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_log10.c
+            return log10_64(scast(f64, x));
+        },
+        f80 => return scast(f80, log10_128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_log10l.c
+            return log10_128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -140,29 +132,29 @@ fn log10_32(x: f32) f32 {
     je = (je *% 0x4d104d4) >> 28;
     if (ux == @as(u32, @bitCast(st[je]))) {
         @branchHint(.unlikely);
-        return cast(f32, je, .{});
+        return scast(f32, je);
     }
 
-    var tz: f64 = @bitCast((cast(i64, m, .{}) | (1023 << 23)) << (52 - 23));
+    var tz: f64 = @bitCast((scast(i64, m) | (1023 << 23)) << (52 - 23));
     const z: f64 = tz * ix - 1;
     const z2: f64 = z * z;
-    var r: f64 = ((cast(f64, e, .{}) * 0x1.34413509f79ffp-2 + l) + z * b[0]) + z2 * (b[1] + z * b[2]);
-    var ub: f32 = cast(f32, r, .{});
-    const lb: f32 = cast(f32, r + 0x1.b008p-34, .{});
+    var r: f64 = ((scast(f64, e) * 0x1.34413509f79ffp-2 + l) + z * b[0]) + z2 * (b[1] + z * b[2]);
+    var ub: f32 = scast(f32, r);
+    const lb: f32 = scast(f32, r + 0x1.b008p-34);
     if (ub != lb) {
         @branchHint(.unlikely);
         var f: f64 = z * ((c[0] + z * c[1]) + z2 * ((c[2] + z * c[3]) + z2 * (c[4] + z * c[5] + z2 * c[6])));
-        f -= 0x1.0cee0ed4ca7e9p-54 * cast(f64, e, .{});
+        f -= 0x1.0cee0ed4ca7e9p-54 * scast(f64, e);
         f += l - tl[0];
-        const el: f64 = cast(f64, e, .{}) * 0x1.34413509f7ap-2;
+        const el: f64 = scast(f64, e) * 0x1.34413509f7ap-2;
         r = el + f;
-        ub = cast(f32, r, .{});
+        ub = scast(f32, r);
         tz = r;
         if (@as(u64, @bitCast(tz)) & ((1 << 28) - 1) == 0) {
             @branchHint(.unlikely);
             const dr: f64 = (el - r) + f;
             r += dr * 32;
-            ub = cast(f32, r, .{});
+            ub = scast(f32, r);
         }
     }
     return ub;
@@ -200,14 +192,14 @@ fn log10_64(x: f64) f64 {
         return x + x;
     }
 
-    k += cast(i32, (hx >> 52) - 1023, .{});
+    k += scast(i32, (hx >> 52) - 1023);
     var i: i64 = undefined;
     {
         @setRuntimeSafety(false);
-        i = cast(i64, (@as(u64, @intCast(k)) & 0x8000000000000000) >> 63, .{});
+        i = scast(i64, (@as(u64, @intCast(k)) & 0x8000000000000000) >> 63);
     }
     hx = (hx & 0x000fffffffffffff) | ((0x3ff - i) << 52);
-    var y: f64 = cast(f64, k + i, .{});
+    var y: f64 = scast(f64, k + i);
     if (y == 0)
         y = 0;
 
@@ -343,9 +335,9 @@ fn log10_128(x: f128) f128 {
     // and base 2 exponent by log10(2).
     z = y * L10EB;
     z += xx * L10EB;
-    z += cast(f128, e, .{}) * L102B;
+    z += scast(f128, e) * L102B;
     z += y * L10EA;
     z += xx * L10EA;
-    z += cast(f128, e, .{}) * L102A;
+    z += scast(f128, e) * L102A;
     return z;
 }

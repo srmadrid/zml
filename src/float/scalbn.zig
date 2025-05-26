@@ -6,37 +6,29 @@ const dbl64 = @import("dbl64.zig");
 const ldbl80 = @import("ldbl80.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn scalbn(x: anytype, n: i32) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.scalbn: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return scalbn(cast(EnsureFloat(@TypeOf(x)), x, .{}), n);
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, scalbn32(scast(f32, x), n)),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_scalbnf.c
+            return scalbn32(scast(f32, x), n);
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, scalbn32(cast(f32, x), n)),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_scalbnf.c
-                    return scalbn32(x, n);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_scalbn.c
-                    return scalbn64(x, n);
-                },
-                f80 => {
-                    // glibc/sysdeps/ieee754/ldbl-96/s_scalbnl.c
-                    return scalbn80(x, n);
-                },
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_scalbnl.c
-                    return scalbn128(x, n);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_scalbn.c
+            return scalbn64(scast(f64, x), n);
+        },
+        f80 => {
+            // glibc/sysdeps/ieee754/ldbl-96/s_scalbnl.c
+            return scalbn80(scast(f80, x), n);
+        },
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_scalbnl.c
+            return scalbn128(scast(f128, x), n);
         },
         else => unreachable,
     }

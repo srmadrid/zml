@@ -5,34 +5,26 @@ const exp2_data = @import("exp2_data.zig");
 const exp_data = @import("exp_data.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
-pub fn exp10(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+pub inline fn exp10(x: anytype) EnsureFloat(@TypeOf(x)) {
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.exp10: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return exp10(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, exp10_32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_exp10f.c
+            return exp10_32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, exp10_32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_exp10f.c
-                    return exp10_32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_exp10.c
-                    return exp10_64(x);
-                },
-                f80 => return cast(f80, exp10_128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_exp10l.c
-                    return exp10_128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_exp10.c
+            return exp10_64(scast(f64, x));
+        },
+        f80 => return scast(f80, exp10_128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_exp10l.c
+            return exp10_128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -43,7 +35,7 @@ inline fn top13(x: f32) u32 {
 }
 
 fn exp10_32(x: f32) f32 {
-    const xd: f64 = cast(f64, x, .{});
+    const xd: f64 = scast(f64, x);
     const abstop: u32 = top13(x) & 0xfff; // Ignore sign.
     if (abstop >= top13(38)) {
         @branchHint(.unlikely);
@@ -88,7 +80,7 @@ fn exp10_32(x: f32) f32 {
     var y: f64 = exp2_data.poly_scaled_32[2] * r + 1;
     y = z * r2 + y;
     y = y * s;
-    return cast(f32, y, .{});
+    return scast(f32, y);
 }
 
 fn special_case(sbits: u64, tmp: f64, ki: u64) f64 {

@@ -5,34 +5,26 @@ const erf_data = @import("erf_data.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn erf(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.erf: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return erf(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, erf32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_erff.c
+            return erf32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, erf32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_erff.c
-                    return erf32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_erf.c
-                    return erf64(x);
-                },
-                f80 => return cast(f80, erf128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_erfl.c
-                    return erf128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_erf.c
+            return erf64(scast(f64, x));
+        },
+        f80 => return scast(f80, erf128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_erfl.c
+            return erf128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -41,8 +33,8 @@ pub inline fn erf(x: anytype) EnsureFloat(@TypeOf(x)) {
 fn erf32(x: f32) f32 {
     const ax: f32 = float.abs(x);
     const ux: u32 = @bitCast(ax);
-    const s: f64 = cast(f64, x, .{});
-    var z: f64 = cast(f64, ax, .{});
+    const s: f64 = scast(f64, x);
+    var z: f64 = scast(f64, ax);
     // 0x407ad444 corresponds to x = 0x1.f5a888p+1 = 3.91921..., which is the
     // largest float such that erf(x) does not round to 1 (to nearest).
     if (ux > 0x407ad444) {
@@ -59,7 +51,7 @@ fn erf32(x: f32) f32 {
     }
 
     const v: f64 = float.floor(16 * z);
-    const i: u32 = cast(u32, 16 * ax, .{});
+    const i: u32 = scast(u32, 16 * ax);
     // 0x3ee00000 corresponds to x = 0.4375, for smaller x we have i < 7.
     if (ux < 0x3ee00000) {
         @branchHint(.unlikely);
@@ -79,7 +71,7 @@ fn erf32(x: f32) f32 {
         c0 += z4 * c2;
         c4 += z4 * c6;
         c0 += z8 * c4;
-        return cast(f32, s * c0, .{});
+        return scast(f32, s * c0);
     }
 
     z = (z - 0.03125) - 0.0625 * v;
@@ -93,7 +85,7 @@ fn erf32(x: f32) f32 {
     c0 += z2 * c2;
     c4 += z2 * c6;
     c0 += z4 * c4;
-    return cast(f32, float.copysign(c0, s), .{});
+    return scast(f32, float.copysign(c0, s));
 }
 
 fn erf64(x: f64) f64 {
@@ -102,8 +94,8 @@ fn erf64(x: f64) f64 {
     const ix: i32 = hx & 0x7fffffff;
     if (ix >= 0x7ff00000) { // erf(nan)=nan
         @setRuntimeSafety(false);
-        const i: i32 = cast(i32, (@as(u32, @intCast(hx)) >> 31) << 1, .{});
-        return cast(f64, (1 - i) + 1, .{}) / x; // erf(+-inf)=+-1
+        const i: i32 = scast(i32, (@as(u32, @intCast(hx)) >> 31) << 1);
+        return scast(f64, (1 - i) + 1) / x; // erf(+-inf)=+-1
     }
 
     if (ix < 0x3feb0000) { // |x|<0.84375
@@ -218,7 +210,7 @@ fn erf128(x: f128) f128 {
     const ix: i32 = sign & 0x7fffffff;
     if (ix >= 0x7fff0000) { // erf(nan)=nan
         const i: i32 = @bitCast(((@as(u32, @bitCast(sign)) & 0xffff0000) >> 31) << 1);
-        return cast(f128, (1 - i) + 1, .{}) / x; // erf(+-inf)=+-1
+        return scast(f128, (1 - i) + 1) / x; // erf(+-inf)=+-1
     }
 
     if (ix >= 0x3fff0000) { // |x| >= 1.0

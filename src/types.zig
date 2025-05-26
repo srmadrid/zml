@@ -180,6 +180,7 @@ pub fn isOneItemPointer(comptime T: type) bool {
 /// Checks if the input type is of fixed precision.
 pub fn isFixedPrecision(comptime T: type) bool {
     switch (numericType(T)) {
+        .bool => return true,
         .int => return true,
         .float => return true,
         .cfloat => return true,
@@ -992,6 +993,74 @@ pub fn Numeric(comptime T: type) type {
     return T;
 }
 
+/// Casts a value of any numeric type to any fixed precision numeric type. It is
+/// a more concise version of `cast` that does not require any options and cannot
+/// err.
+pub inline fn scast(
+    comptime T: type,
+    value: anytype,
+) T {
+    const I: type = @TypeOf(value);
+    const O: type = T;
+
+    comptime if (!isFixedPrecision(O))
+        @compileError("Expected a fixed precision type, but got " ++ @typeName(O));
+
+    if (I == O) {
+        return value;
+    }
+
+    const onumeric = numericType(O);
+    const inumeric = numericType(I);
+
+    switch (inumeric) {
+        .bool => switch (onumeric) {
+            .bool => unreachable,
+            .int => return if (value) 1 else 0,
+            .float => return if (value) 1 else 0,
+            .cfloat => return .{
+                .re = if (value) 1 else 0,
+                .im = 0,
+            },
+            else => unreachable,
+        },
+        .int => switch (onumeric) {
+            .bool => return if (value != 0) true else false,
+            .int => return @intCast(value),
+            .float => return @floatFromInt(value),
+            .cfloat => return .{
+                .re = @floatFromInt(value),
+                .im = 0,
+            },
+            else => unreachable,
+        },
+        .float => switch (onumeric) {
+            .bool => return if (value != 0) true else false,
+            .int => return @intFromFloat(value),
+            .float => return @floatCast(value),
+            .cfloat => return if (I == Scalar(O)) .{
+                .re = value,
+                .im = 0,
+            } else .{
+                .re = @floatCast(value),
+                .im = 0,
+            },
+            else => unreachable,
+        },
+        .cfloat => switch (onumeric) {
+            .bool => return if (value.re != 0 or value.im != 0) true else false,
+            .int => return @intFromFloat(value.re),
+            .float => return if (Scalar(I) == O) value.re else @floatCast(value.re),
+            .cfloat => return .{
+                .re = @floatCast(value.re),
+                .im = @floatCast(value.im),
+            },
+            else => unreachable,
+        },
+        else => unreachable,
+    }
+}
+
 /// Casts a value of any numeric type to any other numeric type. It does not
 /// check if the cast is valid, so it is up to the user to ensure that the cast
 /// is valid. The optional allocator is needed only if the type to be casted to
@@ -1002,26 +1071,26 @@ pub inline fn cast(
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
-) T {
-    const T1 = T;
-    const T2 = @TypeOf(value);
+) !T {
+    const I: type = @TypeOf(value);
+    const O: type = T;
 
     _ = options; // To be used to initialize arbitrary precision types
 
-    if (T1 == T2) {
+    if (I == O) {
         return value;
     }
 
-    const t1numeric = numericType(T1);
-    const t2numeric = numericType(T2);
+    const onumeric = numericType(O);
+    const inumeric = numericType(I);
 
-    switch (t2numeric) {
-        .bool => switch (t1numeric) {
-            .bool => return value,
-            .int => return @intFromBool(value),
-            .float => return @floatFromInt(@intFromBool(value)),
+    switch (inumeric) {
+        .bool => switch (onumeric) {
+            .bool => unreachable,
+            .int => return if (value) 1 else 0,
+            .float => return if (value) 1 else 0,
             .cfloat => return .{
-                .re = @floatFromInt(@intFromBool(value)),
+                .re = if (value) 1 else 0,
                 .im = 0,
             },
             .integer => @compileError("Not implemented yet: casting from bool to integer"),
@@ -1031,7 +1100,7 @@ pub inline fn cast(
             .expression => @compileError("Not implemented yet: casting from bool to expression"),
             .unsupported => unreachable,
         },
-        .int => switch (t1numeric) {
+        .int => switch (onumeric) {
             .bool => return if (value != 0) true else false,
             .int => return @intCast(value),
             .float => return @floatFromInt(value),
@@ -1046,11 +1115,14 @@ pub inline fn cast(
             .expression => @compileError("Not implemented yet: casting from int to expression"),
             .unsupported => unreachable,
         },
-        .float => switch (t1numeric) {
+        .float => switch (onumeric) {
             .bool => return if (value != 0) true else false,
             .int => return @intFromFloat(value),
             .float => return @floatCast(value),
-            .cfloat => return .{
+            .cfloat => return if (I == Scalar(O)) .{
+                .re = value,
+                .im = 0,
+            } else .{
                 .re = @floatCast(value),
                 .im = 0,
             },
@@ -1061,10 +1133,10 @@ pub inline fn cast(
             .expression => @compileError("Not implemented yet: casting from float to expression"),
             .unsupported => unreachable,
         },
-        .cfloat => switch (t1numeric) {
-            .bool => @compileError("Cannot cast cfloat to bool"),
-            .int => @compileError("Cannot cast cfloat to int"),
-            .float => @compileError("Cannot cast cfloat to float"),
+        .cfloat => switch (onumeric) {
+            .bool => return if (value.re != 0 or value.im != 0) true else false,
+            .int => return @intFromFloat(value.re),
+            .float => return if (Scalar(I) == O) value.re else @floatCast(value.re),
             .cfloat => return .{
                 .re = @floatCast(value.re),
                 .im = @floatCast(value.im),
@@ -1076,43 +1148,43 @@ pub inline fn cast(
             .expression => @compileError("Not implemented yet: casting from cfloat to expression"),
             .unsupported => unreachable,
         },
-        .integer => switch (t1numeric) {
+        .integer => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from integer to bool"),
             .int => @compileError("Not implemented yet: casting from integer to int"),
             .float => @compileError("Not implemented yet: casting from integer to float"),
             .cfloat => @compileError("Not implemented yet: casting from integer to cfloat"),
-            .integer => return value,
+            .integer => unreachable,
             .rational => @compileError("Not implemented yet: casting from integer to rational"),
             .real => @compileError("Not implemented yet: casting from integer to real"),
             .complex => @compileError("Not implemented yet: casting from integer to complex"),
             .expression => @compileError("Not implemented yet: casting from integer to expression"),
             .unsupported => unreachable,
         },
-        .rational => switch (t1numeric) {
+        .rational => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from rational to bool"),
             .int => @compileError("Not implemented yet: casting from rational to int"),
             .float => @compileError("Not implemented yet: casting from rational to float"),
             .cfloat => @compileError("Not implemented yet: casting from rational to cfloat"),
             .integer => @compileError("Not implemented yet: casting from rational to integer"),
-            .rational => return value,
+            .rational => unreachable,
             .real => @compileError("Not implemented yet: casting from rational to real"),
             .complex => @compileError("Not implemented yet: casting from rational to complex"),
             .expression => @compileError("Not implemented yet: casting from rational to expression"),
             .unsupported => unreachable,
         },
-        .real => switch (t1numeric) {
+        .real => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from real to bool"),
             .int => @compileError("Not implemented yet: casting from real to int"),
             .float => @compileError("Not implemented yet: casting from real to float"),
             .cfloat => @compileError("Not implemented yet: casting from real to cfloat"),
             .integer => @compileError("Not implemented yet: casting from real to integer"),
             .rational => @compileError("Not implemented yet: casting from real to rational"),
-            .real => return value,
+            .real => unreachable,
             .complex => @compileError("Not implemented yet: casting from real to complex"),
             .expression => @compileError("Not implemented yet: casting from real to expression"),
             .unsupported => unreachable,
         },
-        .complex => switch (t1numeric) {
+        .complex => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from complex to bool"),
             .int => @compileError("Not implemented yet: casting from complex to int"),
             .float => @compileError("Not implemented yet: casting from complex to float"),
@@ -1120,11 +1192,11 @@ pub inline fn cast(
             .integer => @compileError("Not implemented yet: casting from complex to integer"),
             .rational => @compileError("Not implemented yet: casting from complex to rational"),
             .real => @compileError("Not implemented yet: casting from complex to real"),
-            .complex => return value,
+            .complex => return value, // Will have to check the type held by the Complex
             .expression => @compileError("Not implemented yet: casting from complex to expression"),
             .unsupported => unreachable,
         },
-        .expression => switch (t1numeric) {
+        .expression => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from expression to bool"),
             .int => @compileError("Not implemented yet: casting from expression to int"),
             .float => @compileError("Not implemented yet: casting from expression to float"),
@@ -1133,7 +1205,7 @@ pub inline fn cast(
             .rational => @compileError("Not implemented yet: casting from expression to rational"),
             .real => @compileError("Not implemented yet: casting from expression to real"),
             .complex => @compileError("Not implemented yet: casting from expression to complex"),
-            .expression => return value,
+            .expression => unreachable,
             .unsupported => unreachable,
         },
         else => unreachable,

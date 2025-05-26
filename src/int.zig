@@ -1,5 +1,5 @@
 const types = @import("types.zig");
-const cast = types.cast;
+const scast = types.scast;
 const Coerce = types.Coerce;
 
 pub inline fn add(
@@ -20,9 +20,9 @@ pub inline fn add(
             @typeName(L) ++ " and " ++ @typeName(R));
 
     switch (options.mode) {
-        .default => return cast(C, left, .{}) + cast(C, right, .{}),
-        .wrap => return cast(C, left, .{}) +% cast(C, right, .{}),
-        .saturate => return cast(C, left, .{}) +| cast(C, right, .{}),
+        .default => return scast(C, left) + scast(C, right),
+        .wrap => return scast(C, left) +% scast(C, right),
+        .saturate => return scast(C, left) +| scast(C, right),
     }
 }
 
@@ -55,9 +55,9 @@ pub inline fn add_(
             @typeName(O) ++ " safely");
 
     switch (options.mode) {
-        .default => out.* = cast(O, cast(C, left, .{}) + cast(C, right, .{}), .{}),
-        .wrap => out.* = cast(O, cast(C, left, .{}) +% cast(C, right, .{}), .{}),
-        .saturate => out.* = cast(O, cast(C, left, .{}) +| cast(C, right, .{}), .{}),
+        .default => out.* = scast(O, scast(C, left) + scast(C, right)),
+        .wrap => out.* = scast(O, scast(C, left) +% scast(C, right)),
+        .saturate => out.* = scast(O, scast(C, left) +| scast(C, right)),
     }
 }
 
@@ -79,9 +79,9 @@ pub inline fn sub(
             @typeName(L) ++ " and " ++ @typeName(R));
 
     switch (options.mode) {
-        .default => return cast(C, left, .{}) - cast(C, right, .{}),
-        .wrap => return cast(C, left, .{}) -% cast(C, right, .{}),
-        .saturate => return cast(C, left, .{}) -| cast(C, right, .{}),
+        .default => return scast(C, left) - scast(C, right),
+        .wrap => return scast(C, left) -% scast(C, right),
+        .saturate => return scast(C, left) -| scast(C, right),
     }
 }
 
@@ -114,9 +114,9 @@ pub inline fn sub_(
             @typeName(O) ++ " safely");
 
     switch (options.mode) {
-        .default => out.* = cast(O, cast(C, left, .{}) - cast(C, right, .{}), .{}),
-        .wrap => out.* = cast(O, cast(C, left, .{}) -% cast(C, right, .{}), .{}),
-        .saturate => out.* = cast(O, cast(C, left, .{}) -| cast(C, right, .{}), .{}),
+        .default => out.* = scast(O, scast(C, left) - scast(C, right)),
+        .wrap => out.* = scast(O, scast(C, left) -% scast(C, right)),
+        .saturate => out.* = scast(O, scast(C, left) -| scast(C, right)),
     }
 }
 
@@ -138,9 +138,9 @@ pub inline fn mul(
             @typeName(L) ++ " and " ++ @typeName(R));
 
     switch (options.mode) {
-        .default => return cast(C, left, .{}) * cast(C, right, .{}),
-        .wrap => return cast(C, left, .{}) *% cast(C, right, .{}),
-        .saturate => return cast(C, left, .{}) *| cast(C, right, .{}),
+        .default => return scast(C, left) * scast(C, right),
+        .wrap => return scast(C, left) *% scast(C, right),
+        .saturate => return scast(C, left) *| scast(C, right),
     }
 }
 
@@ -173,9 +173,9 @@ pub inline fn mul_(
             @typeName(O) ++ " safely");
 
     switch (options.mode) {
-        .default => out.* = cast(O, cast(C, left, .{}) * cast(C, right, .{}), .{}),
-        .wrap => out.* = cast(O, cast(C, left, .{}) *% cast(C, right, .{}), .{}),
-        .saturate => out.* = cast(O, cast(C, left, .{}) *| cast(C, right, .{}), .{}),
+        .default => out.* = scast(O, scast(C, left) * scast(C, right)),
+        .wrap => out.* = scast(O, scast(C, left) *% scast(C, right)),
+        .saturate => out.* = scast(O, scast(C, left) *| scast(C, right)),
     }
 }
 
@@ -193,7 +193,7 @@ pub inline fn div(
         @compileError("int.div requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
             @typeName(L) ++ " and " ++ @typeName(R));
 
-    return cast(C, left, .{}) / cast(C, right, .{});
+    return scast(C, left) / scast(C, right);
 }
 
 pub inline fn div_(
@@ -221,7 +221,7 @@ pub inline fn div_(
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    out.* = cast(O, cast(C, left, .{}) / cast(C, right, .{}), .{});
+    out.* = scast(O, scast(C, left) / scast(C, right));
 }
 
 pub const abs = @import("int/abs.zig").abs;

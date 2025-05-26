@@ -1,50 +1,21 @@
 const cfloat = @import("../cfloat.zig");
 const types = @import("../types.zig");
 const Coerce = types.Coerce;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn pow(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(left)) or !types.isFixedPrecision(@TypeOf(right)) or (!types.isComplex(@TypeOf(left)) and !types.isComplex(@TypeOf(right))))
-        @compileError("At least one of left or right must be cfloat, the other must be an int, float, or cfloat");
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+    const C: type = Coerce(L, R);
 
-    switch (types.numericType(@TypeOf(left))) {
-        .int => {
-            switch (types.numericType(@TypeOf(right))) {
-                .int => unreachable,
-                .float => unreachable,
-                .cfloat => {
-                    return pow(cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}), cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        .float => {
-            switch (types.numericType(@TypeOf(right))) {
-                .int => unreachable,
-                .float => unreachable,
-                .cfloat => {
-                    return pow(cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}), cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                else => unreachable,
-            }
-        },
-        .cfloat => {
-            switch (types.numericType(@TypeOf(right))) {
-                .int => {
-                    return pow(cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}), cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                .float => {
-                    return pow(cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{}), cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{}));
-                },
-                .cfloat => {
-                    const l: Coerce(@TypeOf(left), @TypeOf(right)) = cast(Coerce(@TypeOf(left), @TypeOf(right)), left, .{});
-                    const r: Coerce(@TypeOf(left), @TypeOf(right)) = cast(Coerce(@TypeOf(left), @TypeOf(right)), right, .{});
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or
+        (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
+        @compileError("cfloat.pow requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
 
-                    return cfloat.exp(r.mul(cfloat.log(l)));
-                },
-                else => unreachable,
-            }
-        },
-        else => unreachable,
-    }
+    const l: C = scast(C, left);
+    const r: C = scast(C, right);
+
+    return cfloat.exp(r.mul(cfloat.log(l)));
 }

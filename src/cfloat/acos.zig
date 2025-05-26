@@ -7,49 +7,40 @@ const asinh = @import("asinh.zig");
 const Scalar = types.Scalar;
 const EnsureFloat = types.EnsureFloat;
 const Cfloat = @import("../cfloat.zig").Cfloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn acos(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("z must be an int, float or cfloat");
+        @compileError("cfloat.acos: z must be a bool, int, float or cfloat, got " ++ @typeName(@TypeOf(z)));
 
-    switch (types.numericType(@TypeOf(z))) {
-        .int => {
-            return acos(cast(Cfloat(EnsureFloat(Scalar(@TypeOf(z)))), z, .{}));
-        },
-        .float => {
-            return acos(cast(Cfloat(@TypeOf(z)), z, .{}));
-        },
-        .cfloat => {
-            const rcls: u32 = classify.classify(z.re);
-            const icls: u32 = classify.classify(z.im);
+    const zz: Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) = scast(Cfloat(EnsureFloat(Scalar(@TypeOf(z)))), z);
 
-            if (rcls <= classify.INFINITE or icls <= classify.INFINITE or (rcls == classify.ZERO and icls == classify.ZERO)) {
-                const y = cfloat.asin(z);
+    const rcls: u32 = classify.classify(zz.re);
+    const icls: u32 = classify.classify(zz.im);
 
-                var res: Scalar(@TypeOf(z)) = float.pi_2(Scalar(@TypeOf(z))) - y.re;
+    if (rcls <= classify.INFINITE or icls <= classify.INFINITE or (rcls == classify.ZERO and icls == classify.ZERO)) {
+        const y = cfloat.asin(zz);
 
-                if (res == 0)
-                    res = 0;
+        var res: Scalar(@TypeOf(zz)) = float.pi_2(Scalar(@TypeOf(zz))) - y.re;
 
-                return .{
-                    .re = res,
-                    .im = -y.im,
-                };
-            } else {
-                var y: @TypeOf(z) = .{
-                    .re = -z.im,
-                    .im = z.re,
-                };
+        if (res == 0)
+            res = 0;
 
-                y = asinh.kernel_asinh(y, 1);
+        return .{
+            .re = res,
+            .im = -y.im,
+        };
+    } else {
+        var y: @TypeOf(zz) = .{
+            .re = -zz.im,
+            .im = zz.re,
+        };
 
-                return .{
-                    .re = y.im,
-                    .im = y.re,
-                };
-            }
-        },
-        else => unreachable,
+        y = asinh.kernel_asinh(y, 1);
+
+        return .{
+            .re = y.im,
+            .im = y.re,
+        };
     }
 }

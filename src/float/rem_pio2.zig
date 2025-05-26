@@ -1,7 +1,7 @@
 const types = @import("../types.zig");
 const float = @import("../float.zig");
 const ldbl128 = @import("ldbl128.zig");
-const cast = types.cast;
+const scast = types.scast;
 
 const init_jk: [4]i32 = .{ 2, 3, 4, 6 }; // initial value for jk
 
@@ -25,8 +25,8 @@ fn recompute(x: *[8]f64, ipio2: *const [938]i32, j: *i32, i: *i32, f: *[20]f64, 
     j.* = jz.*;
     z.* = q[@intCast(jz.*)];
     while (j.* > 0) {
-        const fw: f64 = cast(f64, cast(i32, twon24 * z.*, .{}), .{});
-        iq[@intCast(i.*)] = cast(i32, z.* - two24 * fw, .{});
+        const fw: f64 = scast(f64, scast(i32, twon24 * z.*));
+        iq[@intCast(i.*)] = scast(i32, z.* - two24 * fw);
         z.* = q[@intCast(j.* - 1)] + fw;
 
         i.* += 1;
@@ -36,8 +36,8 @@ fn recompute(x: *[8]f64, ipio2: *const [938]i32, j: *i32, i: *i32, f: *[20]f64, 
     // compute n
     z.* = float.scalbn(z.*, q0); // actual value of z
     z.* -= 8 * float.floor(z.* * 0.125); // trim off integer >= 8
-    n.* = cast(i32, z.*, .{});
-    z.* -= cast(f64, n.*, .{});
+    n.* = scast(i32, z.*);
+    z.* -= scast(f64, n.*);
     ih.* = 0;
     if (q0 > 0) { // need iq[jz-1] to determine n
         i.* = (iq[@intCast(jz.* - 1)] >> @as(u5, @intCast(24 - q0)));
@@ -102,7 +102,7 @@ fn recompute(x: *[8]f64, ipio2: *const [938]i32, j: *i32, i: *i32, f: *[20]f64, 
 
             i.* = jz.* + 1;
             while (i.* <= jz.* + k) { // add q[jz+1] to q[jz+k]
-                f[@intCast(jx + i.*)] = cast(f64, ipio2[@intCast(jv + i.*)], .{});
+                f[@intCast(jx + i.*)] = scast(f64, ipio2[@intCast(jv + i.*)]);
 
                 j.* = 0;
                 var fw: f64 = 0;
@@ -146,7 +146,7 @@ pub fn rem_pio2_64(x: *[8]f64, y: *[3]f64, e0: i32, nx: i32, prec: i32, ipio2: *
     var i: i32 = 0;
     var f: [20]f64 = undefined;
     while (i <= m) {
-        f[@intCast(i)] = if (j < 0) 0 else cast(f64, ipio2[@intCast(j)], .{});
+        f[@intCast(i)] = if (j < 0) 0 else scast(f64, ipio2[@intCast(j)]);
 
         i += 1;
         j += 1;
@@ -189,13 +189,13 @@ pub fn rem_pio2_64(x: *[8]f64, y: *[3]f64, e0: i32, nx: i32, prec: i32, ipio2: *
     } else { // break z into 24-bit if necessary
         z = float.scalbn(z, -q0);
         if (z >= two24) {
-            const fw: f64 = cast(f64, cast(i32, twon24 * z, .{}), .{});
-            iq[@intCast(jz)] = cast(i32, z - two24 * fw, .{});
+            const fw: f64 = scast(f64, scast(i32, twon24 * z));
+            iq[@intCast(jz)] = scast(i32, z - two24 * fw);
             jz += 1;
             q0 += 24;
-            iq[@intCast(jz)] = cast(i32, fw, .{});
+            iq[@intCast(jz)] = scast(i32, fw);
         } else {
-            iq[@intCast(jz)] = cast(i32, z, .{});
+            iq[@intCast(jz)] = scast(i32, z);
         }
     }
 
@@ -208,7 +208,7 @@ pub fn rem_pio2_64(x: *[8]f64, y: *[3]f64, e0: i32, nx: i32, prec: i32, ipio2: *
     var fw: f64 = float.scalbn(@as(f64, 1), q0);
     i = jz;
     while (i >= 0) {
-        q[@intCast(i)] = fw * cast(f64, iq[@intCast(i)], .{});
+        q[@intCast(i)] = fw * scast(f64, iq[@intCast(i)]);
         fw *= twon24;
 
         i -= 1;
@@ -517,22 +517,22 @@ pub fn rem_pio2_128(x: f128, y: *[2]f128) i32 {
     // both integer and floating point units busy.
 
     var tx: [8]f64 = .{
-        cast(f64, ((ix >> 25) & 0x7fffff) | 0x800000, .{}),
-        cast(f64, (ix >> 1) & 0xffffff, .{}),
-        cast(f64, ((ix << 23) | @as(i64, @bitCast(lx >> 41))) & 0xffffff, .{}),
-        cast(f64, (lx >> 17) & 0xffffff, .{}),
-        cast(f64, (lx << 7) & 0xffffff, .{}),
+        scast(f64, ((ix >> 25) & 0x7fffff) | 0x800000),
+        scast(f64, (ix >> 1) & 0xffffff),
+        scast(f64, ((ix << 23) | @as(i64, @bitCast(lx >> 41))) & 0xffffff),
+        scast(f64, (lx >> 17) & 0xffffff),
+        scast(f64, (lx << 7) & 0xffffff),
         0,
         0,
         0,
     };
 
-    const n: i32 = rem_pio2_64(&tx, @ptrCast(&tx[5]), cast(i32, exp, .{}), if (((lx << 7) & 0xffffff) != 0) 5 else 4, 3, &two_over_pi);
+    const n: i32 = rem_pio2_64(&tx, @ptrCast(&tx[5]), scast(i32, exp), if (((lx << 7) & 0xffffff) != 0) 5 else 4, 3, &two_over_pi);
 
     // The result is now stored in 3 double values, we need to convert it into
     // two long double values.
-    const t: f128 = cast(f128, tx[6], .{}) + cast(f128, tx[7], .{});
-    const w: f128 = cast(f128, tx[5], .{});
+    const t: f128 = scast(f128, tx[6]) + scast(f128, tx[7]);
+    const w: f128 = scast(f128, tx[5]);
 
     if (hx >= 0) {
         y[0] = w + t;

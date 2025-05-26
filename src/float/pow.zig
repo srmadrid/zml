@@ -8,45 +8,29 @@ const exp_data = @import("exp_data.zig");
 const ldbl128 = @import("ldbl128.zig");
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn pow(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.pow: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    comptime if (!types.isFixedPrecision(@TypeOf(y)) or types.isComplex(@TypeOf(y)))
-        @compileError("y must be an int or float");
+    comptime if (types.numericType(@TypeOf(y)) != .int and types.numericType(@TypeOf(y)) != .float)
+        @compileError("float.pow: y must be an int or float, got " ++ @typeName(@TypeOf(y)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            switch (types.numericType(@TypeOf(y))) {
-                .int => @compileError("Power of two integers not implemented yet"),
-                .float => return pow(cast(Coerce(@TypeOf(x), @TypeOf(y)), x, .{}), cast(Coerce(@TypeOf(x), @TypeOf(y)), y, .{})),
-                else => unreachable,
-            }
+    switch (EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y)))) {
+        f16 => return scast(f16, pow32(scast(f32, x), scast(f32, y))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_powf.c
+            return pow32(scast(f32, x), scast(f32, y));
         },
-        .float => {
-            switch (types.numericType(@TypeOf(x))) {
-                .int => return pow(cast(Coerce(@TypeOf(x), @TypeOf(y)), x, .{}), cast(Coerce(@TypeOf(x), @TypeOf(y)), y, .{})),
-                .float => switch (Coerce(@TypeOf(x), @TypeOf(y))) {
-                    f16 => return cast(f16, pow32(cast(f32, x, .{}), cast(f32, y, .{})), .{}),
-                    f32 => {
-                        // glibc/sysdeps/ieee754/flt-32/e_powf.c
-                        return pow32(cast(f32, x, .{}), cast(f32, y, .{}));
-                    },
-                    f64 => {
-                        // glibc/sysdeps/ieee754/dbl-64/e_pow.c
-                        return pow64(cast(f64, x, .{}), cast(f64, y, .{}));
-                    },
-                    f80 => return cast(f80, pow128(cast(f128, x, .{}), cast(f128, y, .{})), .{}),
-                    f128 => {
-                        // glibc/sysdeps/ieee754/ldbl-128/e_powl.c
-                        return pow128(cast(f128, x, .{}), cast(f128, y, .{}));
-                    },
-                    else => unreachable,
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_pow.c
+            return pow64(scast(f64, x), scast(f64, y));
+        },
+        f80 => return scast(f80, pow128(scast(f128, x), scast(f128, y))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_powl.c
+            return pow128(scast(f128, x), scast(f128, y));
         },
         else => unreachable,
     }
@@ -59,7 +43,7 @@ inline fn log2_inline32(ix: u32) f64 {
     // The range is split into N subintervals.
     // The ith subinterval contains z and c is near its center.
     const tmp: u32 = ix -% 0x3f330000;
-    const i: i32 = cast(i32, @mod(tmp >> 19, 16), .{});
+    const i: i32 = scast(i32, @mod(tmp >> 19, 16));
     const top: u32 = tmp & 0xff800000;
     const iz: u32 = ix -% top;
     var k: i32 = undefined;
@@ -69,11 +53,11 @@ inline fn log2_inline32(ix: u32) f64 {
     }
     const invc: f64 = log2_data.tab_32[@intCast(i)].invc;
     const logc: f64 = log2_data.tab_32[@intCast(i)].logc;
-    const z: f64 = cast(f64, @as(f32, @bitCast(iz)), .{});
+    const z: f64 = scast(f64, @as(f32, @bitCast(iz)));
 
     // log2(x) = log1p(z/c-1)/ln2 + log2(c) + k
     const r: f64 = z * invc - 1;
-    const y0: f64 = logc + cast(f64, k, .{});
+    const y0: f64 = logc + scast(f64, k);
 
     // Pipelined polynomial evaluation to approximate log1p(r)/ln2.
     const r2: f64 = r * r;
@@ -98,7 +82,7 @@ inline fn exp2_inline32(xd: f64, sign_bias: u32) f64 {
 
     // exp2(x) = 2^(k/32) * 2^r ~= s * (C0*r^3 + C1*r^2 + C2*r + 1)
     var t: u64 = exp2_data.T_32[ki % 32];
-    const ski: u64 = ki + cast(u64, sign_bias, .{});
+    const ski: u64 = ki + scast(u64, sign_bias);
     t +%= ski << 47;
     const s: f64 = @bitCast(t);
     const z: f64 = exp2_data.poly_32[0] * r + exp2_data.poly_32[1];
@@ -112,7 +96,7 @@ inline fn exp2_inline32(xd: f64, sign_bias: u32) f64 {
 // Returns 0 if not int, 1 if odd int, 2 if even int.  The argument is
 // the bit representation of a non-zero finite floating-point value.
 inline fn checkint32(iy: u32) i32 {
-    const e: i32 = cast(i32, iy >> 23 & 0xff, .{});
+    const e: i32 = scast(i32, iy >> 23 & 0xff);
     if (e < 0x7f)
         return 0;
 
@@ -193,7 +177,7 @@ fn pow32(x: f32, y: f32) f32 {
     }
 
     const logx: f64 = log2_inline32(ix);
-    const ylogx: f64 = cast(f64, y, .{}) * logx; // Note: cannot overflow, y is single prec.
+    const ylogx: f64 = scast(f64, y) * logx; // Note: cannot overflow, y is single prec.
     if ((@as(u64, @bitCast(ylogx)) >> 47 & 0xffff) >= @as(u64, @bitCast(@as(f64, 126))) >> 47) {
         @branchHint(.unlikely);
         // |y*log(x)| >= 126.
@@ -214,7 +198,7 @@ fn pow32(x: f32, y: f32) f32 {
         if (ylogx < -149)
             return @as(f32, (if (sign_bias != 0) -0x1.4p-75 else 0x1.4p-75)) * 0x1.4p-75;
     }
-    return cast(f32, exp2_inline32(ylogx, sign_bias), .{});
+    return scast(f32, exp2_inline32(ylogx, sign_bias));
 }
 
 // Top 12 bits of a double (sign and exponent bits).
@@ -230,15 +214,15 @@ inline fn log_inline64(ix: u64, tail: *f64) f64 {
     // The range is split into N subintervals.
     // The ith subinterval contains z and c is near its center.
     const tmp: u64 = ix -% 0x3fe6955500000000;
-    const i: i32 = cast(i32, (tmp >> 45) % 128, .{});
+    const i: i32 = scast(i32, (tmp >> 45) % 128);
     var k: i32 = undefined;
     {
         @setRuntimeSafety(false);
-        k = cast(i32, @as(i64, @intCast(tmp)) >> 52, .{}); // arithmetic shift
+        k = scast(i32, @as(i64, @intCast(tmp)) >> 52); // arithmetic shift
     }
     const iz: u64 = ix -% (tmp & 0xfff << 52);
     const z: f64 = @bitCast(iz);
-    const kd: f64 = cast(f64, k, .{});
+    const kd: f64 = scast(f64, k);
 
     // log(x) = k*Ln2 + log(c) + log1p(z/c-1).
     const invc: f64 = pow_data.tab_64[@intCast(i)].invc;
@@ -379,7 +363,7 @@ inline fn exp_inline64(x: f64, xtail: f64, sign_bias: u32) f64 {
     r += xtail;
     // 2^(k/N) ~= scale * (1 + tail).
     const idx: u64 = 2 * (ki % 128);
-    const top: u64 = (ki + cast(u64, sign_bias, .{})) << 45;
+    const top: u64 = (ki + scast(u64, sign_bias)) << 45;
     const tail: f64 = @bitCast(exp_data.T_64[idx]);
     // This is only a valid scale when -1023*N < k < 1024*N.
     const sbits: u64 = exp_data.T_64[idx + 1] +% top;
@@ -403,7 +387,7 @@ inline fn exp_inline64(x: f64, xtail: f64, sign_bias: u32) f64 {
 // Returns 0 if not int, 1 if odd int, 2 if even int.  The argument is
 // the bit representation of a non-zero finite floating-point value.
 inline fn checkint64(iy: u64) i32 {
-    const e: i32 = cast(i32, iy >> 52 & 0x7ff, .{});
+    const e: i32 = scast(i32, iy >> 52 & 0x7ff);
     if (e < 0x3ff)
         return 0;
 
@@ -788,7 +772,7 @@ fn pow128(x: f128, y: f128) f128 {
     const z_h: f128 = cp_h * p_h; // cp_h+cp_l = 2/(3*log2)
     const z_l: f128 = cp_l * p_h + p_l * cp + dp_l[@intCast(k)];
     // log2(ax) = (s+..)*2/(3*log2) = n + dp_h + z_h + z_l
-    var t: f128 = cast(f128, n, .{});
+    var t: f128 = scast(f128, n);
     var t1: f128 = (((z_h + z_l) + dp_h[@intCast(k)]) + t);
     o = @bitCast(t1);
     o.w3 = 0;
@@ -830,8 +814,8 @@ fn pow128(x: f128, y: f128) f128 {
     k = (i >> 16) - 0x3fff;
     n = 0;
     if (i > 0x3ffe0000) { // if |z| > 0.5, set n = [z+0.5]
-        n = cast(i32, float.floor(z + 0.5), .{});
-        t = cast(f128, n, .{});
+        n = scast(i32, float.floor(z + 0.5));
+        t = scast(f128, n);
         p_h -= t;
     }
     t = p_l + p_h;

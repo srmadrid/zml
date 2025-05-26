@@ -8,34 +8,26 @@ const dla = @import("dla.zig");
 const ldbl128 = @import("ldbl128.zig");
 const rem_pio2 = @import("rem_pio2.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn tan(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.tan: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return tan(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, tan32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_tanf.c
+            return tan32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, tan32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_tanf.c
-                    return tan32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_tan.c
-                    return tan64(x);
-                },
-                f80 => return cast(f80, tan128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_tanl.c
-                    return tan128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_tan.c
+            return tan64(scast(f64, x));
+        },
+        f80 => return scast(f80, tan128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_tanl.c
+            return tan128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -44,11 +36,11 @@ pub inline fn tan(x: anytype) EnsureFloat(@TypeOf(x)) {
 // argument reduction
 // for |z| < 2^28, return r such that 2/pi*x = q + r
 inline fn rltl(z: f32, q: *i32) f64 {
-    const x: f64 = cast(f64, z, .{});
+    const x: f64 = scast(f64, z);
     const idl: f64 = -0x1.b1bbead603d8bp-32 * x;
     const idh: f64 = 0x1.45f306ep-1 * x;
     const id: f64 = roundeven.roundeven_finite(idh);
-    q.* = cast(i32, id, .{});
+    q.* = scast(i32, id);
     return (idh - id) + idl;
 }
 
@@ -60,19 +52,19 @@ fn rbig(u: u32, q: *i32) f64 {
         0xfc2757d1f534ddc0, 0xa2f9836e4e441529,
     };
 
-    const e: i32 = cast(i32, (u >> 23) & 0xff, .{});
-    const m: u64 = cast(u64, (u & (~@as(u32, 0) >> 9)) | 1 << 23, .{});
-    const p0: u128 = cast(u128, m, .{}) * cast(u128, ipi[0], .{});
-    var p1: u128 = cast(u128, m, .{}) * cast(u128, ipi[1], .{});
+    const e: i32 = scast(i32, (u >> 23) & 0xff);
+    const m: u64 = scast(u64, (u & (~@as(u32, 0) >> 9)) | 1 << 23);
+    const p0: u128 = scast(u128, m) * scast(u128, ipi[0]);
+    var p1: u128 = scast(u128, m) * scast(u128, ipi[1]);
     p1 += p0 >> 64;
-    var p2: u128 = cast(u128, m, .{}) * cast(u128, ipi[2], .{});
+    var p2: u128 = scast(u128, m) * scast(u128, ipi[2]);
     p2 += p1 >> 64;
-    var p3: u128 = cast(u128, m, .{}) * cast(u128, ipi[3], .{});
+    var p3: u128 = scast(u128, m) * scast(u128, ipi[3]);
     p3 += p2 >> 64;
-    const p3h: u64 = cast(u64, p3 >> 64, .{});
-    const p3l: u64 = cast(u64, p3 & 0xffffffffffffffff, .{});
-    const p2l: u64 = cast(u64, p2 & 0xffffffffffffffff, .{});
-    const p1l: u64 = cast(u64, p1 & 0xffffffffffffffff, .{});
+    const p3h: u64 = scast(u64, p3 >> 64);
+    const p3l: u64 = scast(u64, p3 & 0xffffffffffffffff);
+    const p2l: u64 = scast(u64, p2 & 0xffffffffffffffff);
+    const p1l: u64 = scast(u64, p1 & 0xffffffffffffffff);
     const k: i32 = e - 127;
     const s: i32 = k - 23;
     // in ctanf(), rbig() is called in the case 127+28 <= e < 0xff
@@ -94,7 +86,7 @@ fn rbig(u: u32, q: *i32) f64 {
     sgn >>= 31;
     const sm: i32 = @truncate(a >> 63);
     i -= sm;
-    const z: f64 = cast(f64, a ^ sgn, .{}) * 0x1p-64;
+    const z: f64 = scast(f64, a ^ sgn) * 0x1p-64;
     i = (i ^ sgn) - sgn;
     q.* = i;
     return z;
@@ -102,7 +94,7 @@ fn rbig(u: u32, q: *i32) f64 {
 
 fn tan32(x: f32) f32 {
     const t: u32 = @bitCast(x);
-    const e: i32 = cast(i32, (t >> 23) & 0xff, .{});
+    const e: i32 = scast(i32, (t >> 23) & 0xff);
 
     var i: i32 = undefined;
     var z: f64 = undefined;
@@ -171,7 +163,7 @@ fn tan32(x: f32) f32 {
         const sgn: u32 = t >> 31;
         var j: i32 = 0;
         while (j < 8) {
-            if (st[@intCast(j)].arg == cast(f32, ax, .{})) {
+            if (st[@intCast(j)].arg == scast(f32, ax)) {
                 @branchHint(.unlikely);
 
                 if (sgn != 0) {
@@ -185,7 +177,7 @@ fn tan32(x: f32) f32 {
         }
     }
 
-    return cast(f32, r1, .{});
+    return scast(f32, r1);
 }
 
 // tan with max ULP of ~0.619 based on random sampling.
@@ -225,7 +217,7 @@ fn tan64(x: f64) f64 {
 
     // (III) The case 0.0608 < abs(x) <= 0.787
     if (w <= @as(f64, @bitCast(utan.g3))) {
-        const i: u32 = cast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * w, .{});
+        const i: u32 = scast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * w);
         const z: f64 = w - @as(f64, @bitCast(utan.xfg[i][0]));
         const z2: f64 = z * z;
         const s: f64 = if (x < 0) -1 else 1;
@@ -297,7 +289,7 @@ fn tan64(x: f64) f64 {
         }
 
         // (VII) The case 0.787 < abs(x) <= 25,    0.0608 < abs(y) <= 0.787
-        const i: u32 = cast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * ya, .{});
+        const i: u32 = scast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * ya);
         const z: f64 = (ya - @as(f64, @bitCast(utan.xfg[i][0]))) + yya;
         const z2: f64 = z * z;
         const pz: f64 = z + z * z2 * (@as(f64, @bitCast(utan.e0)) + z2 * @as(f64, @bitCast(utan.e1)));
@@ -386,7 +378,7 @@ fn tan64(x: f64) f64 {
         }
 
         // (IX) The case 25 < abs(x) <= 1e8,    0.0608 < abs(y) <= 0.787
-        const i: u32 = cast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * ya, .{});
+        const i: u32 = scast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * ya);
         const z: f64 = (ya - @as(f64, @bitCast(utan.xfg[i][0]))) + yya;
         const z2: f64 = z * z;
         const pz: f64 = z + z * z2 * (@as(f64, @bitCast(utan.e0)) + z2 * @as(f64, @bitCast(utan.e1)));
@@ -466,7 +458,7 @@ fn tan64(x: f64) f64 {
     }
 
     // (XI) The case 1e8 < abs(x) < 2**1024,    0.0608 < abs(y) <= 0.787
-    const i: u32 = cast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * ya, .{});
+    const i: u32 = scast(u32, @as(f64, @bitCast(utan.mfftnhf)) + 256 * ya);
     const z: f64 = (ya - @as(f64, @bitCast(utan.xfg[i][0]))) + yya;
     const z2: f64 = z * z;
     const pz: f64 = z + z * z2 * (@as(f64, @bitCast(utan.e0)) + z2 * @as(f64, @bitCast(utan.e1)));
@@ -511,7 +503,7 @@ fn kernel_tan128(x: f128, y: f128, iy: i32) f128 {
     var u: ldbl128.ieee_f128_shape32 = @bitCast(x);
     const ix: i32 = @bitCast(u.w0 & 0x7fffffff);
     if (ix < 0x3fc60000) { // x < 2**-57
-        if (cast(i32, x, .{}) == 0) { // generate inexact
+        if (scast(i32, x) == 0) { // generate inexact
             if ((ix | @as(i32, @bitCast(u.w1)) | @as(i32, @bitCast(u.w2)) | @as(i32, @bitCast(u.w3)) | (iy + 1)) == 0) {
                 return 1 / float.abs(x);
             } else if (iy == 1) {
@@ -556,7 +548,7 @@ fn kernel_tan128(x: f128, y: f128, iy: i32) f128 {
     r += TH * s;
     w = xx + r;
     if (ix >= 0x3ffe5942) {
-        v = cast(f128, iy, .{});
+        v = scast(f128, iy);
         w = (v - 2.0 * (xx - (w * w / (w + v) - r)));
         if (sign < 0)
             w = -w;

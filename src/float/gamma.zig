@@ -7,30 +7,23 @@ const lgamma = @import("lgamma.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
-pub fn gamma(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+pub inline fn gamma(x: anytype) EnsureFloat(@TypeOf(x)) {
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.gamma: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return gamma(cast(EnsureFloat(@TypeOf(x)), x, .{}));
-        },
-        .float => {
-            var local_signgam: i32 = undefined;
-            const y: @TypeOf(x) = switch (@TypeOf(x)) {
-                f16 => cast(f16, gamma_r32(cast(f32, x, .{}), &local_signgam), .{}),
-                f32 => gamma_r32(x, &local_signgam),
-                f64 => gamma_r64(x, &local_signgam),
-                f80 => cast(f80, gamma_r128(cast(f128, x, .{}), &local_signgam), .{}),
-                f128 => gamma_r128(x, &local_signgam),
-                else => unreachable,
-            };
-            return if (local_signgam < 0) -y else y;
-        },
+    var local_signgam: i32 = undefined;
+    const y: EnsureFloat(@TypeOf(x)) = switch (EnsureFloat(@TypeOf(x))) {
+        f16 => scast(f16, gamma_r32(scast(f32, x), &local_signgam)),
+        f32 => gamma_r32(scast(f32, x), &local_signgam),
+        f64 => gamma_r64(scast(f64, x), &local_signgam),
+        f80 => scast(f80, gamma_r128(scast(f128, x), &local_signgam)),
+        f128 => gamma_r128(scast(f128, x), &local_signgam),
         else => unreachable,
-    }
+    };
+
+    return if (local_signgam < 0) -y else y;
 }
 
 fn gamma_r32(x: f32, signgamp: *i32) f32 {
@@ -64,12 +57,12 @@ fn gamma_r32(x: f32, signgamp: *i32) f32 {
         return x + x; // x=NaN
     }
 
-    var z: f64 = cast(f64, x, .{});
+    var z: f64 = scast(f64, x);
     if (ax < 0x6d000000) { // |x| < 0x1p-18
         @branchHint(.unlikely);
         const d: f64 = (0x1.fa658c23b1578p-1 - 0x1.d0a118f324b63p-1 * z) * z - 0x1.2788cfc6fb619p-1;
         const f: f64 = 1 / z + d;
-        const r: f32 = cast(f32, f, .{});
+        const r: f32 = scast(f32, f);
         const rt: u64 = @bitCast(f);
         if (((rt + 2) & 0xfffffff) < 4) {
             var i: u32 = 0;
@@ -94,7 +87,7 @@ fn gamma_r32(x: f32, signgamp: *i32) f32 {
 
     // compute k only after the overflow check, otherwise the case to integer
     // might overflow
-    const k: i32 = cast(i32, fx, .{});
+    const k: i32 = scast(i32, fx);
     if (fx == x) { // x is integer
         @branchHint(.unlikely);
         if (x == 0)
@@ -113,7 +106,7 @@ fn gamma_r32(x: f32, signgamp: *i32) f32 {
             x0 += 1;
         }
 
-        return cast(f32, t0, .{});
+        return scast(f32, t0);
     }
 
     if (x < -42.0) { // negative non-integer
@@ -136,7 +129,7 @@ fn gamma_r32(x: f32, signgamp: *i32) f32 {
     const d4: f64 = d2 * d2;
     const d8: f64 = d4 * d4;
     var f: f64 = (c[0] + d * c[1]) + d2 * (c[2] + d * c[3]) + d4 * ((c[4] + d * c[5]) + d2 * (c[6] + d * c[7])) + d8 * ((c[8] + d * c[9]) + d2 * (c[10] + d * c[11]) + d4 * ((c[12] + d * c[13]) + d2 * (c[14] + d * c[15])));
-    const jm: i32 = cast(i32, float.abs(i), .{});
+    const jm: i32 = scast(i32, float.abs(i));
     var w: f64 = 1;
     if (jm != 0) {
         z -= 0.5 + step * 0.5;
@@ -155,7 +148,7 @@ fn gamma_r32(x: f32, signgamp: *i32) f32 {
 
     f *= w;
     const rt: u64 = @bitCast(f);
-    const r: f32 = cast(f32, f, .{});
+    const r: f32 = scast(f32, f);
     // Deal with exceptional cases.
     if (((rt + 2) & 0xfffffff) < 8) {
         @branchHint(.unlikely);
@@ -182,9 +175,9 @@ fn gamma_product64(x: f64, x_eps: f64, n: i32, eps: *f64) f64 {
     eps.* = x_eps / x;
     var i: i32 = 1;
     while (i < n) {
-        eps.* += x_eps / (x + cast(f64, i, .{}));
+        eps.* += x_eps / (x + scast(f64, i));
         var lo: f64 = undefined;
-        mul_split.mul_split64(&ret, &lo, ret, x + cast(f64, i, .{}));
+        mul_split.mul_split64(&ret, &lo, ret, x + scast(f64, i));
         eps.* += lo / ret;
 
         i += 1;
@@ -221,7 +214,7 @@ fn gamma_positive64(x: f64, exp2_adj: *i32) f64 {
         const n: f64 = float.ceil(x - 1.5);
         const x_adj: f64 = x - n;
         var eps: f64 = undefined;
-        const prod: f64 = gamma_product64(x_adj, 0, cast(i32, n, .{}), &eps);
+        const prod: f64 = gamma_product64(x_adj, 0, scast(i32, n), &eps);
         return float.exp(lgamma.lgamma_r64(x_adj, &local_signgam)) * prod * (1 + eps);
     } else {
         var eps: f64 = 0;
@@ -234,7 +227,7 @@ fn gamma_positive64(x: f64, exp2_adj: *i32) f64 {
             const n: f64 = float.ceil(12 - x);
             x_adj = x + n;
             x_eps = (x - (x_adj - n));
-            prod = gamma_product64(x_adj - n, x_eps, cast(i32, n, .{}), &eps);
+            prod = gamma_product64(x_adj - n, x_eps, scast(i32, n), &eps);
         }
         // The result is now gamma (X_ADJ + X_EPS) / (PROD * (1 + EPS)).
         // Compute gamma (X_ADJ + X_EPS) using Stirling's approximation,
@@ -249,10 +242,10 @@ fn gamma_positive64(x: f64, exp2_adj: *i32) f64 {
             x_adj_mant *= 2;
         }
 
-        exp2_adj.* = x_adj_log2 * cast(i32, x_adj_int, .{});
+        exp2_adj.* = x_adj_log2 * scast(i32, x_adj_int);
         var h1: f64 = undefined;
         var l1: f64 = undefined;
-        mul_split.mul_split64(&h1, &l1, float.pow(x_adj_mant, x_adj), float.exp2(cast(f64, x_adj_log2, .{}) * x_adj_frac));
+        mul_split.mul_split64(&h1, &l1, float.pow(x_adj_mant, x_adj), float.exp2(scast(f64, x_adj_log2) * x_adj_frac));
         var h2: f64 = undefined;
         var l2: f64 = undefined;
         mul_split.mul_split64(&h2, &l2, float.exp(-x_adj), float.sqrt(2 * std.math.pi / x_adj));
@@ -393,9 +386,9 @@ fn gamma_product128(x: f128, x_eps: f128, n: i32, eps: *f128) f128 {
     eps.* = x_eps / x;
     var i: i32 = 1;
     while (i < n) {
-        eps.* += x_eps / (x + cast(f128, i, .{}));
+        eps.* += x_eps / (x + scast(f128, i));
         var lo: f128 = undefined;
-        mul_split.mul_split128(&ret, &lo, ret, x + cast(f128, i, .{}));
+        mul_split.mul_split128(&ret, &lo, ret, x + scast(f128, i));
         eps.* += lo / ret;
 
         i += 1;
@@ -440,7 +433,7 @@ fn gamma_positive128(x: f128, exp2_adj: *i32) f128 {
         const n: f128 = float.ceil(x - 1.5);
         const x_adj: f128 = x - n;
         var eps: f128 = undefined;
-        const prod: f128 = gamma_product128(x_adj, 0, cast(i32, n, .{}), &eps);
+        const prod: f128 = gamma_product128(x_adj, 0, scast(i32, n), &eps);
         return float.exp(lgamma.lgamma_r128(x_adj, &local_signgam)) * prod * (1 + eps);
     } else {
         var eps: f128 = 0;
@@ -453,7 +446,7 @@ fn gamma_positive128(x: f128, exp2_adj: *i32) f128 {
             const n: f128 = float.ceil(24 - x);
             x_adj = x + n;
             x_eps = (x - (x_adj - n));
-            prod = gamma_product128(x_adj - n, x_eps, cast(i32, n, .{}), &eps);
+            prod = gamma_product128(x_adj - n, x_eps, scast(i32, n), &eps);
         }
         // The result is now gamma (X_ADJ + X_EPS) / (PROD * (1 + EPS)).
         // Compute gamma (X_ADJ + X_EPS) using Stirling's approximation,
@@ -469,8 +462,8 @@ fn gamma_positive128(x: f128, exp2_adj: *i32) f128 {
             x_adj_mant *= 2;
         }
 
-        exp2_adj.* = x_adj_log2 * cast(i32, x_adj_int, .{});
-        const ret: f128 = float.pow(x_adj_mant, x_adj) * float.exp2(cast(f128, x_adj_log2, .{}) * x_adj_frac) * float.exp(-x_adj) * float.sqrt(2 * std.math.pi / x_adj) / prod;
+        exp2_adj.* = x_adj_log2 * scast(i32, x_adj_int);
+        const ret: f128 = float.pow(x_adj_mant, x_adj) * float.exp2(scast(f128, x_adj_log2) * x_adj_frac) * float.exp(-x_adj) * float.sqrt(2 * std.math.pi / x_adj) / prod;
         exp_adj += x_eps * float.log(x_adj);
         var bsum: f128 = gamma_coeff[13];
         const x_adj2: f128 = x_adj * x_adj;

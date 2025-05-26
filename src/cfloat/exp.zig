@@ -3,11 +3,11 @@ const types = @import("../types.zig");
 const float = @import("../float.zig");
 const classify = @import("../float/classify.zig");
 const Scalar = types.Scalar;
-const cast = types.cast;
+const scast = types.scast;
 
 pub fn exp(z: anytype) @TypeOf(z) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)) or types.numericType(@TypeOf(z)) == .int or types.numericType(@TypeOf(z)) == .float)
-        @compileError("z must be a cfloat");
+    comptime if (types.numericType(@TypeOf(z)) != .cfloat)
+        @compileError("cfloat.acos: z must be a cfloat, got " ++ @typeName(@TypeOf(z)));
 
     const rcls: u32 = classify.classify(z.re);
     const icls: u32 = classify.classify(z.im);
@@ -18,7 +18,7 @@ pub fn exp(z: anytype) @TypeOf(z) {
         if (icls >= classify.ZERO) {
             @branchHint(.likely);
             // Imaginary part is finite.
-            const t: Scalar(@TypeOf(z)) = cast(Scalar(@TypeOf(z)), cast(i32, (std.math.floatExponentMax(Scalar(@TypeOf(z))) - 1) * float.ln2(Scalar(@TypeOf(z))), .{}), .{});
+            const t: Scalar(@TypeOf(z)) = scast(Scalar(@TypeOf(z)), scast(i32, (std.math.floatExponentMax(Scalar(@TypeOf(z))) - 1) * float.ln2(Scalar(@TypeOf(z)))));
             var siniz: Scalar(@TypeOf(z)) = undefined;
             var cosiz: Scalar(@TypeOf(z)) = undefined;
 

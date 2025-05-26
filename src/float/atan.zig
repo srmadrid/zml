@@ -5,34 +5,26 @@ const dla = @import("dla.zig");
 const atnat = @import("atnat.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn atan(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.atan: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return atan(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, atan32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_atanf.c
+            return atan32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, atan32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_atanf.c
-                    return atan32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_atan.c
-                    return atan64(x);
-                },
-                f80 => return cast(f80, atan128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_atanl.c
-                    return atan128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_atan.c
+            return atan64(scast(f64, x));
+        },
+        f80 => return scast(f80, atan128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_atanl.c
+            return atan128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -50,7 +42,7 @@ fn atan32(x: f32) f32 {
         if (ta > 0x7f800000)
             return x + x; // nan
 
-        return cast(f32, float.copysign(pi2, x), .{});
+        return scast(f32, float.copysign(pi2, x));
     }
     if (e < 127 - 13) {
         @branchHint(.unlikely);
@@ -65,7 +57,7 @@ fn atan32(x: f32) f32 {
     }
 
     // now |x| >= 0x1p-13
-    var z: f64 = cast(f64, x, .{});
+    var z: f64 = scast(f64, x);
     if (gt)
         z = 1 / z; // gt is non-zero for |x| >= 1
 
@@ -105,7 +97,7 @@ fn atan32(x: f32) f32 {
     cd0 += z8 * cd4;
     var r: f64 = cn0 / cd0;
     if (!gt)
-        return cast(f32, r, .{}); // for |x| < 1, (float) r is correctly rounded
+        return scast(f32, r); // for |x| < 1, (float) r is correctly rounded
 
     const PI_OVER2_H: f64 = 0x1.9p0;
     const PI_OVER2_L: f64 = 0x1.0fdaa22168c23p-7;
@@ -116,7 +108,7 @@ fn atan32(x: f32) f32 {
     // With sign(z)*PI - r, where PI is a double approximation of pi to nearest,
     // it fails for x=0x1.ddf9f6p+0 and rounding upward. */
     r = float.copysign(PI_OVER2_L, z) - r + float.copysign(PI_OVER2_H, z);
-    return cast(f32, r, .{});
+    return scast(f32, r);
 }
 
 fn atan64(x: f64) f64 {
@@ -155,7 +147,7 @@ fn atan64(x: f64) f64 {
                 return y;
             }
         } else { // b <= u < c
-            var i: i32 = cast(i32, (TWO52 + 256 * u) - TWO52, .{});
+            var i: i32 = scast(i32, (TWO52 + 256 * u) - TWO52);
             i -= 16;
             const z: f64 = u - @as(f64, @bitCast(atnat.cij[@intCast(i)][0]));
             var yy: f64 = @as(f64, @bitCast(atnat.cij[@intCast(i)][5])) + z * @as(f64, @bitCast(atnat.cij[@intCast(i)][6]));
@@ -176,7 +168,7 @@ fn atan64(x: f64) f64 {
             var t2: f64 = undefined;
             dla.emulv(w, u, &t1, &t2);
             const ww: f64 = w * ((1 - t1) - t2);
-            var i: i32 = cast(i32, (TWO52 + 256 * w) - TWO52, .{});
+            var i: i32 = scast(i32, (TWO52 + 256 * w) - TWO52);
             i -= 16;
             const z: f64 = (w - @as(f64, @bitCast(atnat.cij[@intCast(i)][0]))) + ww;
 
@@ -391,8 +383,8 @@ fn atan128(x: f128) f128 {
         // Index of nearest table element.
         // Roundoff to integer is asymmetrical to avoid cancellation when t < 0
         // (cf. fdlibm).
-        k = cast(i32, 8 * xx + 0.25, .{});
-        u = 0.125 * cast(f128, k, .{});
+        k = scast(i32, 8 * xx + 0.25);
+        u = 0.125 * scast(f128, k);
         // Small arctan argument.
         t = (xx - u) / (1 + xx * u);
     }

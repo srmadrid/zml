@@ -17,6 +17,7 @@ pub inline fn add(
     left: anytype,
     right: anytype,
     options: struct {
+        comptime mode: int.Mode = .default,
         allocator: ?std.mem.Allocator = null,
     },
 ) !Coerce(@TypeOf(left), @TypeOf(right)) {
@@ -28,12 +29,11 @@ pub inline fn add(
         @compileError("zml.add not implemented for ndarrays or slices yet.");
     // return ndarray.add(left, right, options.allocator);
 
-    _ = options;
     switch (types.numericType(L)) {
         .bool => {
             switch (types.numericType(R)) {
                 .bool => @compileError("add not defined for two bools"),
-                .int => return int.add(left, right),
+                .int => return int.add(left, right, .{ .mode = options.mode }),
                 .float => return float.add(left, right),
                 .cfloat => return cfloat.add(left, right),
                 .unsupported => unreachable,
@@ -42,7 +42,7 @@ pub inline fn add(
         },
         .int => {
             switch (types.numericType(R)) {
-                .bool, .int => return int.add(left, right),
+                .bool, .int => return int.add(left, right, .{ .mode = options.mode }),
                 .float => return float.add(left, right),
                 .cfloat => return cfloat.add(left, right),
                 .unsupported => unreachable,

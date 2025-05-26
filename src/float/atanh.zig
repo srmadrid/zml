@@ -5,34 +5,26 @@ const roundeven = @import("roundeven.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn atanh(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.atanh: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return atanh(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, atanh32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_atanhf.c
+            return atanh32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, atanh32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_atanhf.c
-                    return atanh32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_atanh.c
-                    return atanh64(x);
-                },
-                f80 => return cast(f80, atanh128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_atanhl.c
-                    return atanh128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_atanh.c
+            return atanh64(scast(f64, x));
+        },
+        f80 => return scast(f80, atanh128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_atanhl.c
+            return atanh128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -128,11 +120,11 @@ fn atanh32(x: f32) f32 {
                 0x1.5555555555527p-2, 0x1.9999999ba4ee8p-3,
                 0x1.24922c280990ap-3, 0x1.c8236aae809c6p-4,
             };
-            const z: f64 = cast(f64, x, .{});
+            const z: f64 = scast(f64, x);
             const z2: f64 = z * z;
             const z4: f64 = z2 * z2;
             const r: f64 = c[0] + z2 * c[1] + z4 * (c[2] + z2 * c[3]);
-            return cast(f32, z + (z * z2) * r, .{});
+            return scast(f32, z + (z * z2) * r);
         }
     }
 
@@ -144,8 +136,8 @@ fn atanh32(x: f32) f32 {
     mn <<= nz;
     const jn: u32 = mn >> 26;
     const jd: u32 = md >> 26;
-    const tn: f64 = @bitCast((cast(i64, mn, .{}) << 20) | (1023 << 52));
-    const td: f64 = @bitCast((cast(i64, md, .{}) << 20) | (1023 << 52));
+    const tn: f64 = @bitCast((scast(i64, mn) << 20) | (1023 << 52));
+    const td: f64 = @bitCast((scast(i64, md) << 20) | (1023 << 52));
     const zn: f64 = tn * tr[jn] - 1;
     const zd: f64 = td * tr[jd] - 1;
     const zn2: f64 = zn * zn;
@@ -153,8 +145,8 @@ fn atanh32(x: f32) f32 {
     const rn: f64 = ((tl[jn] - ln2n[nz - 1]) + zn * b[0]) + zn2 * (b[1] + zn * b[2]);
     const rd: f64 = (tl[jd] + zd * b[0]) + zd2 * (b[1] + zd * b[2]);
     var r: f64 = sgn * (rd - rn);
-    var ub: f32 = cast(f32, r, .{});
-    const lb: f32 = cast(f32, r + sgn * 0.226e-9, .{});
+    var ub: f32 = scast(f32, r);
+    const lb: f32 = scast(f32, r + sgn * 0.226e-9);
     if (ub != lb) {
         @branchHint(.unlikely);
         const c: [7]f64 = .{
@@ -171,7 +163,7 @@ fn atanh32(x: f32) f32 {
         var fd: f64 = zd * (((c[0] + zd * c[1]) + zd2 * (c[2] + zd * c[3])) + zd4 * ((c[4] + zd * c[5]) + zd2 * c[6]));
         fd += tl[jd];
         r = fd - ffn + en;
-        ub = cast(f32, sgn * r, .{});
+        ub = scast(f32, sgn * r);
     }
 
     return ub;

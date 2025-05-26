@@ -5,34 +5,26 @@ const roundeven = @import("roundeven.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn sinh(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.sinh: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return sinh(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, sinh32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/e_sinhf.c
+            return sinh32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, sinh32(cast(f32, x, .{})), .{}),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/e_sinhf.c
-                    return sinh32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/e_sinh.c
-                    return sinh64(x);
-                },
-                f80 => return cast(f80, sinh128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/e_sinhl.c
-                    return sinh128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/e_sinh.c
+            return sinh64(scast(f64, x));
+        },
+        f80 => return scast(f80, sinh128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/e_sinhl.c
+            return sinh128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -60,7 +52,7 @@ fn sinh32(x: f32) f32 {
     };
     const st: struct { uarg: u32, rh: f32, rl: f32 } = .{ .uarg = 0x74250bfe, .rh = 0x1.250bfep-11, .rl = 0x1p-36 };
     const iln2: f64 = 0x1.71547652b82fep+5;
-    const z: f64 = cast(f64, x, .{});
+    const z: f64 = scast(f64, x);
     const ux: u32 = @as(u32, @bitCast(x)) << 1;
     if (ux > 0x8565a9f8) { // |x| >~ 89.4
         @branchHint(.unlikely);
@@ -98,7 +90,7 @@ fn sinh32(x: f32) f32 {
         };
         const z2: f64 = z * z;
         const z4: f64 = z2 * z2;
-        return cast(f32, z + (z2 * z) * ((cp[0] + z2 * cp[1]) + z4 * (cp[2] + z2 * (cp[3]))), .{});
+        return scast(f32, z + (z2 * z) * ((cp[0] + z2 * cp[1]) + z4 * (cp[2] + z2 * (cp[3]))));
     }
 
     const a: f64 = iln2 * z;
@@ -107,15 +99,15 @@ fn sinh32(x: f32) f32 {
     var h2: f64 = h * h;
     const jp: i64 = @bitCast(ia + 0x1.8p52);
     const jm: i64 = -jp;
-    const sp: f64 = @bitCast(cast(i64, tb[@intCast(jp & 31)], .{}) + ((jp >> 5) << 52));
-    const sm: f64 = @bitCast(cast(i64, tb[@intCast(jm & 31)], .{}) + ((jm >> 5) << 52));
+    const sp: f64 = @bitCast(scast(i64, tb[@intCast(jp & 31)]) + ((jp >> 5) << 52));
+    const sm: f64 = @bitCast(scast(i64, tb[@intCast(jm & 31)]) + ((jm >> 5) << 52));
     var te: f64 = c[0] + h2 * c[2];
     var to: f64 = (c[1] + h2 * c[3]);
     const rp: f64 = sp * (te + h * to);
     const rm: f64 = sm * (te - h * to);
     var r: f64 = rp - rm;
-    var ub: f32 = cast(f32, r, .{});
-    const lb: f32 = cast(f32, r - 1.52e-10 * r, .{});
+    var ub: f32 = scast(f32, r);
+    const lb: f32 = scast(f32, r - 1.52e-10 * r);
     if (ub != lb) {
         @branchHint(.unlikely);
         const iln2h: f64 = 0x1.7154765p+5;
@@ -125,7 +117,7 @@ fn sinh32(x: f32) f32 {
         te = ch[0] + h2 * ch[2] + (h2 * h2) * (ch[4] + h2 * ch[6]);
         to = ch[1] + h2 * (ch[3] + h2 * ch[5]);
         r = sp * (te + h * to) - sm * (te - h * to);
-        ub = cast(f32, r, .{});
+        ub = scast(f32, r);
     }
 
     return ub;

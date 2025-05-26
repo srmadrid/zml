@@ -4,34 +4,26 @@ const float = @import("../float.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
+const scast = types.scast;
 
 pub inline fn log1p(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (!types.isFixedPrecision(@TypeOf(x)) or types.isComplex(@TypeOf(x)))
-        @compileError("x must be an int or float");
+    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
+        @compileError("float.log1p: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
-    switch (types.numericType(@TypeOf(x))) {
-        .int => {
-            return log1p(cast(EnsureFloat(@TypeOf(x)), x, .{}));
+    switch (EnsureFloat(@TypeOf(x))) {
+        f16 => return scast(f16, log1p32(scast(f32, x))),
+        f32 => {
+            // glibc/sysdeps/ieee754/flt-32/s_log1pf.c
+            return log1p32(scast(f32, x));
         },
-        .float => {
-            switch (@TypeOf(x)) {
-                f16 => return cast(f16, log1p32(cast(f32, x))),
-                f32 => {
-                    // glibc/sysdeps/ieee754/flt-32/s_log1pf.c
-                    return log1p32(x);
-                },
-                f64 => {
-                    // glibc/sysdeps/ieee754/dbl-64/s_log1p.c
-                    return log1p64(x);
-                },
-                f80 => return cast(f80, log1p128(cast(f128, x, .{})), .{}),
-                f128 => {
-                    // glibc/sysdeps/ieee754/ldbl-128/s_log1pl.c
-                    return log1p128(x);
-                },
-                else => unreachable,
-            }
+        f64 => {
+            // glibc/sysdeps/ieee754/dbl-64/s_log1p.c
+            return log1p64(scast(f64, x));
+        },
+        f80 => return scast(f80, log1p128(scast(f128, x))),
+        f128 => {
+            // glibc/sysdeps/ieee754/ldbl-128/s_log1pl.c
+            return log1p128(scast(f128, x));
         },
         else => unreachable,
     }
@@ -105,7 +97,7 @@ fn log1p32(x: f32) f32 {
             -0x1.001ba33bf57cfp-3,
         };
 
-    var z: f64 = cast(f64, x, .{});
+    var z: f64 = scast(f64, x);
     const ux: u32 = @bitCast(x);
     const ax: u32 = ux & (~@as(u32, 0) >> 1);
 
@@ -128,7 +120,7 @@ fn log1p32(x: f32) f32 {
             r += 0x1p14 * (f + (z - r));
         }
 
-        return cast(f32, r, .{});
+        return scast(f32, r);
     } else {
         if (ux >= 0xbf800000 or ax >= 0x7f800000) {
             @branchHint(.unlikely);
@@ -146,17 +138,17 @@ fn log1p32(x: f32) f32 {
             .{ -0x1.3902c33434e7fp-43, 0x1.ffffffe1cbed5p-1, -0x1.ffffff7d1b014p-2, 0x1.5564e0ed3613ap-2, -0x1.0012232a00d4ap-2 };
         const ln2: f64 = 0x1.62e42fefa39efp-1;
         const z2: f64 = z * z;
-        const r: f64 = (ln2 * cast(f64, e, .{}) + lixb[j]) + z * ((c[1] + z * c[2]) + z2 * (c[3] + z * c[4]));
-        var ub: f32 = cast(f32, r, .{});
-        const lb: f32 = cast(f32, r + 2.2e-11, .{});
+        const r: f64 = (ln2 * scast(f64, e) + lixb[j]) + z * ((c[1] + z * c[2]) + z2 * (c[3] + z * c[4]));
+        var ub: f32 = scast(f32, r);
+        const lb: f32 = scast(f32, r + 2.2e-11);
         if (ub != lb) {
             @branchHint(.unlikely);
             const z4: f64 = z2 * z2;
             const f: f64 = z * ((b[0] + z * b[1]) + z2 * (b[2] + z * b[3]) + z4 * ((b[4] + z * b[5]) + z2 * (b[6] + z * b[7])));
             const ln2l: f64 = 0x1.7f7d1cf79abcap-20;
             const ln2h: f64 = 0x1.62e4p-1;
-            const Lh: f64 = ln2h * cast(f64, e, .{});
-            const Ll: f64 = ln2l * cast(f64, e, .{});
+            const Lh: f64 = ln2h * scast(f64, e);
+            const Ll: f64 = ln2l * scast(f64, e);
             const rl: f64 = f + Ll + lix[j];
             var tr: f64 = rl + Lh;
             if ((@as(u64, @bitCast(tr)) & 0xfffffff) == 0) {
@@ -183,7 +175,7 @@ fn log1p32(x: f32) f32 {
                     return 0x1.409f80p-6 + 0x1p-31;
             }
 
-            ub = cast(f32, tr, .{});
+            ub = scast(f32, tr);
         }
         return ub;
     }
@@ -280,15 +272,15 @@ fn log1p64(x: f64) f64 {
             if (k == 0) {
                 return 0;
             } else {
-                c += cast(f64, k, .{}) * ln2_lo;
-                return cast(f64, k, .{}) * ln2_hi + c;
+                c += scast(f64, k) * ln2_lo;
+                return scast(f64, k) * ln2_hi + c;
             }
         }
         const R: f64 = hfsq * (1 - 0.66666666666666666 * f);
         if (k == 0) {
             return f - R;
         } else {
-            return cast(f64, k, .{}) * ln2_hi - ((R - (cast(f64, k, .{}) * ln2_lo + c)) - f);
+            return scast(f64, k) * ln2_hi - ((R - (scast(f64, k) * ln2_lo + c)) - f);
         }
     }
 
@@ -306,7 +298,7 @@ fn log1p64(x: f64) f64 {
     if (k == 0) {
         return f - (hfsq - s * (hfsq + R));
     } else {
-        return cast(f64, k, .{}) * ln2_hi - ((hfsq - (s * (hfsq + R) + (cast(f64, k, .{}) * ln2_lo + c))) - f);
+        return scast(f64, k) * ln2_hi - ((hfsq - (s * (hfsq + R) + (scast(f64, k) * ln2_lo + c))) - f);
     }
 }
 
@@ -423,9 +415,9 @@ fn log1p128(xm1: f128) f128 {
         const r: f128 = ((((R5 * z + R4) * z + R3) * z + R2) * z + R1) * z + R0;
         const s: f128 = (((((z + S5) * z + S4) * z + S3) * z + S2) * z + S1) * z + S0;
         z = x * (z * r / s);
-        z = z + cast(f128, e, .{}) * C2;
+        z = z + scast(f128, e) * C2;
         z = z + x;
-        z = z + cast(f128, e, .{}) * C1;
+        z = z + scast(f128, e) * C1;
         return z;
     }
 
@@ -448,9 +440,9 @@ fn log1p128(xm1: f128) f128 {
     const r: f128 = (((((((((((P12 * x + P11) * x + P10) * x + P9) * x + P8) * x + P7) * x + P6) * x + P5) * x + P4) * x + P3) * x + P2) * x + P1) * x + P0;
     const s: f128 = (((((((((((x + Q11) * x + Q10) * x + Q9) * x + Q8) * x + Q7) * x + Q6) * x + Q5) * x + Q4) * x + Q3) * x + Q2) * x + Q1) * x + Q0;
     var y: f128 = x * (z * r / s);
-    y = y + cast(f128, e, .{}) * C2;
+    y = y + scast(f128, e) * C2;
     z = y - 0.5 * z;
     z = z + x;
-    z = z + cast(f128, e, .{}) * C1;
+    z = z + scast(f128, e) * C1;
     return z;
 }

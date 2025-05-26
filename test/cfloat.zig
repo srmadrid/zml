@@ -1,6 +1,6 @@
 test {
     const test_ops = true;
-    const tmp = false;
+    const tmp = true;
 
     if (test_ops) {
         _ = @import("cfloat/add.zig");
