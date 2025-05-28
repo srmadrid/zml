@@ -1,6 +1,7 @@
 const std = @import("std");
 const types = @import("types.zig");
-const cast = types.cast;
+const scast = types.scast;
+
 const int = @import("int.zig");
 
 const dense = @import("ndarray/dense.zig");
@@ -36,13 +37,16 @@ pub fn NDArray(comptime T: type) type {
             } },
         };
 
-        pub fn init(allocator: std.mem.Allocator, shape: []const usize, flags: Flags) !NDArray(T) {
+        pub fn init(
+            allocator: std.mem.Allocator,
+            shape: []const usize,
+            options: struct {
+                order: Order = .rowMajor,
+                storage: Storage = .dense,
+            },
+        ) !NDArray(T) {
             if (shape.len > maxDimensions) {
                 return Error.TooManyDimensions;
-            }
-
-            if (!flags.ownsData) {
-                return Error.InvalidFlags;
             }
 
             for (shape) |dim| {
@@ -51,52 +55,39 @@ pub fn NDArray(comptime T: type) type {
                 }
             }
 
-            switch (flags.storage) {
-                .dense => {
-                    if (flags.order == .other) {
-                        return Error.InvalidFlags;
-                    }
-
-                    var size: usize = 1;
-                    var shapes: [maxDimensions]usize = .{0} ** maxDimensions;
-                    var strides: [maxDimensions]usize = .{0} ** maxDimensions;
-                    if (shape.len > 0) {
-                        for (0..shape.len) |i| {
-                            const idx: usize = if (flags.order == .rowMajor) shape.len - i - 1 else i;
-
-                            strides[idx] = size;
-                            size *= shape[idx];
-
-                            shapes[i] = shape[i];
-                        }
-                    }
-
-                    return NDArray(T){
-                        .data = try allocator.alloc(T, size),
-                        .ndim = shape.len,
-                        .shape = shapes,
-                        .size = size,
-                        .base = null,
-                        .flags = flags,
-                        .metadata = .{ .dense = .{
-                            .strides = strides,
-                        } },
-                    };
-                },
+            switch (options.storage) {
+                .dense => return dense.init(allocator, T, shape, options.order),
                 .strided => return Error.InvalidFlags,
-                .csr => {
-                    std.debug.print("CSR storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
             }
+        }
+
+        pub fn full(
+            allocator: std.mem.Allocator,
+            shape: []const usize,
+            value: anytype,
+            options: struct {
+                order: Order = .rowMajor,
+                storage: Storage = .dense,
+            },
+        ) !NDArray(T) {
+            if (shape.len > maxDimensions) {
+                return Error.TooManyDimensions;
+            }
+
+            for (shape) |dim| {
+                if (dim == 0) {
+                    return Error.ZeroDimension;
+                }
+            }
+
+            switch (options.storage) {
+                .dense => return dense.full(allocator, T, shape, value, options.order),
+                .strided => return Error.InvalidFlags,
+            }
+        }
+
+        pub fn arange(allocator: std.mem.Allocator, start: T, stop: T, step: T) !NDArray(T) {
+            return dense.arange(allocator, T, start, stop, step);
         }
 
         pub fn deinit(self: *NDArray(T), allocator: ?std.mem.Allocator) void {
@@ -117,185 +108,31 @@ pub fn NDArray(comptime T: type) type {
                     self.metadata.strided.strides = .{0} ** maxDimensions;
                     self.metadata.strided.offset = 0;
                 },
-                .csr => {
-                    std.debug.print("CSR storage not implemented yet", .{});
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
-                },
             }
         }
 
         pub fn set(self: *NDArray(T), position: []const usize, value: T) !void {
-            _ = types.numericType(@TypeOf(value));
-
             switch (self.flags.storage) {
-                .dense => {
-                    if (self.size == 1) {
-                        self.data[0] = value;
-                        return;
-                    }
-
-                    try dense.checkPosition(T, self, position);
-
-                    self.data[dense.index(T, self, position)] = value;
-                },
-                .strided => {
-                    if (self.size == 1) {
-                        self.data[self.metadata.strided.offset] = value;
-                        return;
-                    }
-
-                    try strided.checkPosition(T, self, position);
-
-                    self.data[strided.index(T, self, position)] = value;
-                },
-                .csr => {
-                    std.debug.print("CSR storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
+                .dense => return dense.set(T, self, position, value),
+                .strided => return strided.set(T, self, position, value),
             }
         }
 
         pub fn get(self: *const NDArray(T), position: []const usize) !*T {
             switch (self.flags.storage) {
-                .dense => {
-                    if (self.size == 1) {
-                        return &self.data[0];
-                    }
-
-                    try dense.checkPosition(T, self, position);
-
-                    return &self.data[dense.index(T, self, position)];
-                },
-                .strided => {
-                    if (self.size == 1) {
-                        return &self.data[self.metadata.strided.offset];
-                    }
-
-                    try strided.checkPosition(T, self, position);
-
-                    return &self.data[strided.index(T, self, position)];
-                },
-                .csr => {
-                    std.debug.print("CSR storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
+                .dense => return dense.get(T, self, position),
+                .strided => return strided.get(T, self, position),
             }
         }
 
-        pub fn slice(self: *const NDArray(T), slices: []const Slice) !NDArray(T) {
+        pub fn slice(self: *const NDArray(T), ranges: []const Range) !NDArray(T) {
+            if (ranges.len == 0 or ranges.len > self.ndim) {
+                return error.DimensionMismatch;
+            }
+
             switch (self.flags.storage) {
-                .dense, .strided => {
-                    if (slices.len == 0 or slices.len > self.ndim) {
-                        return error.DimensionMismatch;
-                    }
-
-                    var ndim: usize = self.ndim;
-                    var size: usize = 1;
-                    var shapes: [maxDimensions]usize = .{0} ** maxDimensions;
-                    var strides: [maxDimensions]isize = .{0} ** maxDimensions;
-                    var offset: usize = if (self.flags.storage == .dense) 0 else self.metadata.strided.offset;
-
-                    var i: usize = 0;
-                    var j: usize = 0;
-                    while (i < self.ndim) {
-                        const stride: isize = if (self.flags.storage == .dense)
-                            cast(isize, self.metadata.dense.strides[i], .{})
-                        else
-                            self.metadata.strided.strides[i];
-
-                        if (i >= slices.len) {
-                            shapes[j] = self.shape[i];
-                            strides[j] = stride;
-                            size *= self.shape[i];
-                            j += 1;
-                            i += 1;
-                            continue;
-                        }
-
-                        if (slices[i].step > 0) {
-                            if (slices[i].start >= self.shape[i] or slices[i].stop > self.shape[i]) {
-                                return Error.SliceOutOfBounds;
-                            }
-                        } else if (slices[i].step == 0) {
-                            if (slices[i].start >= self.shape[i]) {
-                                return Error.SliceOutOfBounds;
-                            }
-                        } else {
-                            if (slices[i].stop >= self.shape[i] or slices[i].start > self.shape[i]) {
-                                return Error.SliceOutOfBounds;
-                            }
-                        }
-
-                        const len: usize = slices[i].len();
-                        if (len == 0 or len == 1) {
-                            ndim -= 1;
-                        } else {
-                            shapes[j] = len;
-                            strides[j] = stride * slices[i].step;
-                            size *= len;
-                            j += 1;
-                        }
-
-                        if (stride < 0) {
-                            offset -= slices[i].start * cast(usize, int.abs(stride), .{});
-                        } else {
-                            offset += slices[i].start * cast(usize, stride, .{});
-                        }
-
-                        i += 1;
-                    }
-
-                    return NDArray(T){
-                        .data = self.data,
-                        .ndim = ndim,
-                        .shape = shapes,
-                        .size = size,
-                        .base = if (self.flags.ownsData) self else self.base,
-                        .flags = .{
-                            .order = .other,
-                            .storage = .strided,
-                            .ownsData = false,
-                            .writeable = self.flags.writeable,
-                        },
-                        .metadata = .{ .strided = .{
-                            .strides = strides,
-                            .offset = offset,
-                        } },
-                    };
-                },
-                .csr => {
-                    std.debug.print("CSR storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
-                    return Error.NotImplemented;
-                },
+                .dense => return dense.slice(T, self, ranges),
+                .strided => return strided.slice(T, self, ranges),
             }
         }
     };
@@ -308,7 +145,9 @@ pub const Error = error{
     NotImplemented,
     DimensionMismatch,
     PositionOutOfBounds,
-    SliceOutOfBounds,
+    InvalidRange,
+    RangeOutOfBounds,
+    ZeroStep,
 };
 
 pub const Flags = packed struct {
@@ -318,26 +157,25 @@ pub const Flags = packed struct {
     writeable: bool = true,
 };
 
-pub const Order = enum(u2) {
+pub const Order = enum(u1) {
     rowMajor,
     columnMajor,
-    other,
 };
 
-pub const Storage = enum(u3) {
+pub const Storage = enum(u1) {
     dense,
     strided,
-    csr,
-    csc,
-    coo,
+    //csr,
+    //csc,
+    //coo,
 };
 
 pub const Metadata = union(Storage) {
     dense: Dense,
     strided: Strided,
-    csr: CSR,
-    csc: CSC,
-    coo: COO,
+    //csr: CSR,
+    //csc: CSC,
+    //coo: COO,
 
     pub const Dense = struct {
         strides: [maxDimensions]usize,
@@ -358,38 +196,48 @@ pub const Metadata = union(Storage) {
     pub const COO = struct {};
 };
 
-pub const Slice = struct {
+pub const Range = struct {
     start: usize,
     stop: usize,
     step: isize,
 
-    pub fn init(start: usize, stop: usize, step: isize) !Slice {
-        if (step == 0 and start != stop) {
-            return Error.ZeroDimension;
+    pub const all: Range = .{ .start = 0, .stop = int.max(usize), .step = 1 };
+
+    pub const all_reverse: Range = .{ .start = int.max(usize), .stop = int.max(usize), .step = -1 };
+
+    pub fn init(start: ?usize, stop: ?usize, step: ?isize) !Range {
+        const range: Range = .{
+            .start = start orelse int.max(usize),
+            .stop = stop orelse int.max(usize),
+            .step = step orelse 1,
+        };
+
+        if (step == 0) {
+            return Error.ZeroStep;
         }
 
-        if (step > 0) {
-            if (start >= stop) {
-                return Error.SliceOutOfBounds;
-            }
-        } else if (step < 0) {
-            if (start <= stop) {
-                return Error.SliceOutOfBounds;
-            }
+        if ((range.step > 0 and range.start >= range.stop) or
+            (range.step < 0 and range.start <= range.stop))
+        {
+            return Error.RangeOutOfBounds;
         }
 
-        return Slice{ .start = start, .stop = stop, .step = step };
+        return range;
     }
 
-    pub fn len(self: Slice) usize {
-        if (self.step == 0 or self.start == self.stop) {
-            return 1;
+    pub fn single(index: usize) Range {
+        return Range{ .start = index, .stop = index + 1, .step = 1 };
+    }
+
+    pub fn len(self: Range) usize {
+        if (self.start == self.stop) {
+            return 0;
         }
 
         if (self.step > 0) {
-            return (self.stop - self.start + cast(usize, self.step, .{}) - 1) / cast(usize, self.step, .{});
+            return (self.stop - self.start + scast(usize, self.step) - 1) / scast(usize, self.step);
         }
 
-        return (self.start - self.stop + cast(usize, int.abs(self.step), .{}) - 1) / cast(usize, int.abs(self.step), .{});
+        return (self.start - self.stop + scast(usize, int.abs(self.step)) - 1) / scast(usize, int.abs(self.step));
     }
 };

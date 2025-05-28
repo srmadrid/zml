@@ -229,6 +229,11 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         std.debug.print("x.shape[{}] = {}\n", .{ i, x.shape[i] });
     }
     std.debug.print("]\n", .{});
+    std.debug.print("x.strides = [\n", .{});
+    for (0..x.ndim) |i| {
+        std.debug.print("x.strides[{}] = {}\n", .{ i, x.metadata.dense.strides[i] });
+    }
+    std.debug.print("]\n\n", .{});
 
     for (0..x.shape[0]) |i| {
         for (0..x.shape[1]) |j| {
@@ -240,16 +245,22 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         }
     }
 
-    const x1 = try x.slice(&.{ try .init(1, 5, 1), try .init(2, 5, 1), try .init(2, 3, 1) });
+    const x1 = try x.slice(&.{ try .init(1, 5, 1), try .init(2, 5, 1), .single(2) });
 
-    std.debug.print("x1 = x[1:5, 2:5, 2:3]\n", .{});
+    std.debug.print("x1 = x[1:5, 2:5, 2]\n", .{});
     std.debug.print("x1.shape = [\n", .{});
     for (0..x1.ndim) |i| {
         std.debug.print("x1.shape[{}] = {}\n", .{ i, x1.shape[i] });
     }
     std.debug.print("]\n", .{});
+    std.debug.print("x1.strides = [\n", .{});
+    for (0..x1.ndim) |i| {
+        std.debug.print("x1.strides[{}] = {}\n", .{ i, x1.metadata.strided.strides[i] });
+    }
+    std.debug.print("]\n", .{});
+    std.debug.print("x1.offset = {}\n\n", .{x1.metadata.strided.offset});
 
-    const x2 = try x.slice(&.{ try zml.ndarray.Slice.init(0, 5, 1), try zml.ndarray.Slice.init(2, 10, 1) });
+    const x2 = try x.slice(&.{ .all, try .init(2, 9, 1) });
 
     std.debug.print("x2 = x[:, 2:10]\n", .{});
     std.debug.print("x2.shape = [\n", .{});
@@ -257,20 +268,37 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         std.debug.print("x2.shape[{}] = {}\n", .{ i, x2.shape[i] });
     }
     std.debug.print("]\n", .{});
+    std.debug.print("x2.strides = [\n", .{});
+    for (0..x2.ndim) |i| {
+        std.debug.print("x2.strides[{}] = {}\n", .{ i, x2.metadata.strided.strides[i] });
+    }
+    std.debug.print("]\n", .{});
+    std.debug.print("x2.offset = {}\n\n", .{x2.metadata.strided.offset});
 
-    const x3 = try x.slice(&.{ try zml.ndarray.Slice.init(1, 5, 1), try zml.ndarray.Slice.init(8, 4, -3), try zml.ndarray.Slice.init(0, 0, 0), try zml.ndarray.Slice.init(0, 0, 0) });
+    const x3 = try x.slice(&.{ try .init(1, 5, 1), try .init(8, 4, -3), .all_reverse, .all });
 
-    std.debug.print("x3 = x[1:5, 8:4:-3, 0:0, 0:0]\n", .{});
+    std.debug.print("x3 = x[1:5, 8:4:-3, :, :]\n", .{});
     std.debug.print("x3.shape = [\n", .{});
     for (0..x3.ndim) |i| {
         std.debug.print("x3.shape[{}] = {}\n", .{ i, x3.shape[i] });
     }
     std.debug.print("]\n", .{});
+    std.debug.print("x3.strides = [\n", .{});
+    for (0..x3.ndim) |i| {
+        std.debug.print("x3.strides[{}] = {}\n", .{ i, x3.metadata.strided.strides[i] });
+    }
+    std.debug.print("]\n", .{});
+    std.debug.print("x3.offset = {}\n\n", .{x3.metadata.strided.offset});
 
     std.debug.print("x3 =\n", .{});
-    for (0..x3.shape[0]) |i| {
-        for (0..x3.shape[1]) |j| {
-            std.debug.print("{d}  ", .{(try x3.get(&[_]usize{ i, j })).*});
+    for (0..x3.shape[2]) |k| {
+        std.debug.print("Slice {}:\n", .{k});
+        for (0..x3.shape[0]) |i| {
+            std.debug.print("\t", .{});
+            for (0..x3.shape[1]) |j| {
+                std.debug.print("{d}  ", .{(try x3.get(&.{ i, j, k, 0 })).*});
+            }
+            std.debug.print("\n", .{});
         }
         std.debug.print("\n", .{});
     }

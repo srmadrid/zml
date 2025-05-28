@@ -125,7 +125,7 @@ pub inline fn add_(
                 .bool => @compileError("add not defined for two bools"),
                 .int => return int.add_(out, left, right, .{ .mode = options.mode }),
                 .float => return float.add_(out, left, right),
-                .cfloat => {}, // return cfloat.add_(out, left, right),
+                .cfloat => return cfloat.add_(out, left, right),
                 .unsupported => unreachable,
                 else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
@@ -134,7 +134,7 @@ pub inline fn add_(
             switch (types.numericType(R)) {
                 .bool, .int => return int.add_(out, left, right, .{ .mode = options.mode }),
                 .float => return float.add_(out, left, right),
-                .cfloat => {}, // return cfloat.add_(out, left, right),
+                .cfloat => return cfloat.add_(out, left, right),
                 .unsupported => unreachable,
                 else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
@@ -142,14 +142,14 @@ pub inline fn add_(
         .float => {
             switch (types.numericType(R)) {
                 .bool, .int, .float => return float.add_(out, left, right),
-                .cfloat => {}, // return cfloat.add_(out, left, right),
+                .cfloat => return cfloat.add_(out, left, right),
                 .unsupported => unreachable,
                 else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(R)) {
-                .bool, .int, .float, .cfloat => {}, // return cfloat.add_(out, left, right),
+                .bool, .int, .float, .cfloat => return cfloat.add_(out, left, right),
                 .unsupported => unreachable,
                 else => @compileError("add between " ++ @typeName(L) ++ " and " ++ @typeName(R) ++ " not implemented yet"),
             }

@@ -224,6 +224,24 @@ pub inline fn div_(
     out.* = scast(O, scast(C, left) / scast(C, right));
 }
 
+pub inline fn max(comptime T: type) T {
+    comptime if (types.numericType(T) != .int)
+        @compileError("int.max requires T to be an int type, got " ++ @typeName(T));
+
+    const info = @typeInfo(T);
+    const bits = info.int.bits;
+    return (1 << (bits - scast(@TypeOf(bits), info.int.signedness == .signed))) - 1;
+}
+
+pub inline fn min(comptime T: type) T {
+    comptime if (types.numericType(T) != .int)
+        @compileError("int.min requires T to be an int type, got " ++ @typeName(T));
+
+    const info = @typeInfo(T);
+    const bits = info.int.bits;
+    return if (info.int.signedness == .signed) -(1 << (bits - 1)) else 0;
+}
+
 pub const abs = @import("int/abs.zig").abs;
 
 pub const Mode = enum {

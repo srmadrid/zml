@@ -1,6 +1,6 @@
 const std = @import("std");
 const types = @import("../types.zig");
-const cast = types.cast;
+const scast = types.scast;
 
 const ndarray = @import("../ndarray.zig");
 const NDArray = ndarray.NDArray;
@@ -92,7 +92,7 @@ pub fn Iterator(comptime T: type) type {
 
                     for (ax..self.array.ndim) |i| {
                         const idx = if (order == .rightToLeft) self.array.ndim - i - 1 else i;
-                        prev = cast(isize, self.position[idx], .{});
+                        prev = scast(isize, self.position[idx]);
                         self.position[idx] += 1;
 
                         if (self.position[idx] >= self.array.shape[idx]) {
@@ -102,11 +102,11 @@ pub fn Iterator(comptime T: type) type {
                             mustBreak = true;
                         }
 
-                        change = cast(isize, self.position[idx], .{}) - prev;
-                        index = cast(isize, self.index, .{});
-                        stride = if (self.array.flags.storage == .dense) cast(isize, self.array.metadata.dense.strides[idx], .{}) else self.array.metadata.strided.strides[idx];
+                        change = scast(isize, self.position[idx]) - prev;
+                        index = scast(isize, self.index);
+                        stride = if (self.array.flags.storage == .dense) scast(isize, self.array.metadata.dense.strides[idx]) else self.array.metadata.strided.strides[idx];
                         index += change * stride;
-                        self.index = cast(usize, index, .{});
+                        self.index = scast(usize, index);
 
                         if (mustBreak) {
                             break;
@@ -140,19 +140,19 @@ pub fn MultiIterator(comptime T: type) type {
     return struct {
         /// The number of arrays.
         narray: usize,
-        /// The number of dimetions of the broadcast.
+        /// The number of dimetions of the broadscast.
         ndim: usize,
         /// Subiterators for the arrays.
         iterators: [maxArrays]Iterator(T),
-        /// Broadcasted shape.
+        /// Broadscasted shape.
         shape: [ndarray.maxDimensions]usize,
-        /// Broadcasted strides.
+        /// Broadscasted strides.
         strides: [ndarray.maxDimensions]isize,
         /// Offset of the first element of the iterator.
         offset: usize,
-        /// Broadcasted size.
+        /// Broadscasted size.
         size: usize,
-        /// Flags of the (theoretical) broadcasted array.
+        /// Flags of the (theoretical) broadscasted array.
         flags: ndarray.Flags,
         /// Current position.
         position: [ndarray.maxDimensions]usize,
@@ -198,7 +198,7 @@ pub fn MultiIterator(comptime T: type) type {
                         if (shape[ndim - j - 1] == 1 or shape[ndim - j - 1] == 0) {
                             shape[ndim - j - 1] = arrays[i].shape[arrays[i].ndim - j - 1];
                         } else if (arrays[i].shape[arrays[i].ndim - j - 1] != 1) {
-                            return Error.NotBroadcastable;
+                            return Error.NotBroadscastable;
                         }
                     }
                 }
@@ -232,7 +232,7 @@ pub fn MultiIterator(comptime T: type) type {
         /// **Description**:
         ///
         /// Initializes a multi iterator for the given arrays. The first array
-        /// must have the correct broadcasted shape.
+        /// must have the correct broadscasted shape.
         ///
         /// **Input Parameters**:
         /// - `array`: the array for the Iterator.
@@ -390,8 +390,8 @@ pub const Error = error{
     TooManyArrays,
     /// No input arrays.
     NoArrays,
-    /// Incompatible shapes for broadcasting.
-    NotBroadcastable,
+    /// Incompatible shapes for broadscasting.
+    NotBroadscastable,
 };
 
 pub const IterationOrder = enum {
