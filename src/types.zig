@@ -1,5 +1,5 @@
 const std = @import("std");
-const NDArray = @import("ndarray.zig").NDArray;
+const Array = @import("array.zig").Array;
 
 pub const default_uint = usize;
 pub const default_int = isize;
@@ -38,6 +38,12 @@ pub const NumericType = enum {
     /// Expression
     expression,
     unsupported,
+};
+
+pub const Order = enum {
+    lt,
+    eq,
+    gt,
 };
 
 pub inline fn numericType(comptime T: type) NumericType {
@@ -113,8 +119,8 @@ pub fn isSlice(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of an NDArray.
-pub fn isNDArray(comptime T: type) bool {
+/// Checks if the input type is an instance of an Array.
+pub fn isArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
             if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
@@ -123,7 +129,7 @@ pub fn isNDArray(comptime T: type) bool {
 
             if (!@hasDecl(T, "empty")) return false;
 
-            const N = NDArray(f64);
+            const N = Array(f64);
             const ninfo = @typeInfo(N).@"struct";
             const t: T = .empty;
             const n: N = .empty;
@@ -145,7 +151,7 @@ pub fn isNDArray(comptime T: type) bool {
                     if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
 
                     switch (@typeInfo(@TypeOf(@field(t, "base")))) {
-                        .optional => continue, // Checking if child type is an NDArray would lead to infinite recursion
+                        .optional => continue, // Checking if child type is an Array would lead to infinite recursion
                         else => return false,
                     }
                 } else {
@@ -211,34 +217,34 @@ pub fn isComplex(comptime T: type) bool {
 }
 
 /// Coerces the input types to the smallest type that can represent both types.
-/// If at least one of the types is an NDArray or a slice, the result will be
-/// an NDArray of the coerced type.
+/// If at least one of the types is an Array or a slice, the result will be
+/// an Array of the coerced type.
 pub fn Coerce(comptime K: type, comptime V: type) type {
     if (K == V) {
         return K;
     }
 
-    comptime if (isNDArray(K)) {
-        if (isNDArray(V)) {
-            return NDArray(Coerce(Numeric(K), Numeric(V)));
+    comptime if (isArray(K)) {
+        if (isArray(V)) {
+            return Array(Coerce(Numeric(K), Numeric(V)));
         } else if (isSlice(V)) {
-            return NDArray(Coerce(Numeric(K), Numeric(V)));
+            return Array(Coerce(Numeric(K), Numeric(V)));
         } else {
-            return NDArray(Coerce(Numeric(K), V));
+            return Array(Coerce(Numeric(K), V));
         }
     } else if (isSlice(K)) {
-        if (isNDArray(V)) {
-            return NDArray(Coerce(Numeric(K), Numeric(V)));
+        if (isArray(V)) {
+            return Array(Coerce(Numeric(K), Numeric(V)));
         } else if (isSlice(V)) { // Should two slices return another slice?
-            return NDArray(Coerce(Numeric(K), Numeric(V)));
+            return Array(Coerce(Numeric(K), Numeric(V)));
         } else {
-            return NDArray(Coerce(Numeric(K), V));
+            return Array(Coerce(Numeric(K), V));
         }
     } else {
-        if (isNDArray(V)) {
-            return NDArray(Coerce(K, Numeric(V)));
+        if (isArray(V)) {
+            return Array(Coerce(K, Numeric(V)));
         } else if (isSlice(V)) {
-            return NDArray(Coerce(K, Numeric(V)));
+            return Array(Coerce(K, Numeric(V)));
         }
         // Else two numeric types
     };
@@ -463,16 +469,16 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
 /// smallest type that can represent both types. The only requirement is that
 /// `V` can represent all values of the first two types.
 pub fn canCoerce(comptime K: type, comptime V: type) bool {
-    comptime if (isNDArray(K)) {
-        if (isNDArray(V)) {
+    comptime if (isArray(K)) {
+        if (isArray(V)) {
             return canCoerce(Numeric(K), Numeric(V));
         } else if (isSlice(V)) {
-            return false; // Should csting NDArray return a slice?
+            return false; // Should csting Array return a slice?
         } else {
-            return false; // Only 1 element NDArrays can be coerced to scalar types
+            return false; // Only 1 element Arrays can be coerced to scalar types
         }
     } else if (isSlice(K)) {
-        if (isNDArray(V)) {
+        if (isArray(V)) {
             return canCoerce(Numeric(K), Numeric(V));
         } else if (isSlice(V)) {
             return canCoerce(Numeric(K), Numeric(V));
@@ -480,7 +486,7 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             return false; // Only 1 element slices can be coerced to scalar types
         }
     } else {
-        if (isNDArray(V)) {
+        if (isArray(V)) {
             return canCoerce(K, Numeric(V));
         } else if (isSlice(V)) {
             return canCoerce(K, Numeric(V));
@@ -709,6 +715,19 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
     return T2 == T3;
 }
 
+/// Coerces the second type to an array of itself if the first type is an
+/// Array or a slice. If the first type is not an Array or a slice, it
+/// returns the second type as is.
+pub fn CoerceToArray(comptime K: type, comptime V: type) type {
+    _ = numericType(V);
+
+    if (isArray(K) or isSlice(K)) {
+        return Array(V);
+    } else {
+        return V;
+    }
+}
+
 /// Checks if t`L` can be cast to `R` safely, meaning that the cast
 /// will not result in a runtime panic. For instance, casting signed integers to
 /// unsigned integers is not safe, as it can result in a panic if the value is
@@ -925,18 +944,18 @@ pub fn EnsureFloat(comptime T: type) type {
     }
 }
 
-/// Returns the scalar type of a given numeric type, slice, or NDArray:
+/// Returns the scalar type of a given numeric type, slice, or Array:
 /// - Atomic types, such as `u8`, `i16`, `f32`, etc., are returned as-is.
 /// - Complex types, such as `cf32`, `cf64`, etc., are returned as their atomic type.
 /// - Real arbitrary precision types, such as `Integer`, `Rational`, etc., are returned as-is.
 /// - Complex arbitrary precision types are returned as their atomic type.
-/// - Slices and NDArray types are returned as the scalar type of their element type.
+/// - Slices and Array types are returned as their element type.
 pub fn Scalar(comptime T: type) type {
-    if (isNDArray(T)) {
+    if (isArray(T)) {
         const t: T = .empty;
-        return Scalar(@typeInfo(@TypeOf(@field(t, "data"))).pointer.child);
+        return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
     } else if (isSlice(T)) {
-        return Scalar(@typeInfo(T).pointer.child);
+        return @typeInfo(T).pointer.child;
     }
 
     const numeric = numericType(T);
@@ -975,11 +994,11 @@ pub fn Scalar(comptime T: type) type {
 }
 
 /// Returns the underlying numeric type of a given numeric type, slice, or
-/// NDArray:
+/// Array:
 /// - Numeric types, such as floats, integers, complex, etc., are returned as-is.
-/// - Slices and NDArray types are returned as their element type.
+/// - Slices and Array types are returned as their element type.
 pub fn Numeric(comptime T: type) type {
-    if (isNDArray(T)) {
+    if (isArray(T)) {
         const t: T = .empty;
         return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
     } else if (isSlice(T)) {

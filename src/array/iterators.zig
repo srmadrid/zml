@@ -2,84 +2,59 @@ const std = @import("std");
 const types = @import("../types.zig");
 const scast = types.scast;
 
-const ndarray = @import("../ndarray.zig");
-const NDArray = ndarray.NDArray;
+const array = @import("../array.zig");
+const Array = array.Array;
 
 const maxArrays: usize = 8;
 
 pub fn Iterator(comptime T: type) type {
     return struct {
-        array: *const NDArray(T),
-        position: [ndarray.maxDimensions]usize,
+        arr: *const Array(T),
+        position: [array.maxDimensions]usize,
         index: usize,
 
-        pub fn init(array: *const NDArray(T)) Iterator(T) {
-            switch (array.flags.storage) {
+        pub fn init(arr: *const Array(T)) Iterator(T) {
+            switch (arr.flags.storage) {
                 .dense => {
                     return Iterator(T){
-                        .array = array,
-                        .position = .{0} ** ndarray.maxDimensions,
+                        .arr = arr,
+                        .position = .{0} ** array.maxDimensions,
                         .index = 0,
                     };
                 },
                 .strided => {
                     return Iterator(T){
-                        .array = array,
-                        .position = .{0} ** ndarray.maxDimensions,
-                        .index = array.metadata.strided.offset,
+                        .arr = arr,
+                        .position = .{0} ** array.maxDimensions,
+                        .index = arr.metadata.strided.offset,
                     };
-                },
-                .csr => {
-                    // Check if the elemnt in (0, 0) is default or a value. If
-                    // it is a value, then index = 1 (or wherever it is),
-                    // otherwise index = 0 (the position for the default value).
-                    std.debug.print("CSR storage not implemented yet", .{});
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
                 },
             }
 
             return Iterator(T){
-                .array = array,
-                .position = .{0} ** ndarray.maxDimensions,
+                .arr = arr,
+                .position = .{0} ** array.maxDimensions,
                 .index = 0,
             };
         }
 
         pub fn next(self: *Iterator(T)) ?usize {
-            switch (self.array.flags.storage) {
+            switch (self.arr.flags.storage) {
                 .dense, .strided => {
-                    switch (self.array.flags.order) {
+                    switch (self.arr.flags.order) {
                         .rowMajor => {
-                            return self.nextAO(self.array.ndim - 1, .rightToLeft);
+                            return self.nextAO(self.arr.ndim - 1, .rightToLeft);
                         },
                         .columnMajor => {
                             return self.nextAO(0, .leftToRight);
                         },
-                        .other => unreachable,
                     }
-                },
-                .csr => {
-                    std.debug.print("CSR storage not implemented yet", .{});
-                    return null;
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                    return null;
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
-                    return null;
                 },
             }
         }
 
         pub fn nextAO(self: *Iterator(T), axis: usize, order: IterationOrder) ?usize {
-            switch (self.array.flags.storage) {
+            switch (self.arr.flags.storage) {
                 .dense, .strided => {
                     var carry: bool = true;
                     var mustBreak: bool = false;
@@ -88,14 +63,14 @@ pub fn Iterator(comptime T: type) type {
                     var index: isize = undefined;
                     var stride: isize = undefined;
 
-                    const ax = if (order == .rightToLeft) self.array.ndim - axis - 1 else axis;
+                    const ax = if (order == .rightToLeft) self.arr.ndim - axis - 1 else axis;
 
-                    for (ax..self.array.ndim) |i| {
-                        const idx = if (order == .rightToLeft) self.array.ndim - i - 1 else i;
+                    for (ax..self.arr.ndim) |i| {
+                        const idx = if (order == .rightToLeft) self.arr.ndim - i - 1 else i;
                         prev = scast(isize, self.position[idx]);
                         self.position[idx] += 1;
 
-                        if (self.position[idx] >= self.array.shape[idx]) {
+                        if (self.position[idx] >= self.arr.shape[idx]) {
                             self.position[idx] = 0;
                         } else {
                             carry = false;
@@ -104,7 +79,7 @@ pub fn Iterator(comptime T: type) type {
 
                         change = scast(isize, self.position[idx]) - prev;
                         index = scast(isize, self.index);
-                        stride = if (self.array.flags.storage == .dense) scast(isize, self.array.metadata.dense.strides[idx]) else self.array.metadata.strided.strides[idx];
+                        stride = if (self.arr.flags.storage == .dense) scast(isize, self.arr.metadata.dense.strides[idx]) else self.arr.metadata.strided.strides[idx];
                         index += change * stride;
                         self.index = scast(usize, index);
 
@@ -119,85 +94,74 @@ pub fn Iterator(comptime T: type) type {
 
                     return self.index;
                 },
-                .csr => {
-                    std.debug.print("CSR storage not implemented yet", .{});
-                    return null;
-                },
-                .csc => {
-                    std.debug.print("CSC storage not implemented yet", .{});
-                    return null;
-                },
-                .coo => {
-                    std.debug.print("COO storage not implemented yet", .{});
-                    return null;
-                },
             }
         }
     };
 }
-/// Iterator for multiple `NDArray`.
+
+/// Iterator for multiple `Array`.
 pub fn MultiIterator(comptime T: type) type {
     return struct {
-        /// The number of arrays.
-        narray: usize,
+        /// The number of arrs.
+        narr: usize,
         /// The number of dimetions of the broadscast.
         ndim: usize,
-        /// Subiterators for the arrays.
+        /// Subiterators for the arrs.
         iterators: [maxArrays]Iterator(T),
         /// Broadscasted shape.
-        shape: [ndarray.maxDimensions]usize,
+        shape: [array.maxDimensions]usize,
         /// Broadscasted strides.
-        strides: [ndarray.maxDimensions]isize,
+        strides: [array.maxDimensions]isize,
         /// Offset of the first element of the iterator.
         offset: usize,
         /// Broadscasted size.
         size: usize,
-        /// Flags of the (theoretical) broadscasted array.
-        flags: ndarray.Flags,
+        /// Flags of the (theoretical) broadscasted arr.
+        flags: array.Flags,
         /// Current position.
-        position: [ndarray.maxDimensions]usize,
+        position: [array.maxDimensions]usize,
         /// Current index.
         index: usize,
 
-        /// Initializes a multi iterator for the given arrays.
+        /// Initializes a multi iterator for the given arrs.
         ///
         /// **Description**:
         ///
-        /// Initializes a multi iterator for the given arrays and flags.
+        /// Initializes a multi iterator for the given arrs and flags.
         ///
         /// **Input Parameters**:
-        /// - `array`: the array for the Iterator.
+        /// - `arr`: the arr for the Iterator.
         /// - `flags`: the flags for the iterator.
         ///
         /// **Return Values**:
         /// - `MultiIterator(T)`: the initialized iterator.
-        pub fn init(arrays: []const NDArray(T), flags: ndarray.Flags) !MultiIterator(T) {
-            if (arrays.len == 0) {
+        pub fn init(arrs: []const Array(T), flags: array.Flags) !MultiIterator(T) {
+            if (arrs.len == 0) {
                 return Error.NoArrays;
             }
 
-            const narray: usize = arrays.len;
-            if (narray > maxArrays) {
+            const narr: usize = arrs.len;
+            if (narr > maxArrays) {
                 return Error.TooManyArrays;
             }
 
             var ndim: usize = 0;
             var iterators: [maxArrays]Iterator(T) = undefined;
-            for (0..narray) |i| {
-                iterators[i] = Iterator(T).init(arrays[i]);
-                if (arrays[i].ndim > ndim) {
-                    ndim = arrays[i].ndim;
+            for (0..narr) |i| {
+                iterators[i] = Iterator(T).init(arrs[i]);
+                if (arrs[i].ndim > ndim) {
+                    ndim = arrs[i].ndim;
                 }
             }
 
-            var shape: [ndarray.maxDimensions]usize = .{0} ** ndarray.maxDimensions;
-            for (0..narray) |i| {
-                for (0..arrays[i].ndim) |j| {
-                    if (shape[ndim - j - 1] != arrays[i].shape[arrays[i].ndim - j - 1]) {
-                        //std.debug.print("Disagreement = {} != {}\n", .{ shape[ndim - j - 1], arrays[i].shape[arrays[i].shape.len - j - 1] });
+            var shape: [array.maxDimensions]usize = .{0} ** array.maxDimensions;
+            for (0..narr) |i| {
+                for (0..arrs[i].ndim) |j| {
+                    if (shape[ndim - j - 1] != arrs[i].shape[arrs[i].ndim - j - 1]) {
+                        //std.debug.print("Disagreement = {} != {}\n", .{ shape[ndim - j - 1], arrs[i].shape[arrs[i].shape.len - j - 1] });
                         if (shape[ndim - j - 1] == 1 or shape[ndim - j - 1] == 0) {
-                            shape[ndim - j - 1] = arrays[i].shape[arrays[i].ndim - j - 1];
-                        } else if (arrays[i].shape[arrays[i].ndim - j - 1] != 1) {
+                            shape[ndim - j - 1] = arrs[i].shape[arrs[i].ndim - j - 1];
+                        } else if (arrs[i].shape[arrs[i].ndim - j - 1] != 1) {
                             return Error.NotBroadscastable;
                         }
                     }
@@ -205,7 +169,7 @@ pub fn MultiIterator(comptime T: type) type {
             }
 
             var size: usize = 1;
-            var strides: [ndarray.maxDimensions]isize = .{0} ** ndarray.maxDimensions;
+            var strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
 
             for (0..ndim) |i| {
                 const idx = if (flags.order == .RowMajor) ndim - i - 1 else i;
@@ -214,7 +178,7 @@ pub fn MultiIterator(comptime T: type) type {
             }
 
             return MultiIterator(T){
-                .narray = narray,
+                .narr = narr,
                 .ndim = ndim,
                 .iterators = iterators,
                 .shape = shape,
@@ -222,27 +186,27 @@ pub fn MultiIterator(comptime T: type) type {
                 .offset = 0,
                 .size = size,
                 .flags = flags,
-                .position = [_]usize{0} ** ndarray.maxDimensions,
+                .position = [_]usize{0} ** array.maxDimensions,
                 .index = 0,
             };
         }
 
-        /// Initializes a multi iterator for the given arrays.
+        /// Initializes a multi iterator for the given arrs.
         ///
         /// **Description**:
         ///
-        /// Initializes a multi iterator for the given arrays. The first array
+        /// Initializes a multi iterator for the given arrs. The first arr
         /// must have the correct broadscasted shape.
         ///
         /// **Input Parameters**:
-        /// - `array`: the array for the Iterator.
+        /// - `arr`: the arr for the Iterator.
         /// - `flags`: the flags for the iterator.
         ///
         /// **Return Values**:
         /// - `MultiIterator(T)`: the initialized iterator.
-        pub fn initCheck(first: NDArray(T), rest: []const NDArray(T)) !MultiIterator(T) {
+        pub fn initCheck(first: Array(T), rest: []const Array(T)) !MultiIterator(T) {
             // Not implemented yet, this is done to be able to compile.
-            return init([_]NDArray(T){first} ++ rest, first.flags);
+            return init([_]Array(T){first} ++ rest, first.flags);
         }
 
         /// Iterates to the next element.
@@ -265,12 +229,12 @@ pub fn MultiIterator(comptime T: type) type {
         /// - `null`: reached end.
         pub fn next(self: *MultiIterator(T)) ?usize {
             var rowCount: usize = 0;
-            for (0..self.narray) |i| {
+            for (0..self.narr) |i| {
                 if (self.iterators[i].flags.order == .RowMajor) {
                     rowCount += 1;
                 }
             }
-            const order: ndarray.Order = if (self.narray <= (rowCount * 2)) .RowMajor else .ColumnMajor;
+            const order: array.Order = if (self.narr <= (rowCount * 2)) .RowMajor else .ColumnMajor;
 
             return self.nextOrder(order);
         }
@@ -291,15 +255,15 @@ pub fn MultiIterator(comptime T: type) type {
         /// - `self`: the iterator.
         /// - `rowMajorOrder`: what order to iterate with. If `true`, iterates
         /// in row major order (right to left, `(...,0,0)->(...,0,1)->...->
-        /// (...,0,n)->(...,1,0))`, which is very efficient for arrays stored in
+        /// (...,0,n)->(...,1,0))`, which is very efficient for arrs stored in
         /// row major order; if `false`, iterates in column major order (left to
         /// right, `(0,0,...)->(1,0,...)->...->(n,0,...)->(0,1,...)`), which is
-        /// very efficient for arrays stored in column major order.
+        /// very efficient for arrs stored in column major order.
         ///
         /// **Return Values**:
         /// - `T`: the next item.
         /// - `null`: reached end.
-        pub fn nextOrder(self: *MultiIterator(T), order: ndarray.Order) ?usize {
+        pub fn nextOrder(self: *MultiIterator(T), order: array.Order) ?usize {
             var carry: usize = 1;
             var change: i64 = undefined;
             var prev: i64 = undefined;
@@ -354,7 +318,7 @@ pub fn MultiIterator(comptime T: type) type {
                 }
             }
 
-            for (0..self.narray) |i| {
+            for (0..self.narr) |i| {
                 for (0..self.iterators[i].ndim) |j| {
                     //std.debug.print("ndim:{},i:[{}],", .{ self.iterators[i].ndim, i });
                     prev = @intCast(self.iterators[i].position[self.iterators[i].ndim - j - 1]);
@@ -365,9 +329,9 @@ pub fn MultiIterator(comptime T: type) type {
                     // change = @intCast(self.position[length - i - 1]) - prev;
                     change = @intCast(self.iterators[i].position[self.iterators[i].ndim - j - 1]);
                     change -= prev;
-                    // self.index += change * self.array.strides[length - i - 1];
+                    // self.index += change * self.arr.strides[length - i - 1];
                     index = @intCast(self.iterators[i].index);
-                    // index += change * self.array.strides[length - i - 1];
+                    // index += change * self.arr.strides[length - i - 1];
                     stride = @intCast(self.iterators[i].strides[self.iterators[i].ndim - j - 1]);
                     index += change * stride;
                     self.iterators[i].index = @intCast(index);
@@ -384,11 +348,11 @@ pub fn MultiIterator(comptime T: type) type {
     };
 }
 
-/// Errors that can occur when workin with array iterators.
+/// Errors that can occur when workin with arr iterators.
 pub const Error = error{
-    /// Too many arrays.
+    /// Too many arrs.
     TooManyArrays,
-    /// No input arrays.
+    /// No input arrs.
     NoArrays,
     /// Incompatible shapes for broadscasting.
     NotBroadscastable,

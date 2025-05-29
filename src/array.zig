@@ -1,18 +1,21 @@
 const std = @import("std");
 const types = @import("types.zig");
 const scast = types.scast;
+const cast = types.cast;
+
+const ops = @import("ops.zig");
 
 const int = @import("int.zig");
 
-const dense = @import("ndarray/dense.zig");
-const strided = @import("ndarray/strided.zig");
+const dense = @import("array/dense.zig");
+const strided = @import("array/strided.zig");
 
-pub const Iterator = @import("ndarray/iterators.zig").Iterator;
-//pub const MultiIterator = @import("ndarray/iterators.zig").MultiIterator;
+pub const Iterator = @import("array/iterators.zig").Iterator;
+//pub const MultiIterator = @import("array/iterators.zig").MultiIterator;
 
 pub const maxDimensions = 8;
 
-pub fn NDArray(comptime T: type) type {
+pub fn Array(comptime T: type) type {
     // Catch any attempt to create with unsupported type.
     _ = types.numericType(T);
 
@@ -21,11 +24,11 @@ pub fn NDArray(comptime T: type) type {
         ndim: usize,
         shape: [maxDimensions]usize,
         size: usize,
-        base: ?*const NDArray(T),
+        base: ?*const Array(T),
         flags: Flags,
         metadata: Metadata,
 
-        pub const empty: NDArray(T) = .{
+        pub const empty: Array(T) = .{
             .data = &.{},
             .ndim = 0,
             .shape = .{0} ** maxDimensions,
@@ -44,7 +47,7 @@ pub fn NDArray(comptime T: type) type {
                 order: Order = .rowMajor,
                 storage: Storage = .dense,
             },
-        ) !NDArray(T) {
+        ) !Array(T) {
             if (shape.len > maxDimensions) {
                 return Error.TooManyDimensions;
             }
@@ -69,7 +72,7 @@ pub fn NDArray(comptime T: type) type {
                 order: Order = .rowMajor,
                 storage: Storage = .dense,
             },
-        ) !NDArray(T) {
+        ) !Array(T) {
             if (shape.len > maxDimensions) {
                 return Error.TooManyDimensions;
             }
@@ -86,11 +89,23 @@ pub fn NDArray(comptime T: type) type {
             }
         }
 
-        pub fn arange(allocator: std.mem.Allocator, start: T, stop: T, step: T) !NDArray(T) {
-            return dense.arange(allocator, T, start, stop, step);
+        pub fn arange(
+            allocator: std.mem.Allocator,
+            start: anytype,
+            stop: anytype,
+            step: anytype,
+            options: struct {
+                writeable: bool = true,
+            },
+        ) !Array(T) {
+            _ = types.numericType(@TypeOf(start));
+            _ = types.numericType(@TypeOf(stop));
+            _ = types.numericType(@TypeOf(step));
+
+            return dense.arange(allocator, T, start, stop, step, options);
         }
 
-        pub fn deinit(self: *NDArray(T), allocator: ?std.mem.Allocator) void {
+        pub fn deinit(self: *Array(T), allocator: ?std.mem.Allocator) void {
             if (self.flags.ownsData) {
                 allocator.?.free(self.data);
             }
@@ -111,21 +126,21 @@ pub fn NDArray(comptime T: type) type {
             }
         }
 
-        pub fn set(self: *NDArray(T), position: []const usize, value: T) !void {
+        pub fn set(self: *Array(T), position: []const usize, value: T) !void {
             switch (self.flags.storage) {
                 .dense => return dense.set(T, self, position, value),
                 .strided => return strided.set(T, self, position, value),
             }
         }
 
-        pub fn get(self: *const NDArray(T), position: []const usize) !*T {
+        pub fn get(self: *const Array(T), position: []const usize) !*T {
             switch (self.flags.storage) {
                 .dense => return dense.get(T, self, position),
                 .strided => return strided.get(T, self, position),
             }
         }
 
-        pub fn slice(self: *const NDArray(T), ranges: []const Range) !NDArray(T) {
+        pub fn slice(self: *const Array(T), ranges: []const Range) !Array(T) {
             if (ranges.len == 0 or ranges.len > self.ndim) {
                 return error.DimensionMismatch;
             }

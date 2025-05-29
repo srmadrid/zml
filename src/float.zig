@@ -2,6 +2,7 @@ const types = @import("types.zig");
 const scast = types.scast;
 const Coerce = types.Coerce;
 const EnsureFloat = types.EnsureFloat;
+const Order = types.Order;
 
 // Constant functions
 pub inline fn pi(comptime T: type) T {
@@ -225,6 +226,113 @@ pub inline fn div_(
             @typeName(O) ++ " safely");
 
     out.* = scast(O, scast(C, left) / scast(C, right));
+}
+
+pub inline fn cmp(
+    left: anytype,
+    right: anytype,
+) Order {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float))
+        @compileError("float.cmp requires at least one of left or right to be a float, the other must be an int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    if (left < right) return .lt;
+    if (left > right) return .gt;
+    return .eq;
+}
+
+pub inline fn eq(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float))
+        @compileError("float.eq requires at least one of left or right to be a float, the other must be an int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left == right;
+}
+
+pub inline fn neq(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float))
+        @compileError("float.neq requires at least one of left or right to be a float, the other must be an int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left != right;
+}
+
+pub inline fn lt(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float))
+        @compileError("float.lt requires at least one of left or right to be a float, the other must be an int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left < right;
+}
+
+pub inline fn le(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float))
+        @compileError("float.le requires at least one of left or right to be a float, the other must be an int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left <= right;
+}
+
+pub inline fn gt(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float))
+        @compileError("float.gt requires at least one of left or right to be a float, the other must be an int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left > right;
+}
+
+pub inline fn ge(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float) or
+        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float))
+        @compileError("float.ge requires at least one of left or right to be a float, the other must be an int or float, got " ++
+            @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left >= right;
 }
 
 pub const abs = @import("float/abs.zig").abs;

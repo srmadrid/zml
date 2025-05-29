@@ -1,6 +1,7 @@
 const types = @import("types.zig");
 const scast = types.scast;
 const Coerce = types.Coerce;
+const Order = types.Order;
 
 pub inline fn add(
     left: anytype,
@@ -222,6 +223,73 @@ pub inline fn div_(
             @typeName(O) ++ " safely");
 
     out.* = scast(O, scast(C, left) / scast(C, right));
+}
+
+pub inline fn cmp(
+    left: anytype,
+    right: anytype,
+) Order {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
+        @compileError("int.cmp requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+
+    if (left < right) return .lt;
+    if (left > right) return .gt;
+    return .eq;
+}
+
+pub inline fn eq(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
+        @compileError("int.eq requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left == right;
+}
+
+pub inline fn ne(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
+        @compileError("int.ne requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left != right;
+}
+
+pub inline fn lt(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
+        @compileError("int.lt requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left < right;
+}
+
+pub inline fn le(
+    left: anytype,
+    right: anytype,
+) bool {
+    const L: type = @TypeOf(left);
+    const R: type = @TypeOf(right);
+
+    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
+        @compileError("int.le requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+
+    return left <= right;
 }
 
 pub inline fn max(comptime T: type) T {
