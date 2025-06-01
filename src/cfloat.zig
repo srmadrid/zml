@@ -26,7 +26,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn initReal(re: T) Cfloat(T) {
+        pub fn initYeal(re: T) Cfloat(T) {
             return .{
                 .re = re,
                 .im = 0,
@@ -47,98 +47,98 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn add(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
+        pub fn add(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
             return .{
-                .re = left.re + right.re,
-                .im = left.im + right.im,
+                .re = x.re + y.re,
+                .im = x.im + y.im,
             };
         }
 
-        pub fn addReal(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn addYeal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = left.re + right,
-                .im = left.im,
+                .re = x.re + y,
+                .im = x.im,
             };
         }
 
-        pub fn addImag(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn addImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = left.re,
-                .im = left.im + right,
+                .re = x.re,
+                .im = x.im + y,
             };
         }
 
-        pub fn sub(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
+        pub fn sub(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
             return .{
-                .re = left.re - right.re,
-                .im = left.im - right.im,
+                .re = x.re - y.re,
+                .im = x.im - y.im,
             };
         }
 
-        pub fn subReal(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn subYeal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = left.re - right,
-                .im = left.im,
+                .re = x.re - y,
+                .im = x.im,
             };
         }
 
-        pub fn subImag(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn subImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = left.re,
-                .im = left.im - right,
+                .re = x.re,
+                .im = x.im - y,
             };
         }
 
-        pub fn mul(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
+        pub fn mul(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
             return .{
-                .re = @mulAdd(T, left.re, right.re, -left.im * right.im),
-                .im = @mulAdd(T, left.re, right.im, left.im * right.re),
+                .re = @mulAdd(T, x.re, y.re, -x.im * y.im),
+                .im = @mulAdd(T, x.re, y.im, x.im * y.re),
             };
         }
 
-        pub fn mulReal(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn mulYeal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = left.re * right,
-                .im = left.im * right,
+                .re = x.re * y,
+                .im = x.im * y,
             };
         }
 
-        pub fn mulImag(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn mulImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = -left.im * right,
-                .im = left.re * right,
+                .re = -x.im * y,
+                .im = x.re * y,
             };
         }
 
-        pub fn div(left: Cfloat(T), right: Cfloat(T)) Cfloat(T) {
-            if (float.abs(right.im) < float.abs(right.re)) {
-                const tmp1 = right.im / right.re;
-                const tmp2 = 1 / (right.re + tmp1 * right.im);
+        pub fn div(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
+            if (float.abs(y.im) < float.abs(y.re)) {
+                const tmp1 = y.im / y.re;
+                const tmp2 = 1 / (y.re + tmp1 * y.im);
                 return .{
-                    .re = (left.re + left.im * tmp1) * tmp2,
-                    .im = (left.im - left.re * tmp1) * tmp2,
+                    .re = (x.re + x.im * tmp1) * tmp2,
+                    .im = (x.im - x.re * tmp1) * tmp2,
                 };
             } else {
-                const tmp1 = right.re / right.im;
-                const tmp2 = 1 / (right.im + tmp1 * right.re);
+                const tmp1 = y.re / y.im;
+                const tmp2 = 1 / (y.im + tmp1 * y.re);
                 return .{
-                    .re = (left.re * tmp1 + left.im) * tmp2,
-                    .im = (left.im * tmp1 - left.re) * tmp2,
+                    .re = (x.re * tmp1 + x.im) * tmp2,
+                    .im = (x.im * tmp1 - x.re) * tmp2,
                 };
             }
         }
 
-        pub fn divReal(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn divYeal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = left.re / right,
-                .im = left.im / right,
+                .re = x.re / y,
+                .im = x.im / y,
             };
         }
 
-        pub fn divImag(left: Cfloat(T), right: T) Cfloat(T) {
+        pub fn divImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = left.im / right,
-                .im = -left.re / right,
+                .re = x.im / y,
+                .im = -x.re / y,
             };
         }
 
@@ -167,34 +167,34 @@ pub fn Cfloat(comptime T: type) type {
 }
 
 pub inline fn add(
-    left: anytype,
-    right: anytype,
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.add requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.add requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, right).addReal(scast(Scalar(C), left));
+                    return scast(C, y).addYeal(scast(Scalar(C), x));
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    return scast(C, left).addReal(scast(Scalar(C), right));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    return scast(C, x).addYeal(scast(Scalar(C), y));
                 },
                 .cfloat => {
-                    return scast(C, left).add(scast(C, right));
+                    return scast(C, x).add(scast(C, y));
                 },
                 else => unreachable,
             }
@@ -205,44 +205,44 @@ pub inline fn add(
 
 pub inline fn add_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("cfloat.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.add_ requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.add_ requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
-                    out.* = scast(O, scast(C, right).addReal(scast(Scalar(C), left)));
+                    out.* = scast(O, scast(C, y).addYeal(scast(Scalar(C), x)));
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    out.* = scast(O, scast(C, left).addReal(scast(Scalar(C), right)));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    out.* = scast(O, scast(C, x).addYeal(scast(Scalar(C), y)));
                 },
                 .cfloat => {
-                    out.* = scast(O, scast(C, left).add(scast(C, right)));
+                    out.* = scast(O, scast(C, x).add(scast(C, y)));
                 },
                 else => unreachable,
             }
@@ -252,37 +252,37 @@ pub inline fn add_(
 }
 
 pub inline fn sub(
-    left: anytype,
-    right: anytype,
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.sub requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.sub requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
                     return .{
-                        .re = scast(Scalar(C), left) - scast(Scalar(C), right.re),
-                        .im = -scast(Scalar(C), right.im),
+                        .re = scast(Scalar(C), x) - scast(Scalar(C), y.re),
+                        .im = -scast(Scalar(C), y.im),
                     };
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    return scast(C, left).subReal(scast(Scalar(C), right));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    return scast(C, x).subYeal(scast(Scalar(C), y));
                 },
                 .cfloat => {
-                    return scast(C, left).sub(scast(C, right));
+                    return scast(C, x).sub(scast(C, y));
                 },
                 else => unreachable,
             }
@@ -293,47 +293,47 @@ pub inline fn sub(
 
 pub inline fn sub_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("cfloat.sub_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.sub_ requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.sub_ requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
                     out.* = scast(O, .{
-                        .re = scast(Scalar(C), left) - scast(Scalar(C), right.re),
-                        .im = -scast(Scalar(C), right.im),
+                        .re = scast(Scalar(C), x) - scast(Scalar(C), y.re),
+                        .im = -scast(Scalar(C), y.im),
                     });
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    out.* = scast(O, scast(C, left).subReal(scast(Scalar(C), right)));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    out.* = scast(O, scast(C, x).subYeal(scast(Scalar(C), y)));
                 },
                 .cfloat => {
-                    out.* = scast(O, scast(C, left).sub(scast(C, right)));
+                    out.* = scast(O, scast(C, x).sub(scast(C, y)));
                 },
                 else => unreachable,
             }
@@ -343,34 +343,34 @@ pub inline fn sub_(
 }
 
 pub inline fn mul(
-    left: anytype,
-    right: anytype,
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.mul requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.mul requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, right).mulReal(scast(Scalar(C), left));
+                    return scast(C, y).mulYeal(scast(Scalar(C), x));
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    return scast(C, left).mulReal(scast(Scalar(C), right));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    return scast(C, x).mulYeal(scast(Scalar(C), y));
                 },
                 .cfloat => {
-                    return scast(C, left).mul(scast(C, right));
+                    return scast(C, x).mul(scast(C, y));
                 },
                 else => unreachable,
             }
@@ -381,44 +381,44 @@ pub inline fn mul(
 
 pub inline fn mul_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("cfloat.mul_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.mul_ requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.mul_ requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
-                    out.* = scast(O, scast(C, right).mulReal(scast(Scalar(C), left)));
+                    out.* = scast(O, scast(C, y).mulYeal(scast(Scalar(C), x)));
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    out.* = scast(O, scast(C, left).mulReal(scast(Scalar(C), right)));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    out.* = scast(O, scast(C, x).mulYeal(scast(Scalar(C), y)));
                 },
                 .cfloat => {
-                    out.* = scast(O, scast(C, left).mul(scast(C, right)));
+                    out.* = scast(O, scast(C, x).mul(scast(C, y)));
                 },
                 else => unreachable,
             }
@@ -428,34 +428,34 @@ pub inline fn mul_(
 }
 
 pub inline fn div(
-    left: anytype,
-    right: anytype,
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.div requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.div requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, right).inverse().mulReal(scast(Scalar(C), left));
+                    return scast(C, y).inverse().mulYeal(scast(Scalar(C), x));
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    return scast(C, left).divReal(scast(Scalar(C), right));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    return scast(C, x).divYeal(scast(Scalar(C), y));
                 },
                 .cfloat => {
-                    return scast(C, left).div(scast(C, right));
+                    return scast(C, x).div(scast(C, y));
                 },
                 else => unreachable,
             }
@@ -466,44 +466,44 @@ pub inline fn div(
 
 pub inline fn div_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("cfloat.div_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.div_ requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.div_ requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    switch (types.numericType(L)) {
-        .int, .float => {
-            switch (types.numericType(R)) {
+    switch (types.numericType(X)) {
+        .bool, .int, .float => {
+            switch (types.numericType(Y)) {
                 .cfloat => {
-                    out.* = scast(O, scast(C, right).inverse().mulReal(scast(Scalar(C), left)));
+                    out.* = scast(O, scast(C, y).inverse().mulYeal(scast(Scalar(C), x)));
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
-            switch (types.numericType(R)) {
-                .int, .float => {
-                    out.* = scast(O, scast(C, left).divReal(scast(Scalar(C), right)));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    out.* = scast(O, scast(C, x).divYeal(scast(Scalar(C), y)));
                 },
                 .cfloat => {
-                    out.* = scast(O, scast(C, left).div(scast(C, right)));
+                    out.* = scast(O, scast(C, x).div(scast(C, y)));
                 },
                 else => unreachable,
             }
@@ -517,7 +517,6 @@ pub const abs = @import("cfloat/abs.zig").abs; // 0/106 tests fail
 pub const abs2 = @import("cfloat/abs2.zig").abs2;
 pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // 446/1695 tests fail: 17 for cf32, 68 for cf64, 141 for cf80, 220 for cf128
 pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32, 4 for cf64, 8 for cf80, 12 for cf128
-// pub const pow
 pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for cf32, 133 for cf64, 217 for cf80, 640 for cf128
 pub const log10 = @import("cfloat/log10.zig").log10; // 2427/4861 tests fail: 278 for cf32, 596 for cf64, 635 for cf80, 918 for cf128
 pub const sin = @import("cfloat/sin.zig").sin; // 36/260 tests fail: 6 for cf32, 4 for cf64, 3 for cf80, 23 for cf128
@@ -532,4 +531,4 @@ pub const tanh = @import("cfloat/tanh.zig").tanh; // 129/280 tests fail: 14 for 
 pub const asinh = @import("cfloat/asinh.zig").asinh; // 2543/7087 tests fail: 333 for cf32, 396 for cf64, 714 for cf80, 1100 for cf128
 pub const acosh = @import("cfloat/acosh.zig").acosh; // 2244/7087 tests fail: 312 for cf32, 375 for cf64, 537 for cf80, 1020 for cf128
 pub const atanh = @import("cfloat/atanh.zig").atanh; // 449/5836 tests fail: 48 for cf32, 105 for cf64, 34 for cf80, 262 for cf128
-pub const pow = @import("cfloat/pow.zig").pow; // 175/184 tests fail (MANY CATASTROFIC): 8 for cf32, 19 for cf64, 42 for cf80, 106 for cf128
+pub const pow = @import("cfloat/pow.zig").pow; // 175/184 tests fail (MANY CATASTYOFIC): 8 for cf32, 19 for cf64, 42 for cf80, 106 for cf128

@@ -10,11 +10,11 @@ pub fn main() !void {
 
     // try symbolicTesting(a);
 
-    // try generalTesting(a);
+    try generalTesting(a);
 
     // try addTesting(a);
 
-    try iterTesting(a);
+    // try iterTesting(a);
 
     // try iterPerfTesting(a);
 
@@ -377,7 +377,7 @@ fn symbolicTesting(a: std.mem.Allocator) !void {
 fn generalTesting(a: std.mem.Allocator) !void {
     std.debug.print("Size of flags: {}\n", .{@sizeOf(zml.array.Flags)});
 
-    var A: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 20, 15, 8, 18 }, .{});
+    var A: zml.Array(f64) = try .init(a, &.{ 20, 15, 8, 18 }, .{});
     defer A.deinit(a);
 
     std.debug.print("A dimentions = {}\n", .{A.ndim});
@@ -396,15 +396,14 @@ fn generalTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("A.size = {}\n", .{A.size});
 
-    //std.debug.print("Location of (2, 13, 3, 16) = {}\n", .{A._index(&[_]usize{ 2, 13, 3, 16 })});
+    var B: zml.Array(f128) = try .arange(a, 0, 2, 0.2314674914, .{});
+    defer B.deinit(a);
 
-    //var pos = [_]usize{ 0, 0, 0, 0 };
-    //A._position(39562, &pos);
-    //std.debug.print("Location of 39562 = [  ", .{});
-    //for (pos) |p| {
-    //    std.debug.print("{}  ", .{p});
-    //}
-    //std.debug.print("]\n\n", .{});
+    std.debug.print("B = [", .{});
+    for (0..B.shape[0]) |i| {
+        std.debug.print("{d}, ", .{B.data[i]});
+    }
+    std.debug.print("]\n", .{});
 }
 
 fn addTesting(a: std.mem.Allocator) !void {

@@ -4,292 +4,318 @@ const Coerce = types.Coerce;
 const Order = types.Order;
 
 pub inline fn add(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
     options: struct {
-        comptime mode: Mode = .default,
+        mode: Mode = .default,
     },
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.add requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.add requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     switch (options.mode) {
-        .default => return scast(C, left) + scast(C, right),
-        .wrap => return scast(C, left) +% scast(C, right),
-        .saturate => return scast(C, left) +| scast(C, right),
+        .default => return scast(C, x) + scast(C, y),
+        .wrap => return scast(C, x) +% scast(C, y),
+        .saturate => return scast(C, x) +| scast(C, y),
     }
 }
 
 pub inline fn add_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
     options: struct {
-        comptime mode: Mode = .default,
+        mode: Mode = .default,
     },
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.add_ requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.add_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
     switch (options.mode) {
-        .default => out.* = scast(O, scast(C, left) + scast(C, right)),
-        .wrap => out.* = scast(O, scast(C, left) +% scast(C, right)),
-        .saturate => out.* = scast(O, scast(C, left) +| scast(C, right)),
+        .default => out.* = scast(O, scast(C, x) + scast(C, y)),
+        .wrap => out.* = scast(O, scast(C, x) +% scast(C, y)),
+        .saturate => out.* = scast(O, scast(C, x) +| scast(C, y)),
     }
 }
 
 pub inline fn sub(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
     options: struct {
-        comptime mode: Mode = .default,
+        mode: Mode = .default,
     },
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.sub requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.sub requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     switch (options.mode) {
-        .default => return scast(C, left) - scast(C, right),
-        .wrap => return scast(C, left) -% scast(C, right),
-        .saturate => return scast(C, left) -| scast(C, right),
+        .default => return scast(C, x) - scast(C, y),
+        .wrap => return scast(C, x) -% scast(C, y),
+        .saturate => return scast(C, x) -| scast(C, y),
     }
 }
 
 pub inline fn sub_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
     options: struct {
-        comptime mode: Mode = .default,
+        mode: Mode = .default,
     },
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.sub_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.sub_ requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.sub_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
     switch (options.mode) {
-        .default => out.* = scast(O, scast(C, left) - scast(C, right)),
-        .wrap => out.* = scast(O, scast(C, left) -% scast(C, right)),
-        .saturate => out.* = scast(O, scast(C, left) -| scast(C, right)),
+        .default => out.* = scast(O, scast(C, x) - scast(C, y)),
+        .wrap => out.* = scast(O, scast(C, x) -% scast(C, y)),
+        .saturate => out.* = scast(O, scast(C, x) -| scast(C, y)),
     }
 }
 
 pub inline fn mul(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
     options: struct {
-        comptime mode: Mode = .default,
+        mode: Mode = .default,
     },
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.mul requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.mul requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     switch (options.mode) {
-        .default => return scast(C, left) * scast(C, right),
-        .wrap => return scast(C, left) *% scast(C, right),
-        .saturate => return scast(C, left) *| scast(C, right),
+        .default => return scast(C, x) * scast(C, y),
+        .wrap => return scast(C, x) *% scast(C, y),
+        .saturate => return scast(C, x) *| scast(C, y),
     }
 }
 
 pub inline fn mul_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
     options: struct {
-        comptime mode: Mode = .default,
+        mode: Mode = .default,
     },
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.mul_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.mul_ requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.mul_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
     switch (options.mode) {
-        .default => out.* = scast(O, scast(C, left) * scast(C, right)),
-        .wrap => out.* = scast(O, scast(C, left) *% scast(C, right)),
-        .saturate => out.* = scast(O, scast(C, left) *| scast(C, right)),
+        .default => out.* = scast(O, scast(C, x) * scast(C, y)),
+        .wrap => out.* = scast(O, scast(C, x) *% scast(C, y)),
+        .saturate => out.* = scast(O, scast(C, x) *| scast(C, y)),
     }
 }
 
 pub inline fn div(
-    left: anytype,
-    right: anytype,
-) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.div requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.div requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return scast(C, left) / scast(C, right);
+    return @divTrunc(scast(C, x), scast(C, y));
 }
 
 pub inline fn div_(
     out: anytype,
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) void {
     comptime var O: type = @TypeOf(out);
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.div_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int) or
-        (types.numericType(L) != .int and types.numericType(R) != .int))
-        @compileError("int.div_ requires at least one of left or right to be an int, the other must be a bool or an int, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.div_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (!types.canCastSafely(C, O))
         @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
             @typeName(O) ++ " safely");
 
-    out.* = scast(O, scast(C, left) / scast(C, right));
+    out.* = scast(O, @divTrunc(scast(C, x), scast(C, y)));
 }
 
 pub inline fn cmp(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) Order {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
-        @compileError("int.cmp requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.cmp requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    if (left < right) return .lt;
-    if (left > right) return .gt;
+    if (x < y) return .lt;
+    if (x > y) return .gt;
     return .eq;
 }
 
 pub inline fn eq(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) bool {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
-        @compileError("int.eq requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.eq requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return left == right;
+    return x == y;
 }
 
 pub inline fn ne(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) bool {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
-        @compileError("int.ne requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.ne requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return left != right;
+    return x != y;
 }
 
 pub inline fn lt(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) bool {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
-        @compileError("int.lt requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.lt requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return left < right;
+    return x < y;
 }
 
 pub inline fn le(
-    left: anytype,
-    right: anytype,
+    x: anytype,
+    y: anytype,
 ) bool {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(L) != .int or types.numericType(R) != .int)
-        @compileError("int.le requires both left and right to be int types, got " ++ @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.le requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return left <= right;
+    return x <= y;
+}
+
+pub inline fn gt(
+    x: anytype,
+    y: anytype,
+) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.gt requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return x > y;
+}
+
+pub inline fn ge(
+    x: anytype,
+    y: anytype,
+) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.ge requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return x >= y;
 }
 
 pub inline fn max(comptime T: type) T {

@@ -102,7 +102,7 @@ pub fn Array(comptime T: type) type {
             _ = types.numericType(@TypeOf(stop));
             _ = types.numericType(@TypeOf(step));
 
-            return dense.arange(allocator, T, start, stop, step, options);
+            return dense.arange(allocator, T, start, stop, step, options.writeable);
         }
 
         pub fn deinit(self: *Array(T), allocator: ?std.mem.Allocator) void {
@@ -110,23 +110,14 @@ pub fn Array(comptime T: type) type {
                 allocator.?.free(self.data);
             }
 
-            self.ndim = 0;
-            self.shape = .{0} ** maxDimensions;
-            self.size = 0;
-            self.base = null;
-
-            switch (self.flags.storage) {
-                .dense => {
-                    self.metadata.dense.strides = .{0} ** maxDimensions;
-                },
-                .strided => {
-                    self.metadata.strided.strides = .{0} ** maxDimensions;
-                    self.metadata.strided.offset = 0;
-                },
-            }
+            self.* = undefined;
         }
 
-        pub fn set(self: *Array(T), position: []const usize, value: T) !void {
+        pub fn set(self: *Array(T), position: []const usize, value: anytype) !void {
+            if (!self.flags.writeable) {
+                return Error.ArrayNotWriteable;
+            }
+
             switch (self.flags.storage) {
                 .dense => return dense.set(T, self, position, value),
                 .strided => return strided.set(T, self, position, value),
@@ -154,6 +145,7 @@ pub fn Array(comptime T: type) type {
 }
 
 pub const Error = error{
+    ArrayNotWriteable,
     TooManyDimensions,
     InvalidFlags,
     ZeroDimension,

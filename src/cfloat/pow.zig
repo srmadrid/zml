@@ -3,19 +3,19 @@ const types = @import("../types.zig");
 const Coerce = types.Coerce;
 const scast = types.scast;
 
-pub fn pow(left: anytype, right: anytype) Coerce(@TypeOf(left), @TypeOf(right)) {
-    const L: type = @TypeOf(left);
-    const R: type = @TypeOf(right);
-    const C: type = Coerce(L, R);
+pub fn pow(x: anytype, y: anytype) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(L) != .bool and types.numericType(L) != .int and types.numericType(L) != .float and types.numericType(L) != .cfloat) or
-        (types.numericType(R) != .bool and types.numericType(R) != .int and types.numericType(R) != .float and types.numericType(R) != .cfloat) or
-        (types.numericType(L) != .cfloat and types.numericType(R) != .cfloat))
-        @compileError("cfloat.pow requires at least one of left or right to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(L) ++ " and " ++ @typeName(R));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or
+        (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.pow requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
-    const l: C = scast(C, left);
-    const r: C = scast(C, right);
+    const l: C = scast(C, x);
+    const r: C = scast(C, y);
 
     return cfloat.exp(r.mul(cfloat.log(l)));
 }

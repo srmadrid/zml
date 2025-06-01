@@ -12,10 +12,14 @@ const cf64 = @import("cfloat.zig").cf64;
 const cf80 = @import("cfloat.zig").cf80;
 const cf128 = @import("cfloat.zig").cf128;
 const comptime_complex = @import("cfloat.zig").comptime_complex;
-const Integer = @import("integer.zig").Integer;
-const Rational = @import("rational.zig").Rational;
-const Real = @import("real.zig").Real;
-const Complex = @import("complex.zig").Complex;
+const integer = @import("integer.zig");
+const Integer = integer.Integer;
+const rational = @import("rational.zig");
+const Rational = rational.Rational;
+const real = @import("real.zig");
+const Real = real.Real;
+const complex = @import("complex.zig");
+const Complex = complex.Complex;
 //pub const Expression = @import("../expression/expression.zig").Expression;
 
 pub const NumericType = enum {
@@ -214,6 +218,11 @@ pub fn isComplex(comptime T: type) bool {
         .complex => return true,
         else => return false,
     }
+}
+
+/// Checks if the input type need allocation for its data.
+pub fn needsAllocator(comptime T: type) bool {
+    return isArray(T) or isArbitraryPrecision(T);
 }
 
 /// Coerces the input types to the smallest type that can represent both types.
@@ -1088,15 +1097,48 @@ pub inline fn cast(
     comptime T: type,
     value: anytype,
     options: struct {
-        allocator: ?std.mem.Allocator = null,
+        allocator: if (needsAllocator(T)) std.mem.Allocator else void = {},
+        copy: bool = false,
     },
 ) !T {
     const I: type = @TypeOf(value);
     const O: type = T;
 
-    _ = options; // To be used to initialize arbitrary precision types
-
     if (I == O) {
+        switch (numericType(O)) {
+            .bool, .int, .float, .cfloat => return value,
+            .integer => if (options.copy) {
+                // return try integer.copy(options.allocator, value);
+                return value;
+            } else {
+                return value;
+            },
+            .rational => if (options.copy) {
+                // return try rational.copy(options.allocator, value);
+                return value;
+            } else {
+                return value;
+            },
+            .real => if (options.copy) {
+                // return try real.copy(options.allocator, value);
+                return value;
+            } else {
+                return value;
+            },
+            .complex => if (options.copy) {
+                // return try complex.copy(options.allocator, value);
+                return value;
+            } else {
+                return value;
+            },
+            .expression => if (options.copy) {
+                // return try expression.copy(options.allocator, value);
+                return value;
+            } else {
+                return value;
+            },
+            .unsupported => unreachable,
+        }
         return value;
     }
 

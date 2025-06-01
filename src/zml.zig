@@ -22,8 +22,7 @@ pub const Complex = complex.Complex;
 pub const array = @import("array.zig");
 pub const Array = array.Array;
 
-const ops = @import("ops.zig");
-pub const add = ops.add;
+pub usingnamespace @import("ops.zig");
 
 pub const linalg = @import("linalg.zig");
 
