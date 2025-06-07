@@ -40,6 +40,5 @@ pub inline fn copy(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.copy only supports simple types."),
-        .unsupported => unreachable,
     }
 }

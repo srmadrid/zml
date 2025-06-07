@@ -26,7 +26,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn initYeal(re: T) Cfloat(T) {
+        pub fn initReal(re: T) Cfloat(T) {
             return .{
                 .re = re,
                 .im = 0,
@@ -54,7 +54,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn addYeal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn addReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
                 .re = x.re + y,
                 .im = x.im,
@@ -183,7 +183,7 @@ pub inline fn add(
         .bool, .int, .float => {
             switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, y).addYeal(scast(Scalar(C), x));
+                    return scast(C, y).addReal(scast(Scalar(C), x));
                 },
                 else => unreachable,
             }
@@ -191,7 +191,7 @@ pub inline fn add(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    return scast(C, x).addYeal(scast(Scalar(C), y));
+                    return scast(C, x).addReal(scast(Scalar(C), y));
                 },
                 .cfloat => {
                     return scast(C, x).add(scast(C, y));
@@ -231,7 +231,7 @@ pub inline fn add_(
         .bool, .int, .float => {
             switch (types.numericType(Y)) {
                 .cfloat => {
-                    out.* = scast(O, scast(C, y).addYeal(scast(Scalar(C), x)));
+                    out.* = scast(O, scast(C, y).addReal(scast(Scalar(C), x)));
                 },
                 else => unreachable,
             }
@@ -239,7 +239,7 @@ pub inline fn add_(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    out.* = scast(O, scast(C, x).addYeal(scast(Scalar(C), y)));
+                    out.* = scast(O, scast(C, x).addReal(scast(Scalar(C), y)));
                 },
                 .cfloat => {
                     out.* = scast(O, scast(C, x).add(scast(C, y)));

@@ -40,7 +40,6 @@ pub inline fn dot(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]
         },
         .cfloat => @compileError("blas.dot does not support complex numbers. Use blas.dotc or blas.dotu instead."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.dot only supports simple types."),
-        .unsupported => unreachable,
     }
 
     return sum;

@@ -74,6 +74,5 @@ pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, 
         },
         .cfloat => @compileError("blas.ger does not support complex types."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.ger only supports simple types."),
-        .unsupported => unreachable,
     }
 }

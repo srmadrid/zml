@@ -16,6 +16,79 @@ const real = @import("real.zig");
 const complex = @import("complex.zig");
 const array = @import("array.zig");
 
+/// Adds two values of any two supported types.
+///
+/// The function supports addition for values of any combination of supported
+/// numeric types, `Array`s and slices. The operation performed is
+///
+/// \begin{equation*}
+///     x + y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the addition operation.
+/// - `mode` (`int.Mode`): The mode of the addition operation. Only needed when
+/// adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision.
+///
+/// Returns
+/// -------
+/// `Coerce(@TypeOf(x), @TypeOf(y))`: The result of the addition operation.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the addition operation is not defined for the types of
+/// the inputs, if the types of the inputs cannot be coerced to a common type,
+/// or if the types of the inputs are not supported numeric types, `Array`s or
+/// slices.
+///
+/// See Also
+/// --------
+/// `add_`: For in-place addition of two values.
+///
+/// `int.add`: For addition of an `int` and another `int` or `bool`.
+///
+/// `float.add`: For addition of a `float` and another `float`, `int` or `bool`.
+///
+/// `cfloat.add`: For addition of a `cfloat` and another `cfloat`, `float`,
+/// `int` or `bool`.
+///
+/// `integer.add`: For addition of an `integer` and another `integer`, `bool`
+/// or `int`.
+///
+/// `rational.add`: For addition of a `rational` and another `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `real.add`: For addition of a `real` and another `real`, `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `complex.add`: For addition of a `complex` and another `complex`, `real`,
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.add`: For addition of an `expression` and another  `expression`,
+/// `complex`, `real`, `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `array.add`: For addition of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The addition is performed with the precision of the coerced type of the
+/// inputs.
 pub inline fn add(
     x: anytype,
     y: anytype,
@@ -46,7 +119,6 @@ pub inline fn add(
                     // return integer.add(x, y, .{ .allocator = options.allocator, .mode = options.mode });
                     return .empty;
                 },
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -55,7 +127,6 @@ pub inline fn add(
                 .bool, .int => return int.add(x, y, .{ .mode = options.mode }),
                 .float => return float.add(x, y),
                 .cfloat => return cfloat.add(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -63,53 +134,131 @@ pub inline fn add(
             switch (types.numericType(Y)) {
                 .bool, .int, .float => return float.add(x, y),
                 .cfloat => return cfloat.add(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float, .cfloat => return cfloat.add(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
+/// Adds two values of any two supported types in-place.
+///
+/// The function supports addition for values of any combination of supported
+/// numeric types, `Array`s and slices, and stores the result in the output
+/// pointer. The operation performed is
+///
+/// \begin{equation*}
+///     o = x + y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// o (pointer to `bool`, `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex`, `expression`, `Array` or slice): The output pointer where
+/// the result of the addition operation will be stored.
+///
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the addition operation.
+/// - `mode` (`int.Mode`): The mode of the addition operation. Only needed when
+/// adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision. May not be used if the output has enouph memory allocated
+/// already.
+///
+/// Returns
+/// -------
+/// `void`: The result of the addition operation is stored in the output
+/// pointer.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+/// `array.Error.Bla`: Put errors when `array.add_` is implemented.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the addition operation is not defined for the types of
+/// the inputs, if the types of the inputs cannot be coerced to a common type,
+/// if the types of the inputs are not supported numeric types, `Array`s or
+/// slices, if the output pointer is not a mutable pointer, if the output's
+/// child type is not a supported numeric type, `Array` or slice, or if the
+/// coerced type is an `Array` and the output's child type is not an `Array`.
+///
+/// See Also
+/// --------
+/// `add`: For addition of two values and returning the result.
+///
+/// `int.add_`: For in-place addition of an `int` and another `int` or `bool`.
+///
+/// `float.add_`: For in-place addition of a `float` and another `float`, `int`
+/// or `bool`.
+///
+/// `cfloat.add_`: For in-place addition of a `cfloat` and another `cfloat`,
+/// `float`, `int` or `bool`.
+///
+/// `integer.add_`: For in-place addition of an `integer` and another `integer`,
+/// `bool` or `int`.
+///
+/// `rational.add_`: For in-place addition of a `rational` and another
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `real.add_`: For in-place addition of a `real` and another `real`,
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `complex.add_`: For in-place addition of a `complex` and another `complex`,
+/// `real`, `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.add_`: For in-place addition of an `expression` and another
+/// `expression`, `complex`, `real`, `rational`, `integer`, `float`, `int` or
+/// `bool`.
+///
+/// `array.add_`: For in-place addition of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The addition is performed with the precision of the coerced type of the
+/// inputs, and the result is cast to the output type if necessary. This cast
+/// is not checked for safety.
 pub inline fn add_(
-    out: anytype,
+    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
@@ -117,7 +266,7 @@ pub inline fn add_(
         allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
     },
 ) !void {
-    comptime var O: type = @TypeOf(out);
+    comptime var O: type = @TypeOf(o);
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -136,71 +285,136 @@ pub inline fn add_(
         .bool => {
             switch (types.numericType(Y)) {
                 .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .int => return int.add_(out, x, y, .{ .mode = options.mode }),
-                .float => return float.add_(out, x, y),
-                .cfloat => return cfloat.add_(out, x, y),
-                .unsupported => unreachable,
+                .int => return int.add_(o, x, y, .{ .mode = options.mode }),
+                .float => return float.add_(o, x, y),
+                .cfloat => return cfloat.add_(o, x, y),
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .int => {
             switch (types.numericType(Y)) {
-                .bool, .int => return int.add_(out, x, y, .{ .mode = options.mode }),
-                .float => return float.add_(out, x, y),
-                .cfloat => return cfloat.add_(out, x, y),
-                .unsupported => unreachable,
+                .bool, .int => return int.add_(o, x, y, .{ .mode = options.mode }),
+                .float => return float.add_(o, x, y),
+                .cfloat => return cfloat.add_(o, x, y),
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .float => {
             switch (types.numericType(Y)) {
-                .bool, .int, .float => return float.add_(out, x, y),
-                .cfloat => return cfloat.add_(out, x, y),
-                .unsupported => unreachable,
+                .bool, .int, .float => return float.add_(o, x, y),
+                .cfloat => return cfloat.add_(o, x, y),
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
-                .bool, .int, .float, .cfloat => return cfloat.add_(out, x, y),
-                .unsupported => unreachable,
+                .bool, .int, .float, .cfloat => return cfloat.add_(o, x, y),
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.add_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
+/// Subtracts two values of any two supported types.
+///
+/// The function supports subtraction for values of any combination of supported
+/// numeric types, `Array`s and slices. The operation performed is
+///
+/// \begin{equation*}
+///     x - y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the subtraction operation.
+/// - `mode` (`int.Mode`): The mode of the subtraction operation. Only needed
+/// when adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision.
+///
+/// Returns
+/// -------
+/// `Coerce(@TypeOf(x), @TypeOf(y))`: The result of the subtraction operation.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the subtraction operation is not defined for the types
+/// of the inputs, if the types of the inputs cannot be coerced to a common
+/// type, or if the types of the inputs are not supported numeric types,
+/// `Array`s or slices.
+///
+/// See Also
+/// --------
+/// `sub_`: For in-place subtraction of two values.
+///
+/// `int.sub`: For subtraction of an `int` and another `int` or `bool`.
+///
+/// `float.sub`: For subtraction of a `float` and another `float`, `int` or
+/// `bool`.
+///
+/// `cfloat.sub`: For subtraction of a `cfloat` and another `cfloat`, `float`,
+/// `int` or `bool`.
+///
+/// `integer.sub`: For subtraction of an `integer` and another `integer`, `bool`
+/// or `int`.
+///
+/// `rational.sub`: For subtraction of a `rational` and another `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `real.sub`: For subtraction of a `real` and another `real`, `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `complex.sub`: For subtraction of a `complex` and another `complex`, `real`,
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.sub`: For subtraction of an `expression` and another
+/// `expression`, `complex`, `real`, `rational`, `integer`, `float`, `int` or
+/// `bool`.
+///
+/// `array.sub`: For subtraction of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The subtraction is performed with the precision of the coerced type of the
+/// inputs.
 pub inline fn sub(
     x: anytype,
     y: anytype,
@@ -224,7 +438,6 @@ pub inline fn sub(
                 .int => return int.sub(x, y, .{ .mode = options.mode }),
                 .float => return float.sub(x, y),
                 .cfloat => return cfloat.sub(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -233,7 +446,6 @@ pub inline fn sub(
                 .bool, .int => return int.sub(x, y, .{ .mode = options.mode }),
                 .float => return float.sub(x, y),
                 .cfloat => return cfloat.sub(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -241,51 +453,130 @@ pub inline fn sub(
             switch (types.numericType(Y)) {
                 .bool, .int, .float => return float.sub(x, y),
                 .cfloat => return cfloat.sub(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float, .cfloat => return cfloat.sub(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
+/// Subtracts two values of any two supported types in-place.
+///
+/// The function supports subtraction for values of any combination of supported
+/// numeric types, `Array`s and slices, and stores the result in the output
+/// pointer. The operation performed is
+///
+/// \begin{equation*}
+///     o = x - y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// o (pointer to `bool`, `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex`, `expression`, `Array` or slice): The output pointer where
+/// the result of the subtraction operation will be stored.
+///
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the subtraction operation.
+/// - `mode` (`int.Mode`): The mode of the subtraction operation. Only needed
+/// when adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision. May not be used if the output has enouph memory allocated
+/// already.
+///
+/// Returns
+/// -------
+/// `void`: The result of the subtraction operation is stored in the output
+/// pointer.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+/// `array.Error.Bla`: Put errors when `array.sub_` is implemented.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the subtraction operation is not defined for the types
+/// of the inputs, if the types of the inputs cannot be coerced to a common
+/// type, if the types of the inputs are not supported numeric types, `Array`s
+/// or slices, if the output pointer is not a mutable pointer, if the output's
+/// child type is not a supported numeric type, `Array` or slice, or if the
+/// coerced type is an `Array` and the output's child type is not an `Array`.
+///
+/// See Also
+/// --------
+/// `sub`: For subtraction of two values and returning the result.
+///
+/// `int.sub_`: For in-place subtraction of an `int` and another `int` or
+/// `bool`.
+///
+/// `float.sub_`: For in-place subtraction of a `float` and another `float`,
+/// `int` or `bool`.
+///
+/// `cfloat.sub_`: For in-place subtraction of a `cfloat` and another `cfloat`,
+/// `float`, `int` or `bool`.
+///
+/// `integer.sub_`: For in-place subtraction of an `integer` and another
+/// `integer`, `bool` or `int`.
+///
+/// `rational.sub_`: For in-place subtraction of a `rational` and another
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `real.sub_`: For in-place subtraction of a `real` and another `real`,
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `complex.sub_`: For in-place subtraction of a `complex` and another
+/// `complex`, `real`, `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.sub_`: For in-place subtraction of an `expression` and another
+/// `expression`, `complex`, `real`, `rational`, `integer`, `float`, `int` or
+/// `bool`.
+///
+/// `array.sub_`: For in-place subtraction of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The subtraction is performed with the precision of the coerced type of the
+/// inputs, and the result is cast to the output type if necessary. This cast
+/// is not checked for safety.
 pub inline fn sub_(
     out: anytype,
     x: anytype,
@@ -317,7 +608,6 @@ pub inline fn sub_(
                 .int => return int.sub_(out, x, y, .{ .mode = options.mode }),
                 .float => return float.sub_(out, x, y),
                 .cfloat => return cfloat.sub_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -326,7 +616,6 @@ pub inline fn sub_(
                 .bool, .int => return int.sub_(out, x, y, .{ .mode = options.mode }),
                 .float => return float.sub_(out, x, y),
                 .cfloat => return cfloat.sub_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -334,51 +623,119 @@ pub inline fn sub_(
             switch (types.numericType(Y)) {
                 .bool, .int, .float => return float.sub_(out, x, y),
                 .cfloat => return cfloat.sub_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float, .cfloat => return cfloat.sub_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.sub_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
+/// Multiplies two values of any two supported types.
+///
+/// The function supports multiplication for values of any combination of
+/// supported numeric types, `Array`s and slices. The operation performed is
+///
+/// \begin{equation*}
+///     x \cdot y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the multiplication operation.
+/// - `mode` (`int.Mode`): The mode of the multiplication operation. Only needed
+/// when adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision.
+///
+/// Returns
+/// -------
+/// `Coerce(@TypeOf(x), @TypeOf(y))`: The result of the multiplication
+/// operation.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the multiplication operation is not defined for the
+/// types of the inputs, if the types of the inputs cannot be coerced to a
+/// common type, or if the types of the inputs are not supported numeric types,
+/// `Array`s or slices.
+///
+/// See Also
+/// --------
+/// `mul_`: For in-place multiplication of two values.
+///
+/// `int.mul`: For multiplication of an `int` and another `int` or `bool`.
+///
+/// `float.mul`: For multiplication of a `float` and another `float`, `int` or
+/// `bool`.
+///
+/// `cfloat.mul`: For multiplication of a `cfloat` and another `cfloat`,
+/// `float`, `int` or `bool`.
+///
+/// `integer.mul`: For multiplication of an `integer` and another `integer`,
+/// `bool` or `int`.
+///
+/// `rational.mul`: For multiplication of a `rational` and another `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `real.mul`: For multiplication of a `real` and another `real`, `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `complex.mul`: For multiplication of a `complex` and another `complex`,
+/// `real`, `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.mul`: For multiplication of an `expression` and another
+/// `expression`, `complex`, `real`, `rational`, `integer`, `float`, `int` or
+/// `bool`.
+///
+/// `array.mul`: For multiplication of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The multiplication is performed with the precision of the coerced type of
+/// the inputs.
 pub inline fn mul(
     x: anytype,
     y: anytype,
@@ -402,7 +759,6 @@ pub inline fn mul(
                 .int => return int.mul(x, y, .{ .mode = options.mode }),
                 .float => return float.mul(x, y),
                 .cfloat => return cfloat.mul(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -411,7 +767,6 @@ pub inline fn mul(
                 .bool, .int => return int.mul(x, y, .{ .mode = options.mode }),
                 .float => return float.mul(x, y),
                 .cfloat => return cfloat.mul(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -419,51 +774,131 @@ pub inline fn mul(
             switch (types.numericType(Y)) {
                 .bool, .int, .float => return float.mul(x, y),
                 .cfloat => return cfloat.mul(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float, .cfloat => return cfloat.mul(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
+/// Multiplies two values of any two supported types in-place.
+///
+/// The function supports multiplication for values of any combination of
+/// supported numeric types, `Array`s and slices, and stores the result in the
+/// output pointer. The operation performed is
+///
+/// \begin{equation*}
+///     o = x \cdot y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// o (pointer to `bool`, `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex`, `expression`, `Array` or slice): The output pointer where
+/// the result of the multiplication operation will be stored.
+///
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the multiplication operation.
+/// - `mode` (`int.Mode`): The mode of the multiplication operation. Only needed
+/// when adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision. May not be used if the output has enouph memory allocated
+/// already.
+///
+/// Returns
+/// -------
+/// `void`: The result of the multiplication operation is stored in the output
+/// pointer.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+/// `array.Error.Bla`: Put errors when `array.mul_` is implemented.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the multiplication operation is not defined for the
+/// types of the inputs, if the types of the inputs cannot be coerced to a
+/// common type, if the types of the inputs are not supported numeric types,
+/// `Array`s or slices, if the output pointer is not a mutable pointer, if the
+/// output's child type is not a supported numeric type, `Array` or slice, or if
+/// the coerced type is an `Array` and the output's child type is not an
+/// `Array`.
+///
+/// See Also
+/// --------
+/// `mul`: For multiplication of two values and returning the result.
+///
+/// `int.mul_`: For in-place multiplication of an `int` and another `int` or
+/// `bool`.
+///
+/// `float.mul_`: For in-place multiplication of a `float` and another `float`,
+/// `int` or `bool`.
+///
+/// `cfloat.mul_`: For in-place multiplication of a `cfloat` and another
+/// `cfloat`, `float`, `int` or `bool`.
+///
+/// `integer.mul_`: For in-place multiplication of an `integer` and another
+/// `integer`, `bool` or `int`.
+///
+/// `rational.mul_`: For in-place multiplication of a `rational` and another
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `real.mul_`: For in-place multiplication of a `real` and another `real`,
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `complex.mul_`: For in-place multiplication of a `complex` and another
+/// `complex`, `real`, `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.mul_`: For in-place multiplication of an `expression` and
+/// another `expression`, `complex`, `real`, `rational`, `integer`, `float`,
+/// `int` or `bool`.
+///
+/// `array.mul_`: For in-place multiplication of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The multiplication is performed with the precision of the coerced type of
+/// the inputs, and the result is cast to the output type if necessary. This
+/// cast is not checked for safety.
 pub inline fn mul_(
     out: anytype,
     x: anytype,
@@ -495,7 +930,6 @@ pub inline fn mul_(
                 .int => return int.mul_(out, x, y, .{ .mode = options.mode }),
                 .float => return float.mul_(out, x, y),
                 .cfloat => return cfloat.mul_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -504,7 +938,6 @@ pub inline fn mul_(
                 .bool, .int => return int.mul_(out, x, y, .{ .mode = options.mode }),
                 .float => return float.mul_(out, x, y),
                 .cfloat => return cfloat.mul_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -512,51 +945,116 @@ pub inline fn mul_(
             switch (types.numericType(Y)) {
                 .bool, .int, .float => return float.mul_(out, x, y),
                 .cfloat => return cfloat.mul_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float, .cfloat => return cfloat.mul_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.mul_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
+/// Divides two values of any two supported types.
+///
+/// The function supports division for values of any combination of supported
+/// numeric types, `Array`s and slices. The operation performed is
+///
+/// \begin{equation*}
+///     x / y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the division operation.
+/// - `mode` (`int.Mode`): The mode of the division operation. Only needed when
+/// adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision.
+///
+/// Returns
+/// -------
+/// `Coerce(@TypeOf(x), @TypeOf(y))`: The result of the division operation.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the division operation is not defined for the types of
+/// the inputs, if the types of the inputs cannot be coerced to a common type,
+/// or if the types of the inputs are not supported numeric types, `Array`s or
+/// slices.
+///
+/// See Also
+/// --------
+/// `div_`: For in-place division of two values.
+///
+/// `int.div`: For division of an `int` and another `int` or `bool`.
+///
+/// `float.div`: For division of a `float` and another `float`, `int` or `bool`.
+///
+/// `cfloat.div`: For division of a `cfloat` and another `cfloat`, `float`,
+/// `int` or `bool`.
+///
+/// `integer.div`: For division of an `integer` and another `integer`, `bool`
+/// or `int`.
+///
+/// `rational.div`: For division of a `rational` and another `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `real.div`: For division of a `real` and another `real`, `rational`,
+/// `integer`, `float`, `int` or `bool`.
+///
+/// `complex.div`: For division of a `complex` and another `complex`, `real`,
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.div`: For division of an `expression` and another  `expression`,
+/// `complex`, `real`, `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `array.div`: For division of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The division is performed with the precision of the coerced type of the
+/// inputs.
 pub inline fn div(
     x: anytype,
     y: anytype,
@@ -580,7 +1078,6 @@ pub inline fn div(
                 .int => return int.div(x, y),
                 .float => return float.div(x, y),
                 .cfloat => return cfloat.div(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -589,7 +1086,6 @@ pub inline fn div(
                 .bool, .int => return int.div(x, y),
                 .float => return float.div(x, y),
                 .cfloat => return cfloat.div(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -597,51 +1093,129 @@ pub inline fn div(
             switch (types.numericType(Y)) {
                 .bool, .int, .float => return float.div(x, y),
                 .cfloat => return cfloat.div(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float, .cfloat => return cfloat.div(x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
+/// Divides two values of any two supported types in-place.
+///
+/// The function supports division for values of any combination of supported
+/// numeric types, `Array`s and slices, and stores the result in the output
+/// pointer. The operation performed is
+///
+/// \begin{equation*}
+///     o = x / y
+/// \end{equation*}
+///
+/// Parameters
+/// ----------
+/// o (pointer to `bool`, `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex`, `expression`, `Array` or slice): The output pointer where
+/// the result of the division operation will be stored.
+///
+/// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The left-hand side operand.
+///
+/// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex`, `expression`, `Array` or slice): The right-hand side operand.
+///
+/// options (`struct`): Options for the division operation.
+/// - `mode` (`int.Mode`): The mode of the division operation. Only needed when
+/// adding two `int` values.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision. May not be used if the output has enouph memory allocated
+/// already.
+///
+/// Returns
+/// -------
+/// `void`: The result of the division operation is stored in the output
+/// pointer.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value. Only occurs if the output type is of arbitrary
+/// precision.
+/// `array.Error.Bla`: Put errors when `array.add_` is implemented.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the division operation is not defined for the types of
+/// the inputs, if the types of the inputs cannot be coerced to a common type,
+/// if the types of the inputs are not supported numeric types, `Array`s or
+/// slices, if the output pointer is not a mutable pointer, if the output's
+/// child type is not a supported numeric type, `Array` or slice, or if the
+/// coerced type is an `Array` and the output's child type is not an `Array`.
+///
+/// See Also
+/// --------
+/// `div`: For division of two values and returning the result.
+///
+/// `int.div_`: For in-place division of an `int` and another `int` or `bool`.
+///
+/// `float.div_`: For in-place division of a `float` and another `float`, `int`
+/// or `bool`.
+///
+/// `cfloat.div_`: For in-place division of a `cfloat` and another `cfloat`,
+/// `float`, `int` or `bool`.
+///
+/// `integer.div_`: For in-place division of an `integer` and another `integer`,
+/// `bool` or `int`.
+///
+/// `rational.div_`: For in-place division of a `rational` and another
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `real.div_`: For in-place division of a `real` and another `real`,
+/// `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `complex.div_`: For in-place division of a `complex` and another `complex`,
+/// `real`, `rational`, `integer`, `float`, `int` or `bool`.
+///
+/// `expression.div_`: For in-place division of an `expression` and another
+/// `expression`, `complex`, `real`, `rational`, `integer`, `float`, `int` or
+/// `bool`.
+///
+/// `array.div_`: For in-place division of two `Array`s or slices.
+///
+/// Notes
+/// -----
+/// The division is performed with the precision of the coerced type of the
+/// inputs, and the result is cast to the output type if necessary. This cast
+/// is not checked for safety.
 pub inline fn div_(
     out: anytype,
     x: anytype,
@@ -673,7 +1247,6 @@ pub inline fn div_(
                 .int => return int.div_(out, x, y),
                 .float => return float.div_(out, x, y),
                 .cfloat => return cfloat.div_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -682,7 +1255,6 @@ pub inline fn div_(
                 .bool, .int => return int.div_(out, x, y),
                 .float => return float.div_(out, x, y),
                 .cfloat => return cfloat.div_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -690,48 +1262,40 @@ pub inline fn div_(
             switch (types.numericType(Y)) {
                 .bool, .int, .float => return float.div_(out, x, y),
                 .cfloat => return cfloat.div_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float, .cfloat => return cfloat.div_(out, x, y),
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .integer => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .rational => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .real => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .complex => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
         .expression => {
             switch (types.numericType(Y)) {
-                .unsupported => unreachable,
                 else => @compileError("zml.div_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -760,7 +1324,6 @@ pub inline fn eq(
                 .float => return float.eq(x, y),
                 .cfloat => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -770,7 +1333,6 @@ pub inline fn eq(
                 .int, .float => return float.eq(x, y),
                 .cfloat => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -780,7 +1342,6 @@ pub inline fn eq(
                 .bool => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -789,7 +1350,6 @@ pub inline fn eq(
                 .bool => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -798,7 +1358,6 @@ pub inline fn eq(
                 .bool => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -808,11 +1367,9 @@ pub inline fn eq(
                 .bool => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -841,7 +1398,6 @@ pub inline fn ne(
                 .float => return float.ne(x, y),
                 .cfloat => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -851,7 +1407,6 @@ pub inline fn ne(
                 .int, .float => return float.ne(x, y),
                 .cfloat => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -861,7 +1416,6 @@ pub inline fn ne(
                 .bool => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -870,7 +1424,6 @@ pub inline fn ne(
                 .bool => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -879,7 +1432,6 @@ pub inline fn ne(
                 .bool => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -889,11 +1441,9 @@ pub inline fn ne(
                 .bool => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ne not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -922,7 +1472,6 @@ pub inline fn lt(
                 .float => return float.lt(x, y),
                 .cfloat => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -932,7 +1481,6 @@ pub inline fn lt(
                 .int, .float => return float.lt(x, y),
                 .cfloat => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -942,7 +1490,6 @@ pub inline fn lt(
                 .bool => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -951,7 +1498,6 @@ pub inline fn lt(
                 .bool => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -960,7 +1506,6 @@ pub inline fn lt(
                 .bool => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -970,11 +1515,9 @@ pub inline fn lt(
                 .bool => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.lt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -1003,7 +1546,6 @@ pub inline fn le(
                 .float => return float.le(x, y),
                 .cfloat => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1013,7 +1555,6 @@ pub inline fn le(
                 .int, .float => return float.le(x, y),
                 .cfloat => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1023,7 +1564,6 @@ pub inline fn le(
                 .bool => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1032,7 +1572,6 @@ pub inline fn le(
                 .bool => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1041,7 +1580,6 @@ pub inline fn le(
                 .bool => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1051,11 +1589,9 @@ pub inline fn le(
                 .bool => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.le not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -1084,7 +1620,6 @@ pub inline fn gt(
                 .float => return float.gt(x, y),
                 .cfloat => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1094,7 +1629,6 @@ pub inline fn gt(
                 .int, .float => return float.gt(x, y),
                 .cfloat => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1104,7 +1638,6 @@ pub inline fn gt(
                 .bool => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1113,7 +1646,6 @@ pub inline fn gt(
                 .bool => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1122,7 +1654,6 @@ pub inline fn gt(
                 .bool => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1132,11 +1663,9 @@ pub inline fn gt(
                 .bool => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -1165,7 +1694,6 @@ pub inline fn ge(
                 .float => return float.ge(x, y),
                 .cfloat => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1175,7 +1703,6 @@ pub inline fn ge(
                 .int, .float => return float.ge(x, y),
                 .cfloat => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1185,7 +1712,6 @@ pub inline fn ge(
                 .bool => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1194,7 +1720,6 @@ pub inline fn ge(
                 .bool => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1203,7 +1728,6 @@ pub inline fn ge(
                 .bool => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1213,11 +1737,9 @@ pub inline fn ge(
                 .bool => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.ge not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -1245,7 +1767,6 @@ pub inline fn max(
                 .int, .float => return @max(x, y),
                 .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1255,7 +1776,6 @@ pub inline fn max(
                 .int, .float => return @max(x, y),
                 .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1265,7 +1785,6 @@ pub inline fn max(
                 .bool => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1274,7 +1793,6 @@ pub inline fn max(
                 .bool => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1283,7 +1801,6 @@ pub inline fn max(
                 .bool => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1293,11 +1810,9 @@ pub inline fn max(
                 .bool => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -1325,7 +1840,6 @@ pub inline fn min(
                 .int, .float => return @min(x, y),
                 .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1335,7 +1849,6 @@ pub inline fn min(
                 .int, .float => return @min(x, y),
                 .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1345,7 +1858,6 @@ pub inline fn min(
                 .bool => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1354,7 +1866,6 @@ pub inline fn min(
                 .bool => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1363,7 +1874,6 @@ pub inline fn min(
                 .bool => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -1373,11 +1883,9 @@ pub inline fn min(
                 .bool => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                 .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                .unsupported => unreachable,
                 else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -1438,7 +1946,6 @@ pub inline fn abs(
         .int => return int.abs,
         .float => return float.abs(x),
         .cfloat => return cfloat.abs(x),
-        .unsupported => unreachable,
         else => @compileError("zml.abs not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }
@@ -1468,7 +1975,6 @@ pub inline fn abs_(
         .int => out.* = try cast(O, int.abs(x), .{}),
         .float => out.* = try cast(O, float.abs(x), .{}),
         .cfloat => out.* = try cast(O, cfloat.abs(x), .{}),
-        .unsupported => unreachable,
         else => @compileError("zml.abs_ not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }
@@ -1491,7 +1997,6 @@ pub inline fn ceil(
         .float => return float.ceil(x),
         .cfloat => @compileError("zml.ceil not defined for " ++ @typeName(X)),
         .complex => @compileError("zml.ceil not defined for " ++ @typeName(X)),
-        .unsupported => unreachable,
         else => @compileError("zml.ceil not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }
@@ -1522,7 +2027,6 @@ pub inline fn ceil_(
         .float => out.* = try cast(O, float.ceil(x), .{}),
         .cfloat => @compileError("zml.ceil_ not defined for " ++ @typeName(X)),
         .complex => @compileError("zml.ceil_ not defined for " ++ @typeName(X)),
-        .unsupported => unreachable,
         else => @compileError("zml.ceil_ not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }
@@ -1541,7 +2045,6 @@ pub inline fn copy(
     _ = options.allocator;
     switch (types.numericType(X)) {
         .bool, .int, .float, .cfloat => return x,
-        .unsupported => unreachable,
         else => @compileError("zml.copy not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }
@@ -1552,6 +2055,9 @@ pub inline fn deinit(
         allocator: if (needsAllocator(Child(@TypeOf(x)))) std.mem.Allocator else void = {},
     },
 ) void {
+    comptime if (!types.isPointer(@TypeOf(x)) or types.isConstPointer(@TypeOf(x)))
+        @compileError("zml.deinit requires x a mutable pointer, got " ++ @typeName(@TypeOf(x)));
+
     const X: type = Child(@TypeOf(x));
 
     comptime if (types.isArray(X) or types.isSlice(X))
@@ -1560,9 +2066,6 @@ pub inline fn deinit(
     _ = options.allocator;
     switch (types.numericType(X)) {
         .bool, .int, .float, .cfloat => {},
-        .unsupported => unreachable,
         else => @compileError("zml.deinit not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }
-
-test {}

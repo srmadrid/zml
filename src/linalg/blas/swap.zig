@@ -86,6 +86,5 @@ pub inline fn swap(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.swap only supports simple types."),
-        .unsupported => unreachable,
     }
 }

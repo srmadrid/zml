@@ -72,6 +72,5 @@ pub inline fn axpy(comptime T: type, n: isize, alpha: T, x: [*]const T, incx: is
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.axpy only supports simple types."),
-        .unsupported => unreachable,
     }
 }

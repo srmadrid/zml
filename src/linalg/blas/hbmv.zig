@@ -167,6 +167,5 @@ pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.hbmv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

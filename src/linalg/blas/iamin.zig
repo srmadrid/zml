@@ -190,7 +190,6 @@ pub inline fn iamin(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.iamin only supports simple types."),
-        .unsupported => unreachable,
     }
 
     return imin;

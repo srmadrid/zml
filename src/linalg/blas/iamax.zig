@@ -190,7 +190,6 @@ pub inline fn iamax(comptime T: type, n: isize, x: [*]const T, incx: isize) usiz
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.iamax only supports simple types."),
-        .unsupported => unreachable,
     }
 
     return imax;

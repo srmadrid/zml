@@ -713,6 +713,5 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.tbmv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

@@ -40,6 +40,5 @@ pub inline fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.dotc_sub only supports simple types."),
-        .unsupported => unreachable,
     }
 }

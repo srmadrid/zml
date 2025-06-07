@@ -40,7 +40,6 @@ pub inline fn dotu(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.dotu only supports simple types."),
-        .unsupported => unreachable,
     }
 
     return sum;

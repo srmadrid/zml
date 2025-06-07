@@ -22,26 +22,47 @@ const complex = @import("complex.zig");
 const Complex = complex.Complex;
 //pub const Expression = @import("../expression/expression.zig").Expression;
 
+/// `NumericType` is an enum that represents the different numeric types
+/// supported by the library. It is used to categorize types based on their
+/// properties and capabilities, such as whether they are integers, floats,
+/// complex numbers, etc.
+///
+/// This enum is used in various places in the library to determine how to
+/// handle different types of numeric data. It allows for type checking and
+/// coercion between different numeric types, ensuring that operations are
+/// performed correctly and efficiently.
+///
+/// Values
+/// ------
+/// - `bool`: Represents the boolean type (`bool`).
+/// - `int`: Represents integer types:
+///   - `usize`, `u8`, `u16`, `u32`, `u64`, `u128`
+///   - `isize`, `i8`, `i16`, `i32`, `i64`, `i128`
+///   - `comptime_int`
+/// - `float`: Represents floating-point types:
+///   - `f16`, `f32`, `f64`, `f80`, `f128`
+///   - `comptime_float`
+/// - `cfloat`: Represents complex floating-point types:
+///   - `cf16`, `cf32`, `cf64`, `cf80`, `cf128`
+///   - `comptime_complex`
+/// - `integer`: Represents arbitrary precision integer type (`Integer`).
+/// - `rational`: Represents arbitrary precision rational type (`Rational`).
+/// - `real`: Represents arbitrary precision real type (`Real`).
+/// - `complex`: Represents complex arbitrary precision types:
+///   - `Complex(Integer)`
+///   - `Complex(Rational)`
+///   - `Complex(Real)`
+/// - `expression`: Represents symbolic expressions (Expression).
 pub const NumericType = enum {
-    /// bool
     bool,
-    /// u8, u16, u32, u64, u128, i8, i16, i32, i64, i128, comptime_int
     int,
-    /// f16, f32, f64, f80, f128, comptime_float
     float,
-    /// cf16, cf32, cf64, cf80, cf128, comptime_complex
     cfloat,
-    /// Integer
     integer,
-    /// Rational
     rational,
-    /// Real
     real,
-    /// Complex
     complex,
-    /// Expression
     expression,
-    unsupported,
 };
 
 pub const Order = enum {
@@ -50,21 +71,39 @@ pub const Order = enum {
     gt,
 };
 
+/// Checks the the input type `T` and returns the corresponding `NumericType`.
+///
+/// Checks that the input type is a supported numeric type and returns the
+/// corresponding `NumericType` enum value. If the type is not supported, it
+/// will raise a compile error.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `NumericType`: The corresponding `NumericType` enum value.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is not supported.
 pub inline fn numericType(comptime T: type) NumericType {
+    // Without inline functions calling this fail miserably. I have no idea why.
+
     @setEvalBranchQuota(1000000);
 
     switch (@typeInfo(T)) {
         .bool => return .bool,
         .int, .comptime_int => {
-            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != comptime_int) {
+            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != comptime_int)
                 @compileError("Unsupported integer type: " ++ @typeName(T));
-            } else {
-                return .int;
-            }
+
+            return .int;
         },
         .float, .comptime_float => return .float,
         else => {
-            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_complex)) {
+            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float)) {
                 return .cfloat;
             } else if (T == Integer) {
                 return .integer;
@@ -84,6 +123,14 @@ pub inline fn numericType(comptime T: type) NumericType {
 }
 
 /// Checks if the input type is a one-item pointer.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a one-item pointer, `false` otherwise.
 pub fn isPointer(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .pointer => |info| {
@@ -96,6 +143,15 @@ pub fn isPointer(comptime T: type) bool {
 }
 
 /// Checks if the input type is a constant one-item pointer.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a constant one-item pointer, `false`
+/// otherwise.
 pub fn isConstPointer(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .pointer => |info| {
@@ -111,7 +167,15 @@ pub fn isConstPointer(comptime T: type) bool {
     }
 }
 
-/// Checks if the input is a slice.
+/// Checks if the input type is a slice.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a slice, `false` otherwise.
 pub fn isSlice(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .pointer => |info| {
@@ -123,7 +187,15 @@ pub fn isSlice(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of an Array.
+/// Checks if the input type is an instance of an `Array`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is an `Array`, `false` otherwise.
 pub fn isArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
@@ -175,19 +247,22 @@ pub fn isArray(comptime T: type) bool {
     }
 }
 
-/// Checks if the input is a one-item pointer.
-pub fn isOneItemPointer(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .pointer => |info| {
-            if (info.size != .one) return false;
-
-            return true;
-        },
-        else => return false,
-    }
-}
-
-/// Checks if the input type is of fixed precision.
+/// Checks if the input numeric type is of fixed precision.
+///
+/// This function checks if the input type is a fixed precision numeric type,
+/// which includes types labeled as `bool`, `int`, `float`, and `cfloat`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check. Must be a supported numeric type.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is of fixed precision, `false` otherwise.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is not a supported numeric type.
 pub fn isFixedPrecision(comptime T: type) bool {
     switch (numericType(T)) {
         .bool => return true,
@@ -198,7 +273,23 @@ pub fn isFixedPrecision(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is of arbitrary precision.
+/// Checks if the input numeric type is of arbitrary precision.
+///
+/// This function checks if the input type is an arbitrary precision numeric
+/// type, which includes types labeled as `integer`, `rational`, `real`,
+/// `complex`, and `expression`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check. Must be a supported numeric type.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is of arbitrary precision, `false` otherwise.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is not a supported numeric type.
 pub fn isArbitraryPrecision(comptime T: type) bool {
     switch (numericType(T)) {
         .integer => return true,
@@ -210,8 +301,22 @@ pub fn isArbitraryPrecision(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is complex without distunguishing between
-/// arbitrary and fixed precision.
+/// Checks if the input type is complex.
+///
+/// This function checks if the input type is a complex numeric type, which
+/// includes types labeled as `cfloat`, `complex`, and `expression`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check. Must be a supported numeric type.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is complex, `false` otherwise.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is not a supported numeric type.
 pub fn isComplex(comptime T: type) bool {
     switch (numericType(T)) {
         .cfloat => return true,
@@ -220,256 +325,281 @@ pub fn isComplex(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type need allocation for its data.
+/// Checks if the input type needs allocation for its data.
+///
+/// This function checks if the input type requires an allocator for its data,
+/// which inludes `Array`s and arbitrary precision types.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check. Must be a supported numeric type or
+/// an `Array`.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type needs an allocator, `false` otherwise.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is neither an `Array` nor a supported numeric
+/// type.
 pub fn needsAllocator(comptime T: type) bool {
     return isArray(T) or isArbitraryPrecision(T);
 }
 
 /// Coerces the input types to the smallest type that can represent both types.
-/// If at least one of the types is an Array or a slice, the result will be
-/// an Array of the coerced type.
-pub fn Coerce(comptime K: type, comptime V: type) type {
-    if (K == V) {
-        return K;
+///
+/// This function takes two types `X` and `Y` and returns the smallest type that
+/// can represent both types without loss of information. If at least one of the
+/// types is an `Array` or a slice, the result will be an `Array` of the coerced
+/// `Numeric` types.
+///
+/// Parameters
+/// ----------
+/// comptime X (`type`): The first type to coerce. Must be a supported numeric
+/// type, an `Array`, or a slice.
+///
+/// comptime Y (`type`): The second type to coerce. Must be a supported numeric
+/// type, an `Array`, or a slice.
+///
+/// Returns
+/// -------
+/// `type`: The coerced type that can represent both `X` and `Y`.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the types cannot be coerced, or if either type is not an
+/// `Array`, a slice, or a supported numeric type.
+pub fn Coerce(comptime X: type, comptime Y: type) type {
+    if (X == Y) {
+        return X;
     }
 
-    comptime if (isArray(K)) {
-        if (isArray(V)) {
-            return Array(Coerce(Numeric(K), Numeric(V)));
-        } else if (isSlice(V)) {
-            return Array(Coerce(Numeric(K), Numeric(V)));
+    comptime if (isArray(X)) {
+        if (isArray(Y)) {
+            return Array(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isSlice(Y)) {
+            return Array(Coerce(Numeric(X), Numeric(Y)));
         } else {
-            return Array(Coerce(Numeric(K), V));
+            return Array(Coerce(Numeric(X), Y));
         }
-    } else if (isSlice(K)) {
-        if (isArray(V)) {
-            return Array(Coerce(Numeric(K), Numeric(V)));
-        } else if (isSlice(V)) { // Should two slices return another slice?
-            return Array(Coerce(Numeric(K), Numeric(V)));
+    } else if (isSlice(X)) {
+        if (isArray(Y)) {
+            return Array(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isSlice(Y)) { // Should two slices return another slice?
+            return Array(Coerce(Numeric(X), Numeric(Y)));
         } else {
-            return Array(Coerce(Numeric(K), V));
+            return Array(Coerce(Numeric(X), Y));
         }
     } else {
-        if (isArray(V)) {
-            return Array(Coerce(K, Numeric(V)));
-        } else if (isSlice(V)) {
-            return Array(Coerce(K, Numeric(V)));
+        if (isArray(Y)) {
+            return Array(Coerce(X, Numeric(Y)));
+        } else if (isSlice(Y)) {
+            return Array(Coerce(X, Numeric(Y)));
         }
-        // Else two numeric types
     };
 
-    const T1: type = K;
-    const T2: type = V;
+    // Else two numeric types
+    const xnumeric = numericType(X);
+    const ynumeric = numericType(Y);
 
-    const t1numeric = numericType(T1);
-    const t2numeric = numericType(T2);
-
-    switch (t1numeric) {
-        .bool => switch (t2numeric) {
+    switch (xnumeric) {
+        .bool => switch (ynumeric) {
             .bool => return bool,
-            else => return T2,
+            else => return Y,
         },
-        .int => switch (t2numeric) {
-            .bool => return T1,
+        .int => switch (ynumeric) {
+            .bool => return X,
             .int => {
-                if (T1 == comptime_int or T2 == comptime_int) {
+                if (X == comptime_int or Y == comptime_int) {
                     return comptime_int;
                 } else {
-                    comptime var t1info = @typeInfo(T1);
-                    comptime var t2info = @typeInfo(T2);
+                    comptime var xinfo = @typeInfo(X);
+                    comptime var yinfo = @typeInfo(Y);
 
-                    if (t1info.int.signedness == .unsigned) {
-                        if (t2info.int.signedness == .unsigned) {
-                            if (t1info.int.bits > t2info.int.bits) {
-                                return T1;
+                    if (xinfo.int.signedness == .unsigned) {
+                        if (yinfo.int.signedness == .unsigned) {
+                            if (xinfo.int.bits > yinfo.int.bits) {
+                                return X;
                             } else {
-                                return T2;
+                                return Y;
                             }
                         } else {
-                            if (t1info.int.bits > t2info.int.bits) {
-                                if (t1info.int.bits == 128) {
-                                    @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2) ++ " as " ++ @typeName(T1) ++ " already has the maximum amount of bits.");
+                            if (xinfo.int.bits > yinfo.int.bits) {
+                                if (xinfo.int.bits == 128) {
+                                    @compileError("Cannot coerce " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " as " ++ @typeName(X) ++ " already has the maximum amount of bits.");
                                 } else {
-                                    t2info.int.bits = t1info.int.bits * 2;
-                                    return @Type(t2info);
+                                    yinfo.int.bits = xinfo.int.bits * 2;
+                                    return @Type(yinfo);
                                 }
-                            } else if (t1info.int.bits == t2info.int.bits) {
-                                t2info.int.bits *= 2;
-                                return @Type(t2info);
+                            } else if (xinfo.int.bits == yinfo.int.bits) {
+                                yinfo.int.bits *= 2;
+                                return @Type(yinfo);
                             } else {
-                                return T2;
+                                return Y;
                             }
                         }
                     } else {
-                        if (t2info.int.signedness == .unsigned) {
-                            if (t2info.int.bits > t1info.int.bits) {
-                                if (t2info.int.bits == 128) {
-                                    @compileError("Cannot coerce " ++ @typeName(T1) ++ " and " ++ @typeName(T2) ++ " as " ++ @typeName(T2) ++ " already has the maximum amount of bits.");
+                        if (yinfo.int.signedness == .unsigned) {
+                            if (yinfo.int.bits > xinfo.int.bits) {
+                                if (yinfo.int.bits == 128) {
+                                    @compileError("Cannot coerce " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " as " ++ @typeName(Y) ++ " already has the maximum amount of bits.");
                                 } else {
-                                    t1info.int.bits = t2info.int.bits * 2;
-                                    return @Type(t1info);
+                                    xinfo.int.bits = yinfo.int.bits * 2;
+                                    return @Type(xinfo);
                                 }
-                            } else if (t1info.int.bits == t2info.int.bits) {
-                                t1info.int.bits *= 2;
-                                return @Type(t1info);
+                            } else if (xinfo.int.bits == yinfo.int.bits) {
+                                xinfo.int.bits *= 2;
+                                return @Type(xinfo);
                             } else {
-                                return T1;
+                                return X;
                             }
                         } else {
-                            if (t1info.int.bits > t2info.int.bits) {
-                                return T1;
+                            if (xinfo.int.bits > yinfo.int.bits) {
+                                return X;
                             } else {
-                                return T2;
+                                return Y;
                             }
                         }
                     }
                 }
             },
-            .unsupported => unreachable,
-            else => return T2,
+            else => return Y,
         },
         .float => {
-            switch (t2numeric) {
-                .bool => return T1,
-                .int => return T1,
+            switch (ynumeric) {
+                .bool => return X,
+                .int => return X,
                 .float => {
-                    const t1info = @typeInfo(T1);
-                    const t2info = @typeInfo(T2);
+                    const xinfo = @typeInfo(X);
+                    const yinfo = @typeInfo(Y);
 
-                    if (t1info.float.bits > t2info.float.bits) {
-                        return T1;
+                    if (xinfo.float.bits > yinfo.float.bits) {
+                        return X;
                     } else {
-                        return T2;
+                        return Y;
                     }
                 },
                 .cfloat => {
-                    const t1info = @typeInfo(T1);
-                    const t2info = @typeInfo(Scalar(T2));
+                    const xinfo = @typeInfo(X);
+                    const yinfo = @typeInfo(Scalar(Y));
 
-                    if (t1info.float.bits > t2info.float.bits) {
-                        return cfloat.Cfloat(T1);
+                    if (xinfo.float.bits > yinfo.float.bits) {
+                        return cfloat.Cfloat(X);
                     } else {
-                        return T2;
+                        return Y;
                     }
                 },
-                .unsupported => unreachable,
-                else => return T2,
+                else => return Y,
             }
         },
         .cfloat => {
-            switch (t2numeric) {
-                .bool => return T1,
-                .int => return T1,
+            switch (ynumeric) {
+                .bool => return X,
+                .int => return X,
                 .float => {
-                    const t1info = @typeInfo(Scalar(T1));
-                    const t2info = @typeInfo(T2);
+                    const xinfo = @typeInfo(Scalar(X));
+                    const yinfo = @typeInfo(Y);
 
-                    if (t1info.float.bits > t2info.float.bits) {
-                        return T1;
+                    if (xinfo.float.bits > yinfo.float.bits) {
+                        return X;
                     } else {
-                        return cfloat.Cfloat(T2);
+                        return cfloat.Cfloat(Y);
                     }
                 },
                 .cfloat => {
-                    const t1: T1 = .{ .re = 0, .im = 0 };
-                    const t2: T2 = .{ .re = 0, .im = 0 };
-                    return cfloat.Cfloat(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
+                    const x: X = .{ .re = 0, .im = 0 };
+                    const y: Y = .{ .re = 0, .im = 0 };
+                    return cfloat.Cfloat(Coerce(@TypeOf(@field(x, "re")), @TypeOf(@field(y, "re"))));
                 },
                 .integer => return Complex(Rational),
                 .rational => return Complex(Rational),
                 .real => return Complex(Real),
                 .complex => {
-                    if (T2 == Complex(Integer)) {
+                    if (Y == Complex(Integer)) {
                         return Complex(Rational);
                     } else {
-                        return T2;
+                        return Y;
                     }
                 },
-                .unsupported => unreachable,
-                else => return T2,
+                else => return Y,
             }
         },
-        .integer => switch (t2numeric) {
-            .bool => return T1,
-            .int => return T1,
-            .float => return T1,
+        .integer => switch (ynumeric) {
+            .bool => return X,
+            .int => return X,
+            .float => return X,
             .cfloat => return Complex(Rational),
-            .integer => return T1,
-            .unsupported => unreachable,
-            else => return T2,
+            .integer => return X,
+            else => return Y,
         },
-        .rational => switch (t2numeric) {
-            .bool => return T1,
-            .int => return T1,
-            .float => return T1,
+        .rational => switch (ynumeric) {
+            .bool => return X,
+            .int => return X,
+            .float => return X,
             .cfloat => return Complex(Rational),
-            .integer => return T1,
-            .rational => return T1,
+            .integer => return X,
+            .rational => return X,
             .complex => {
-                if (T2 == Complex(Integer)) {
+                if (Y == Complex(Integer)) {
                     return Complex(Rational);
                 } else {
-                    return T2;
+                    return Y;
                 }
             },
-            .unsupported => unreachable,
-            else => return T2,
+            else => return Y,
         },
-        .real => switch (t2numeric) {
-            .bool => return T1,
-            .int => return T1,
-            .float => return T1,
+        .real => switch (ynumeric) {
+            .bool => return X,
+            .int => return X,
+            .float => return X,
             .cfloat => return Complex(Real),
-            .integer => return T1,
-            .rational => return T1,
-            .real => return T1,
+            .integer => return X,
+            .rational => return X,
+            .real => return X,
             .complex => {
-                if (T2 == Complex(Integer)) {
+                if (Y == Complex(Integer)) {
                     return Complex(Real);
-                } else if (T2 == Complex(Rational)) {
+                } else if (Y == Complex(Rational)) {
                     return Complex(Real);
                 } else {
-                    return T2;
+                    return Y;
                 }
             },
-            .unsupported => unreachable,
-            else => return T2,
+            else => return Y,
         },
-        .complex => switch (t2numeric) {
-            .bool => return T1,
-            .int => return T1,
-            .float => return T1,
+        .complex => switch (ynumeric) {
+            .bool => return X,
+            .int => return X,
+            .float => return X,
             .cfloat => {
-                if (T1 == Complex(Integer)) {
+                if (X == Complex(Integer)) {
                     return Complex(Rational);
                 } else {
-                    return T1;
+                    return X;
                 }
             },
-            .integer => return T1,
-            .rational => return T1,
-            .real => return T1,
+            .integer => return X,
+            .rational => return X,
+            .real => return X,
             .complex => {
-                const t1: T1 = .empty;
-                const t2: T2 = .empty;
-                return Complex(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
+                const x: X = .empty;
+                const y: Y = .empty;
+                return Complex(Coerce(@TypeOf(@field(x, "re")), @TypeOf(@field(y, "re"))));
             },
-            .expression => return T2,
-            else => unreachable,
+            .expression => return Y,
         },
-        .expression => switch (t2numeric) {
-            .bool => return T1,
-            .int => return T1,
-            .float => return T1,
-            .cfloat => return T1,
-            .integer => return T1,
-            .rational => return T1,
-            .real => return T1,
-            .complex => return T1,
-            .expression => return T1,
-            else => unreachable,
+        .expression => switch (ynumeric) {
+            .bool => return X,
+            .int => return X,
+            .float => return X,
+            .cfloat => return X,
+            .integer => return X,
+            .rational => return X,
+            .real => return X,
+            .complex => return X,
+            .expression => return X,
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -477,12 +607,14 @@ pub fn Coerce(comptime K: type, comptime V: type) type {
 /// a more flexible version of `Coerce`, as it does not require `V` to be to the
 /// smallest type that can represent both types. The only requirement is that
 /// `V` can represent all values of the first two types.
+///
+/// Unused right now, kept for possible future use.
 pub fn canCoerce(comptime K: type, comptime V: type) bool {
     comptime if (isArray(K)) {
         if (isArray(V)) {
             return canCoerce(Numeric(K), Numeric(V));
         } else if (isSlice(V)) {
-            return false; // Should csting Array return a slice?
+            return false; // Should casting Array return a slice?
         } else {
             return false; // Only 1 element Arrays can be coerced to scalar types
         }
@@ -576,7 +708,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                     }
                 }
             },
-            .unsupported => unreachable,
             else => T3 = T2,
         },
         .float => {
@@ -604,7 +735,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                         T3 = T2;
                     }
                 },
-                .unsupported => unreachable,
                 else => T3 = T2,
             }
         },
@@ -628,7 +758,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                         T3 = T2;
                     }
                 },
-                .unsupported => unreachable,
                 else => T3 = T2,
             }
         },
@@ -638,7 +767,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             .float => T3 = T1,
             .cfloat => T3 = Complex(Rational),
             .integer => T3 = T1,
-            .unsupported => unreachable,
             else => T3 = T2,
         },
         .rational => switch (t2numeric) {
@@ -655,7 +783,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                     T3 = T2;
                 }
             },
-            .unsupported => unreachable,
             else => T3 = T2,
         },
         .real => switch (t2numeric) {
@@ -675,7 +802,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                     T3 = T2;
                 }
             },
-            .unsupported => unreachable,
             else => T3 = T2,
         },
         .complex => switch (t2numeric) {
@@ -718,39 +844,83 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             .expression => T3 = T1,
             else => unreachable,
         },
-        .unsupported => unreachable,
     }
 
     return T2 == T3;
 }
 
 /// Coerces the second type to an array of itself if the first type is an
-/// Array or a slice. If the first type is not an Array or a slice, it
+/// `Array` or a slice. If the first type is not an Array or a slice, it
 /// returns the second type as is.
-pub fn CoerceToArray(comptime K: type, comptime V: type) type {
-    _ = numericType(V);
+/// Coerces `Y` to `Array(Y)` if `X` is an `Array` or a slice, otherwise it
+/// returns `Y` as is.
+///
+/// This function is useful for ensuring that the second type is always an
+/// `Array` when the first type is an `Array` or a slice, allowing for
+/// consistent handling of array-like types.
+///
+/// Parameters
+/// ----------
+/// comptime X (`type`): The type to check. Must be a supported numeric type, an
+/// `Array`, or a slice.
+///
+/// comptime Y (`type`): The type to coerce. Must be a supported numeric type.
+///
+/// Returns
+/// -------
+/// `type`: The coerced type, which will be `Array(Y)` if `X` is an `Array` or a
+/// slice, or `Y` otherwise.
+///
+/// Raises
+/// ------
+/// `@compileError`: If `Y` is not a supported numeric type.
+pub fn CoerceToArray(comptime X: type, comptime Y: type) type {
+    _ = numericType(Y);
 
-    if (isArray(K) or isSlice(K)) {
-        return Array(V);
+    if (isArray(X) or isSlice(X)) {
+        return Array(Y);
     } else {
-        return V;
+        return Y;
     }
 }
 
-/// Checks if t`L` can be cast to `R` safely, meaning that the cast
-/// will not result in a runtime panic. For instance, casting signed integers to
-/// unsigned integers is not safe, as it can result in a panic if the value is
+/// Checks if `X` can be safely cast to `Y`, meaning that the cast will not
+/// result in a runtime panic.
+///
+/// This function checks if the type `X` can be safely cast to type `Y` without
+/// losing information or causing a runtime panic. It considers various numeric
+/// types and their properties, such as signedness and bit width, to determine
+/// if the cast is safe.
+///
+/// For example, casting a signed integer to an unsigned integer is not
+/// considered safe, as it may lead to unexpected results if the value is
 /// negative.
-pub fn canCastSafely(comptime L: type, comptime R: type) bool {
-    if (L == R) {
+///
+/// Parameters
+/// ----------
+/// comptime X (`type`): The type to check if it can be cast safely. Must be a
+/// supported numeric type.
+///
+/// comptime Y (`type`): The type to check if `X` can be cast to. Must be a
+/// supported numeric type.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the cast is safe, `false` otherwise.
+///
+/// Raises
+/// ------
+/// `@compileError`: If either type is not a supported numeric type.
+pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
+    if (X == Y) {
         return true;
     }
 
-    const lnumeric = numericType(L);
-    const rnumeric = numericType(R);
+    const xnumeric = numericType(X);
+    const ynumeric = numericType(Y);
 
-    switch (lnumeric) {
-        .bool => switch (rnumeric) {
+    switch (xnumeric) {
+        .bool => switch (ynumeric) {
             .bool => return true,
             .int => return true,
             .float => return true,
@@ -760,26 +930,28 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .int => switch (rnumeric) {
+        .int => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const linfo = @typeInfo(L);
-                const rinfo = @typeInfo(R);
+                const linfo = @typeInfo(X);
+                const rinfo = @typeInfo(Y);
 
-                if (linfo.int.signedness == .unsigned and rinfo.int.signedness == .signed) {
-                    return false; // Casting unsigned to signed is not safe
+                if (linfo.int.signedness == .snsigned and rinfo.int.signedness == .unsigned) {
+                    // Casting signed to unsigned is not safe
+                    return false;
                 }
 
                 if (linfo.int.signedness == .unsigned and rinfo.int.signedness == .signed) {
                     if (linfo.int.bits >= rinfo.int.bits) {
-                        return false; // Casting unsigned to signed is not safe if the unsigned type has more or equal bits
+                        // Casting unsigned to signed is not safe if the unsigned type has more or equal bits
+                        return false;
                     }
                 }
 
                 if (linfo.int.bits > rinfo.int.bits) {
-                    return false; // Casting to a smaller integer type is not safe
+                    // Casting to a smaller integer type is not safe
+                    return false;
                 }
 
                 return true;
@@ -791,12 +963,11 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .float => switch (rnumeric) {
+        .float => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const rinfo = @typeInfo(R);
+                const rinfo = @typeInfo(Y);
 
                 if (rinfo.int.signedness == .unsigned) {
                     return false; // Casting float to unsigned int is not safe
@@ -811,12 +982,11 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .cfloat => switch (rnumeric) {
+        .cfloat => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const rinfo = @typeInfo(R);
+                const rinfo = @typeInfo(Y);
 
                 if (rinfo.int.signedness == .unsigned) {
                     return false; // Casting cfloat to unsigned int is not safe
@@ -831,12 +1001,11 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .integer => switch (rnumeric) {
+        .integer => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const rinfo = @typeInfo(R);
+                const rinfo = @typeInfo(Y);
 
                 if (rinfo.int.signedness == .unsigned) {
                     return false; // Casting integer to unsigned int is not safe
@@ -851,12 +1020,11 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .rational => switch (rnumeric) {
+        .rational => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const rinfo = @typeInfo(R);
+                const rinfo = @typeInfo(Y);
 
                 if (rinfo.int.signedness == .unsigned) {
                     return false; // Casting rational to unsigned int is not safe
@@ -871,12 +1039,11 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .real => switch (rnumeric) {
+        .real => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const rinfo = @typeInfo(R);
+                const rinfo = @typeInfo(Y);
 
                 if (rinfo.int.signedness == .unsigned) {
                     return false; // Casting real to unsigned int is not safe
@@ -891,12 +1058,11 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .complex => switch (rnumeric) {
+        .complex => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const rinfo = @typeInfo(R);
+                const rinfo = @typeInfo(Y);
 
                 if (rinfo.int.signedness == .unsigned) {
                     return false; // Casting complex to unsigned int is not safe
@@ -911,12 +1077,11 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .expression => switch (rnumeric) {
+        .expression => switch (ynumeric) {
             .bool => return true,
             .int => {
-                const rinfo = @typeInfo(R);
+                const rinfo = @typeInfo(Y);
 
                 if (rinfo.int.signedness == .unsigned) {
                     return false; // Casting expression to unsigned int is not safe
@@ -931,9 +1096,7 @@ pub fn canCastSafely(comptime L: type, comptime R: type) bool {
             .real => return true,
             .complex => return true,
             .expression => return true,
-            .unsupported => unreachable,
         },
-        .unsupported => unreachable,
     }
 }
 
@@ -953,12 +1116,27 @@ pub fn EnsureFloat(comptime T: type) type {
     }
 }
 
-/// Returns the scalar type of a given numeric type, slice, or Array:
-/// - Atomic types, such as `u8`, `i16`, `f32`, etc., are returned as-is.
-/// - Complex types, such as `cf32`, `cf64`, etc., are returned as their atomic type.
-/// - Real arbitrary precision types, such as `Integer`, `Rational`, etc., are returned as-is.
-/// - Complex arbitrary precision types are returned as their atomic type.
-/// - Slices and Array types are returned as their element type.
+/// Returns the scalar type of a given numeric type, slice, or `Array`.
+///
+/// This function returns the scalar type of a given numeric type, slice, or
+/// `Array`. If the input type is an `Array` or a slice, it returns the element
+/// type. If the input type is a numeric type, it returns the type itself,
+/// unless it is a complex type, in which case it returns the scalar type of the
+/// complex type.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to get the scalar type of. Must be a supported
+/// numeric type, slice, or `Array`.
+///
+/// Returns
+/// -------
+/// `type`: The scalar type of the input type.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is not a supported numeric type, slice, or
+/// `Array`.
 pub fn Scalar(comptime T: type) type {
     if (isArray(T)) {
         const t: T = .empty;
@@ -1003,9 +1181,26 @@ pub fn Scalar(comptime T: type) type {
 }
 
 /// Returns the underlying numeric type of a given numeric type, slice, or
-/// Array:
-/// - Numeric types, such as floats, integers, complex, etc., are returned as-is.
-/// - Slices and Array types are returned as their element type.
+/// `Array`.
+///
+/// This function returns the underlying numeric type of a given numeric type,
+/// slice, or `Array`. If the input type is an `Array` or a slice, it returns
+/// the element type. If the input type is a numeric type, it returns the type
+/// itself.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to get the numeric type of. Must be a
+/// supported numeric type, slice, or `Array`.
+///
+/// Returns
+/// -------
+/// `type`: The underlying numeric type of the input type.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is not a supported numeric type, slice, or
+/// `Array`.
 pub fn Numeric(comptime T: type) type {
     if (isArray(T)) {
         const t: T = .empty;
@@ -1021,9 +1216,32 @@ pub fn Numeric(comptime T: type) type {
     return T;
 }
 
-/// Casts a value of any numeric type to any fixed precision numeric type. It is
-/// a more concise version of `cast` that does not require any options and cannot
-/// err.
+/// Casts a value of any numeric type to any fixed precision numeric type.
+///
+/// It is a more concise version of `cast` that does not require any options and
+/// cannot return an error.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to cast to. Must be a fixed precision numeric
+/// type.
+///
+/// value (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): The value to cast.
+///
+/// Returns
+/// -------
+/// `T`: The value casted to the type `T`.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type `T` is not a fixed precision numeric type or if
+/// the type of `value` is not a supported numeric type.
+///
+/// Notes
+/// -----
+/// This function does not check if the cast is safe, which could lead to
+/// runtime panics if the value cannot be represented in the target type.
 pub inline fn scast(
     comptime T: type,
     value: anytype,
@@ -1089,10 +1307,47 @@ pub inline fn scast(
     }
 }
 
-/// Casts a value of any numeric type to any other numeric type. It does not
-/// check if the cast is valid, so it is up to the user to ensure that the cast
-/// is valid. The optional allocator is needed only if the type to be casted to
-/// requires allocation to be initialized.
+/// Casts a value of any numeric type to any other numeric type.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to cast to. Must be a supported numeric type.
+///
+/// value (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): The value to cast.
+///
+/// options (`struct`): Optional parameters for the cast.
+/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
+/// memory for the output value. Only needed if the output type is of arbitrary
+/// precision.
+/// - `copy`: Wether to copy the value or not. Only needed if the output type
+/// is of arbitrary precision.
+///
+/// Returns
+/// -------
+/// `T`: The value casted to the type `T`.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
+/// memory for the output value.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type `T` is not a supported numeric type or if the
+/// type of `value` is not a supported numeric type.
+///
+/// Notes
+/// -----
+/// When the output type is of arbitrary precision, it will allocate a new value
+/// using the provided allocator, unless the output type is equal to the type of
+/// the input value and `copy` is set to `false`, in which case it will return
+/// the input value directly.
+///
+/// Setting `copy` to `true` with a fixed precision type has no effect.
+///
+/// This function does not check if the cast is safe, which could lead to
+/// runtime panics if the value cannot be represented in the target type.
 pub inline fn cast(
     comptime T: type,
     value: anytype,
@@ -1108,42 +1363,41 @@ pub inline fn cast(
         switch (numericType(O)) {
             .bool, .int, .float, .cfloat => return value,
             .integer => if (options.copy) {
-                // return try integer.copy(options.allocator, value);
+                // return integer.copy(options.allocator, value);
                 return value;
             } else {
                 return value;
             },
             .rational => if (options.copy) {
-                // return try rational.copy(options.allocator, value);
+                // return rational.copy(options.allocator, value);
                 return value;
             } else {
                 return value;
             },
             .real => if (options.copy) {
-                // return try real.copy(options.allocator, value);
+                // return real.copy(options.allocator, value);
                 return value;
             } else {
                 return value;
             },
             .complex => if (options.copy) {
-                // return try complex.copy(options.allocator, value);
+                // return complex.copy(options.allocator, value);
                 return value;
             } else {
                 return value;
             },
             .expression => if (options.copy) {
-                // return try expression.copy(options.allocator, value);
+                // return expression.copy(options.allocator, value);
                 return value;
             } else {
                 return value;
             },
-            .unsupported => unreachable,
         }
         return value;
     }
 
     const onumeric = numericType(O);
-    const inumeric = numericType(I);
+    const inumeric = comptime numericType(I);
 
     switch (inumeric) {
         .bool => switch (onumeric) {
@@ -1159,7 +1413,6 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from bool to real"),
             .complex => @compileError("Not implemented yet: casting from bool to complex"),
             .expression => @compileError("Not implemented yet: casting from bool to expression"),
-            .unsupported => unreachable,
         },
         .int => switch (onumeric) {
             .bool => return if (value != 0) true else false,
@@ -1174,7 +1427,6 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from int to real"),
             .complex => @compileError("Not implemented yet: casting from int to complex"),
             .expression => @compileError("Not implemented yet: casting from int to expression"),
-            .unsupported => unreachable,
         },
         .float => switch (onumeric) {
             .bool => return if (value != 0) true else false,
@@ -1192,7 +1444,6 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from float to real"),
             .complex => @compileError("Not implemented yet: casting from float to complex"),
             .expression => @compileError("Not implemented yet: casting from float to expression"),
-            .unsupported => unreachable,
         },
         .cfloat => switch (onumeric) {
             .bool => return if (value.re != 0 or value.im != 0) true else false,
@@ -1207,7 +1458,6 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from cfloat to real"),
             .complex => @compileError("Not implemented yet: casting from cfloat to complex"),
             .expression => @compileError("Not implemented yet: casting from cfloat to expression"),
-            .unsupported => unreachable,
         },
         .integer => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from integer to bool"),
@@ -1219,7 +1469,6 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from integer to real"),
             .complex => @compileError("Not implemented yet: casting from integer to complex"),
             .expression => @compileError("Not implemented yet: casting from integer to expression"),
-            .unsupported => unreachable,
         },
         .rational => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from rational to bool"),
@@ -1231,7 +1480,6 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from rational to real"),
             .complex => @compileError("Not implemented yet: casting from rational to complex"),
             .expression => @compileError("Not implemented yet: casting from rational to expression"),
-            .unsupported => unreachable,
         },
         .real => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from real to bool"),
@@ -1243,7 +1491,6 @@ pub inline fn cast(
             .real => unreachable,
             .complex => @compileError("Not implemented yet: casting from real to complex"),
             .expression => @compileError("Not implemented yet: casting from real to expression"),
-            .unsupported => unreachable,
         },
         .complex => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from complex to bool"),
@@ -1255,7 +1502,6 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from complex to real"),
             .complex => return value, // Will have to check the type held by the Complex
             .expression => @compileError("Not implemented yet: casting from complex to expression"),
-            .unsupported => unreachable,
         },
         .expression => switch (onumeric) {
             .bool => @compileError("Not implemented yet: casting from expression to bool"),
@@ -1267,13 +1513,24 @@ pub inline fn cast(
             .real => @compileError("Not implemented yet: casting from expression to real"),
             .complex => @compileError("Not implemented yet: casting from expression to complex"),
             .expression => unreachable,
-            .unsupported => unreachable,
         },
-        else => unreachable,
     }
 }
 
 /// Returns the pointer child type of a given pointer type.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to get the child type of. Must be a pointer
+/// type.
+///
+/// Returns
+/// -------
+/// `type`: The child type of the input pointer type.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type is not a pointer type.
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         .pointer => |info| {

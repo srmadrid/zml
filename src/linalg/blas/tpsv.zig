@@ -781,6 +781,5 @@ pub inline fn tpsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.tpsv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

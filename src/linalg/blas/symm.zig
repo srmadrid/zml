@@ -651,6 +651,5 @@ pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.symm only supports simple types."),
-        .unsupported => unreachable,
     }
 }

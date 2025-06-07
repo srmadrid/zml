@@ -183,5 +183,3 @@ pub const TokenType = enum {
     ClosingBackslashBraces,
     Comma,
 };
-
-test {}

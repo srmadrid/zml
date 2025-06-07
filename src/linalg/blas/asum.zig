@@ -61,7 +61,6 @@ pub inline fn asum(comptime T: type, n: isize, x: [*]const T, incx: isize) Scala
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.asum only supports simple types."),
-        .unsupported => unreachable,
     }
 
     return sum;

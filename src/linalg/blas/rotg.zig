@@ -103,6 +103,5 @@ pub inline fn rotg(comptime T: type, a: *T, b: *T, c: *Scalar(T), s: *T) void {
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.rotg only supports simple types."),
-        .unsupported => unreachable,
     }
 }

@@ -92,6 +92,5 @@ pub inline fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         },
         .cfloat => @compileError("blas.syr2 does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.syr2 only supports simple types."),
-        .unsupported => unreachable,
     }
 }

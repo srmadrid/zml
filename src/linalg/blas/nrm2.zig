@@ -116,7 +116,6 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Scala
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.nrm2 only supports simple types."),
-        .unsupported => unreachable,
     }
 
     return scl * float.sqrt(sumsq);

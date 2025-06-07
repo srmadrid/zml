@@ -144,6 +144,5 @@ pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         },
         .cfloat => @compileError("blas.spmv does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.spmv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

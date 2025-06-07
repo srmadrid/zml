@@ -142,6 +142,5 @@ pub inline fn rotm(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, in
         },
         .cfloat => @compileError("blas.rotm does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.rotm only supports simple types."),
-        .unsupported => unreachable,
     }
 }

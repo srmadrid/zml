@@ -98,11 +98,35 @@ pub fn Array(comptime T: type) type {
                 writeable: bool = true,
             },
         ) !Array(T) {
-            _ = types.numericType(@TypeOf(start));
-            _ = types.numericType(@TypeOf(stop));
-            _ = types.numericType(@TypeOf(step));
+            comptime if (types.isComplex(T))
+                @compileError("array.arange does not support " ++ @typeName(T));
+
+            comptime if (types.isComplex(@TypeOf(start)))
+                @compileError("array.arange: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
+
+            comptime if (types.isComplex(@TypeOf(stop)))
+                @compileError("array.arange: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
+
+            comptime if (types.isComplex(@TypeOf(step)))
+                @compileError("array.arange: step cannot be complex, got " ++ @typeName(@TypeOf(step)));
 
             return dense.arange(allocator, T, start, stop, step, options.writeable);
+        }
+
+        pub fn linspace(
+            allocator: std.mem.Allocator,
+            start: anytype,
+            stop: anytype,
+            num: usize,
+            options: struct {
+                writeable: bool = true,
+                endpoint: bool = true,
+            },
+        ) !Array(T) {
+            comptime if (types.isComplex(T))
+                @compileError("array.linspace does not support " ++ @typeName(T));
+
+            return dense.linspace(allocator, T, start, stop, num, options.writeable);
         }
 
         pub fn deinit(self: *Array(T), allocator: ?std.mem.Allocator) void {
@@ -113,7 +137,7 @@ pub fn Array(comptime T: type) type {
             self.* = undefined;
         }
 
-        pub fn set(self: *Array(T), position: []const usize, value: anytype) !void {
+        pub fn set(self: *Array(T), position: []const usize, value: T) !void {
             if (!self.flags.writeable) {
                 return Error.ArrayNotWriteable;
             }

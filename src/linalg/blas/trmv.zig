@@ -671,6 +671,5 @@ pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.trmv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

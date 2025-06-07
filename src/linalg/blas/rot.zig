@@ -99,6 +99,5 @@ pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, inc
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.rot only supports simple types."),
-        .unsupported => unreachable,
     }
 }

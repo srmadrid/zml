@@ -390,6 +390,5 @@ pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.herk only supports simple types."),
-        .unsupported => unreachable,
     }
 }

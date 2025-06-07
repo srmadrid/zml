@@ -167,6 +167,5 @@ pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.hemv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

@@ -37,10 +37,10 @@ pub inline fn checkPosition(ndim: usize, shape: [array.maxDimensions]usize, posi
     }
 }
 
-pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: anytype) !void {
+pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: T) !void {
     try checkPosition(arr.ndim, arr.shape, position);
 
-    arr.data[index(arr.ndim, arr.metadata.strided.strides, position)] = try cast(T, value, .{ .allocator = arr.flags.writeable });
+    arr.data[index(arr.ndim, arr.metadata.strided.strides, position)] = value;
 }
 
 pub fn get(comptime T: type, arr: *const Array(T), position: []const usize) !*T {

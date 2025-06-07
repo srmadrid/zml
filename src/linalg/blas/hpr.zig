@@ -85,6 +85,5 @@ pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: S
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.hpr only supports simple types."),
-        .unsupported => unreachable,
     }
 }

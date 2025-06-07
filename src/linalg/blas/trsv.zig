@@ -745,6 +745,5 @@ pub inline fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.trsv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

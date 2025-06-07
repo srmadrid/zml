@@ -1090,6 +1090,5 @@ pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Tr
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.gemm only supports simple types."),
-        .unsupported => unreachable,
     }
 }

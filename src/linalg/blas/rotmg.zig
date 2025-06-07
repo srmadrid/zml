@@ -158,6 +158,5 @@ pub inline fn rotmg(comptime T: type, d1: *T, d2: *T, x1: *T, y1: T, param: [*]T
         },
         .cfloat => @compileError("blas.rotmg does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.rotmg only supports simple types."),
-        .unsupported => unreachable,
     }
 }

@@ -396,7 +396,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("A.size = {}\n", .{A.size});
 
-    var B: zml.Array(f128) = try .arange(a, 0, 2, 0.2314674914, .{});
+    var B: zml.Array(u32) = try .full(a, &.{10}, 5.5, .{});
     defer B.deinit(a);
 
     std.debug.print("B = [", .{});

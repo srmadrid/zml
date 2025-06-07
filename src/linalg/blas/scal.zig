@@ -111,6 +111,5 @@ pub inline fn scal(comptime T: type, n: isize, alpha: T, x: [*]T, incx: isize) v
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.scal only supports simple types."),
-        .unsupported => unreachable,
     }
 }

@@ -579,6 +579,5 @@ pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.syrk only supports simple types."),
-        .unsupported => unreachable,
     }
 }

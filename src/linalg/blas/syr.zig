@@ -81,6 +81,5 @@ pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T
         },
         .cfloat => @compileError("blas.syr does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.syr only supports simple types."),
-        .unsupported => unreachable,
     }
 }

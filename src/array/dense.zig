@@ -79,10 +79,12 @@ pub inline fn full(
     order: array.Order,
 ) !Array(T) {
     var arr = try init(allocator, T, shape, order);
-    const value_casted: T = try cast(T, value, .{ .allocator = allocator });
+
+    const a: if (needsAllocator(T)) std.mem.Allocator else void = comptime if (needsAllocator(T)) allocator else {};
+    const value_casted: T = try cast(T, value, .{ .allocator = a, .copy = true });
     arr.data[0] = value_casted;
     for (1..arr.size) |i| {
-        arr.data[i] = ops.copy(value_casted, .{ .allocator = allocator });
+        arr.data[i] = ops.copy(value_casted, .{ .allocator = a });
     }
 
     return arr;
@@ -96,6 +98,10 @@ pub inline fn arange(
     step: anytype,
     writeable: bool,
 ) !Array(T) {
+    _ = types.numericType(@TypeOf(start));
+    _ = types.numericType(@TypeOf(stop));
+    _ = types.numericType(@TypeOf(step));
+
     const positive_step: bool = try ops.gt(step, 0, .{});
     if (try ops.eq(step, 0, .{}) or
         (try ops.lt(stop, start, .{}) and positive_step) or
@@ -205,10 +211,10 @@ pub inline fn arange(
     return arr;
 }
 
-pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: anytype) !void {
+pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: T) !void {
     try checkPosition(arr.ndim, arr.shape, position);
 
-    arr.data[index(arr.ndim, arr.metadata.dense.strides, position)] = try cast(T, value, .{ .allocator = arr.flags.writeable });
+    arr.data[index(arr.ndim, arr.metadata.dense.strides, position)] = value;
 }
 
 pub inline fn get(comptime T: type, arr: *const Array(T), position: []const usize) !*T {

@@ -148,6 +148,5 @@ pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
         },
         .cfloat => @compileError("blas.sbmv does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.sbmv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

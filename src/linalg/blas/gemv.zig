@@ -306,6 +306,5 @@ pub inline fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, 
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.gemv only supports simple types."),
-        .unsupported => unreachable,
     }
 }

@@ -2,6 +2,9 @@ const std = @import("std");
 
 pub const types = @import("types.zig");
 pub const Order = types.Order;
+pub const scast = types.scast;
+pub const cast = types.cast;
+
 pub const int = @import("int.zig");
 pub const float = @import("float.zig");
 pub const cfloat = @import("cfloat.zig");
@@ -22,7 +25,30 @@ pub const Complex = complex.Complex;
 pub const array = @import("array.zig");
 pub const Array = array.Array;
 
-pub usingnamespace @import("ops.zig");
+const constants = @import("constants.zig");
+pub const pi = constants.pi;
+
+const ops = @import("ops.zig");
+pub const add = ops.add;
+pub const add_ = ops.add_;
+pub const sub = ops.sub;
+pub const sub_ = ops.sub_;
+pub const mul = ops.mul;
+pub const mul_ = ops.mul_;
+pub const div = ops.div;
+pub const div_ = ops.div_;
+pub const eq = ops.eq;
+pub const ne = ops.ne;
+pub const lt = ops.lt;
+pub const le = ops.le;
+pub const gt = ops.gt;
+pub const ge = ops.ge;
+pub const max = ops.max;
+pub const min = ops.min;
+pub const abs = ops.abs;
+pub const abs_ = ops.abs_;
+pub const ceil = ops.ceil;
+pub const ceil_ = ops.ceil_;
 
 pub const linalg = @import("linalg.zig");
 

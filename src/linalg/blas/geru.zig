@@ -76,6 +76,5 @@ pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T,
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.geru only supports simple types."),
-        .unsupported => unreachable,
     }
 }

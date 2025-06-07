@@ -2037,6 +2037,5 @@ pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, trans
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.trmm only supports simple types."),
-        .unsupported => unreachable,
     }
 }

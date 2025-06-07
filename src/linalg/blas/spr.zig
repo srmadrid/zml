@@ -79,6 +79,5 @@ pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: S
         },
         .cfloat => @compileError("blas.spr does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.spr only supports simple types."),
-        .unsupported => unreachable,
     }
 }

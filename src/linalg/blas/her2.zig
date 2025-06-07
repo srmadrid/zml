@@ -100,6 +100,5 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
             }
         },
         .integer, .rational, .real, .complex, .expression => @compileError("blas.her2 only supports simple types."),
-        .unsupported => unreachable,
     }
 }

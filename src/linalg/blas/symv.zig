@@ -148,6 +148,5 @@ pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         },
         .cfloat => @compileError("blas.symv does not support complex numbers."),
         .integer, .rational, .real, .complex, .expression => @compileError("blas.symv only supports simple types."),
-        .unsupported => unreachable,
     }
 }
