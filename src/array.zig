@@ -126,6 +126,16 @@ pub fn Array(comptime T: type) type {
             comptime if (types.isComplex(T))
                 @compileError("array.linspace does not support " ++ @typeName(T));
 
+            comptime if (types.isComplex(@TypeOf(start)))
+                @compileError("array.linspace: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
+
+            comptime if (types.isComplex(@TypeOf(stop)))
+                @compileError("array.linspace: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
+
+            if (num == 0) {
+                return Error.ZeroDimension;
+            }
+
             return dense.linspace(allocator, T, start, stop, num, options.writeable);
         }
 

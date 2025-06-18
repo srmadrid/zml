@@ -8,6 +8,8 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
+    //std.debug.print("Type info of zml.abs: {}\n", .{zml.types.ReturnType1(zml.abs, zml.Integer)});
+
     // try symbolicTesting(a);
 
     try generalTesting(a);
@@ -396,7 +398,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("A.size = {}\n", .{A.size});
 
-    var B: zml.Array(u32) = try .full(a, &.{10}, 5.5, .{});
+    var B: zml.Array(f64) = try .arange(a, 1, -1, -0.1, .{});
     defer B.deinit(a);
 
     std.debug.print("B = [", .{});

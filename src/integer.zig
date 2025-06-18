@@ -2,10 +2,10 @@ const std = @import("std");
 
 pub const Integer = struct {
     limbs: []usize,
-    metadata: usize,
+    size: usize,
 
     pub const empty: Integer = .{
         .limbs = &.{},
-        .metadata = 0,
+        .size = 0,
     };
 };

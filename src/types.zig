@@ -71,6 +71,54 @@ pub const Order = enum {
     gt,
 };
 
+pub const useless_allocator: std.mem.Allocator = .{
+    .ptr = undefined,
+    .vtable = &vtable,
+};
+
+pub const vtable: std.mem.Allocator.VTable = .{
+    .alloc = alloc,
+    .resize = resize,
+    .remap = remap,
+    .free = free,
+};
+
+fn alloc(context: *anyopaque, len: usize, alignment: std.mem.Alignment, ra: usize) ?[*]u8 {
+    _ = context;
+    _ = len;
+    _ = alignment;
+    _ = ra;
+
+    return null;
+}
+
+fn resize(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ra: usize) bool {
+    _ = context;
+    _ = memory;
+    _ = alignment;
+    _ = new_len;
+    _ = ra;
+
+    return true;
+}
+
+fn remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ra: usize) ?[*]u8 {
+    _ = context;
+    _ = memory;
+    _ = alignment;
+    _ = new_len;
+    _ = ra;
+
+    return null;
+}
+
+fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usize) void {
+    _ = context;
+    _ = memory;
+    _ = alignment;
+    _ = ra;
+}
+
 /// Checks the the input type `T` and returns the corresponding `NumericType`.
 ///
 /// Checks that the input type is a supported numeric type and returns the
@@ -1352,7 +1400,7 @@ pub inline fn cast(
     comptime T: type,
     value: anytype,
     options: struct {
-        allocator: if (needsAllocator(T)) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
         copy: bool = false,
     },
 ) !T {
@@ -1537,5 +1585,39 @@ pub fn Child(comptime T: type) type {
             return info.child;
         },
         else => @compileError("Expected a pointer type, but got " ++ @typeName(T)),
+    }
+}
+
+/// Returns the return type of a function with one parameter when called with a
+/// value of type `X`.
+///
+/// This function is useful when the return type of the function depends on
+/// the type of the parameter passed to it. The function may have a second
+/// parameter that is an options struct.
+pub fn ReturnType1(comptime op: anytype, comptime X: type) type {
+    const opinfo = @typeInfo(@TypeOf(op));
+
+    comptime if (opinfo.@"fn".params.len != 1 and opinfo.@"fn".params.len != 2)
+        @compileError("ReturnType1: op must be a function with one parameter, or two if the second is an options struct");
+
+    const val: X = if (isArbitraryPrecision(X))
+        .empty
+    else if (isComplex(X))
+        .{ .re = 1, .im = 1 }
+    else
+        1;
+
+    const result_type: type = if (opinfo.@"fn".params.len == 1)
+        @TypeOf(op(val))
+    else // We must pass an allocator, although it is not used
+        if (needsAllocator(X))
+            @TypeOf(op(val, .{ .allocator = useless_allocator }))
+        else
+            @TypeOf(op(val, .{}));
+
+    const resinfo = @typeInfo(result_type);
+    switch (resinfo) {
+        .error_union => return resinfo.error_union.payload,
+        else => return result_type,
     }
 }

@@ -33,6 +33,22 @@ pub inline fn checkPosition(ndim: usize, shape: [array.maxDimensions]usize, posi
     }
 }
 
+inline fn cleanup(
+    comptime T: type,
+    data: []T,
+    allocator: if (needsAllocator(T))
+        std.mem.Allocator
+    else
+        void,
+) void {
+    comptime if (!needsAllocator(T))
+        return;
+
+    for (data) |*value| {
+        ops.deinit(value, .{ .allocator = allocator });
+    }
+}
+
 pub inline fn init(
     allocator: std.mem.Allocator,
     comptime T: type,
@@ -80,11 +96,10 @@ pub inline fn full(
 ) !Array(T) {
     var arr = try init(allocator, T, shape, order);
 
-    const a: if (needsAllocator(T)) std.mem.Allocator else void = comptime if (needsAllocator(T)) allocator else {};
-    const value_casted: T = try cast(T, value, .{ .allocator = a, .copy = true });
+    const value_casted: T = try cast(T, value, .{ .allocator = allocator, .copy = true });
     arr.data[0] = value_casted;
     for (1..arr.size) |i| {
-        arr.data[i] = ops.copy(value_casted, .{ .allocator = a });
+        arr.data[i] = ops.copy(value_casted, .{ .allocator = allocator });
     }
 
     return arr;
@@ -98,6 +113,7 @@ pub inline fn arange(
     step: anytype,
     writeable: bool,
 ) !Array(T) {
+    // Need to free the allocated array elements if an error occurs (only when len > 4)
     _ = types.numericType(@TypeOf(start));
     _ = types.numericType(@TypeOf(stop));
     _ = types.numericType(@TypeOf(step));
@@ -110,102 +126,105 @@ pub inline fn arange(
         return array.Error.InvalidRange;
     }
 
-    const a: if (needsAllocator(T)) std.mem.Allocator else void = comptime if (needsAllocator(T)) allocator else {};
-    var start_casted: T = try cast(T, start, .{ .allocator = a, .copy = true });
-    errdefer ops.deinit(&start_casted, .{ .allocator = a });
-    var stop_casted: T = try cast(T, stop, .{ .allocator = a, .copy = true });
-    errdefer ops.deinit(&stop_casted, .{ .allocator = a });
-    var step_casted: T = try cast(T, step, .{ .allocator = a, .copy = true });
-    errdefer ops.deinit(&step_casted, .{ .allocator = a });
+    var start_casted: T = try cast(T, start, .{ .allocator = allocator, .copy = true });
+    errdefer ops.deinit(&start_casted, .{ .allocator = allocator });
+    var stop_casted: T = try cast(T, stop, .{ .allocator = allocator, .copy = true });
+    errdefer ops.deinit(&stop_casted, .{ .allocator = allocator });
+    var step_casted: T = try cast(T, step, .{ .allocator = allocator, .copy = true });
+    errdefer ops.deinit(&step_casted, .{ .allocator = allocator });
 
     var diff: T = if (positive_step)
-        try ops.sub(stop_casted, start_casted, .{ .allocator = a })
+        try ops.sub(stop_casted, start_casted, .{ .allocator = allocator })
     else
-        try ops.sub(start_casted, stop_casted, .{ .allocator = a });
-    errdefer ops.deinit(&diff, .{ .allocator = a });
+        try ops.sub(start_casted, stop_casted, .{ .allocator = allocator });
+    errdefer ops.deinit(&diff, .{ .allocator = allocator });
 
-    std.debug.print("diff: {d}\n", .{diff});
-
-    var len_T: T = try ops.div(diff, step_casted, .{ .allocator = a });
-    try ops.abs_(&len_T, len_T, .{ .allocator = a });
-    try ops.ceil_(&len_T, len_T, .{ .allocator = a });
-    const len: usize = try cast(usize, len_T, .{ .allocator = a });
+    var len_T: T = try ops.div(diff, step_casted, .{ .allocator = allocator });
+    errdefer ops.deinit(&len_T, .{ .allocator = allocator });
+    try ops.abs_(&len_T, len_T, .{ .allocator = allocator });
+    try ops.ceil_(&len_T, len_T, .{ .allocator = allocator });
+    const len: usize = try cast(usize, len_T, .{ .allocator = allocator });
 
     if (len == 0) {
-        ops.deinit(&start_casted, .{ .allocator = a });
-        ops.deinit(&stop_casted, .{ .allocator = a });
-        ops.deinit(&step_casted, .{ .allocator = a });
-        ops.deinit(&diff, .{ .allocator = a });
-        ops.deinit(&len_T, .{ .allocator = a });
+        ops.deinit(&start_casted, .{ .allocator = allocator });
+        ops.deinit(&stop_casted, .{ .allocator = allocator });
+        ops.deinit(&step_casted, .{ .allocator = allocator });
+        ops.deinit(&diff, .{ .allocator = allocator });
+        ops.deinit(&len_T, .{ .allocator = allocator });
 
         return array.Error.InvalidRange;
     }
 
     var arr: Array(T) = try init(allocator, T, &.{len}, .rowMajor);
+    errdefer arr.deinit(allocator);
     arr.flags.writeable = writeable;
     switch (len) {
         1 => {
-            ops.deinit(&stop_casted, .{ .allocator = a });
-            ops.deinit(&step_casted, .{ .allocator = a });
-            ops.deinit(&diff, .{ .allocator = a });
-            ops.deinit(&len_T, .{ .allocator = a });
-
             arr.data[0] = start_casted;
+
+            ops.deinit(&stop_casted, .{ .allocator = allocator });
+            ops.deinit(&step_casted, .{ .allocator = allocator });
+            ops.deinit(&diff, .{ .allocator = allocator });
+            ops.deinit(&len_T, .{ .allocator = allocator });
 
             return arr;
         },
         2 => {
-            ops.deinit(&stop_casted, .{ .allocator = a });
-            ops.deinit(&diff, .{ .allocator = a });
-            ops.deinit(&len_T, .{ .allocator = a });
-
             arr.data[0] = start_casted;
-            try ops.add_(&step_casted, arr.data[0], step_casted, .{ .allocator = a });
+            try ops.add_(&step_casted, arr.data[0], step_casted, .{ .allocator = allocator });
             arr.data[1] = step_casted;
+
+            ops.deinit(&stop_casted, .{ .allocator = allocator });
+            ops.deinit(&diff, .{ .allocator = allocator });
+            ops.deinit(&len_T, .{ .allocator = allocator });
 
             return arr;
         },
         3 => {
-            ops.deinit(&diff, .{ .allocator = a });
-            ops.deinit(&len_T, .{ .allocator = a });
-
             arr.data[0] = start_casted;
-            try ops.add_(&stop_casted, arr.data[0], step_casted, .{ .allocator = a });
+            try ops.add_(&stop_casted, arr.data[0], step_casted, .{ .allocator = allocator });
             arr.data[1] = stop_casted;
-            try ops.add_(&step_casted, arr.data[1], step_casted, .{ .allocator = a });
+            try ops.add_(&step_casted, arr.data[1], step_casted, .{ .allocator = allocator });
             arr.data[2] = step_casted;
+
+            ops.deinit(&diff, .{ .allocator = allocator });
+            ops.deinit(&len_T, .{ .allocator = allocator });
 
             return arr;
         },
         4 => {
-            ops.deinit(&len_T, .{ .allocator = a });
-
             arr.data[0] = start_casted;
-            try ops.add_(&diff, arr.data[0], step_casted, .{ .allocator = a });
+            try ops.add_(&diff, arr.data[0], step_casted, .{ .allocator = allocator });
             arr.data[1] = diff;
-            try ops.add_(&stop_casted, arr.data[1], step_casted, .{ .allocator = a });
+            try ops.add_(&stop_casted, arr.data[1], step_casted, .{ .allocator = allocator });
             arr.data[2] = stop_casted;
-            try ops.add_(&step_casted, arr.data[2], step_casted, .{ .allocator = a });
+            try ops.add_(&step_casted, arr.data[2], step_casted, .{ .allocator = allocator });
             arr.data[3] = step_casted;
+
+            ops.deinit(&len_T, .{ .allocator = allocator });
 
             return arr;
         },
         else => {
             arr.data[0] = start_casted;
-            try ops.add_(&len_T, arr.data[0], step_casted, .{ .allocator = a });
+            try ops.add_(&len_T, arr.data[0], step_casted, .{ .allocator = allocator });
             arr.data[1] = len_T;
-            try ops.add_(&diff, arr.data[1], step_casted, .{ .allocator = a });
+            try ops.add_(&diff, arr.data[1], step_casted, .{ .allocator = allocator });
             arr.data[2] = diff;
-            try ops.add_(&stop_casted, arr.data[2], step_casted, .{ .allocator = a });
+            try ops.add_(&stop_casted, arr.data[2], step_casted, .{ .allocator = allocator });
             arr.data[3] = stop_casted;
         },
     }
 
+    var j: usize = 4;
+    errdefer cleanup(T, arr.data[4..j], allocator);
+
     for (4..len - 1) |i| {
-        arr.data[i] = try ops.add(arr.data[i - 1], step_casted, .{ .allocator = a });
+        arr.data[i] = try ops.add(arr.data[i - 1], step_casted, .{ .allocator = allocator });
+        j += 1;
     }
 
-    try ops.add_(&step_casted, arr.data[len - 2], step_casted, .{ .allocator = a });
+    try ops.add_(&step_casted, arr.data[len - 2], step_casted, .{ .allocator = allocator });
     arr.data[len - 1] = step_casted;
 
     return arr;

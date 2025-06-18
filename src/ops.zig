@@ -94,7 +94,7 @@ pub inline fn add(
     y: anytype,
     options: struct {
         mode: int.Mode = .default,
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -103,7 +103,7 @@ pub inline fn add(
     comptime if (types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
         @compileError("zml.add not implemented for arrays or slices yet.");
-    // return array.add(x, y, options.allocator);
+    // return array.add(x, y, options.allocator.?);
 
     switch (types.numericType(X)) {
         .bool => {
@@ -112,13 +112,6 @@ pub inline fn add(
                 .int => return int.add(x, y, .{ .mode = options.mode }),
                 .float => return float.add(x, y),
                 .cfloat => return cfloat.add(x, y),
-                .integer => {
-                    if (options.allocator == null)
-                        @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " requires an allocator");
-
-                    // return integer.add(x, y, .{ .allocator = options.allocator, .mode = options.mode });
-                    return .empty;
-                },
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -145,6 +138,10 @@ pub inline fn add(
         },
         .integer => {
             switch (types.numericType(Y)) {
+                .integer => {
+                    @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet");
+                    // return integer.add(allocator.?, x, y); Unwrapping like this instead of checking for null?
+                },
                 else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             }
         },
@@ -263,7 +260,7 @@ pub inline fn add_(
     y: anytype,
     options: struct {
         mode: int.Mode = .default,
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !void {
     comptime var O: type = @TypeOf(o);
@@ -420,7 +417,7 @@ pub inline fn sub(
     y: anytype,
     options: struct {
         mode: int.Mode = .default,
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -583,7 +580,7 @@ pub inline fn sub_(
     y: anytype,
     options: struct {
         mode: int.Mode = .default,
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !void {
     comptime var O: type = @TypeOf(out);
@@ -741,7 +738,7 @@ pub inline fn mul(
     y: anytype,
     options: struct {
         mode: int.Mode = .default,
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -905,7 +902,7 @@ pub inline fn mul_(
     y: anytype,
     options: struct {
         mode: int.Mode = .default,
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !void {
     comptime var O: type = @TypeOf(out);
@@ -1059,7 +1056,7 @@ pub inline fn div(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -1221,7 +1218,7 @@ pub inline fn div_(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !void {
     comptime var O: type = @TypeOf(out);
@@ -1303,7 +1300,7 @@ pub inline fn eq(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
@@ -1377,7 +1374,7 @@ pub inline fn ne(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
@@ -1451,7 +1448,7 @@ pub inline fn lt(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
@@ -1525,7 +1522,7 @@ pub inline fn le(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
@@ -1599,7 +1596,7 @@ pub inline fn gt(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
@@ -1673,7 +1670,7 @@ pub inline fn ge(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
@@ -1747,7 +1744,7 @@ pub inline fn max(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -1820,7 +1817,7 @@ pub inline fn min(
     x: anytype,
     y: anytype,
     options: struct {
-        allocator: if (needsAllocator(Coerce(@TypeOf(x), @TypeOf(y)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -1932,9 +1929,9 @@ pub inline fn min(
 pub inline fn abs(
     x: anytype,
     options: struct {
-        allocator: if (needsAllocator(@TypeOf(x))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
-) !@TypeOf(x) {
+) !Scalar(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
     comptime if (types.isArray(X) or types.isSlice(X))
@@ -1943,7 +1940,7 @@ pub inline fn abs(
     _ = options.allocator;
     switch (types.numericType(X)) {
         .bool => @compileError("zml.abs not defined for " ++ @typeName(X)),
-        .int => return int.abs,
+        .int => return int.abs(x),
         .float => return float.abs(x),
         .cfloat => return cfloat.abs(x),
         else => @compileError("zml.abs not implemented for " ++ @typeName(X) ++ " yet"),
@@ -1954,7 +1951,7 @@ pub inline fn abs_(
     out: anytype,
     x: anytype,
     options: struct {
-        allocator: if (needsAllocator(@TypeOf(x))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !void {
     comptime var O: type = @TypeOf(out);
@@ -1982,7 +1979,7 @@ pub inline fn abs_(
 pub inline fn ceil(
     x: anytype,
     options: struct {
-        allocator: if (needsAllocator(@TypeOf(x))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !@TypeOf(x) {
     const X: type = @TypeOf(x);
@@ -2005,7 +2002,7 @@ pub inline fn ceil_(
     out: anytype,
     x: anytype,
     options: struct {
-        allocator: if (needsAllocator(@TypeOf(x))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !void {
     comptime var O: type = @TypeOf(out);
@@ -2034,7 +2031,7 @@ pub inline fn ceil_(
 pub inline fn copy(
     x: anytype,
     options: struct {
-        allocator: if (needsAllocator(@TypeOf(x))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) @TypeOf(x) {
     const X: type = @TypeOf(x);
@@ -2052,7 +2049,7 @@ pub inline fn copy(
 pub inline fn deinit(
     x: anytype,
     options: struct {
-        allocator: if (needsAllocator(Child(@TypeOf(x)))) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) void {
     comptime if (!types.isPointer(@TypeOf(x)) or types.isConstPointer(@TypeOf(x)))
