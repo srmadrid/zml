@@ -8,7 +8,12 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
-    //std.debug.print("Type info of zml.abs: {}\n", .{zml.types.ReturnType1(zml.abs, zml.Integer)});
+    var cc: f64 = undefined;
+    const aa: u64 = 10;
+    const bb: u64 = 20;
+    try zml.add_to(&cc, aa, bb, .{});
+
+    std.debug.print("cc = {}\n", .{cc});
 
     // try symbolicTesting(a);
 
@@ -398,7 +403,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("A.size = {}\n", .{A.size});
 
-    var B: zml.Array(f64) = try .arange(a, 1, -1, -0.1, .{});
+    var B: zml.Array(f64) = try .arange(a, 0, -1, -0.1, .{});
     defer B.deinit(a);
 
     std.debug.print("B = [", .{});
@@ -406,6 +411,109 @@ fn generalTesting(a: std.mem.Allocator) !void {
         std.debug.print("{d}, ", .{B.data[i]});
     }
     std.debug.print("]\n", .{});
+
+    var C: zml.Array(f64) = try zml.abs(B, .{ .allocator = a });
+    defer C.deinit(a);
+
+    std.debug.print("C = [", .{});
+    for (0..C.shape[0]) |i| {
+        std.debug.print("{d}, ", .{C.data[i]});
+    }
+    std.debug.print("]\n", .{});
+
+    var D: zml.Array(zml.cf64) = try zml.Array(zml.cf64).init(a, &.{5}, .{});
+    defer D.deinit(a);
+    for (0..D.size) |i| {
+        D.data[i] = zml.cf64.init(@floatFromInt(i + 1), @floatFromInt((i + 1) * 2));
+    }
+
+    std.debug.print("D = [", .{});
+    for (0..D.shape[0]) |i| {
+        std.debug.print("{d} + {d}i, ", .{ D.data[i].re, D.data[i].im });
+    }
+    std.debug.print("]\n", .{});
+
+    var E: zml.Array(f64) = try zml.abs(D, .{ .allocator = a });
+    defer E.deinit(a);
+
+    std.debug.print("E = [", .{});
+    for (0..E.shape[0]) |i| {
+        std.debug.print("{d}, ", .{E.data[i]});
+    }
+    std.debug.print("]\n", .{});
+
+    var F = try E.slice(&.{try .init(null, null, -2)});
+    std.debug.print("F = E[::-2]\n", .{});
+    std.debug.print("F = [", .{});
+    for (0..F.shape[0]) |i| {
+        std.debug.print("{d}, ", .{(try F.get(&.{i})).*});
+    }
+    std.debug.print("]\n", .{});
+
+    try zml.ceil_(&F, .{});
+
+    std.debug.print("E after ceil = [", .{});
+    for (0..E.shape[0]) |i| {
+        std.debug.print("{d}, ", .{E.data[i]});
+    }
+    std.debug.print("]\n", .{});
+
+    std.debug.print("F after ceil = [", .{});
+    for (0..F.shape[0]) |i| {
+        std.debug.print("{d}, ", .{(try F.get(&.{i})).*});
+    }
+    std.debug.print("]\n", .{});
+
+    var G: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 5, 5 }, .{});
+    defer G.deinit(a);
+
+    for (0..G.shape[0]) |i| {
+        for (0..G.shape[1]) |j| {
+            try G.set(&.{ i, j }, -zml.scast(f64, (i + 1) * 10 + (j + 1)) / 100);
+        }
+    }
+
+    std.debug.print("G =\n", .{});
+    for (0..G.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..G.shape[1]) |j| {
+            std.debug.print("{d}  ", .{(try G.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var H: zml.Array(f64) = try G.slice(&.{ try .init(2, 5, 1), try .init(null, null, -2) });
+    defer H.deinit(a);
+
+    std.debug.print("H = G[2:5, ::-2]\n", .{});
+    std.debug.print("H =\n", .{});
+    for (0..H.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..H.shape[1]) |j| {
+            std.debug.print("{d}  ", .{(try H.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    try zml.abs_(&H, .{});
+
+    std.debug.print("G after abs =\n", .{});
+    for (0..G.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..G.shape[1]) |j| {
+            std.debug.print("{d}  ", .{(try G.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    std.debug.print("H after abs =\n", .{});
+    for (0..H.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..H.shape[1]) |j| {
+            std.debug.print("{d}  ", .{(try H.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
 }
 
 fn addTesting(a: std.mem.Allocator) !void {

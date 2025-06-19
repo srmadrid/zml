@@ -139,6 +139,21 @@ pub fn Array(comptime T: type) type {
             return dense.linspace(allocator, T, start, stop, num, options.writeable);
         }
 
+        /// Cleans up the array by deinitializing its elements. If the array holds
+        /// a fixed precision type this is does not do anything.
+        pub fn cleanup(self: *Array(T), allocator: ?std.mem.Allocator) void {
+            if (types.isArbitraryPrecision(T)) {
+                switch (self.flags.storage) {
+                    .dense => dense.cleanup(T, allocator, self.data),
+                    .strided => {}, // strided.cleanup(T, self),
+                }
+            }
+        }
+
+        /// Deinitializes the array, freeing its data if it owns it.
+        ///
+        /// If the array holds an arbitrary precision type, it will not free the
+        /// elements; call `cleanup` first to do that.
         pub fn deinit(self: *Array(T), allocator: ?std.mem.Allocator) void {
             if (self.flags.ownsData) {
                 allocator.?.free(self.data);
@@ -158,7 +173,7 @@ pub fn Array(comptime T: type) type {
             }
         }
 
-        pub fn get(self: *const Array(T), position: []const usize) !*T {
+        pub fn get(self: Array(T), position: []const usize) !*T {
             switch (self.flags.storage) {
                 .dense => return dense.get(T, self, position),
                 .strided => return strided.get(T, self, position),
@@ -177,6 +192,12 @@ pub fn Array(comptime T: type) type {
         }
     };
 }
+
+const arrops = @import("array/ops.zig");
+pub const abs = arrops.abs;
+pub const abs_ = arrops.abs_;
+pub const ceil = arrops.ceil;
+pub const ceil_ = arrops.ceil_;
 
 pub const Error = error{
     ArrayNotWriteable,
@@ -257,8 +278,9 @@ pub const Range = struct {
             return Error.ZeroStep;
         }
 
-        if ((range.step > 0 and range.start >= range.stop) or
-            (range.step < 0 and range.start <= range.stop))
+        if (((range.step > 0 and range.start >= range.stop) or
+            (range.step < 0 and range.start <= range.stop)) and
+            (range.start != int.max(usize) and range.stop != int.max(usize)))
         {
             return Error.RangeOutOfBounds;
         }

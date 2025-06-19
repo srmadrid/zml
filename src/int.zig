@@ -28,37 +28,26 @@ pub inline fn add(
 }
 
 pub inline fn add_(
-    out: anytype,
-    x: anytype,
+    o: anytype,
     y: anytype,
     options: struct {
         mode: Mode = .default,
     },
 ) void {
-    comptime var O: type = @TypeOf(out);
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
+    comptime var O: type = @TypeOf(o);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
-        @compileError("int.add_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
-
-    comptime if (!types.canCastSafely(C, O))
-        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
-            @typeName(O) ++ " safely");
+    comptime if (types.numericType(O) != .int)
+        @compileError("int.add_ requires the output type to be an int, got " ++ @typeName(O));
 
     switch (options.mode) {
-        .default => out.* = scast(O, scast(C, x) + scast(C, y)),
-        .wrap => out.* = scast(O, scast(C, x) +% scast(C, y)),
-        .saturate => out.* = scast(O, scast(C, x) +| scast(C, y)),
+        .default => o.* += scast(O, y),
+        .wrap => o.* +%= scast(O, y),
+        .saturate => o.* +|= scast(O, y),
     }
 }
 
@@ -87,37 +76,26 @@ pub inline fn sub(
 }
 
 pub inline fn sub_(
-    out: anytype,
-    x: anytype,
+    o: anytype,
     y: anytype,
     options: struct {
         mode: Mode = .default,
     },
 ) void {
-    comptime var O: type = @TypeOf(out);
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
+    comptime var O: type = @TypeOf(o);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.sub_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
-        @compileError("int.sub_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
-
-    comptime if (!types.canCastSafely(C, O))
-        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
-            @typeName(O) ++ " safely");
+    comptime if (types.numericType(O) != .int)
+        @compileError("int.sub_ requires the output type to be an int, got " ++ @typeName(O));
 
     switch (options.mode) {
-        .default => out.* = scast(O, scast(C, x) - scast(C, y)),
-        .wrap => out.* = scast(O, scast(C, x) -% scast(C, y)),
-        .saturate => out.* = scast(O, scast(C, x) -| scast(C, y)),
+        .default => o.* -= scast(O, y),
+        .wrap => o.* -%= scast(O, y),
+        .saturate => o.* -|= scast(O, y),
     }
 }
 
@@ -146,37 +124,26 @@ pub inline fn mul(
 }
 
 pub inline fn mul_(
-    out: anytype,
-    x: anytype,
+    o: anytype,
     y: anytype,
     options: struct {
         mode: Mode = .default,
     },
 ) void {
-    comptime var O: type = @TypeOf(out);
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
+    comptime var O: type = @TypeOf(o);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.mul_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
-        @compileError("int.mul_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
-
-    comptime if (!types.canCastSafely(C, O))
-        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
-            @typeName(O) ++ " safely");
+    comptime if (types.numericType(O) != .int)
+        @compileError("int.mul_ requires the output type to be an int, got " ++ @typeName(O));
 
     switch (options.mode) {
-        .default => out.* = scast(O, scast(C, x) * scast(C, y)),
-        .wrap => out.* = scast(O, scast(C, x) *% scast(C, y)),
-        .saturate => out.* = scast(O, scast(C, x) *| scast(C, y)),
+        .default => o.* *= scast(O, y),
+        .wrap => o.* *%= scast(O, y),
+        .saturate => o.* *|= scast(O, y),
     }
 }
 
@@ -198,31 +165,20 @@ pub inline fn div(
 }
 
 pub inline fn div_(
-    out: anytype,
-    x: anytype,
+    o: anytype,
     y: anytype,
 ) void {
-    comptime var O: type = @TypeOf(out);
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
+    comptime var O: type = @TypeOf(o);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
         @compileError("int.div_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
 
     O = types.Child(O);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
-        @compileError("int.div_ requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (types.numericType(O) != .int)
+        @compileError("int.div_ requires the output type to be an int, got " ++ @typeName(O));
 
-    comptime if (!types.canCastSafely(C, O))
-        @compileError("Cannot cast " ++ @typeName(C) ++ " to " ++
-            @typeName(O) ++ " safely");
-
-    out.* = scast(O, @divTrunc(scast(C, x), scast(C, y)));
+    o.* = @divTrunc(o, scast(O, y));
 }
 
 pub inline fn cmp(

@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const ReturnType1 = types.ReturnType1;
 const scast = types.scast;
 const cast = types.cast;
 const needsAllocator = types.needsAllocator;
@@ -35,17 +36,14 @@ pub inline fn checkPosition(ndim: usize, shape: [array.maxDimensions]usize, posi
 
 inline fn cleanup(
     comptime T: type,
+    allocator: ?std.mem.Allocator,
     data: []T,
-    allocator: if (needsAllocator(T))
-        std.mem.Allocator
-    else
-        void,
 ) void {
     comptime if (!needsAllocator(T))
         return;
 
     for (data) |*value| {
-        ops.deinit(value, .{ .allocator = allocator });
+        ops.deinit(value, .{ .allocator = allocator.? });
     }
 }
 
@@ -141,8 +139,8 @@ pub inline fn arange(
 
     var len_T: T = try ops.div(diff, step_casted, .{ .allocator = allocator });
     errdefer ops.deinit(&len_T, .{ .allocator = allocator });
-    try ops.abs_(&len_T, len_T, .{ .allocator = allocator });
-    try ops.ceil_(&len_T, len_T, .{ .allocator = allocator });
+    try ops.abs_(&len_T, .{ .allocator = allocator });
+    try ops.ceil_(&len_T, .{ .allocator = allocator });
     const len: usize = try cast(usize, len_T, .{ .allocator = allocator });
 
     if (len == 0) {
@@ -171,7 +169,7 @@ pub inline fn arange(
         },
         2 => {
             arr.data[0] = start_casted;
-            try ops.add_(&step_casted, arr.data[0], step_casted, .{ .allocator = allocator });
+            try ops.add_(&step_casted, arr.data[0], .{ .allocator = allocator });
             arr.data[1] = step_casted;
 
             ops.deinit(&stop_casted, .{ .allocator = allocator });
@@ -182,9 +180,9 @@ pub inline fn arange(
         },
         3 => {
             arr.data[0] = start_casted;
-            try ops.add_(&stop_casted, arr.data[0], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&stop_casted, arr.data[0], step_casted, .{ .allocator = allocator });
             arr.data[1] = stop_casted;
-            try ops.add_(&step_casted, arr.data[1], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&step_casted, arr.data[1], step_casted, .{ .allocator = allocator });
             arr.data[2] = step_casted;
 
             ops.deinit(&diff, .{ .allocator = allocator });
@@ -194,11 +192,11 @@ pub inline fn arange(
         },
         4 => {
             arr.data[0] = start_casted;
-            try ops.add_(&diff, arr.data[0], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&diff, arr.data[0], step_casted, .{ .allocator = allocator });
             arr.data[1] = diff;
-            try ops.add_(&stop_casted, arr.data[1], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&stop_casted, arr.data[1], step_casted, .{ .allocator = allocator });
             arr.data[2] = stop_casted;
-            try ops.add_(&step_casted, arr.data[2], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&step_casted, arr.data[2], step_casted, .{ .allocator = allocator });
             arr.data[3] = step_casted;
 
             ops.deinit(&len_T, .{ .allocator = allocator });
@@ -207,11 +205,11 @@ pub inline fn arange(
         },
         else => {
             arr.data[0] = start_casted;
-            try ops.add_(&len_T, arr.data[0], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&len_T, arr.data[0], step_casted, .{ .allocator = allocator });
             arr.data[1] = len_T;
-            try ops.add_(&diff, arr.data[1], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&diff, arr.data[1], step_casted, .{ .allocator = allocator });
             arr.data[2] = diff;
-            try ops.add_(&stop_casted, arr.data[2], step_casted, .{ .allocator = allocator });
+            try ops.add_to(&stop_casted, arr.data[2], step_casted, .{ .allocator = allocator });
             arr.data[3] = stop_casted;
         },
     }
@@ -224,7 +222,7 @@ pub inline fn arange(
         j += 1;
     }
 
-    try ops.add_(&step_casted, arr.data[len - 2], step_casted, .{ .allocator = allocator });
+    try ops.add_(&step_casted, arr.data[len - 2], .{ .allocator = allocator });
     arr.data[len - 1] = step_casted;
 
     return arr;
@@ -236,7 +234,7 @@ pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, val
     arr.data[index(arr.ndim, arr.metadata.dense.strides, position)] = value;
 }
 
-pub inline fn get(comptime T: type, arr: *const Array(T), position: []const usize) !*T {
+pub inline fn get(comptime T: type, arr: Array(T), position: []const usize) !*T {
     try checkPosition(arr.ndim, arr.shape, position);
 
     return &arr.data[index(arr.ndim, arr.metadata.dense.strides, position)];
@@ -332,4 +330,50 @@ pub inline fn slice(comptime T: type, arr: *const Array(T), ranges: []const Rang
             .offset = offset,
         } },
     };
+}
+
+pub inline fn apply1(
+    allocator: std.mem.Allocator,
+    comptime T: type,
+    arr: Array(T),
+    comptime op: anytype,
+    writeable: bool,
+) !Array(ReturnType1(op, T)) {
+    var newarr: Array(ReturnType1(op, T)) = try init(allocator, ReturnType1(op, T), arr.shape[0..arr.ndim], arr.flags.order);
+    errdefer newarr.deinit(allocator);
+    newarr.flags.writeable = writeable;
+
+    var j: usize = 0;
+    errdefer cleanup(ReturnType1(op, T), allocator, newarr.data[0..j]);
+
+    const opinfo = @typeInfo(@TypeOf(op));
+    for (0..newarr.size) |i| {
+        if (opinfo.@"fn".params.len == 1) {
+            newarr.data[i] = op(arr.data[i]);
+        } else if (opinfo.@"fn".params.len == 2) {
+            newarr.data[i] = try op(arr.data[i], .{ .allocator = allocator });
+        }
+
+        j += 1;
+    }
+
+    return newarr;
+}
+
+pub inline fn apply1_(
+    comptime T: type,
+    arr: *Array(T),
+    comptime op_: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    const opinfo = @typeInfo(@TypeOf(op_));
+    for (0..arr.size) |i| {
+        if (opinfo.@"fn".params.len == 1) {
+            op_(&arr.data[i]);
+        } else if (opinfo.@"fn".params.len == 2) {
+            try op_(&arr.data[i], .{ .allocator = allocator });
+        }
+    }
+
+    return;
 }

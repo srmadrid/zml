@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const Scalar = types.Scalar;
+const ReturnType1 = types.ReturnType1;
 const scast = types.scast;
 const cast = types.cast;
 
@@ -10,6 +12,8 @@ const ops = @import("../ops.zig");
 const array = @import("../array.zig");
 const Array = array.Array;
 const Range = array.Range;
+
+const dense = @import("dense.zig");
 
 pub inline fn index(ndim: usize, strides: [array.maxDimensions]isize, offset: usize, position: []const usize) usize {
     var idx: usize = offset;
@@ -40,10 +44,10 @@ pub inline fn checkPosition(ndim: usize, shape: [array.maxDimensions]usize, posi
 pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: T) !void {
     try checkPosition(arr.ndim, arr.shape, position);
 
-    arr.data[index(arr.ndim, arr.metadata.strided.strides, position)] = value;
+    arr.data[index(arr.ndim, arr.metadata.strided.strides, arr.metadata.strided.offset, position)] = value;
 }
 
-pub fn get(comptime T: type, arr: *const Array(T), position: []const usize) !*T {
+pub fn get(comptime T: type, arr: Array(T), position: []const usize) !*T {
     try checkPosition(arr.ndim, arr.shape, position);
 
     return &arr.data[index(arr.ndim, arr.metadata.strided.strides, arr.metadata.strided.offset, position)];
@@ -139,4 +143,56 @@ pub inline fn slice(comptime T: type, arr: *const Array(T), ranges: []const Rang
             .offset = offset,
         } },
     };
+}
+
+pub inline fn apply1(
+    allocator: std.mem.Allocator,
+    comptime T: type,
+    arr: Array(T),
+    comptime op: anytype,
+    writeable: bool,
+) !Array(ReturnType1(op, T)) {
+    var newarr: Array(ReturnType1(op, T)) = try dense.init(allocator, ReturnType1(op, T), arr.shape[0..arr.ndim], arr.flags.order);
+    errdefer newarr.deinit(allocator);
+    newarr.flags.writeable = writeable;
+
+    var j: usize = 0;
+    errdefer dense.cleanup(ReturnType1(op, T), allocator, newarr.data[0..j]);
+    var iter = array.Iterator(T).init(&arr);
+
+    const opinfo = @typeInfo(@TypeOf(op));
+    for (0..newarr.size) |i| {
+        if (opinfo.@"fn".params.len == 1) {
+            newarr.data[i] = op(arr.data[iter.index]);
+        } else if (opinfo.@"fn".params.len == 2) {
+            newarr.data[i] = try op(arr.data[iter.index], .{ .allocator = allocator });
+        }
+
+        j += 1;
+        _ = iter.next();
+    }
+
+    return newarr;
+}
+
+pub inline fn apply1_(
+    comptime T: type,
+    arr: *Array(T),
+    comptime op_: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    var iter = array.Iterator(T).init(arr);
+
+    const opinfo = @typeInfo(@TypeOf(op_));
+    for (0..arr.size) |_| {
+        if (opinfo.@"fn".params.len == 1) {
+            op_(&arr.data[iter.index]);
+        } else if (opinfo.@"fn".params.len == 2) {
+            try op_(&arr.data[iter.index], .{ .allocator = allocator });
+        }
+
+        _ = iter.next();
+    }
+
+    return;
 }

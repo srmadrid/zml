@@ -6,7 +6,11 @@ pub inline fn abs(x: anytype) @TypeOf(x) {
 
     switch (types.numericType(@TypeOf(x))) {
         .int => {
-            return @abs(x);
+            if (@TypeOf(x) == comptime_int) {
+                return @abs(x);
+            }
+
+            return @bitCast(@abs(x));
         },
         else => unreachable,
     }
