@@ -8,6 +8,8 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
+    std.debug.print("ReturnType2(zml.add, u8, f32) = {}\n", .{zml.types.ReturnType2(zml.le, u8, f32)});
+
     // try symbolicTesting(a);
 
     try generalTesting(a);
@@ -426,6 +428,23 @@ fn generalTesting(a: std.mem.Allocator) !void {
     }
     std.debug.print("]\n", .{});
 
+    const D_broadcasted: zml.Array(zml.cf64) = try D.broadcast(&.{ 3, 5 });
+
+    std.debug.print("D_broadcasted.shape = [  ", .{});
+    for (D_broadcasted.shape[0..D_broadcasted.ndim]) |dim| {
+        std.debug.print("{}  ", .{dim});
+    }
+    std.debug.print("]\n", .{});
+    std.debug.print("D_broadcasted = [\n", .{});
+    for (0..D_broadcasted.shape[0]) |i| {
+        for (0..D_broadcasted.shape[1]) |j| {
+            const z = try D_broadcasted.get(&.{ i, j });
+            std.debug.print("\t{d} + {d}i, ", .{ z.re, z.im });
+        }
+        std.debug.print("\n", .{});
+    }
+    std.debug.print("]\n", .{});
+
     var E: zml.Array(f64) = try zml.abs(D, .{ .allocator = a });
     defer E.deinit(a);
 
@@ -507,6 +526,19 @@ fn generalTesting(a: std.mem.Allocator) !void {
         }
         std.debug.print("\n", .{});
     }
+
+    const shapes: []const []const usize = &.{
+        &.{ 15, 3, 1 },
+        &.{ 3, 1 },
+        &.{ 1, 1, 5 },
+    };
+
+    const broadcast = try zml.array.broadcastShapes(shapes);
+    std.debug.print("Broadcasted shape = [  ", .{});
+    for (broadcast.shape[0..broadcast.ndim]) |dim| {
+        std.debug.print("{}  ", .{dim});
+    }
+    std.debug.print("]\n", .{});
 }
 
 fn addTesting(a: std.mem.Allocator) !void {

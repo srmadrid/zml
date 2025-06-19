@@ -190,6 +190,32 @@ pub fn Array(comptime T: type) type {
                 .strided => return strided.slice(T, self, ranges),
             }
         }
+
+        pub fn broadcast(self: *const Array(T), shape: []const usize) !Array(T) {
+            if (shape.len > maxDimensions or shape.len < self.ndim) {
+                return Error.TooManyDimensions;
+            }
+
+            var i: isize = scast(isize, shape.len - 1);
+            const diff: isize = scast(isize, shape.len - self.ndim);
+            while (i >= 0) : (i -= 1) {
+                if (i - diff >= 0 and
+                    self.shape[scast(usize, i - diff)] != 1 and
+                    self.shape[scast(usize, i - diff)] != shape[scast(usize, i)])
+                {
+                    return Error.NotBroadcastable;
+                }
+
+                if (shape[scast(usize, i)] == 0) {
+                    return Error.ZeroDimension;
+                }
+            }
+
+            switch (self.flags.storage) {
+                .dense => return dense.broadcast(T, self, shape),
+                .strided => return strided.broadcast(T, self, shape),
+            }
+        }
     };
 }
 
@@ -199,12 +225,72 @@ pub const abs_ = arrops.abs_;
 pub const ceil = arrops.ceil;
 pub const ceil_ = arrops.ceil_;
 
+pub fn broadcastShapes(
+    shapes: []const []const usize,
+) !struct {
+    ndim: usize,
+    shape: [maxDimensions]usize,
+} {
+    if (shapes.len == 0) {
+        return Error.ZeroDimension;
+    }
+
+    var ndim: usize = 0;
+    for (shapes) |shape| {
+        if (shape.len > ndim) {
+            ndim = shape.len;
+        }
+    }
+
+    var result: [maxDimensions]usize = .{0} ** maxDimensions;
+    var i: isize = scast(isize, ndim - 1);
+    while (i >= 0) : (i -= 1) {
+        var max_dim: usize = 1;
+        for (shapes) |shape| {
+            const diff: isize = scast(isize, ndim - shape.len);
+            if (i - diff >= 0) {
+                if (shape[scast(usize, i - diff)] == 0) {
+                    return Error.ZeroDimension;
+                }
+
+                if (shape[scast(usize, i - diff)] > max_dim) {
+                    if (max_dim != 1) {
+                        return Error.NotBroadcastable;
+                    }
+
+                    max_dim = shape[scast(usize, i - diff)];
+                }
+
+                if (shape[scast(usize, i - diff)] != 1 and
+                    shape[scast(usize, i - diff)] != max_dim)
+                {
+                    return Error.NotBroadcastable;
+                }
+
+                std.debug.print("Broadcasting dimension {}: {} vs {}\n", .{
+                    i,
+                    max_dim,
+                    shape[scast(usize, i - diff)],
+                });
+            }
+        }
+
+        result[scast(usize, i)] = max_dim;
+    }
+
+    return .{
+        .ndim = ndim,
+        .shape = result,
+    };
+}
+
 pub const Error = error{
     ArrayNotWriteable,
     TooManyDimensions,
     InvalidFlags,
     ZeroDimension,
     NotImplemented,
+    NotBroadcastable,
     DimensionMismatch,
     PositionOutOfBounds,
     InvalidRange,

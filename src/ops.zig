@@ -2,6 +2,7 @@ const std = @import("std");
 const types = @import("types.zig");
 const cast = types.cast;
 const Scalar = types.Scalar;
+const Numeric = types.Numeric;
 const Coerce = types.Coerce;
 const CoerceToArray = types.CoerceToArray;
 const Child = types.Child;
@@ -1936,7 +1937,7 @@ pub inline fn abs(
         allocator: ?std.mem.Allocator = null,
         writeable: bool = true,
     },
-) !CoerceToArray(@TypeOf(x), Scalar(Scalar(@TypeOf(x)))) {
+) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
 
     if (comptime types.isArray(X) or types.isSlice(X))

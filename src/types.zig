@@ -1623,3 +1623,43 @@ pub fn ReturnType1(comptime op: anytype, comptime X: type) type {
         else => return result_type,
     }
 }
+
+/// Returns the return type of a function with two parameters when called with
+/// values of types `X` and `Y`.
+///
+/// This function is useful when the return type of the function depends on
+/// the types of the parameters passed to it. The function may have a third
+/// parameter that is an options struct.
+pub fn ReturnType2(comptime op: anytype, comptime X: type, comptime Y: type) type {
+    const opinfo = @typeInfo(@TypeOf(op));
+
+    comptime if (opinfo.@"fn".params.len != 2 and opinfo.@"fn".params.len != 3)
+        @compileError("ReturnType2: op must be a function with two parameters, or three if the third is an options struct");
+
+    const val1: X = if (isArbitraryPrecision(X))
+        .empty
+    else if (isComplex(X))
+        .{ .re = 1, .im = 1 }
+    else
+        1;
+    const val2: Y = if (isArbitraryPrecision(Y))
+        .empty
+    else if (isComplex(Y))
+        .{ .re = 1, .im = 1 }
+    else
+        1;
+
+    const result_type: type = if (opinfo.@"fn".params.len == 2)
+        @TypeOf(op(val1, val2))
+    else // We must pass an allocator, although it is not used
+        if (needsAllocator(X) or needsAllocator(Y))
+            @TypeOf(op(val1, val2, .{ .allocator = useless_allocator }))
+        else
+            @TypeOf(op(val1, val2, .{}));
+
+    const resinfo = @typeInfo(result_type);
+    switch (resinfo) {
+        .error_union => return resinfo.error_union.payload,
+        else => return result_type,
+    }
+}

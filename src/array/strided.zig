@@ -145,6 +145,50 @@ pub inline fn slice(comptime T: type, arr: *const Array(T), ranges: []const Rang
     };
 }
 
+pub inline fn broadcast(
+    comptime T: type,
+    arr: *const Array(T),
+    shape: []const usize,
+) !Array(T) {
+    var new_shape: [array.maxDimensions]usize = .{0} ** array.maxDimensions;
+    var strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
+    var size: usize = 1;
+
+    var i: isize = scast(isize, shape.len - 1);
+    const diff: isize = scast(isize, shape.len - arr.ndim);
+    while (i >= 0) : (i -= 1) {
+        if (i - diff >= 0) {
+            new_shape[scast(usize, i)] = try ops.max(arr.shape[scast(usize, i - diff)], shape[scast(usize, i)], .{});
+            strides[scast(usize, i)] = arr.metadata.strided.strides[scast(usize, i - diff)];
+        } else {
+            new_shape[scast(usize, i)] = shape[scast(usize, i)];
+            strides[scast(usize, i)] = 0; // No stride for the new dimensions.
+        }
+
+        size *= new_shape[scast(usize, i)];
+    }
+
+    return Array(T){
+        .data = arr.data,
+        .ndim = shape.len,
+        .shape = new_shape,
+        .size = size,
+        .base = if (arr.flags.ownsData) arr else arr.base,
+        .flags = .{
+            .order = arr.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
+            .storage = .strided,
+            .ownsData = false,
+            .writeable = arr.flags.writeable,
+        },
+        .metadata = .{
+            .strided = .{
+                .strides = strides,
+                .offset = 0, // No offset in broadcasting.
+            },
+        },
+    };
+}
+
 pub inline fn apply1(
     allocator: std.mem.Allocator,
     comptime T: type,
