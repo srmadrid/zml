@@ -111,7 +111,7 @@ pub inline fn arange(
     step: anytype,
     writeable: bool,
 ) !Array(T) {
-    // Need to free the allocated array elements if an error occurs (only when len > 4)
+    // Refactor to avoid unnecessary casts, like in linspace.
     _ = types.numericType(@TypeOf(start));
     _ = types.numericType(@TypeOf(stop));
     _ = types.numericType(@TypeOf(step));
@@ -224,6 +224,93 @@ pub inline fn arange(
 
     try ops.add_(&step_casted, arr.data[len - 2], .{ .allocator = allocator });
     arr.data[len - 1] = step_casted;
+
+    return arr;
+}
+
+pub fn linspace(
+    allocator: std.mem.Allocator,
+    comptime T: type,
+    start: anytype,
+    stop: anytype,
+    num: usize,
+    writeable: bool,
+    endpoint: bool,
+) !Array(T) {
+    _ = types.numericType(@TypeOf(start));
+    _ = types.numericType(@TypeOf(stop));
+
+    var arr: Array(T) = try init(allocator, T, &.{num}, .rowMajor);
+    errdefer arr.deinit(allocator);
+    arr.flags.writeable = writeable;
+
+    if (num == 1) {
+        arr.data[0] = try cast(T, start, .{ .allocator = allocator, .copy = true });
+        return arr;
+    } else if (num == 2 and endpoint) {
+        arr.data[0] = try cast(T, start, .{ .allocator = allocator, .copy = true });
+        errdefer ops.deinit(&arr.data[0], .{ .allocator = allocator });
+        arr.data[1] = try cast(T, stop, .{ .allocator = allocator, .copy = true });
+
+        return arr;
+    } else if (num == 2 and !endpoint) {
+        arr.data[0] = try cast(T, start, .{ .allocator = allocator, .copy = true });
+        errdefer ops.deinit(&arr.data[0], .{ .allocator = allocator });
+        arr.data[1] = try cast(T, stop, .{ .allocator = allocator, .copy = true });
+        errdefer ops.deinit(&arr.data[1], .{ .allocator = allocator });
+        try ops.add_(&arr.data[1], arr.data[0], .{ .allocator = allocator });
+        try ops.div_(&arr.data[1], 2, .{ .allocator = allocator });
+
+        return arr;
+    }
+
+    var start_casted: T = try cast(T, start, .{ .allocator = allocator, .copy = true });
+    errdefer ops.deinit(&start_casted, .{ .allocator = allocator });
+    var stop_casted: T = try cast(T, stop, .{ .allocator = allocator, .copy = true });
+    errdefer ops.deinit(&stop_casted, .{ .allocator = allocator });
+    var step: T = try ops.sub(stop_casted, start_casted, .{ .allocator = allocator });
+    errdefer ops.deinit(&step, .{ .allocator = allocator });
+    if (endpoint) {
+        try ops.div_(&step, num - 1, .{ .allocator = allocator });
+    } else {
+        try ops.div_(&step, num, .{ .allocator = allocator });
+    }
+
+    if (num == 3 and endpoint) {
+        arr.data[0] = start_casted;
+        try ops.add_(&step, arr.data[0], .{ .allocator = allocator });
+        arr.data[1] = step;
+        arr.data[2] = stop_casted;
+    } else if (num == 3 and !endpoint) {
+        arr.data[0] = start_casted;
+        try ops.add_(&step, arr.data[0], .{ .allocator = allocator });
+        arr.data[1] = step;
+        try ops.add_to(&stop_casted, arr.data[1], step, .{ .allocator = allocator });
+        arr.data[2] = stop_casted;
+
+        return arr;
+    }
+
+    arr.data[0] = start_casted;
+
+    var j: usize = 1;
+    errdefer cleanup(T, allocator, arr.data[1..j]);
+    for (1..num - 2) |i| {
+        arr.data[i] = try ops.add(arr.data[i - 1], step, .{ .allocator = allocator });
+
+        j += 1;
+    }
+
+    if (endpoint) {
+        try ops.add_to(&step, arr.data[num - 3], step, .{ .allocator = allocator });
+        arr.data[num - 2] = step;
+        arr.data[num - 1] = stop_casted;
+    } else {
+        try ops.sub_(&stop_casted, step, .{ .allocator = allocator });
+        try ops.add_(&step, arr.data[num - 3], .{ .allocator = allocator });
+        arr.data[num - 2] = step;
+        arr.data[num - 1] = stop_casted;
+    }
 
     return arr;
 }

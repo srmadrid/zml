@@ -136,7 +136,7 @@ pub fn Array(comptime T: type) type {
                 return Error.ZeroDimension;
             }
 
-            return dense.linspace(allocator, T, start, stop, num, options.writeable);
+            return dense.linspace(allocator, T, start, stop, num, options.writeable, options.endpoint);
         }
 
         /// Cleans up the array by deinitializing its elements. If the array holds

@@ -8,13 +8,6 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
-    var cc: f64 = undefined;
-    const aa: u64 = 10;
-    const bb: u64 = 20;
-    try zml.add_to(&cc, aa, bb, .{});
-
-    std.debug.print("cc = {}\n", .{cc});
-
     // try symbolicTesting(a);
 
     try generalTesting(a);
@@ -403,7 +396,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("A.size = {}\n", .{A.size});
 
-    var B: zml.Array(f64) = try .arange(a, 0, -1, -0.1, .{});
+    var B: zml.Array(f64) = try .linspace(a, 0, -1, 7, .{});
     defer B.deinit(a);
 
     std.debug.print("B = [", .{});
