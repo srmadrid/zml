@@ -8,7 +8,16 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
-    std.debug.print("ReturnType2(zml.add, u8, f32) = {}\n", .{zml.types.ReturnType2(zml.le, u8, f32)});
+    std.debug.print("isPermutation(5, [4, 1, 0, 2, 3]): {}\n", .{zml.array.isPermutation(5, &.{ 4, 1, 0, 2, 3 })});
+
+    const n = zml.array.trivialReversePermutation(5);
+    std.debug.print("trivialReversePermutation(5): [", .{});
+    for (n[0..5]) |i| {
+        std.debug.print("{d}, ", .{i});
+    }
+    std.debug.print("]\n", .{});
+
+    std.debug.print("isPermutation(5, n): {}\n", .{zml.array.isPermutation(5, n[0..5])});
 
     // try symbolicTesting(a);
 
@@ -532,13 +541,49 @@ fn generalTesting(a: std.mem.Allocator) !void {
         &.{ 3, 1 },
         &.{ 1, 1, 5 },
     };
+    _ = shapes;
 
-    const broadcast = try zml.array.broadcastShapes(shapes);
-    std.debug.print("Broadcasted shape = [  ", .{});
-    for (broadcast.shape[0..broadcast.ndim]) |dim| {
+    const G_T = try G.transpose(.{});
+    std.debug.print("G_T = G.transpose()\n", .{});
+    std.debug.print("G.shape = [  ", .{});
+    for (G.shape[0..G.ndim]) |dim| {
         std.debug.print("{}  ", .{dim});
     }
     std.debug.print("]\n", .{});
+    std.debug.print("G.strides = [  ", .{});
+    for (G.metadata.dense.strides[0..G.ndim]) |stride| {
+        std.debug.print("{}  ", .{stride});
+    }
+    std.debug.print("]\n", .{});
+    std.debug.print("G_T.shape = [  ", .{});
+    for (G_T.shape[0..G_T.ndim]) |dim| {
+        std.debug.print("{}  ", .{dim});
+    }
+    std.debug.print("]\n", .{});
+    std.debug.print("G_T.strides = [  ", .{});
+    for (G_T.metadata.strided.strides[0..G_T.ndim]) |stride| {
+        std.debug.print("{}  ", .{stride});
+    }
+    std.debug.print("]\n", .{});
+    std.debug.print("G_T =\n", .{});
+    for (0..G_T.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..G_T.shape[1]) |j| {
+            std.debug.print("{d}  ", .{(try G_T.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    const H_T = try H.transpose(.{});
+    std.debug.print("H_T = H.transpose()\n", .{});
+    std.debug.print("H_T =\n", .{});
+    for (0..H_T.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..H_T.shape[1]) |j| {
+            std.debug.print("{d}  ", .{(try H_T.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
 }
 
 fn addTesting(a: std.mem.Allocator) !void {

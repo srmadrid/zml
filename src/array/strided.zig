@@ -229,6 +229,44 @@ pub inline fn broadcast(
     };
 }
 
+pub fn transpose(
+    comptime T: type,
+    self: *const Array(T),
+    axes: []const usize,
+) !Array(T) {
+    var new_shape: [array.maxDimensions]usize = .{0} ** array.maxDimensions;
+    var new_strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
+    var size: usize = 1;
+
+    for (0..self.ndim) |i| {
+        const idx: usize = axes[i];
+
+        new_shape[i] = self.shape[idx];
+        new_strides[i] = self.metadata.strided.strides[idx];
+        size *= new_shape[i];
+    }
+
+    return Array(T){
+        .data = self.data,
+        .ndim = self.ndim,
+        .shape = new_shape,
+        .size = size,
+        .base = if (self.flags.ownsData) self else self.base,
+        .flags = .{
+            .order = self.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
+            .storage = .strided,
+            .ownsData = false,
+            .writeable = self.flags.writeable,
+        },
+        .metadata = .{
+            .strided = .{
+                .strides = new_strides,
+                .offset = self.metadata.strided.offset, // No change in offset during transpose.
+            },
+        },
+    };
+}
+
 pub inline fn apply1(
     allocator: std.mem.Allocator,
     comptime T: type,

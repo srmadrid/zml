@@ -18,7 +18,7 @@ const complex = @import("complex.zig");
 pub inline fn pi(
     comptime T: type,
     options: struct {
-        allocator: if (needsAllocator(T)) std.mem.Allocator else void = {},
+        allocator: ?std.mem.Allocator = null,
     },
 ) !T {
     _ = options;

@@ -89,7 +89,7 @@ fn alloc(context: *anyopaque, len: usize, alignment: std.mem.Alignment, ra: usiz
     _ = alignment;
     _ = ra;
 
-    @compileError("useless_allocator found, provide a valid allocator");
+    return null;
 }
 
 fn resize(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ra: usize) bool {
@@ -99,7 +99,7 @@ fn resize(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_l
     _ = new_len;
     _ = ra;
 
-    @compileError("useless_allocator found, provide a valid allocator");
+    return false;
 }
 
 fn remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ra: usize) ?[*]u8 {
@@ -109,7 +109,7 @@ fn remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_le
     _ = new_len;
     _ = ra;
 
-    @compileError("useless_allocator found, provide a valid allocator");
+    return null;
 }
 
 fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usize) void {
@@ -118,7 +118,7 @@ fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usi
     _ = alignment;
     _ = ra;
 
-    @compileError("useless_allocator found, provide a valid allocator");
+    return;
 }
 
 /// Checks the the input type `T` and returns the corresponding `NumericType`.

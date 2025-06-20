@@ -75,7 +75,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn subYeal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn subReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
                 .re = x.re - y,
                 .im = x.im,
@@ -96,7 +96,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn mulYeal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn mulReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
                 .re = x.re * y,
                 .im = x.im * y,
@@ -128,7 +128,7 @@ pub fn Cfloat(comptime T: type) type {
             }
         }
 
-        pub fn divYeal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn divReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
                 .re = x.re / y,
                 .im = x.im / y,
@@ -267,7 +267,7 @@ pub inline fn sub(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    return scast(C, x).subYeal(scast(Scalar(C), y));
+                    return scast(C, x).subReal(scast(Scalar(C), y));
                 },
                 .cfloat => {
                     return scast(C, x).sub(scast(C, y));
@@ -332,7 +332,7 @@ pub inline fn mul(
         .bool, .int, .float => {
             switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, y).mulYeal(scast(Scalar(C), x));
+                    return scast(C, y).mulReal(scast(Scalar(C), x));
                 },
                 else => unreachable,
             }
@@ -340,7 +340,7 @@ pub inline fn mul(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    return scast(C, x).mulYeal(scast(Scalar(C), y));
+                    return scast(C, x).mulReal(scast(Scalar(C), y));
                 },
                 .cfloat => {
                     return scast(C, x).mul(scast(C, y));
@@ -407,7 +407,7 @@ pub inline fn div(
         .bool, .int, .float => {
             switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, y).inverse().mulYeal(scast(Scalar(C), x));
+                    return scast(C, y).inverse().mulReal(scast(Scalar(C), x));
                 },
                 else => unreachable,
             }
@@ -415,7 +415,7 @@ pub inline fn div(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    return scast(C, x).divYeal(scast(Scalar(C), y));
+                    return scast(C, x).divReal(scast(Scalar(C), y));
                 },
                 .cfloat => {
                     return scast(C, x).div(scast(C, y));

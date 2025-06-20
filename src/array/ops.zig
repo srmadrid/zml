@@ -89,8 +89,8 @@ pub fn apply1_to(
 
     switch (o.flags.storage) {
         // Will have to aplly broadcasting
-        .dense => return dense.apply1_to(allocator, Scalar(O), Scalar(X), op_to, options.writeable),
-        .strided => return strided.apply1_to(allocator, Scalar(O), Scalar(X), op_to, options.writeable),
+        .dense => return dense.apply1_to(allocator, Scalar(O), o, Scalar(X), x, op_to, options.writeable),
+        .strided => return strided.apply1_to(allocator, Scalar(O), o, Scalar(X), x, op_to, options.writeable),
     }
 }
 

@@ -387,6 +387,44 @@ pub fn ravel(comptime T: type, arr: *const Array(T)) !Array(T) {
     };
 }
 
+pub fn transpose(
+    comptime T: type,
+    self: *const Array(T),
+    axes: []const usize,
+) !Array(T) {
+    var new_shape: [array.maxDimensions]usize = .{0} ** array.maxDimensions;
+    var new_strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
+    var size: usize = 1;
+
+    for (0..self.ndim) |i| {
+        const idx: usize = axes[i];
+
+        new_shape[i] = self.shape[idx];
+        new_strides[i] = scast(isize, self.metadata.dense.strides[idx]);
+        size *= new_shape[i];
+    }
+
+    return Array(T){
+        .data = self.data,
+        .ndim = self.ndim,
+        .shape = new_shape,
+        .size = size,
+        .base = if (self.flags.ownsData) self else self.base,
+        .flags = .{
+            .order = self.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
+            .storage = .strided,
+            .ownsData = false,
+            .writeable = self.flags.writeable,
+        },
+        .metadata = .{
+            .strided = .{
+                .strides = new_strides,
+                .offset = 0, // No offset in transposing.
+            },
+        },
+    };
+}
+
 pub inline fn slice(comptime T: type, arr: *const Array(T), ranges: []const Range) !Array(T) {
     var ndim: usize = arr.ndim;
     var size: usize = 1;

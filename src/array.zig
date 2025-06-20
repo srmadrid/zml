@@ -206,6 +206,34 @@ pub fn Array(comptime T: type) type {
             }
         }
 
+        pub fn transpose(
+            self: *const Array(T),
+            options: struct {
+                axes: ?[]const usize = null,
+            },
+        ) !Array(T) {
+            const axes: []const usize =
+                options.axes orelse
+                trivialReversePermutation(self.ndim)[0..self.ndim];
+
+            if (axes.len == 0) {
+                return Error.ZeroDimension;
+            }
+
+            if (axes.len > self.ndim) {
+                return Error.TooManyDimensions;
+            }
+
+            if (!isPermutation(self.ndim, axes)) {
+                return Error.InvalidAxes; // axes must be a valid permutation of [0, ..., ndim - 1]
+            }
+
+            switch (self.flags.storage) {
+                .dense => return dense.transpose(T, self, axes),
+                .strided => return strided.transpose(T, self, axes),
+            }
+        }
+
         pub fn slice(self: *const Array(T), ranges: []const Range) !Array(T) {
             if (ranges.len == 0 or ranges.len > self.ndim) {
                 return error.DimensionMismatch;
@@ -251,12 +279,14 @@ pub const abs_ = arrops.abs_;
 pub const ceil = arrops.ceil;
 pub const ceil_ = arrops.ceil_;
 
-pub fn broadcastShapes(
-    shapes: []const []const usize,
-) !struct {
+pub const Broadcast = struct {
     ndim: usize,
     shape: [maxDimensions]usize,
-} {
+};
+
+pub fn broadcastShapes(
+    shapes: []const []const usize,
+) !Broadcast {
     if (shapes.len == 0) {
         return Error.ZeroDimension;
     }
@@ -312,10 +342,66 @@ pub fn broadcastShapes(
     };
 }
 
+/// Checks if the given axes form a valid permutation of `[0, ..., ndim - 1]`.
+pub fn isPermutation(
+    ndim: usize,
+    axes: []const usize,
+) bool {
+    if (ndim != axes.len) {
+        return false; // axes must match the shape length
+    }
+
+    if (ndim == 0 or ndim > maxDimensions) {
+        return false; // empty or too many dimensions is not a valid permutation
+    }
+
+    var seen: [maxDimensions]bool = .{false} ** maxDimensions;
+    for (axes) |axis| {
+        if (axis >= ndim) {
+            return false; // axis out of bounds
+        }
+
+        if (seen[axis]) {
+            return false; // duplicate axis
+        }
+
+        seen[axis] = true;
+    }
+
+    return true; // is a permutation
+}
+
+pub fn trivialPermutation(ndim: usize) [maxDimensions]usize {
+    var result: [maxDimensions]usize = .{0} ** maxDimensions;
+
+    if (ndim == 0 or ndim > maxDimensions)
+        return result; // empty or too many dimensions, return trivial permutation
+
+    for (result[0..ndim], 0..) |*axis, i| {
+        axis.* = i;
+    }
+
+    return result;
+}
+
+pub fn trivialReversePermutation(ndim: usize) [maxDimensions]usize {
+    var result: [maxDimensions]usize = .{0} ** maxDimensions;
+
+    if (ndim == 0 or ndim > maxDimensions)
+        return result; // empty or too many dimensions, return empty permutation
+
+    for (result[0..ndim], 0..) |*axis, i| {
+        axis.* = ndim - i - 1;
+    }
+
+    return result;
+}
+
 pub const Error = error{
     ArrayNotWriteable,
     TooManyDimensions,
     InvalidFlags,
+    InvalidAxes,
     ZeroDimension,
     NotImplemented,
     NotBroadcastable,
