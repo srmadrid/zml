@@ -145,6 +145,46 @@ pub inline fn slice(comptime T: type, arr: *const Array(T), ranges: []const Rang
     };
 }
 
+pub inline fn reshape(comptime T: type, arr: *const Array(T), shape: []const usize) !Array(T) {
+    var new_size: usize = 1;
+    var new_shape: [array.maxDimensions]usize = .{0} ** array.maxDimensions;
+    var new_strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
+    if (shape.len > 0) {
+        for (0..shape.len) |i| {
+            const idx: usize = if (arr.order == .rowMajor) shape.len - i - 1 else i;
+
+            new_strides[idx] = new_size;
+            new_size *= shape[idx];
+
+            new_shape[i] = shape[i];
+        }
+    }
+
+    if (new_size != arr.size) {
+        return error.DimensionMismatch;
+    }
+
+    return Array(T){
+        .data = arr.data,
+        .ndim = shape.len,
+        .shape = new_shape,
+        .size = new_size,
+        .base = if (arr.flags.ownsData) arr else arr.base,
+        .flags = .{
+            .order = arr.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
+            .storage = .strided,
+            .ownsData = false,
+            .writeable = arr.flags.writeable,
+        },
+        .metadata = .{
+            .strided = .{
+                .strides = new_strides,
+                .offset = 0, // No offset in reshaping.
+            },
+        },
+    };
+}
+
 pub inline fn broadcast(
     comptime T: type,
     arr: *const Array(T),
@@ -240,3 +280,5 @@ pub inline fn apply1_(
 
     return;
 }
+
+// For apply2 use recursive loop function

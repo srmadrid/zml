@@ -180,6 +180,32 @@ pub fn Array(comptime T: type) type {
             }
         }
 
+        pub fn reshape(self: *const Array(T), shape: []const usize) !Array(T) {
+            if (shape.len > maxDimensions) {
+                return Error.TooManyDimensions;
+            }
+
+            if (shape.len == 0) {
+                return Error.ZeroDimension;
+            }
+
+            switch (self.flags.storage) {
+                .dense => return dense.reshape(T, self, shape),
+                .strided => return strided.reshape(T, self, shape),
+            }
+        }
+
+        pub fn ravel(self: *const Array(T)) !Array(T) {
+            if (self.ndim == 0) {
+                return Error.ZeroDimension;
+            }
+
+            switch (self.flags.storage) {
+                .dense => return dense.ravel(T, self),
+                .strided => return error.NeedDense, // ravel can only be done on dense arrays without copying
+            }
+        }
+
         pub fn slice(self: *const Array(T), ranges: []const Range) !Array(T) {
             if (ranges.len == 0 or ranges.len > self.ndim) {
                 return error.DimensionMismatch;
@@ -237,6 +263,14 @@ pub fn broadcastShapes(
 
     var ndim: usize = 0;
     for (shapes) |shape| {
+        if (shape.len == 0) {
+            return Error.ZeroDimension;
+        }
+
+        if (shape.len > maxDimensions) {
+            return Error.TooManyDimensions;
+        }
+
         if (shape.len > ndim) {
             ndim = shape.len;
         }
@@ -266,12 +300,6 @@ pub fn broadcastShapes(
                 {
                     return Error.NotBroadcastable;
                 }
-
-                std.debug.print("Broadcasting dimension {}: {} vs {}\n", .{
-                    i,
-                    max_dim,
-                    shape[scast(usize, i - diff)],
-                });
             }
         }
 
@@ -296,6 +324,7 @@ pub const Error = error{
     InvalidRange,
     RangeOutOfBounds,
     ZeroStep,
+    NeedDense,
 };
 
 pub const Flags = packed struct {
