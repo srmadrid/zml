@@ -2,6 +2,7 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const ReturnType1 = types.ReturnType1;
+const ReturnType2 = types.ReturnType2;
 const scast = types.scast;
 const cast = types.cast;
 const needsAllocator = types.needsAllocator;
@@ -12,6 +13,8 @@ const ops = @import("../ops.zig");
 const array = @import("../array.zig");
 const Array = array.Array;
 const Range = array.Range;
+
+const strided = @import("strided.zig");
 
 pub inline fn index(ndim: usize, strides: [array.maxDimensions]usize, position: []const usize) usize {
     var idx: usize = 0;
@@ -34,7 +37,7 @@ pub inline fn checkPosition(ndim: usize, shape: [array.maxDimensions]usize, posi
     }
 }
 
-inline fn cleanup(
+pub inline fn cleanup(
     comptime T: type,
     allocator: ?std.mem.Allocator,
     data: []T,
@@ -60,7 +63,12 @@ pub inline fn init(
         for (0..shape.len) |i| {
             const idx: usize = if (order == .rowMajor) shape.len - i - 1 else i;
 
-            strides[idx] = size;
+            if (shape[idx] == 1 and shape[idx] == 1) {
+                strides[idx] = 0; // No stride for the new dimensions.
+            } else {
+                strides[idx] = size;
+            }
+
             size *= shape[idx];
 
             shapes[i] = shape[i];
@@ -605,4 +613,167 @@ pub inline fn apply1_(
     }
 
     return;
+}
+
+// Apply2 outline:
+// 1. check for equality of shapes
+//     - if equal, check for order (either equal loop, or one loops backwards)
+// 2. if not equal, check for broadcasting
+//     - if broadcasting is possible, apply broadcasting (efficient inner loop, like in innerLoop2RLSS, maybe moove all these inner loop functions to a separate file?, instead of DD being here in dense, and DS and SS in strided)
+//     - if broadcasting is not possible, return error
+pub fn apply2(
+    allocator: std.mem.Allocator,
+    comptime X: type,
+    x: anytype,
+    comptime Y: type,
+    y: anytype,
+    comptime op: anytype,
+    options: struct {
+        order: ?array.Order = null,
+        writeable: bool = true,
+    },
+) !Array(ReturnType2(op, X, Y)) {
+    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        var newarr: Array(ReturnType2(op, X, Y)) = try init(allocator, ReturnType2(op, X, Y), y.shape[0..y.ndim], options.order orelse y.flags.order);
+        errdefer newarr.deinit(allocator);
+        newarr.flags.writeable = options.writeable;
+
+        var j: usize = 0;
+        if (newarr.flags.order == y.flags.order) {
+            errdefer cleanup(ReturnType2(op, X, Y), allocator, newarr.data[0..j]);
+
+            const opinfo = @typeInfo(@TypeOf(op));
+            for (0..newarr.size) |i| {
+                if (opinfo.@"fn".params.len == 2) {
+                    newarr.data[i] = op(x, y.data[i]);
+                } else if (opinfo.@"fn".params.len == 3) {
+                    newarr.data[i] = try op(x, y.data[i], .{ .allocator = allocator });
+                }
+
+                j += 1;
+            }
+        } else {
+            const iterationOrder: array.IterationOrder = if (newarr.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+            const axis: usize = if (newarr.flags.order == .rowMajor) newarr.ndim - 1 else 0;
+            errdefer strided.cleanup(ReturnType2(op, X, Y), allocator, &newarr, j, iterationOrder);
+            var itero: array.Iterator(ReturnType2(op, X, Y)) = .init(&newarr);
+            var itery = array.Iterator(Y).init(&y);
+            const opinfo = @typeInfo(@TypeOf(op));
+            for (0..newarr.size) |_| {
+                if (opinfo.@"fn".params.len == 2) {
+                    newarr.data[itero.index] = op(x, y.data[itery.index]);
+                } else if (opinfo.@"fn".params.len == 3) {
+                    newarr.data[itero.index] = try op(x, y.data[itery.index], .{ .allocator = allocator });
+                }
+
+                j += 1;
+                _ = itero.nextAO(axis, iterationOrder);
+                _ = itery.nextAO(axis, iterationOrder);
+            }
+        }
+
+        return newarr;
+    } else if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        var newarr: Array(ReturnType2(op, X, Y)) = try init(allocator, ReturnType2(op, X, Y), x.shape[0..x.ndim], options.order orelse x.flags.order);
+        errdefer newarr.deinit(allocator);
+        newarr.flags.writeable = options.writeable;
+
+        var j: usize = 0;
+        if (newarr.flags.order == x.flags.order) {
+            errdefer cleanup(ReturnType2(op, X, Y), allocator, newarr.data[0..j]);
+
+            const opinfo = @typeInfo(@TypeOf(op));
+            for (0..newarr.size) |i| {
+                if (opinfo.@"fn".params.len == 2) {
+                    newarr.data[i] = op(x.data[i], y);
+                } else if (opinfo.@"fn".params.len == 3) {
+                    newarr.data[i] = try op(x.data[i], y, .{ .allocator = allocator });
+                }
+
+                j += 1;
+            }
+        } else {
+            const iterationOrder: array.IterationOrder = if (newarr.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+            const axis: usize = if (newarr.flags.order == .rowMajor) newarr.ndim - 1 else 0;
+            errdefer strided.cleanup(ReturnType2(op, X, Y), allocator, &newarr, j, iterationOrder);
+            var itero: array.Iterator(ReturnType2(op, X, Y)) = .init(&newarr);
+            var iterx = array.Iterator(X).init(&x);
+            const opinfo = @typeInfo(@TypeOf(op));
+            for (0..newarr.size) |_| {
+                if (opinfo.@"fn".params.len == 2) {
+                    newarr.data[itero.index] = op(x.data[iterx.index], y);
+                } else if (opinfo.@"fn".params.len == 3) {
+                    newarr.data[itero.index] = try op(x.data[iterx.index], y, .{ .allocator = allocator });
+                }
+
+                j += 1;
+                _ = itero.nextAO(axis, iterationOrder);
+                _ = iterx.nextAO(axis, iterationOrder);
+            }
+        }
+
+        return newarr;
+    }
+
+    const order: array.Order = options.order orelse if (x.flags.order == y.flags.order) x.flags.order else .rowMajor;
+    var xx: Array(X) = undefined;
+    var yy: Array(Y) = undefined;
+    if (std.mem.eql(usize, x.shape[0..x.ndim], y.shape[0..y.ndim])) {
+        if (x.flags.order == y.flags.order and (x.flags.order == order)) {
+            // Trivial loop
+            var newarr: Array(ReturnType2(op, X, Y)) = try init(allocator, ReturnType2(op, X, Y), x.shape[0..x.ndim], order);
+            errdefer newarr.deinit(allocator);
+            newarr.flags.writeable = options.writeable;
+
+            var j: usize = 0;
+            errdefer cleanup(ReturnType2(op, X, Y), allocator, newarr.data[0..j]);
+            const opinfo = @typeInfo(@TypeOf(op));
+            for (0..newarr.size) |i| {
+                if (opinfo.@"fn".params.len == 2) {
+                    newarr.data[i] = op(x.data[i], y.data[i]);
+                } else if (opinfo.@"fn".params.len == 3) {
+                    newarr.data[i] = try op(x.data[i], y.data[i], .{ .allocator = allocator });
+                }
+
+                j += 1;
+            }
+
+            return newarr;
+        } else {
+            // Different order, but same shape
+            xx = x;
+            yy = y;
+        }
+    } else {
+        const bct = try array.broadcastShapes(&.{ x.shape[0..x.ndim], y.shape[0..y.ndim] });
+        xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+    }
+
+    var newarr: Array(ReturnType2(op, X, Y)) = try init(allocator, ReturnType2(op, X, Y), xx.shape[0..xx.ndim], order);
+    errdefer newarr.deinit(allocator);
+    newarr.flags.writeable = options.writeable;
+
+    var j: usize = 0;
+    const iterationOrder: array.IterationOrder = if (newarr.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (newarr.flags.order == .rowMajor) newarr.ndim - 1 else 0;
+    errdefer strided.cleanup(ReturnType2(op, X, Y), allocator, &newarr, j, iterationOrder);
+    var itero: array.Iterator(ReturnType2(op, X, Y)) = .init(&newarr);
+    var iterx = array.Iterator(X).init(&xx);
+    var itery = array.Iterator(Y).init(&yy);
+    const opinfo = @typeInfo(@TypeOf(op));
+    for (0..newarr.size) |_| {
+        if (opinfo.@"fn".params.len == 2) {
+            newarr.data[itero.index] = op(x.data[iterx.index], y.data[itery.index]);
+        } else if (opinfo.@"fn".params.len == 3) {
+            newarr.data[itero.index] = try op(x.data[iterx.index], y.data[itery.index], .{ .allocator = allocator });
+        }
+
+        j += 1;
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = iterx.nextAO(axis, iterationOrder);
+        _ = itery.nextAO(axis, iterationOrder);
+    }
+
+    return newarr;
 }

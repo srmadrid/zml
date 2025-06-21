@@ -8,22 +8,11 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
-    std.debug.print("isPermutation(5, [4, 1, 0, 2, 3]): {}\n", .{zml.array.isPermutation(5, &.{ 4, 1, 0, 2, 3 })});
-
-    const n = zml.array.trivialReversePermutation(5);
-    std.debug.print("trivialReversePermutation(5): [", .{});
-    for (n[0..5]) |i| {
-        std.debug.print("{d}, ", .{i});
-    }
-    std.debug.print("]\n", .{});
-
-    std.debug.print("isPermutation(5, n): {}\n", .{zml.array.isPermutation(5, n[0..5])});
-
     // try symbolicTesting(a);
 
-    try generalTesting(a);
+    // try generalTesting(a);
 
-    // try addTesting(a);
+    try addTesting(a);
 
     // try iterTesting(a);
 
@@ -587,7 +576,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 }
 
 fn addTesting(a: std.mem.Allocator) !void {
-    var B: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 1, 1 }, .{ .order = .columnMajor });
+    var B: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 5, 1 }, .{ .order = .columnMajor });
     defer B.deinit(a);
     for (0..B.size) |i| {
         B.data[i] = @floatFromInt(i + 1);
@@ -601,7 +590,7 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    var C: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 5, 8 }, .{ .order = .rowMajor });
+    var C: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 1, 8 }, .{ .order = .rowMajor });
     defer C.deinit(a);
     for (0..C.size) |i| {
         C.data[i] = @floatFromInt(i + 1);
@@ -615,19 +604,62 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    if (false) {
-        var D: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 5, 8 }, .{ .order = .columnMajor });
-        defer D.deinit();
-        try D.add(B, C);
-        // try zml.Array(u64).add(&D, B, C);
-        std.debug.print("\nD =\n", .{});
-        for (0..D.shape[0]) |i| {
-            std.debug.print("\t", .{});
-            for (0..D.shape[1]) |j| {
-                std.debug.print("{!d:.2}  ", .{D.get(&.{ i, j })});
-            }
-            std.debug.print("\n", .{});
+    var D: zml.Array(f64) = try zml.add(B, C, .{ .allocator = a });
+    defer D.deinit(a);
+    std.debug.print("\nD = B + C\n", .{});
+    std.debug.print("\nD =\n", .{});
+    for (0..D.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..D.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try D.get(&.{ i, j })).*});
         }
+        std.debug.print("\n", .{});
+    }
+
+    const B_T = try B.transpose(.{});
+    std.debug.print("B_T = B.transpose(null)\n", .{});
+    std.debug.print("B_T =\n", .{});
+    for (0..B_T.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..B_T.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try B_T.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    const C_T = try C.transpose(.{});
+    std.debug.print("C_T = C.transpose(null)\n", .{});
+    std.debug.print("C_T =\n", .{});
+    for (0..C_T.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..C_T.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try C_T.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var E: zml.Array(f64) = try zml.add(B_T, C_T, .{ .allocator = a });
+    defer E.deinit(a);
+    std.debug.print("\nE = B_T + C_T\n", .{});
+    std.debug.print("\nE =\n", .{});
+    for (0..E.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..E.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try E.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var F: zml.Array(f64) = try zml.add(5, E, .{ .allocator = a });
+    defer F.deinit(a);
+    std.debug.print("\nF = 5 + E\n", .{});
+    std.debug.print("\nF =\n", .{});
+    for (0..F.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..F.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try F.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
     }
 }
 

@@ -12,6 +12,7 @@ const strided = @import("array/strided.zig");
 
 pub const Iterator = @import("array/iterators.zig").Iterator;
 //pub const MultiIterator = @import("array/iterators.zig").MultiIterator;
+pub const IterationOrder = @import("array/iterators.zig").IterationOrder;
 
 pub const maxDimensions = 8;
 
@@ -278,6 +279,8 @@ pub const abs = arrops.abs;
 pub const abs_ = arrops.abs_;
 pub const ceil = arrops.ceil;
 pub const ceil_ = arrops.ceil_;
+
+pub const add = arrops.add;
 
 pub const Broadcast = struct {
     ndim: usize,

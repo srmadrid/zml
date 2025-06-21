@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const Coerce = types.Coerce;
 const Scalar = types.Scalar;
 const Numeric = types.Numeric;
 const ReturnType1 = types.ReturnType1;
@@ -32,8 +33,8 @@ pub fn apply1(
         @compileError("apply1: x must be an array or slice, got " ++ @typeName(X));
 
     switch (x.flags.storage) {
-        .dense => return dense.apply1(allocator, Scalar(X), x, op, options.writeable),
-        .strided => return strided.apply1(allocator, Scalar(X), x, op, options.writeable),
+        .dense => return dense.apply1(allocator, Numeric(X), x, op, options.writeable),
+        .strided => return strided.apply1(allocator, Numeric(X), x, op, options.writeable),
     }
 }
 
@@ -59,8 +60,8 @@ pub fn apply1_(
         return error.ArrayNotWriteable;
 
     switch (o.flags.storage) {
-        .dense => return dense.apply1_(Scalar(O), o, op_, options.allocator),
-        .strided => return strided.apply1_(Scalar(O), o, op_, options.allocator),
+        .dense => return dense.apply1_(Numeric(O), o, op_, options.allocator),
+        .strided => return strided.apply1_(Numeric(O), o, op_, options.allocator),
     }
 }
 
@@ -89,8 +90,8 @@ pub fn apply1_to(
 
     switch (o.flags.storage) {
         // Will have to aplly broadcasting
-        .dense => return dense.apply1_to(allocator, Scalar(O), o, Scalar(X), x, op_to, options.writeable),
-        .strided => return strided.apply1_to(allocator, Scalar(O), o, Scalar(X), x, op_to, options.writeable),
+        .dense => return dense.apply1_to(allocator, Numeric(O), o, Numeric(X), x, op_to, options.writeable),
+        .strided => return strided.apply1_to(allocator, Numeric(O), o, Numeric(X), x, op_to, options.writeable),
     }
 }
 
@@ -100,6 +101,7 @@ pub fn apply2(
     y: anytype,
     comptime op: anytype,
     options: struct {
+        order: ?array.Order = null,
         writeable: bool = true,
     },
 ) !Array(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
@@ -111,9 +113,29 @@ pub fn apply2(
         @compileError("apply2: at least one of x or y must be an array or slice, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (x.flags.storage) {
-        .dense => return dense.apply2(allocator, Scalar(X), x, Scalar(Y), y, op, options.writeable),
-        .strided => return strided.apply2(allocator, Scalar(X), x, Scalar(Y), y, op, options.writeable),
+    if (comptime !types.isArray(X) and !types.isSlice(X)) {
+        // x is a scalar, only consider y's storage
+        switch (y.flags.storage) {
+            .dense => return dense.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+            .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+        }
+    } else if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
+        // y is a scalar, only consider x's storage
+        switch (x.flags.storage) {
+            .dense => return dense.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+            .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+        }
+    } else {
+        switch (x.flags.storage) {
+            .dense => switch (y.flags.storage) {
+                .dense => return dense.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+                .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+            },
+            .strided => switch (y.flags.storage) {
+                .dense => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+                .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+            },
+        }
     }
 }
 
@@ -153,4 +175,16 @@ pub inline fn ceil_(
     },
 ) !void {
     return apply1_(o, ops.ceil_, .{ .allocator = options.allocator });
+}
+
+pub inline fn add(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+        mode: int.Mode = .default,
+    },
+) !Array(Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+    return apply2(allocator, x, y, ops.add, .{ .writeable = options.writeable });
 }

@@ -99,6 +99,7 @@ pub inline fn add(
     options: struct {
         mode: int.Mode = .default,
         allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -107,8 +108,7 @@ pub inline fn add(
 
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.add not implemented for arrays or slices yet.");
-    // return array.add(x, y, options.allocator.?);
+        return array.add(options.allocator.?, x, y, .{ .writeable = true });
 
     switch (types.numericType(C)) {
         .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),

@@ -3,6 +3,8 @@ const std = @import("std");
 const types = @import("../types.zig");
 const Scalar = types.Scalar;
 const ReturnType1 = types.ReturnType1;
+const ReturnType2 = types.ReturnType2;
+const needsAllocator = types.needsAllocator;
 const scast = types.scast;
 const cast = types.cast;
 
@@ -38,6 +40,29 @@ pub inline fn checkPosition(ndim: usize, shape: [array.maxDimensions]usize, posi
         if (position[i] >= shape[i]) {
             return array.Error.PositionOutOfBounds;
         }
+    }
+}
+
+pub inline fn cleanup(
+    comptime T: type,
+    allocator: ?std.mem.Allocator,
+    arr: *const Array(T),
+    numElements: usize,
+    iterationOrder: array.IterationOrder,
+) void {
+    comptime if (!needsAllocator(T))
+        return;
+
+    var iter: array.Iterator(T) = .init(arr);
+    for (0..numElements) |_| {
+        var axis: usize = 0;
+        if (iterationOrder == .rightToLeft) {
+            axis = arr.ndim - 1;
+        }
+
+        ops.deinit(arr.data[iter.index], .{ .allocator = allocator });
+
+        _ = iter.nextAO(axis, iterationOrder);
     }
 }
 
@@ -304,7 +329,6 @@ pub inline fn apply1_(
     allocator: ?std.mem.Allocator,
 ) !void {
     var iter = array.Iterator(T).init(arr);
-
     const opinfo = @typeInfo(@TypeOf(op_));
     for (0..arr.size) |_| {
         if (opinfo.@"fn".params.len == 1) {
@@ -319,4 +343,105 @@ pub inline fn apply1_(
     return;
 }
 
-// For apply2 use recursive loop function
+pub fn apply2(
+    allocator: std.mem.Allocator,
+    comptime X: type,
+    x: anytype,
+    comptime Y: type,
+    y: anytype,
+    comptime op: anytype,
+    options: struct {
+        order: ?array.Order = null,
+        writeable: bool = true,
+    },
+) !Array(ReturnType2(op, X, Y)) {
+    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        var newarr: Array(ReturnType2(op, X, Y)) = try dense.init(allocator, ReturnType2(op, X, Y), y.shape[0..y.ndim], options.order orelse y.flags.order);
+        errdefer newarr.deinit(allocator);
+        newarr.flags.writeable = options.writeable;
+
+        var j: usize = 0;
+        const iterationOrder: array.IterationOrder = if (newarr.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (newarr.flags.order == .rowMajor) newarr.ndim - 1 else 0;
+        errdefer cleanup(ReturnType2(op, X, Y), allocator, &newarr, j, iterationOrder);
+        var itero: array.Iterator(ReturnType2(op, X, Y)) = .init(&newarr);
+        var itery = array.Iterator(Y).init(&y);
+        const opinfo = @typeInfo(@TypeOf(op));
+        for (0..newarr.size) |_| {
+            if (opinfo.@"fn".params.len == 2) {
+                newarr.data[itero.index] = op(x, y.data[itery.index]);
+            } else if (opinfo.@"fn".params.len == 3) {
+                newarr.data[itero.index] = try op(x, y.data[itery.index], .{ .allocator = allocator });
+            }
+
+            j += 1;
+            _ = itero.nextAO(axis, iterationOrder);
+            _ = itery.nextAO(axis, iterationOrder);
+        }
+
+        return newarr;
+    } else if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        var newarr: Array(ReturnType2(op, X, Y)) = try dense.init(allocator, ReturnType2(op, X, Y), x.shape[0..y.ndim], options.order orelse x.flags.order);
+        errdefer newarr.deinit(allocator);
+        newarr.flags.writeable = options.writeable;
+
+        var j: usize = 0;
+        const iterationOrder: array.IterationOrder = if (newarr.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (newarr.flags.order == .rowMajor) newarr.ndim - 1 else 0;
+        errdefer cleanup(ReturnType2(op, X, Y), allocator, &newarr, j, iterationOrder);
+        var itero: array.Iterator(ReturnType2(op, X, Y)) = .init(&newarr);
+        var iterx = array.Iterator(X).init(&x);
+        const opinfo = @typeInfo(@TypeOf(op));
+        for (0..newarr.size) |_| {
+            if (opinfo.@"fn".params.len == 2) {
+                newarr.data[itero.index] = op(x, x.data[iterx.index]);
+            } else if (opinfo.@"fn".params.len == 3) {
+                newarr.data[itero.index] = try op(x, x.data[iterx.index], .{ .allocator = allocator });
+            }
+
+            j += 1;
+            _ = itero.nextAO(axis, iterationOrder);
+            _ = iterx.nextAO(axis, iterationOrder);
+        }
+
+        return newarr;
+    }
+
+    const bct = try array.broadcastShapes(&.{ x.shape[0..x.ndim], y.shape[0..y.ndim] });
+    const xx: Array(X) = if (x.flags.storage == .dense)
+        try dense.broadcast(X, &x, bct.shape[0..bct.ndim])
+    else
+        try broadcast(X, &x, bct.shape[0..bct.ndim]);
+    const yy: Array(Y) = if (y.flags.storage == .dense)
+        try dense.broadcast(Y, &y, bct.shape[0..bct.ndim])
+    else
+        try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+
+    const order: array.Order = options.order orelse if (xx.flags.order == yy.flags.order) xx.flags.order else .rowMajor;
+    var newarr: Array(ReturnType2(op, X, Y)) = try dense.init(allocator, ReturnType2(op, X, Y), bct.shape[0..bct.ndim], order);
+    errdefer newarr.deinit(allocator);
+    newarr.flags.writeable = options.writeable;
+
+    var j: usize = 0;
+    const iterationOrder: array.IterationOrder = if (newarr.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (newarr.flags.order == .rowMajor) newarr.ndim - 1 else 0;
+    errdefer cleanup(ReturnType2(op, X, Y), allocator, &newarr, j, iterationOrder);
+    var itero: array.Iterator(ReturnType2(op, X, Y)) = .init(&newarr);
+    var iterx = array.Iterator(X).init(&xx);
+    var itery = array.Iterator(Y).init(&yy);
+    const opinfo = @typeInfo(@TypeOf(op));
+    for (0..newarr.size) |_| {
+        if (opinfo.@"fn".params.len == 2) {
+            newarr.data[itero.index] = op(x.data[iterx.index], y.data[itery.index]);
+        } else if (opinfo.@"fn".params.len == 3) {
+            newarr.data[itero.index] = try op(x.data[iterx.index], y.data[itery.index], .{ .allocator = allocator });
+        }
+
+        j += 1;
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = iterx.nextAO(axis, iterationOrder);
+        _ = itery.nextAO(axis, iterationOrder);
+    }
+
+    return newarr;
+}
