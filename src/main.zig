@@ -576,7 +576,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 }
 
 fn addTesting(a: std.mem.Allocator) !void {
-    var B: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 5, 1 }, .{ .order = .columnMajor });
+    var B: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 5, 1, 8 }, .{ .order = .rowMajor });
     defer B.deinit(a);
     for (0..B.size) |i| {
         B.data[i] = @floatFromInt(i + 1);
@@ -584,8 +584,8 @@ fn addTesting(a: std.mem.Allocator) !void {
     std.debug.print("B =\n", .{});
     for (0..B.shape[0]) |i| {
         std.debug.print("\t", .{});
-        for (0..B.shape[1]) |j| {
-            std.debug.print("{!d:.2}  ", .{(try B.get(&.{ i, j })).*});
+        for (0..B.shape[2]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try B.get(&.{ i, 0, j })).*});
         }
         std.debug.print("\n", .{});
     }
@@ -607,16 +607,21 @@ fn addTesting(a: std.mem.Allocator) !void {
     var D: zml.Array(f64) = try zml.add(B, C, .{ .allocator = a });
     defer D.deinit(a);
     std.debug.print("\nD = B + C\n", .{});
+    std.debug.print("D.shape = [  ", .{});
+    for (D.shape[0..D.ndim]) |dim| {
+        std.debug.print("{}  ", .{dim});
+    }
+    std.debug.print("]\n", .{});
     std.debug.print("\nD =\n", .{});
     for (0..D.shape[0]) |i| {
         std.debug.print("\t", .{});
-        for (0..D.shape[1]) |j| {
-            std.debug.print("{!d:.2}  ", .{(try D.get(&.{ i, j })).*});
+        for (0..D.shape[2]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try D.get(&.{ i, 0, j })).*});
         }
         std.debug.print("\n", .{});
     }
 
-    const B_T = try B.transpose(.{});
+    const B_T = try (try B.reshape(&.{ 5, 8 })).transpose(null);
     std.debug.print("B_T = B.transpose(null)\n", .{});
     std.debug.print("B_T =\n", .{});
     for (0..B_T.shape[0]) |i| {
@@ -627,7 +632,7 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    const C_T = try C.transpose(.{});
+    const C_T = try C.transpose(null);
     std.debug.print("C_T = C.transpose(null)\n", .{});
     std.debug.print("C_T =\n", .{});
     for (0..C_T.shape[0]) |i| {
@@ -654,6 +659,62 @@ fn addTesting(a: std.mem.Allocator) !void {
     defer F.deinit(a);
     std.debug.print("\nF = 5 + E\n", .{});
     std.debug.print("\nF =\n", .{});
+    for (0..F.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..F.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try F.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var G: zml.Array(f64) = try zml.array.apply2(a, B, C, zml.float.pow, .{});
+    defer G.deinit(a);
+    std.debug.print("\nG = B ** C\n", .{});
+    std.debug.print("G =\n", .{});
+    for (0..G.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..G.shape[2]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try G.get(&.{ i, 0, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var H: zml.Array(f64) = try F.slice(&.{ try .init(2, 5, 1), .all_reverse });
+    std.debug.print("\nH = F[2:5, ::-1]\n", .{});
+    std.debug.print("H =\n", .{});
+    for (0..H.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..H.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try H.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    var I: zml.Array(f64) = try .init(a, &.{ H.shape[0], H.shape[1] }, .{});
+    defer I.deinit(a);
+    for (0..I.size) |i| {
+        I.data[i] = @floatFromInt(i + 1);
+    }
+    std.debug.print("\nI =\n", .{});
+    for (0..I.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..I.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try I.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    try zml.array.apply1_to(&H, I, zml.abs_to, .{});
+    std.debug.print("\nH after add(I) =\n", .{});
+    for (0..H.shape[0]) |i| {
+        std.debug.print("\t", .{});
+        for (0..H.shape[1]) |j| {
+            std.debug.print("{!d:.2}  ", .{(try H.get(&.{ i, j })).*});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    std.debug.print("\nF after add(I) =\n", .{});
     for (0..F.shape[0]) |i| {
         std.debug.print("\t", .{});
         for (0..F.shape[1]) |j| {

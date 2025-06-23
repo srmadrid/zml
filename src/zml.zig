@@ -51,6 +51,7 @@ pub const max = ops.max;
 pub const min = ops.min;
 pub const abs = ops.abs;
 pub const abs_ = ops.abs_;
+pub const abs_to = ops.abs_to;
 pub const ceil = ops.ceil;
 pub const ceil_ = ops.ceil_;
 

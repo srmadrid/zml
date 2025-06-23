@@ -17,9 +17,9 @@ const Range = array.Range;
 
 const dense = @import("dense.zig");
 
-pub inline fn index(ndim: usize, strides: [array.maxDimensions]isize, offset: usize, position: []const usize) usize {
+pub inline fn index(strides: [array.maxDimensions]isize, offset: usize, position: []const usize) usize {
     var idx: usize = offset;
-    for (0..ndim) |i| {
+    for (0..position.len) |i| {
         const stride: isize = strides[i];
         if (stride < 0) {
             idx -= position[i] * scast(usize, int.abs(stride));
@@ -69,13 +69,13 @@ pub inline fn cleanup(
 pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: T) !void {
     try checkPosition(arr.ndim, arr.shape, position);
 
-    arr.data[index(arr.ndim, arr.metadata.strided.strides, arr.metadata.strided.offset, position)] = value;
+    arr.data[index(arr.metadata.strided.strides, arr.metadata.strided.offset, position)] = value;
 }
 
 pub fn get(comptime T: type, arr: Array(T), position: []const usize) !*T {
     try checkPosition(arr.ndim, arr.shape, position);
 
-    return &arr.data[index(arr.ndim, arr.metadata.strided.strides, arr.metadata.strided.offset, position)];
+    return &arr.data[index(arr.metadata.strided.strides, arr.metadata.strided.offset, position)];
 }
 
 pub inline fn slice(comptime T: type, arr: *const Array(T), ranges: []const Range) !Array(T) {
@@ -176,9 +176,9 @@ pub inline fn reshape(comptime T: type, arr: *const Array(T), shape: []const usi
     var new_strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
     if (shape.len > 0) {
         for (0..shape.len) |i| {
-            const idx: usize = if (arr.order == .rowMajor) shape.len - i - 1 else i;
+            const idx: usize = if (arr.flags.order == .rowMajor) shape.len - i - 1 else i;
 
-            new_strides[idx] = new_size;
+            new_strides[idx] = scast(isize, new_size);
             new_size *= shape[idx];
 
             new_shape[i] = shape[i];
@@ -338,6 +338,61 @@ pub inline fn apply1_(
         }
 
         _ = iter.next();
+    }
+
+    return;
+}
+
+pub fn apply1_to(
+    comptime O: type,
+    o: anytype,
+    comptime X: type,
+    x: anytype,
+    comptime op_to: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+        var itero: array.Iterator(O) = .init(o);
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        for (0..o.size) |_| {
+            if (opinfo.@"fn".params.len == 2) {
+                op_to(&o.data[itero.index], x);
+            } else if (opinfo.@"fn".params.len == 3) {
+                try op_to(&o.data[itero.index], x, .{ .allocator = allocator });
+            }
+
+            _ = itero.nextAO(axis, iterationOrder);
+        }
+
+        return;
+    }
+
+    const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
+    if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+        return array.Error.NotBroadcastable;
+    }
+
+    const xx: Array(X) = if (x.flags.storage == .dense)
+        try dense.broadcast(X, &x, bct.shape[0..bct.ndim])
+    else
+        try broadcast(X, &x, bct.shape[0..bct.ndim]);
+
+    const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+    var itero: array.Iterator(O) = .init(o);
+    var iterx = array.Iterator(X).init(&xx);
+    const opinfo = @typeInfo(@TypeOf(op_to));
+    for (0..o.size) |_| {
+        if (opinfo.@"fn".params.len == 2) {
+            op_to(&o.data[itero.index], xx.data[iterx.index]);
+        } else if (opinfo.@"fn".params.len == 3) {
+            try op_to(&o.data[itero.index], xx.data[iterx.index], .{ .allocator = allocator });
+        }
+
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = iterx.nextAO(axis, iterationOrder);
     }
 
     return;

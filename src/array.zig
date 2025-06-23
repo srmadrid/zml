@@ -209,29 +209,27 @@ pub fn Array(comptime T: type) type {
 
         pub fn transpose(
             self: *const Array(T),
-            options: struct {
-                axes: ?[]const usize = null,
-            },
+            axes: ?[]const usize,
         ) !Array(T) {
-            const axes: []const usize =
-                options.axes orelse
+            const axess: []const usize =
+                axes orelse
                 trivialReversePermutation(self.ndim)[0..self.ndim];
 
-            if (axes.len == 0) {
+            if (axess.len == 0) {
                 return Error.ZeroDimension;
             }
 
-            if (axes.len > self.ndim) {
+            if (axess.len > self.ndim) {
                 return Error.TooManyDimensions;
             }
 
-            if (!isPermutation(self.ndim, axes)) {
+            if (!isPermutation(self.ndim, axess)) {
                 return Error.InvalidAxes; // axes must be a valid permutation of [0, ..., ndim - 1]
             }
 
             switch (self.flags.storage) {
-                .dense => return dense.transpose(T, self, axes),
-                .strided => return strided.transpose(T, self, axes),
+                .dense => return dense.transpose(T, self, axess),
+                .strided => return strided.transpose(T, self, axess),
             }
         }
 
@@ -275,12 +273,19 @@ pub fn Array(comptime T: type) type {
 }
 
 const arrops = @import("array/ops.zig");
+pub const apply1 = arrops.apply1;
+pub const apply1_ = arrops.apply1_;
+pub const apply1_to = arrops.apply1_to;
+pub const apply2 = arrops.apply2;
+//pub const apply2_ = arrops.apply2_;
+//pub const apply2_to = arrops.apply2_to;
+
+pub const add = arrops.add;
+
 pub const abs = arrops.abs;
 pub const abs_ = arrops.abs_;
 pub const ceil = arrops.ceil;
 pub const ceil_ = arrops.ceil_;
-
-pub const add = arrops.add;
 
 pub const Broadcast = struct {
     ndim: usize,

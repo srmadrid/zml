@@ -16,9 +16,9 @@ const Range = array.Range;
 
 const strided = @import("strided.zig");
 
-pub inline fn index(ndim: usize, strides: [array.maxDimensions]usize, position: []const usize) usize {
+pub inline fn index(strides: [array.maxDimensions]usize, position: []const usize) usize {
     var idx: usize = 0;
-    for (0..ndim) |i| {
+    for (0..position.len) |i| {
         idx += position[i] * strides[i];
     }
 
@@ -327,13 +327,13 @@ pub inline fn linspace(
 pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: T) !void {
     try checkPosition(arr.ndim, arr.shape, position);
 
-    arr.data[index(arr.ndim, arr.metadata.dense.strides, position)] = value;
+    arr.data[index(arr.metadata.dense.strides, position)] = value;
 }
 
 pub inline fn get(comptime T: type, arr: Array(T), position: []const usize) !*T {
     try checkPosition(arr.ndim, arr.shape, position);
 
-    return &arr.data[index(arr.ndim, arr.metadata.dense.strides, position)];
+    return &arr.data[index(arr.metadata.dense.strides, position)];
 }
 
 pub inline fn reshape(comptime T: type, arr: *const Array(T), shape: []const usize) !Array(T) {
@@ -342,7 +342,7 @@ pub inline fn reshape(comptime T: type, arr: *const Array(T), shape: []const usi
     var new_strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
     if (shape.len > 0) {
         for (0..shape.len) |i| {
-            const idx: usize = if (arr.order == .rowMajor) shape.len - i - 1 else i;
+            const idx: usize = if (arr.flags.order == .rowMajor) shape.len - i - 1 else i;
 
             new_strides[idx] = scast(isize, new_size);
             new_size *= shape[idx];
@@ -610,6 +610,76 @@ pub inline fn apply1_(
         } else if (opinfo.@"fn".params.len == 2) {
             try op_(&arr.data[i], .{ .allocator = allocator });
         }
+    }
+
+    return;
+}
+
+pub fn apply1_to(
+    comptime O: type,
+    o: anytype,
+    comptime X: type,
+    x: anytype,
+    comptime op_to: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        // Only run the function once if x is a scalar
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        if (opinfo.@"fn".params.len == 2) {
+            op_to(&o.data[0], x);
+        } else if (opinfo.@"fn".params.len == 3) {
+            try op_to(&o.data[0], x, .{ .allocator = allocator });
+        }
+
+        for (1..o.size) |i| {
+            try ops.set(&o.data[i], x, .{ .allocator = allocator });
+        }
+
+        return;
+    }
+
+    var xx: Array(X) = undefined;
+    if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
+        if (o.flags.order == x.flags.order) {
+            // Trivial loop
+            const opinfo = @typeInfo(@TypeOf(op_to));
+            for (0..o.size) |i| {
+                if (opinfo.@"fn".params.len == 2) {
+                    op_to(&o.data[i], x.data[i]);
+                } else if (opinfo.@"fn".params.len == 3) {
+                    try op_to(&o.data[i], x.data[i], .{ .allocator = allocator });
+                }
+            }
+
+            return;
+        } else {
+            // Different order, but same shape
+            xx = x;
+        }
+    } else {
+        const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
+        if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+            return array.Error.NotBroadcastable;
+        }
+
+        xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+    }
+
+    const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+    var itero: array.Iterator(O) = .init(o);
+    var iterx = array.Iterator(X).init(&xx);
+    const opinfo = @typeInfo(@TypeOf(op_to));
+    for (0..o.size) |_| {
+        if (opinfo.@"fn".params.len == 2) {
+            op_to(&o.data[itero.index], xx.data[iterx.index]);
+        } else if (opinfo.@"fn".params.len == 3) {
+            try op_to(&o.data[itero.index], xx.data[iterx.index], .{ .allocator = allocator });
+        }
+
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = iterx.nextAO(axis, iterationOrder);
     }
 
     return;

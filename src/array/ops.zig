@@ -66,12 +66,11 @@ pub fn apply1_(
 }
 
 pub fn apply1_to(
-    allocator: std.mem.Allocator,
     o: anytype,
     x: anytype,
     comptime op_to: anytype,
     options: struct {
-        writeable: bool = true,
+        allocator: ?std.mem.Allocator = null,
     },
 ) !void {
     comptime var O: type = @TypeOf(o);
@@ -89,9 +88,14 @@ pub fn apply1_to(
         return error.ArrayNotWriteable;
 
     switch (o.flags.storage) {
-        // Will have to aplly broadcasting
-        .dense => return dense.apply1_to(allocator, Numeric(O), o, Numeric(X), x, op_to, options.writeable),
-        .strided => return strided.apply1_to(allocator, Numeric(O), o, Numeric(X), x, op_to, options.writeable),
+        .dense => switch (x.flags.storage) {
+            .dense => return dense.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
+            .strided => return strided.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
+        },
+        .strided => switch (x.flags.storage) {
+            .dense => return strided.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
+            .strided => return strided.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
+        },
     }
 }
 
