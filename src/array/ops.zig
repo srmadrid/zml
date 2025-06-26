@@ -25,6 +25,7 @@ pub fn apply1(
     comptime op: anytype,
     options: struct {
         writeable: bool = true,
+        // Add order
     },
 ) !Array(ReturnType1(op, Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
@@ -138,6 +139,124 @@ pub fn apply2(
             .strided => switch (y.flags.storage) {
                 .dense => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
                 .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, .{ .order = options.order, .writeable = options.writeable }),
+            },
+        }
+    }
+}
+
+pub fn apply2_(
+    o: anytype,
+    y: anytype,
+    comptime op_: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.abs_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    comptime if (!types.isArray(O) and !types.isSlice(O))
+        @compileError("apply1: o must be an array or slice, got " ++ @typeName(O));
+
+    if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
+        // y is a scalar, only consider o's storage
+        switch (o.flags.storage) {
+            .dense => return dense.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
+            .strided => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
+        }
+    } else {
+        switch (o.flags.storage) {
+            .dense => switch (y.flags.storage) {
+                .dense => return dense.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
+                .strided => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
+            },
+            .strided => switch (y.flags.storage) {
+                .dense => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
+                .strided => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
+            },
+        }
+    }
+}
+
+pub fn apply2_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    comptime op_to: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.abs_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    comptime if (!types.isArray(O) and !types.isSlice(O))
+        @compileError("apply1: o must be an array or slice, got " ++ @typeName(O));
+
+    if (comptime !types.isArray(X) and !types.isSlice(X)) {
+        if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
+            // x and y are scalars, only consider o's storage
+            switch (o.flags.storage) {
+                .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+            }
+        }
+
+        // x is a scalar, only consider o and y's storage
+        switch (o.flags.storage) {
+            .dense => switch (y.flags.storage) {
+                .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+            },
+            .strided => switch (y.flags.storage) {
+                .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+            },
+        }
+    } else if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
+        // y is a scalar, only consider o and x's storage
+        switch (o.flags.storage) {
+            .dense => switch (x.flags.storage) {
+                .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+            },
+            .strided => switch (x.flags.storage) {
+                .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+            },
+        }
+    } else {
+        switch (o.flags.storage) {
+            .dense => switch (x.flags.storage) {
+                .dense => switch (y.flags.storage) {
+                    .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                },
+                .strided => switch (y.flags.storage) {
+                    .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                },
+            },
+            .strided => switch (x.flags.storage) {
+                .dense => switch (y.flags.storage) {
+                    .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                },
+                .strided => switch (y.flags.storage) {
+                    .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                },
             },
         }
     }

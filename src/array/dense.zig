@@ -847,3 +847,244 @@ pub fn apply2(
 
     return newarr;
 }
+
+pub fn apply2_(
+    comptime O: type,
+    o: anytype,
+    comptime Y: type,
+    y: anytype,
+    comptime op_: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        const opinfo = @typeInfo(@TypeOf(op_));
+        for (0..o.size) |i| {
+            if (opinfo.@"fn".params.len == 2) {
+                op_(&o.data[i], y);
+            } else if (opinfo.@"fn".params.len == 3) {
+                try op_(&o.data[i], y, .{ .allocator = allocator });
+            }
+        }
+
+        return;
+    }
+
+    var yy: Array(Y) = undefined;
+    if (std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim])) {
+        if (o.flags.order == y.flags.order) {
+            // Trivial loop
+            const opinfo = @typeInfo(@TypeOf(op_));
+            for (0..o.size) |i| {
+                if (opinfo.@"fn".params.len == 2) {
+                    op_(&o.data[i], y.data[i]);
+                } else if (opinfo.@"fn".params.len == 3) {
+                    try op_(&o.data[i], y.data[i], .{ .allocator = allocator });
+                }
+            }
+
+            return;
+        } else {
+            // Different order, but same shape
+            yy = y;
+        }
+    } else {
+        const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], y.shape[0..y.ndim] });
+        if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+            return array.Error.NotBroadcastable;
+        }
+
+        yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+    }
+
+    const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+    var itero: array.Iterator(O) = .init(o);
+    var itery = array.Iterator(Y).init(&yy);
+    const opinfo = @typeInfo(@TypeOf(op_));
+    for (0..o.size) |_| {
+        if (opinfo.@"fn".params.len == 2) {
+            op_(&o.data[itero.index], y.data[itery.index]);
+        } else if (opinfo.@"fn".params.len == 3) {
+            try op_(&o.data[itero.index], y.data[itery.index], .{ .allocator = allocator });
+        }
+
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = itery.nextAO(axis, iterationOrder);
+    }
+
+    return;
+}
+
+pub fn apply2_to(
+    comptime O: type,
+    o: anytype,
+    comptime X: type,
+    x: anytype,
+    comptime Y: type,
+    y: anytype,
+    comptime op_to: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)) and
+        !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)))
+    {
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        if (opinfo.@"fn".params.len == 3) {
+            op_to(&o.data[0], x, y);
+        } else if (opinfo.@"fn".params.len == 4) {
+            try op_to(&o.data[o], x, y, .{ .allocator = allocator });
+        }
+
+        for (1..o.size) |i| {
+            try ops.set(&o.data[i], o.data[0], .{ .allocator = allocator });
+        }
+
+        return;
+    } else if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        if (std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim]) and
+            o.flags.order == y.flags.order)
+        {
+            // Trivial loop
+            const opinfo = @typeInfo(@TypeOf(op_to));
+            for (0..o.size) |i| {
+                if (opinfo.@"fn".params.len == 3) {
+                    op_to(&o.data[i], x, y.data[i]);
+                } else if (opinfo.@"fn".params.len == 4) {
+                    try op_to(&o.data[i], x, y.data[i], .{ .allocator = allocator });
+                }
+            }
+
+            return;
+        }
+
+        // Different order, but same shape
+        var yy: Array(Y) = undefined;
+        if (std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim])) {
+            yy = y;
+        } else {
+            const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], y.shape[0..y.ndim] });
+            if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+                return array.Error.NotBroadcastable;
+            }
+
+            yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+        }
+
+        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+        var itero: array.Iterator(O) = .init(o);
+        var itery = array.Iterator(Y).init(&yy);
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        for (0..o.size) |_| {
+            if (opinfo.@"fn".params.len == 3) {
+                op_to(&o.data[itero.index], x, yy.data[itery.index]);
+            } else if (opinfo.@"fn".params.len == 4) {
+                try op_to(&o.data[itero.index], x, yy.data[itery.index], .{ .allocator = allocator });
+            }
+
+            _ = itero.nextAO(axis, iterationOrder);
+            _ = itery.nextAO(axis, iterationOrder);
+        }
+
+        return;
+    } else if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim]) and
+            o.flags.order == x.flags.order)
+        {
+            // Trivial loop
+            const opinfo = @typeInfo(@TypeOf(op_to));
+            for (0..o.size) |i| {
+                if (opinfo.@"fn".params.len == 3) {
+                    op_to(&o.data[i], x.data[i], y);
+                } else if (opinfo.@"fn".params.len == 4) {
+                    try op_to(&o.data[i], x.data[i], y, .{ .allocator = allocator });
+                }
+            }
+
+            return;
+        }
+
+        // Different order, but same shape
+        var xx: Array(X) = undefined;
+        if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
+            xx = x;
+        } else {
+            const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
+            if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+                return array.Error.NotBroadcastable;
+            }
+
+            xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        }
+
+        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+        var itero: array.Iterator(O) = .init(o);
+        var iterx = array.Iterator(X).init(&xx);
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        for (0..o.size) |_| {
+            if (opinfo.@"fn".params.len == 3) {
+                op_to(&o.data[itero.index], xx.data[iterx.index], y);
+            } else if (opinfo.@"fn".params.len == 4) {
+                try op_to(&o.data[itero.index], xx.data[iterx.index], y, .{ .allocator = allocator });
+            }
+
+            _ = itero.nextAO(axis, iterationOrder);
+            _ = iterx.nextAO(axis, iterationOrder);
+        }
+
+        return;
+    }
+
+    var xx: Array(X) = undefined;
+    var yy: Array(Y) = undefined;
+    if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim]) and
+        std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim]))
+    {
+        if (o.flags.order == x.flags.order and o.flags.order == y.flags.order) {
+            // Trivial loop
+            const opinfo = @typeInfo(@TypeOf(op_to));
+            for (0..o.size) |i| {
+                if (opinfo.@"fn".params.len == 3) {
+                    op_to(&o.data[i], x.data[i], y.data[i]);
+                } else if (opinfo.@"fn".params.len == 4) {
+                    try op_to(&o.data[i], x.data[i], y.data[i], .{ .allocator = allocator });
+                }
+            }
+
+            return;
+        } else {
+            // Different order, but same shape
+            xx = x;
+            yy = y;
+        }
+    } else {
+        const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim], y.shape[0..y.ndim] });
+        if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+            return array.Error.NotBroadcastable;
+        }
+
+        xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+    }
+
+    const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+    var itero: array.Iterator(O) = .init(o);
+    var iterx = array.Iterator(X).init(&xx);
+    var itery = array.Iterator(Y).init(&yy);
+    const opinfo = @typeInfo(@TypeOf(op_to));
+    for (0..o.size) |_| {
+        if (opinfo.@"fn".params.len == 3) {
+            op_to(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index]);
+        } else if (opinfo.@"fn".params.len == 4) {
+            try op_to(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index], .{ .allocator = allocator });
+        }
+
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = iterx.nextAO(axis, iterationOrder);
+        _ = itery.nextAO(axis, iterationOrder);
+    }
+
+    return;
+}

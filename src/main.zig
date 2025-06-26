@@ -704,7 +704,7 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    try zml.array.apply1_to(&H, I, zml.abs_to, .{});
+    try zml.array.apply2_to(&H, I, I, zml.add_to, .{});
     std.debug.print("\nH after add(I) =\n", .{});
     for (0..H.shape[0]) |i| {
         std.debug.print("\t", .{});

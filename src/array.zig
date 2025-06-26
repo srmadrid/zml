@@ -277,8 +277,8 @@ pub const apply1 = arrops.apply1;
 pub const apply1_ = arrops.apply1_;
 pub const apply1_to = arrops.apply1_to;
 pub const apply2 = arrops.apply2;
-//pub const apply2_ = arrops.apply2_;
-//pub const apply2_to = arrops.apply2_to;
+pub const apply2_ = arrops.apply2_;
+pub const apply2_to = arrops.apply2_to;
 
 pub const add = arrops.add;
 

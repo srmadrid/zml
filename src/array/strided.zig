@@ -355,13 +355,17 @@ pub fn apply1_to(
         const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
         const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
         var itero: array.Iterator(O) = .init(o);
+        const first: usize = itero.index;
         const opinfo = @typeInfo(@TypeOf(op_to));
-        for (0..o.size) |_| {
-            if (opinfo.@"fn".params.len == 2) {
-                op_to(&o.data[itero.index], x);
-            } else if (opinfo.@"fn".params.len == 3) {
-                try op_to(&o.data[itero.index], x, .{ .allocator = allocator });
-            }
+        if (opinfo.@"fn".params.len == 2) {
+            op_to(&o.data[first], x);
+        } else if (opinfo.@"fn".params.len == 3) {
+            try op_to(&o.data[first], x, .{ .allocator = allocator });
+        }
+        _ = itero.nextAO(axis, iterationOrder);
+
+        for (1..o.size) |_| {
+            try ops.set(&o.data[itero.index], o.data[first], .{ .allocator = allocator });
 
             _ = itero.nextAO(axis, iterationOrder);
         }
@@ -449,9 +453,9 @@ pub fn apply2(
         const opinfo = @typeInfo(@TypeOf(op));
         for (0..newarr.size) |_| {
             if (opinfo.@"fn".params.len == 2) {
-                newarr.data[itero.index] = op(x, x.data[iterx.index]);
+                newarr.data[itero.index] = op(x.data[iterx.index], y);
             } else if (opinfo.@"fn".params.len == 3) {
-                newarr.data[itero.index] = try op(x, x.data[iterx.index], .{ .allocator = allocator });
+                newarr.data[itero.index] = try op(x.data[iterx.index], y, .{ .allocator = allocator });
             }
 
             j += 1;
@@ -499,4 +503,191 @@ pub fn apply2(
     }
 
     return newarr;
+}
+
+pub fn apply2_(
+    comptime O: type,
+    o: anytype,
+    comptime Y: type,
+    y: anytype,
+    comptime op_: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+        var itero: array.Iterator(O) = .init(o);
+        const opinfo = @typeInfo(@TypeOf(op_));
+        for (0..o.size) |_| {
+            if (opinfo.@"fn".params.len == 2) {
+                op_(&o.data[itero.index], y);
+            } else if (opinfo.@"fn".params.len == 3) {
+                try op_(&o.data[itero.index], y, .{ .allocator = allocator });
+            }
+
+            _ = itero.nextAO(axis, iterationOrder);
+        }
+
+        return;
+    }
+
+    const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], y.shape[0..y.ndim] });
+    if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+        return array.Error.NotBroadcastable;
+    }
+
+    const yy: Array(Y) = if (y.flags.storage == .dense)
+        try dense.broadcast(Y, &y, bct.shape[0..bct.ndim])
+    else
+        try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+
+    const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+    var itero: array.Iterator(O) = .init(o);
+    var itery = array.Iterator(Y).init(&yy);
+    const opinfo = @typeInfo(@TypeOf(op_));
+    for (0..o.size) |_| {
+        if (opinfo.@"fn".params.len == 2) {
+            op_(&o.data[itero.index], y.data[itery.index]);
+        } else if (opinfo.@"fn".params.len == 3) {
+            try op_(&o.data[itero.index], y.data[itery.index], .{ .allocator = allocator });
+        }
+
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = itery.nextAO(axis, iterationOrder);
+    }
+
+    return;
+}
+
+pub fn apply2_to(
+    comptime O: type,
+    o: anytype,
+    comptime X: type,
+    x: anytype,
+    comptime Y: type,
+    y: anytype,
+    comptime op_to: anytype,
+    allocator: ?std.mem.Allocator,
+) !void {
+    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)) and
+        !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)))
+    {
+        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+        var itero: array.Iterator(O) = .init(o);
+        const first: usize = itero.index;
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        if (opinfo.@"fn".params.len == 3) {
+            op_to(&o.data[first], x, y);
+        } else if (opinfo.@"fn".params.len == 4) {
+            try op_to(&o.data[first], x, y, .{ .allocator = allocator });
+        }
+        _ = itero.nextAO(axis, iterationOrder);
+
+        for (1..o.size) |_| {
+            try ops.set(&o.data[itero.index], o.data[first], .{ .allocator = allocator });
+
+            _ = itero.nextAO(axis, iterationOrder);
+        }
+
+        return;
+    } else if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        var yy: Array(Y) = undefined;
+        if (std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim])) {
+            yy = y;
+        } else {
+            const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], y.shape[0..y.ndim] });
+            if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+                return array.Error.NotBroadcastable;
+            }
+
+            yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+        }
+
+        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+        var itero: array.Iterator(O) = .init(o);
+        var itery = array.Iterator(Y).init(&yy);
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        for (0..o.size) |_| {
+            if (opinfo.@"fn".params.len == 3) {
+                op_to(&o.data[itero.index], x, yy.data[itery.index]);
+            } else if (opinfo.@"fn".params.len == 4) {
+                try op_to(&o.data[itero.index], x, yy.data[itery.index], .{ .allocator = allocator });
+            }
+
+            _ = itero.nextAO(axis, iterationOrder);
+            _ = itery.nextAO(axis, iterationOrder);
+        }
+
+        return;
+    } else if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        var xx: Array(X) = undefined;
+        if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
+            xx = x;
+        } else {
+            const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
+            if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+                return array.Error.NotBroadcastable;
+            }
+
+            xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        }
+
+        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+        var itero: array.Iterator(O) = .init(o);
+        var iterx = array.Iterator(X).init(&xx);
+        const opinfo = @typeInfo(@TypeOf(op_to));
+        for (0..o.size) |_| {
+            if (opinfo.@"fn".params.len == 3) {
+                op_to(&o.data[itero.index], xx.data[iterx.index], y);
+            } else if (opinfo.@"fn".params.len == 4) {
+                try op_to(&o.data[itero.index], xx.data[iterx.index], y, .{ .allocator = allocator });
+            }
+
+            _ = itero.nextAO(axis, iterationOrder);
+            _ = iterx.nextAO(axis, iterationOrder);
+        }
+
+        return;
+    }
+
+    var xx: Array(X) = undefined;
+    var yy: Array(Y) = undefined;
+    if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim]) and
+        std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim]))
+    {
+        xx = x;
+        yy = y;
+    } else {
+        const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim], y.shape[0..y.ndim] });
+        if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+            return array.Error.NotBroadcastable;
+        }
+
+        xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+    }
+
+    const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
+    const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
+    var itero: array.Iterator(O) = .init(o);
+    var iterx = array.Iterator(X).init(&xx);
+    var itery = array.Iterator(Y).init(&yy);
+    const opinfo = @typeInfo(@TypeOf(op_to));
+    for (0..o.size) |_| {
+        if (opinfo.@"fn".params.len == 3) {
+            op_to(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index]);
+        } else if (opinfo.@"fn".params.len == 4) {
+            try op_to(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index], .{ .allocator = allocator });
+        }
+
+        _ = itero.nextAO(axis, iterationOrder);
+        _ = iterx.nextAO(axis, iterationOrder);
+        _ = itery.nextAO(axis, iterationOrder);
+    }
+
+    return;
 }
