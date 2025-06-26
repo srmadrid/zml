@@ -248,7 +248,7 @@ pub inline fn broadcast(
         .metadata = .{
             .strided = .{
                 .strides = strides,
-                .offset = 0, // No offset in broadcasting.
+                .offset = arr.metadata.strided.offset, // No change in offset during broadcast.
             },
         },
     };

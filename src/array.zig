@@ -281,6 +281,17 @@ pub const apply2_ = arrops.apply2_;
 pub const apply2_to = arrops.apply2_to;
 
 pub const add = arrops.add;
+pub const add_ = arrops.add_;
+pub const add_to = arrops.add_to;
+pub const sub = arrops.sub;
+pub const sub_ = arrops.sub_;
+pub const sub_to = arrops.sub_to;
+pub const mul = arrops.mul;
+pub const mul_ = arrops.mul_;
+pub const mul_to = arrops.mul_to;
+pub const div = arrops.div;
+pub const div_ = arrops.div_;
+pub const div_to = arrops.div_to;
 
 pub const abs = arrops.abs;
 pub const abs_ = arrops.abs_;
