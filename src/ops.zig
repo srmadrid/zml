@@ -6,6 +6,7 @@ const Numeric = types.Numeric;
 const Coerce = types.Coerce;
 const CoerceToArray = types.CoerceToArray;
 const Child = types.Child;
+const EnsureFloat = types.EnsureFloat;
 const needsAllocator = types.needsAllocator;
 
 const int = @import("int.zig");
@@ -222,8 +223,7 @@ pub inline fn add_(
 
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.add_ not implemented for arrays or slices yet.");
-    // return array.add(x, y, options.allocator);
+        return array.add_(o, y, .{ .allocator = options.allocator, .mode = options.mode });
 
     switch (types.numericType(O)) {
         .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ " output type"),
@@ -319,8 +319,7 @@ pub inline fn add_to(
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.add_to not implemented for arrays or slices yet.");
-    // return array.add_to(x, y, options.allocator);
+        return array.add_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
 
     switch (types.numericType(O)) {
         .bool => switch (types.numericType(C)) {
@@ -436,6 +435,7 @@ pub inline fn sub(
     options: struct {
         mode: int.Mode = .default,
         allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -443,8 +443,7 @@ pub inline fn sub(
 
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.sub not implemented for arrays or slices yet.");
-    // return array.sub(x, y, options.allocator);
+        return array.sub(options.allocator.?, x, y, .{ .writeable = options.writeable, .mode = options.mode });
 
     switch (types.numericType(X)) {
         .bool => {
@@ -585,8 +584,7 @@ pub inline fn sub_(
 
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.sub_ not implemented for arrays or slices yet.");
-    // return array.add(x, y, options.allocator);
+        return array.sub_(o, y, .{ .allocator = options.allocator, .mode = options.mode });
 
     switch (types.numericType(O)) {
         .bool => @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ " output type"),
@@ -682,8 +680,7 @@ pub inline fn sub_to(
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.sub_to not implemented for arrays or slices yet.");
-    // return array.sub_to(x, y, options.allocator);
+        return array.sub_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
 
     switch (types.numericType(O)) {
         .bool => switch (types.numericType(C)) {
@@ -797,6 +794,7 @@ pub inline fn mul(
     options: struct {
         mode: int.Mode = .default,
         allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -804,8 +802,7 @@ pub inline fn mul(
 
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.mul not implemented for arrays or slices yet.");
-    // return array.mul(x, y, options.allocator);
+        return array.mul(options.allocator.?, x, y, .{ .writeable = options.writeable, .mode = options.mode });
 
     switch (types.numericType(X)) {
         .bool => {
@@ -944,8 +941,7 @@ pub inline fn mul_(
 
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.mul_ not implemented for arrays or slices yet.");
-    // return array.add(x, y, options.allocator);
+        return array.mul_(o, y, .{ .allocator = options.allocator, .mode = options.mode });
 
     switch (types.numericType(O)) {
         .bool => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ " output type"),
@@ -978,8 +974,7 @@ pub inline fn mul_to(
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.mul_to not implemented for arrays or slices yet.");
-    // return array.mul_to(x, y, options.allocator);
+        return array.mul_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
 
     switch (types.numericType(O)) {
         .bool => switch (types.numericType(C)) {
@@ -1089,6 +1084,7 @@ pub inline fn div(
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
     },
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
@@ -1096,8 +1092,7 @@ pub inline fn div(
 
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.div not implemented for arrays or slices yet.");
-    // return array.div(x, y, options.allocator);
+        return array.div(options.allocator.?, x, y, .{ .writeable = options.writeable });
 
     _ = options.allocator;
     switch (types.numericType(X)) {
@@ -1234,12 +1229,11 @@ pub inline fn div_(
 
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.div_ not implemented for arrays or slices yet.");
-    // return array.add(x, y, options.allocator);
+        return array.div_(o, y, .{ .allocator = options.allocator });
 
     switch (types.numericType(O)) {
         .bool => @compileError("zml.div_ not defined for " ++ @typeName(O) ++ " output type"),
-        .int => return int.div_(o, y, .{ .mode = options.mode }),
+        .int => return int.div_(o, y),
         .float => return float.div_(o, y),
         .cfloat => return cfloat.div_(o, y),
         else => @compileError("zml.div_ not implemented for " ++ @typeName(O) ++ " output type"),
@@ -1268,8 +1262,7 @@ pub inline fn div_to(
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        @compileError("zml.div_to not implemented for arrays or slices yet.");
-    // return array.div_to(x, y, options.allocator);
+        return array.div_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
 
     switch (types.numericType(O)) {
         .bool => switch (types.numericType(C)) {
@@ -1891,46 +1884,7 @@ pub inline fn min(
     }
 }
 
-// Include:
-// - sub
-// - mul
-// - div
-// - mod
-// - pow
-// - neg
-// - abs
-// - sqrt
-// - sin
-// - cos
-// - tan
-// - asin
-// - acos
-// - atan
-// - sinh
-// - cosh
-// - tanh
-// - asinh
-// - acosh
-// - atanh
-// - sec
-// - csc
-// - cot
-// - asec
-// - acsc
-// - acot
-// - sech
-// - csch
-// - coth
-// - asech
-// - acsch
-// - acoth
-// - log
-// - log10
-// - log2
-// - log1p
-// - exp
-// - any other basic math functions
-
+// Basic operations
 pub inline fn abs(
     x: anytype,
     options: struct {
@@ -1973,7 +1927,7 @@ pub inline fn abs_(
         .bool => @compileError("zml.abs_ not defined for " ++ @typeName(O) ++ " output type"),
         .int => o.* = int.abs(o.*),
         .float => o.* = float.abs(o.*),
-        .cfloat => o.* = @compileError("zml.abs_ not defined for " ++ @typeName(O) ++ " output type"),
+        .cfloat => o.* = try cast(O, cfloat.abs(o.*), .{ .allocator = options.allocator }),
         else => @compileError("zml.abs_ not implemented for " ++ @typeName(O) ++ " yet"),
     }
 }
@@ -1996,7 +1950,6 @@ pub inline fn abs_to(
     if (comptime types.isArray(O) or types.isSlice(O))
         return array.abs_to(o, x, .{ .allocator = options.allocator });
 
-    _ = options.allocator;
     switch (types.numericType(O)) {
         .bool => switch (types.numericType(X)) {
             .bool => @compileError("zml.abs_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
@@ -2029,6 +1982,103 @@ pub inline fn abs_to(
         // The idea is that integer, rational, etc. all ap types have special functions
         // that can use a preinitialized element
         else => @compileError("zml.abs_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+// Exponential functions
+pub inline fn exp(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.exp(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp not defined for " ++ @typeName(X)),
+        .int, .float => return float.exp(x),
+        .cfloat => return cfloat.exp(x),
+        else => @compileError("zml.exp not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.exp_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.exp(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.exp(o.*),
+        .cfloat => o.* = cfloat.exp(o.*),
+        else => @compileError("zml.exp_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn exp_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => switch (types.numericType(X)) {
+            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
+            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+        },
+        .int => switch (types.numericType(X)) {
+            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
+            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+        },
+        .float => switch (types.numericType(X)) {
+            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
+            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+        },
+        .cfloat => switch (types.numericType(X)) {
+            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
+            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+        },
+        else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
     }
 }
 

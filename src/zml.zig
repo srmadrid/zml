@@ -41,19 +41,30 @@ pub const mul_to = ops.mul_to;
 pub const div = ops.div;
 pub const div_ = ops.div_;
 pub const div_to = ops.div_to;
+
 pub const eq = ops.eq;
 pub const ne = ops.ne;
 pub const lt = ops.lt;
 pub const le = ops.le;
 pub const gt = ops.gt;
 pub const ge = ops.ge;
+
 pub const max = ops.max;
 pub const min = ops.min;
+
+// Basic operations
 pub const abs = ops.abs;
 pub const abs_ = ops.abs_;
 pub const abs_to = ops.abs_to;
+
+// Exponential functions
+pub const exp = ops.exp;
+pub const exp_ = ops.exp_;
+pub const exp_to = ops.exp_to;
+
 pub const ceil = ops.ceil;
 pub const ceil_ = ops.ceil_;
+pub const ceil_to = ops.ceil_to;
 
 pub const linalg = @import("linalg.zig");
 

@@ -298,6 +298,7 @@ pub inline fn ge(
     return x >= y;
 }
 
+// Basic operations
 pub const abs = @import("float/abs.zig").abs;
 // pub const fmod = @import("float/fmod.zig").fmod; // to implement
 // pub const remainder = @import("float/remainder.zig").remainder; // to implement

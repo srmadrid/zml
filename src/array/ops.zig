@@ -4,6 +4,7 @@ const types = @import("../types.zig");
 const Coerce = types.Coerce;
 const Scalar = types.Scalar;
 const Numeric = types.Numeric;
+const EnsureFloat = types.EnsureFloat;
 const ReturnType1 = types.ReturnType1;
 const ReturnType2 = types.ReturnType2;
 const scast = types.scast;
@@ -262,13 +263,14 @@ pub fn apply2_to(
     }
 }
 
+// Basic operations
 pub inline fn abs(
     allocator: std.mem.Allocator,
     x: anytype,
     options: struct {
         writeable: bool = true,
     },
-) !Array(Scalar(Scalar(@TypeOf(x)))) {
+) !Array(Scalar(Numeric(@TypeOf(x)))) {
     return apply1(allocator, x, ops.abs, .{ .writeable = options.writeable });
 }
 
@@ -281,13 +283,53 @@ pub inline fn abs_(
     return apply1_(o, ops.abs_, .{ .allocator = options.allocator });
 }
 
+pub inline fn abs_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.abs_to, .{ .allocator = options.allocator });
+}
+
+// Exponential functions
+pub inline fn exp(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.exp, .{ .writeable = options.writeable });
+}
+
+pub inline fn exp_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.exp_, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.exp_to, .{ .allocator = options.allocator });
+}
+
 pub inline fn ceil(
     allocator: std.mem.Allocator,
     x: anytype,
     options: struct {
         writeable: bool = true,
     },
-) !Array(Scalar(@TypeOf(x))) {
+) !@TypeOf(x) {
     return apply1(allocator, x, ops.ceil, .{ .writeable = options.writeable });
 }
 
@@ -298,6 +340,16 @@ pub inline fn ceil_(
     },
 ) !void {
     return apply1_(o, ops.ceil_, .{ .allocator = options.allocator });
+}
+
+pub inline fn ceil_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.ceil_to, .{ .allocator = options.allocator });
 }
 
 inline fn addDefault(

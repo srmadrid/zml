@@ -1153,6 +1153,9 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
 /// Coerces the input type to a floating point type if it is not already a
 /// higher range type.
 pub fn EnsureFloat(comptime T: type) type {
+    if (isArray(T) or isSlice(T))
+        return Array(EnsureFloat(Numeric(T)));
+
     switch (numericType(T)) {
         .bool => return default_float,
         .int => return default_float,

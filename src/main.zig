@@ -4,7 +4,8 @@ const zml = @import("zml");
 
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    var gpa = std.heap.DebugAllocator(.{}){};
+    defer _ = gpa.deinit();
     const a = gpa.allocator();
     //_ = a;
 
@@ -704,7 +705,8 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    try zml.array.mul_(&H, I, .{});
+    //try zml.div_(&H, I, .{});
+    try zml.exp_(&H, .{});
     std.debug.print("\nH after add(I) =\n", .{});
     for (0..H.shape[0]) |i| {
         std.debug.print("\t", .{});

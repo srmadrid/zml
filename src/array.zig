@@ -293,10 +293,19 @@ pub const div = arrops.div;
 pub const div_ = arrops.div_;
 pub const div_to = arrops.div_to;
 
+// Basic operations
 pub const abs = arrops.abs;
 pub const abs_ = arrops.abs_;
+pub const abs_to = arrops.abs_to;
+
+// Exponential functions
+pub const exp = arrops.exp;
+pub const exp_ = arrops.exp_;
+pub const exp_to = arrops.exp_to;
+
 pub const ceil = arrops.ceil;
 pub const ceil_ = arrops.ceil_;
+pub const ceil_to = arrops.ceil_to;
 
 pub const Broadcast = struct {
     ndim: usize,
