@@ -461,66 +461,86 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
         .int => switch (ynumeric) {
             .bool => return X,
             .int => {
-                if (X == comptime_int or Y == comptime_int) {
-                    return comptime_int;
-                } else {
-                    comptime var xinfo = @typeInfo(X);
-                    comptime var yinfo = @typeInfo(Y);
+                if (X == comptime_int) {
+                    return Y;
+                } else if (Y == comptime_int) {
+                    return X;
+                }
 
-                    if (xinfo.int.signedness == .unsigned) {
-                        if (yinfo.int.signedness == .unsigned) {
-                            if (xinfo.int.bits > yinfo.int.bits) {
-                                return X;
-                            } else {
-                                return Y;
-                            }
+                comptime var xinfo = @typeInfo(X);
+                comptime var yinfo = @typeInfo(Y);
+
+                if (xinfo.int.signedness == .unsigned) {
+                    if (yinfo.int.signedness == .unsigned) {
+                        if (xinfo.int.bits > yinfo.int.bits) {
+                            return X;
                         } else {
-                            if (xinfo.int.bits > yinfo.int.bits) {
-                                if (xinfo.int.bits == 128) {
-                                    @compileError("Cannot coerce " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " as " ++ @typeName(X) ++ " already has the maximum amount of bits.");
-                                } else {
-                                    yinfo.int.bits = xinfo.int.bits * 2;
-                                    return @Type(yinfo);
-                                }
-                            } else if (xinfo.int.bits == yinfo.int.bits) {
-                                yinfo.int.bits *= 2;
-                                return @Type(yinfo);
-                            } else {
-                                return Y;
-                            }
+                            return Y;
                         }
                     } else {
-                        if (yinfo.int.signedness == .unsigned) {
-                            if (yinfo.int.bits > xinfo.int.bits) {
-                                if (yinfo.int.bits == 128) {
-                                    @compileError("Cannot coerce " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " as " ++ @typeName(Y) ++ " already has the maximum amount of bits.");
-                                } else {
-                                    xinfo.int.bits = yinfo.int.bits * 2;
-                                    return @Type(xinfo);
-                                }
-                            } else if (xinfo.int.bits == yinfo.int.bits) {
-                                xinfo.int.bits *= 2;
-                                return @Type(xinfo);
+                        if (xinfo.int.bits > yinfo.int.bits) {
+                            if (xinfo.int.bits == 128) {
+                                @compileError("Cannot coerce " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " as " ++ @typeName(X) ++ " already has the maximum amount of bits.");
                             } else {
-                                return X;
+                                yinfo.int.bits = xinfo.int.bits * 2;
+                                return @Type(yinfo);
                             }
+                        } else if (xinfo.int.bits == yinfo.int.bits) {
+                            yinfo.int.bits *= 2;
+                            return @Type(yinfo);
                         } else {
-                            if (xinfo.int.bits > yinfo.int.bits) {
-                                return X;
+                            return Y;
+                        }
+                    }
+                } else {
+                    if (yinfo.int.signedness == .unsigned) {
+                        if (yinfo.int.bits > xinfo.int.bits) {
+                            if (yinfo.int.bits == 128) {
+                                @compileError("Cannot coerce " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " as " ++ @typeName(Y) ++ " already has the maximum amount of bits.");
                             } else {
-                                return Y;
+                                xinfo.int.bits = yinfo.int.bits * 2;
+                                return @Type(xinfo);
                             }
+                        } else if (xinfo.int.bits == yinfo.int.bits) {
+                            xinfo.int.bits *= 2;
+                            return @Type(xinfo);
+                        } else {
+                            return X;
+                        }
+                    } else {
+                        if (xinfo.int.bits > yinfo.int.bits) {
+                            return X;
+                        } else {
+                            return Y;
                         }
                     }
                 }
+            },
+            .float => {
+                if (Y == comptime_float) {
+                    return EnsureFloat(X);
+                }
+
+                return Y;
             },
             else => return Y,
         },
         .float => {
             switch (ynumeric) {
-                .bool => return X,
-                .int => return X,
+                .bool, .int => {
+                    if (X == comptime_float) {
+                        return EnsureFloat(Y);
+                    }
+
+                    return X;
+                },
                 .float => {
+                    if (X == comptime_float) {
+                        return Y;
+                    } else if (Y == comptime_float) {
+                        return X;
+                    }
+
                     const xinfo = @typeInfo(X);
                     const yinfo = @typeInfo(Y);
 

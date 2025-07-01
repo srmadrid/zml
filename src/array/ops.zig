@@ -323,6 +323,1154 @@ pub inline fn exp_to(
     return apply1_to(o, x, ops.exp_to, .{ .allocator = options.allocator });
 }
 
+pub inline fn exp10(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.exp10, .{ .writeable = options.writeable });
+}
+
+pub inline fn exp10_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.exp10_, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp10_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.exp10_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.exp2, .{ .writeable = options.writeable });
+}
+
+pub inline fn exp2_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.exp2_, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp2_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.exp2_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp10m1(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.exp10m1, .{ .writeable = options.writeable });
+}
+
+pub inline fn exp10m1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.exp10m1_, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp10m1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.exp10m1_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp2m1(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.exp2m1, .{ .writeable = options.writeable });
+}
+
+pub inline fn exp2m1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.exp2m1_, .{ .allocator = options.allocator });
+}
+
+pub inline fn exp2m1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.exp2m1_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn expm1(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.expm1, .{ .writeable = options.writeable });
+}
+
+pub inline fn expm1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.expm1_, .{ .allocator = options.allocator });
+}
+
+pub inline fn expm1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.expm1_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn log(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.log, .{ .writeable = options.writeable });
+}
+
+pub inline fn log_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.log_, .{ .allocator = options.allocator });
+}
+
+pub inline fn log_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.log_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn log10(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.log10, .{ .writeable = options.writeable });
+}
+
+pub inline fn log10_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.log10_, .{ .allocator = options.allocator });
+}
+
+pub inline fn log10_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.log10_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn log2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.log2, .{ .writeable = options.writeable });
+}
+
+pub inline fn log2_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.log2_, .{ .allocator = options.allocator });
+}
+
+pub inline fn log2_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.log2_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn log10p1(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.log10p1, .{ .writeable = options.writeable });
+}
+
+pub inline fn log10p1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.log10p1_, .{ .allocator = options.allocator });
+}
+
+pub inline fn log10p1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.log10p1_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn log2p1(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.log2p1, .{ .writeable = options.writeable });
+}
+
+pub inline fn log2p1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.log2p1_, .{ .allocator = options.allocator });
+}
+
+pub inline fn log2p1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.log2p1_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn log1p(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.log1p, .{ .writeable = options.writeable });
+}
+
+pub inline fn log1p_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.log1p_, .{ .allocator = options.allocator });
+}
+
+pub inline fn log1p_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.log1p_to, .{ .allocator = options.allocator });
+}
+
+// Power functions
+pub inline fn pow(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply2(allocator, x, y, ops.pow, .{ .writeable = options.writeable });
+}
+
+pub inline fn pow_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, y, ops.pow_, .{ .allocator = options.allocator });
+}
+
+pub inline fn pow_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_to(o, x, y, ops.pow_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn sqrt(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.sqrt, .{ .writeable = options.writeable });
+}
+
+pub inline fn sqrt_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.sqrt_, .{ .allocator = options.allocator });
+}
+
+pub inline fn sqrt_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.sqrt_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn cbrt(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.cbrt, .{ .writeable = options.writeable });
+}
+
+pub inline fn cbrt_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.cbrt_, .{ .allocator = options.allocator });
+}
+
+pub inline fn cbrt_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.cbrt_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn hypot(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply2(allocator, x, y, ops.hypot, .{ .writeable = options.writeable });
+}
+
+pub inline fn hypot_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, y, ops.hypot_, .{ .allocator = options.allocator });
+}
+
+pub inline fn hypot_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_to(o, x, y, ops.hypot_to, .{ .allocator = options.allocator });
+}
+
+// Trigonometric functions
+pub inline fn sin(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.sin, .{ .writeable = options.writeable });
+}
+
+pub inline fn sin_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.sin_, .{ .allocator = options.allocator });
+}
+
+pub inline fn sin_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.sin_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn cos(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.cos, .{ .writeable = options.writeable });
+}
+
+pub inline fn cos_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.cos_, .{ .allocator = options.allocator });
+}
+
+pub inline fn cos_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.cos_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn tan(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.tan, .{ .writeable = options.writeable });
+}
+
+pub inline fn tan_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.tan_, .{ .allocator = options.allocator });
+}
+
+pub inline fn tan_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.tan_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn asin(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.asin, .{ .writeable = options.writeable });
+}
+
+pub inline fn asin_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.asin_, .{ .allocator = options.allocator });
+}
+
+pub inline fn asin_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.asin_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn acos(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.acos, .{ .writeable = options.writeable });
+}
+
+pub inline fn acos_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.acos_, .{ .allocator = options.allocator });
+}
+
+pub inline fn acos_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.acos_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn atan(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.atan, .{ .writeable = options.writeable });
+}
+
+pub inline fn atan_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.atan_, .{ .allocator = options.allocator });
+}
+
+pub inline fn atan_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.atan_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn atan2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply2(allocator, x, y, ops.atan2, .{ .writeable = options.writeable });
+}
+
+pub inline fn atan2_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, y, ops.atan2_, .{ .allocator = options.allocator });
+}
+
+pub inline fn atan2_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_to(o, x, y, ops.atan2_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn sinpi(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.sinpi, .{ .writeable = options.writeable });
+}
+
+pub inline fn sinpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.sinpi_, .{ .allocator = options.allocator });
+}
+
+pub inline fn sinpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.sinpi_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn cospi(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.cospi, .{ .writeable = options.writeable });
+}
+
+pub inline fn cospi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.cospi_, .{ .allocator = options.allocator });
+}
+
+pub inline fn cospi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.cospi_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn tanpi(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.tanpi, .{ .writeable = options.writeable });
+}
+
+pub inline fn tanpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.tanpi_, .{ .allocator = options.allocator });
+}
+
+pub inline fn tanpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.tanpi_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn asinpi(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.asinpi, .{ .writeable = options.writeable });
+}
+
+pub inline fn asinpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.asinpi_, .{ .allocator = options.allocator });
+}
+
+pub inline fn asinpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.asinpi_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn acospi(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.acospi, .{ .writeable = options.writeable });
+}
+
+pub inline fn acospi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.acospi_, .{ .allocator = options.allocator });
+}
+
+pub inline fn acospi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.acospi_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn atanpi(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.atanpi, .{ .writeable = options.writeable });
+}
+
+pub inline fn atanpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.atanpi_, .{ .allocator = options.allocator });
+}
+
+pub inline fn atanpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.atanpi_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn atan2pi(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply2(allocator, x, y, ops.atan2pi, .{ .writeable = options.writeable });
+}
+
+pub inline fn atan2pi_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, y, ops.atan2pi_, .{ .allocator = options.allocator });
+}
+
+pub inline fn atan2pi_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_to(o, x, y, ops.atan2pi_to, .{ .allocator = options.allocator });
+}
+
+// Hyperbolic functions
+pub inline fn sinh(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.sinh, .{ .writeable = options.writeable });
+}
+
+pub inline fn sinh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.sinh_, .{ .allocator = options.allocator });
+}
+
+pub inline fn sinh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.sinh_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn cosh(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.cosh, .{ .writeable = options.writeable });
+}
+
+pub inline fn cosh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.cosh_, .{ .allocator = options.allocator });
+}
+
+pub inline fn cosh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.cosh_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn tanh(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.tanh, .{ .writeable = options.writeable });
+}
+
+pub inline fn tanh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.tanh_, .{ .allocator = options.allocator });
+}
+
+pub inline fn tanh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.tanh_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn asinh(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.asinh, .{ .writeable = options.writeable });
+}
+
+pub inline fn asinh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.asinh_, .{ .allocator = options.allocator });
+}
+
+pub inline fn asinh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.asinh_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn acosh(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.acosh, .{ .writeable = options.writeable });
+}
+
+pub inline fn acosh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.acosh_, .{ .allocator = options.allocator });
+}
+
+pub inline fn acosh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.acosh_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn atanh(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.atanh, .{ .writeable = options.writeable });
+}
+
+pub inline fn atanh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.atanh_, .{ .allocator = options.allocator });
+}
+
+pub inline fn atanh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.atanh_to, .{ .allocator = options.allocator });
+}
+
+// Error and gamma functions
+pub inline fn erf(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.erf, .{ .writeable = options.writeable });
+}
+
+pub inline fn erf_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.erf_, .{ .allocator = options.allocator });
+}
+
+pub inline fn erf_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.erf_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn erfc(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.erfc, .{ .writeable = options.writeable });
+}
+
+pub inline fn erfc_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.erfc_, .{ .allocator = options.allocator });
+}
+
+pub inline fn erfc_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.erfc_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn gamma(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.gamma, .{ .writeable = options.writeable });
+}
+
+pub inline fn gamma_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.gamma_, .{ .allocator = options.allocator });
+}
+
+pub inline fn gamma_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.gamma_to, .{ .allocator = options.allocator });
+}
+
+pub inline fn lgamma(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.lgamma, .{ .writeable = options.writeable });
+}
+
+pub inline fn lgamma_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, ops.lgamma_, .{ .allocator = options.allocator });
+}
+
+pub inline fn lgamma_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_to(o, x, ops.lgamma_to, .{ .allocator = options.allocator });
+}
+
+// Nearest integer operations
 pub inline fn ceil(
     allocator: std.mem.Allocator,
     x: anytype,

@@ -706,7 +706,7 @@ fn addTesting(a: std.mem.Allocator) !void {
     }
 
     //try zml.div_(&H, I, .{});
-    try zml.exp_(&H, .{});
+    try zml.gamma_to(&H, I, .{});
     std.debug.print("\nH after add(I) =\n", .{});
     for (0..H.shape[0]) |i| {
         std.debug.print("\t", .{});

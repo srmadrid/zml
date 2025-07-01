@@ -321,32 +321,11 @@ pub inline fn add_to(
         types.isArray(Y) or types.isSlice(Y))
         return array.add_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
 
-    switch (types.numericType(O)) {
-        .bool => switch (types.numericType(C)) {
-            .bool => @compileError("zml.add_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => o.* = try cast(O, int.add(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.add(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.add(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.add_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .int => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.add(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.add(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.add(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.add_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .float => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.add(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.add(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.add(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.add_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .cfloat => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.add(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.add(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.add(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.add_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.add_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int => o.* = try cast(O, int.add(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.add(x, y), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.add(x, y), .{ .allocator = options.allocator }),
         else => @compileError("zml.add_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
     }
 }
@@ -682,32 +661,11 @@ pub inline fn sub_to(
         types.isArray(Y) or types.isSlice(Y))
         return array.sub_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
 
-    switch (types.numericType(O)) {
-        .bool => switch (types.numericType(C)) {
-            .bool => @compileError("zml.sub_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => o.* = try cast(O, int.sub(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.sub(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.sub(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.sub_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .int => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.sub(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.sub(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.sub(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.sub_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .float => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.sub(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.sub(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.sub(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.sub_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .cfloat => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.sub(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.sub(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.sub(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.sub_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.sub_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int => o.* = try cast(O, int.sub(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.sub(x, y), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.sub(x, y), .{ .allocator = options.allocator }),
         else => @compileError("zml.sub_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
     }
 }
@@ -976,32 +934,11 @@ pub inline fn mul_to(
         types.isArray(Y) or types.isSlice(Y))
         return array.mul_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
 
-    switch (types.numericType(O)) {
-        .bool => switch (types.numericType(C)) {
-            .bool => @compileError("zml.mul_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => o.* = try cast(O, int.mul(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.mul(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.mul(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.mul_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .int => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.mul(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.mul(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.mul(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.mul_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .float => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.mul(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.mul(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.mul(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.mul_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .cfloat => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.mul(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.mul(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.mul(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.mul_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.mul_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int => o.* = try cast(O, int.mul(x, y, .{ .mode = options.mode }), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.mul(x, y), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.mul(x, y), .{ .allocator = options.allocator }),
         else => @compileError("zml.mul_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
     }
 }
@@ -1262,34 +1199,13 @@ pub inline fn div_to(
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        return array.div_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
+        return array.div_to(o, x, y, .{ .allocator = options.allocator });
 
-    switch (types.numericType(O)) {
-        .bool => switch (types.numericType(C)) {
-            .bool => @compileError("zml.div_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => o.* = try cast(O, int.div(x, y), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.div(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.div(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.div_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .int => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.div(x, y), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.div(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.div(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.div_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .float => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.div(x, y), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.div(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.div(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.div_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        .cfloat => switch (types.numericType(C)) {
-            .bool, .int => o.* = try cast(O, int.div(x, y), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.div(x, y), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.div(x, y), .{ .allocator = options.allocator }),
-            else => @compileError("zml.div_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.div_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int => o.* = try cast(O, int.div(x, y), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.div(x, y), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.div(x, y), .{ .allocator = options.allocator }),
         else => @compileError("zml.div_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
     }
 }
@@ -1950,37 +1866,11 @@ pub inline fn abs_to(
     if (comptime types.isArray(O) or types.isSlice(O))
         return array.abs_to(o, x, .{ .allocator = options.allocator });
 
-    switch (types.numericType(O)) {
-        .bool => switch (types.numericType(X)) {
-            .bool => @compileError("zml.abs_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.abs(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.abs(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.abs(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.abs_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .int => switch (types.numericType(X)) {
-            .bool => @compileError("zml.abs_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.abs(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.abs(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.abs(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.abs_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .float => switch (types.numericType(X)) {
-            .bool => @compileError("zml.abs_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.abs(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.abs(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.abs(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.abs_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .cfloat => switch (types.numericType(X)) {
-            .bool => @compileError("zml.abs_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.abs(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.abs(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.abs(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.abs_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        // The idea is that integer, rational, etc. all ap types have special functions
-        // that can use a preinitialized element
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.abs_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, int.abs(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.abs(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.abs(x), .{ .allocator = options.allocator }),
         else => @compileError("zml.abs_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
     }
 }
@@ -2049,39 +1939,2777 @@ pub inline fn exp_to(
     if (comptime types.isArray(O) or types.isSlice(O))
         return array.exp_to(o, x, .{ .allocator = options.allocator });
 
-    switch (types.numericType(O)) {
-        .bool => switch (types.numericType(X)) {
-            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .int => switch (types.numericType(X)) {
-            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .float => switch (types.numericType(X)) {
-            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .cfloat => switch (types.numericType(X)) {
-            .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.exp(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.exp(x), .{ .allocator = options.allocator }),
         else => @compileError("zml.exp_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
     }
 }
 
+pub inline fn exp10(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.exp10(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp10 not defined for " ++ @typeName(X)),
+        .int, .float => return float.exp10(x),
+        else => @compileError("zml.exp10 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp10_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp10_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp10_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.exp10_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.exp10(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.exp10(o.*),
+        else => @compileError("zml.exp10_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn exp10_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp10_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp10_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp10_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.exp10(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.exp10(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.exp10_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp2(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.exp2(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp2 not defined for " ++ @typeName(X)),
+        .int, .float => return float.exp2(x),
+        else => @compileError("zml.exp2 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp2_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp2_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp2_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.exp2_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.exp2(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.exp2(o.*),
+        else => @compileError("zml.exp2_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn exp2_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp2_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp2_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp2_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.exp2(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.exp2(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.exp2_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp10m1(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.exp10m1(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp10m1 not defined for " ++ @typeName(X)),
+        .int, .float => return float.exp10m1(x),
+        else => @compileError("zml.exp10m1 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp10m1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp10m1_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp10m1_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.exp10m1_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.exp10m1(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.exp10m1(o.*),
+        else => @compileError("zml.exp10m1_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn exp10m1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp10m1_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp10m1_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp10m1_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.exp10m1(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.exp10m1(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.exp10m1_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp2m1(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.exp2m1(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp2m1 not defined for " ++ @typeName(X)),
+        .int, .float => return float.exp2m1(x),
+        else => @compileError("zml.exp2m1 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn exp2m1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp2m1_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp2m1_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.exp2m1_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.exp2m1(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.exp2m1(o.*),
+        else => @compileError("zml.exp2m1_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn exp2m1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.exp2m1_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.exp2m1_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.exp2m1_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.exp2m1(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.exp2m1(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.exp2m1_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn expm1(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.expm1(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.expm1 not defined for " ++ @typeName(X)),
+        .int, .float => return float.expm1(x),
+        else => @compileError("zml.expm1 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn expm1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.expm1_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.expm1_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.expm1_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.expm1(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.expm1(o.*),
+        else => @compileError("zml.expm1_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn expm1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.expm1_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.expm1_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.expm1_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.expm1(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.expm1(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.expm1_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.log(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log not defined for " ++ @typeName(X)),
+        .int, .float => return float.log(x),
+        .cfloat => return cfloat.log(x),
+        else => @compileError("zml.log not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.log_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.log(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.log(o.*),
+        .cfloat => o.* = cfloat.log(o.*),
+        else => @compileError("zml.log_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn log_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.log(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.log(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.log(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.log_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log10(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.log10(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log10 not defined for " ++ @typeName(X)),
+        .int, .float => return float.log10(x),
+        else => @compileError("zml.log10 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log10_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log10_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log10_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.log10_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.log10(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.log10(o.*),
+        else => @compileError("zml.log10_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn log10_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log10_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log10_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log10_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.log10(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.log10(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.log10_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log2(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.log2(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log2 not defined for " ++ @typeName(X)),
+        .int, .float => return float.log2(x),
+        else => @compileError("zml.log2 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log2_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log2_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log2_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.log2_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.log2(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.log2(o.*),
+        else => @compileError("zml.log2_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn log2_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log2_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log2_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log2_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.log2(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.log2(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.log2_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log10p1(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.log10p1(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log10p1 not defined for " ++ @typeName(X)),
+        .int, .float => return float.log10p1(x),
+        else => @compileError("zml.log10p1 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log10p1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log10p1_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log10p1_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.log10p1_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.log10p1(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.log10p1(o.*),
+        else => @compileError("zml.log10p1_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn log10p1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log10p1_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log10p1_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log10p1_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.log10p1(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.log10p1(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.log10p1_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log2p1(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.log2p1(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log2p1 not defined for " ++ @typeName(X)),
+        .int, .float => return float.log2p1(x),
+        else => @compileError("zml.log2p1 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log2p1_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log2p1_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log2p1_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.log2p1_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.log2p1(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.log2p1(o.*),
+        else => @compileError("zml.log2p1_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn log2p1_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log2p1_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log2p1_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log2p1_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.log2p1(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.log2p1(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.log2p1_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log1p(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.log1p(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log1p not defined for " ++ @typeName(X)),
+        .int, .float => return float.log1p(x),
+        else => @compileError("zml.log1p not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn log1p_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log1p_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log1p_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.log1p_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.log1p(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.log1p(o.*),
+        else => @compileError("zml.log1p_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn log1p_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.log1p_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.log1p_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.log1p_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.log1p(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.log1p(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.log1p_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+// Power functions
+pub inline fn pow(
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    if (comptime types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.pow(options.allocator.?, x, y, .{ .writeable = true });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+        .int, .float => return float.pow(x, y),
+        .cfloat => return cfloat.pow(x, y),
+        else => @compileError("zml.pow between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+    }
+}
+
+pub inline fn pow_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.pow_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.pow_(o, y, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.pow_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int, .float => o.* = float.pow(o.*, y),
+        .cfloat => o.* = cfloat.pow(o.*, y),
+        else => @compileError("zml.pow_ not implemented for " ++ @typeName(O) ++ " output type"),
+    }
+}
+
+pub inline fn pow_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.pow_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.pow_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.pow_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int, .float => o.* = try cast(O, float.pow(x, y), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.pow(x, y), .{ .allocator = options.allocator }),
+        else => @compileError("zml.pow_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+    }
+}
+
+pub inline fn sqrt(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.sqrt(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sqrt not defined for " ++ @typeName(X)),
+        .int, .float => return float.sqrt(x),
+        .cfloat => return cfloat.sqrt(x),
+        else => @compileError("zml.sqrt not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn sqrt_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sqrt_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sqrt_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.sqrt_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.sqrt(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.sqrt(o.*),
+        .cfloat => o.* = cfloat.sqrt(o.*),
+        else => @compileError("zml.sqrt_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn sqrt_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sqrt_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sqrt_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sqrt_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.sqrt(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.sqrt(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.sqrt(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.sqrt_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cbrt(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.cbrt(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cbrt not defined for " ++ @typeName(X)),
+        .int, .float => return float.cbrt(x),
+        else => @compileError("zml.cbrt not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cbrt_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cbrt_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cbrt_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.cbrt_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.cbrt(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.cbrt(o.*),
+        else => @compileError("zml.cbrt_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn cbrt_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cbrt_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cbrt_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cbrt_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.cbrt(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.cbrt(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.cbrt_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn hypot(
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    if (comptime types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.hypot(options.allocator.?, x, y, .{ .writeable = options.writeable });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+        .int, .float => return float.hypot(x, y),
+        else => @compileError("zml.hypot between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+    }
+}
+
+pub inline fn hypot_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.hypot_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.hypot_(o, y, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.hypot_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int, .float => o.* = float.hypot(o.*, y),
+        else => @compileError("zml.hypot_ not implemented for " ++ @typeName(O) ++ " output type"),
+    }
+}
+
+pub inline fn hypot_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.hypot_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.hypot_to(o, x, y, .{ .allocator = options.allocator });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.hypot_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int, .float => o.* = try cast(O, float.hypot(x, y), .{ .allocator = options.allocator }),
+        else => @compileError("zml.hypot_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+    }
+}
+
+// Trigonometric functions
+pub inline fn sin(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.sin(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sin not defined for " ++ @typeName(X)),
+        .int, .float => return float.sin(x),
+        .cfloat => return cfloat.sin(x),
+        else => @compileError("zml.sin not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn sin_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sin_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sin_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.sin_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.sin(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.sin(o.*),
+        .cfloat => o.* = cfloat.sin(o.*),
+        else => @compileError("zml.sin_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn sin_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sin_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sin_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sin_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.sin(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.sin(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.sin(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.sin_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cos(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.cos(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cos not defined for " ++ @typeName(X)),
+        .int, .float => return float.cos(x),
+        .cfloat => return cfloat.cos(x),
+        else => @compileError("zml.cos not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cos_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cos_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cos_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.cos_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.cos(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.cos(o.*),
+        .cfloat => o.* = cfloat.cos(o.*),
+        else => @compileError("zml.cos_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn cos_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cos_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cos_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cos_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.cos(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.cos(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.cos(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.cos_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn tan(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.tan(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.tan not defined for " ++ @typeName(X)),
+        .int, .float => return float.tan(x),
+        .cfloat => return cfloat.tan(x),
+        else => @compileError("zml.tan not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn tan_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.tan_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.tan_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.tan_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.tan(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.tan(o.*),
+        .cfloat => o.* = cfloat.tan(o.*),
+        else => @compileError("zml.tan_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn tan_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.tan_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.tan_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.tan_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.tan(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.tan(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.tan(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.tan_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn asin(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.asin(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.asin not defined for " ++ @typeName(X)),
+        .int, .float => return float.asin(x),
+        else => @compileError("zml.asin not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn asin_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.asin_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.asin_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.asin_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.asin(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.asin(o.*),
+        else => @compileError("zml.asin_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn asin_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.asin_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.asin_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.asin_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.asin(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.asin(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.asin_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn acos(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.acos(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.acos not defined for " ++ @typeName(X)),
+        .int, .float => return float.acos(x),
+        else => @compileError("zml.acos not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn acos_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.acos_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.acos_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.acos_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.acos(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.acos(o.*),
+        else => @compileError("zml.acos_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn acos_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.acos_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.acos_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.acos_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.acos(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.acos(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.acos_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atan(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.atan(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.atan not defined for " ++ @typeName(X)),
+        .int, .float => return float.atan(x),
+        else => @compileError("zml.atan not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atan_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atan_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.atan_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.atan_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.atan(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.atan(o.*),
+        else => @compileError("zml.atan_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn atan_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atan_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.atan_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.atan_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.atan(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.atan(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.atan_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atan2(
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    if (comptime types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.atan2(options.allocator.?, x, y, .{ .writeable = options.writeable });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+        .int, .float => return float.atan2(x, y),
+        else => @compileError("zml.atan2 between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+    }
+}
+
+pub inline fn atan2_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const Y: type = @TypeOf(y);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atan2_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.atan2_(o, y, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.atan2_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int, .float => o.* = float.atan2(o.*, y),
+        else => @compileError("zml.atan2_ not implemented for " ++ @typeName(O) ++ " output type"),
+    }
+}
+
+pub inline fn atan2_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atan2_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.atan2_to(o, x, y, .{ .allocator = options.allocator });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.atan2_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int, .float => o.* = try cast(O, float.atan2(x, y), .{ .allocator = options.allocator }),
+        else => @compileError("zml.atan2_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+    }
+}
+
+pub inline fn sinpi(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.sinpi(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sinpi not defined for " ++ @typeName(X)),
+        .int, .float => return float.sinpi(x),
+        else => @compileError("zml.sinpi not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn sinpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sinpi_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sinpi_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.sinpi_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.sinpi(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.sinpi(o.*),
+        else => @compileError("zml.sinpi_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn sinpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sinpi_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sinpi_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sinpi_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.sinpi(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.sinpi(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.sinpi_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cospi(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.cospi(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cospi not defined for " ++ @typeName(X)),
+        .int, .float => return float.cospi(x),
+        else => @compileError("zml.cospi not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cospi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cospi_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cospi_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.cospi_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.cospi(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.cospi(o.*),
+        else => @compileError("zml.cospi_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn cospi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cospi_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cospi_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cospi_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.cospi(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.cospi(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.cospi_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn tanpi(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.tanpi(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.tanpi not defined for " ++ @typeName(X)),
+        .int, .float => return float.tanpi(x),
+        else => @compileError("zml.tanpi not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn tanpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.tanpi_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.tanpi_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.tanpi_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.tanpi(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.tanpi(o.*),
+        else => @compileError("zml.tanpi_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn tanpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.tanpi_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.tanpi_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.tanpi_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.tanpi(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.tanpi(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.tanpi_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn asinpi(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.asinpi(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.asinpi not defined for " ++ @typeName(X)),
+        .int, .float => return float.asinpi(x),
+        else => @compileError("zml.asinpi not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn asinpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.asinpi_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.asinpi_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.asinpi_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.asinpi(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.asinpi(o.*),
+        else => @compileError("zml.asinpi_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn asinpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.asinpi_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.asinpi_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.asinpi_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.asinpi(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.asinpi(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.asinpi_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn acospi(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.acospi(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.acospi not defined for " ++ @typeName(X)),
+        .int, .float => return float.acospi(x),
+        else => @compileError("zml.acospi not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn acospi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.acospi_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.acospi_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.acospi_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.acospi(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.acospi(o.*),
+        else => @compileError("zml.acospi_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn acospi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.acospi_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.acospi_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.acospi_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.acospi(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.acospi(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.acospi_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atanpi(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.atanpi(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.atanpi not defined for " ++ @typeName(X)),
+        .int, .float => return float.atanpi(x),
+        else => @compileError("zml.atanpi not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atanpi_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atanpi_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.atanpi_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.atanpi_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.atanpi(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.atanpi(o.*),
+        else => @compileError("zml.atanpi_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn atanpi_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atanpi_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.atanpi_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.atanpi_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.atanpi(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.atanpi(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.atanpi_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atan2pi(
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    if (comptime types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.atan2pi(options.allocator.?, x, y, .{ .writeable = options.writeable });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.atan2pi not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+        .int, .float => return float.atan2pi(x, y),
+        else => @compileError("zml.atan2pi between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+    }
+}
+
+pub inline fn atan2pi_(
+    o: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const Y: type = @TypeOf(y);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atan2pi_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.atan2pi_(o, y, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.atan2pi_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int, .float => o.* = float.atan2pi(o.*, y),
+        else => @compileError("zml.atan2pi_ not implemented for " ++ @typeName(O) ++ " output type"),
+    }
+}
+
+pub inline fn atan2pi_to(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        mode: int.Mode = .default,
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = types.Coerce(X, Y);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atan2pi_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O) or
+        types.isArray(X) or types.isSlice(X) or
+        types.isArray(Y) or types.isSlice(Y))
+        return array.atan2pi_to(o, x, y, .{ .allocator = options.allocator });
+
+    switch (types.numericType(C)) {
+        .bool => @compileError("zml.atan2pi_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+        .int, .float => o.* = try cast(O, float.atan2pi(x, y), .{ .allocator = options.allocator }),
+        else => @compileError("zml.atan2pi_to not implemented for " ++ @typeName(O) ++ " output type, and " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+    }
+}
+
+// Hyperbolic functions
+pub inline fn sinh(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.sinh(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sinh not defined for " ++ @typeName(X)),
+        .int, .float => return float.sinh(x),
+        else => @compileError("zml.sinh not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn sinh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sinh_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sinh_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.sinh_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.sinh(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.sinh(o.*),
+        else => @compileError("zml.sinh_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn sinh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.sinh_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.sinh_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.sinh_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.sinh(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.sinh(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.sinh_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cosh(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.cosh(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cosh not defined for " ++ @typeName(X)),
+        .int, .float => return float.cosh(x),
+        else => @compileError("zml.cosh not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn cosh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cosh_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cosh_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.cosh_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.cosh(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.cosh(o.*),
+        else => @compileError("zml.cosh_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn cosh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.cosh_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.cosh_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.cosh_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.cosh(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.cosh(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.cosh_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn tanh(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.tanh(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.tanh not defined for " ++ @typeName(X)),
+        .int, .float => return float.tanh(x),
+        else => @compileError("zml.tanh not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn tanh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.tanh_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.tanh_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.tanh_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.tanh(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.tanh(o.*),
+        else => @compileError("zml.tanh_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn tanh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.tanh_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.tanh_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.tanh_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.tanh(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.tanh(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.tanh_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn asinh(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.asinh(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.asinh not defined for " ++ @typeName(X)),
+        .int, .float => return float.asinh(x),
+        else => @compileError("zml.asinh not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn asinh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.asinh_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.asinh_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.asinh_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.asinh(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.asinh(o.*),
+        else => @compileError("zml.asinh_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn asinh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.asinh_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.asinh_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.asinh_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.asinh(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.asinh(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.asinh_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn acosh(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.acosh(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.acosh not defined for " ++ @typeName(X)),
+        .int, .float => return float.acosh(x),
+        else => @compileError("zml.acosh not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn acosh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.acosh_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.acosh_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.acosh_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.acosh(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.acosh(o.*),
+        else => @compileError("zml.acosh_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn acosh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.acosh_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.acosh_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.acosh_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.acosh(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.acosh(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.acosh_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atanh(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.atanh(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.atanh not defined for " ++ @typeName(X)),
+        .int, .float => return float.atanh(x),
+        else => @compileError("zml.atanh not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn atanh_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atanh_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.atanh_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.atanh_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.atanh(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.atanh(o.*),
+        else => @compileError("zml.atanh_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn atanh_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.atanh_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.atanh_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.atanh_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.atanh(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.atanh(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.atanh_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+// Error and gamma functions
+pub inline fn erf(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.erf(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.erf not defined for " ++ @typeName(X)),
+        .int, .float => return float.erf(x),
+        else => @compileError("zml.erf not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn erf_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.erf_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.erf_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.erf_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.erf(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.erf(o.*),
+        else => @compileError("zml.erf_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn erf_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.erf_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.erf_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.erf_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.erf(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.erf(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.erf_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn erfc(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.erfc(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.erfc not defined for " ++ @typeName(X)),
+        .int, .float => return float.erfc(x),
+        else => @compileError("zml.erfc not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn erfc_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.erfc_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.erfc_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.erfc_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.erfc(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.erfc(o.*),
+        else => @compileError("zml.erfc_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn erfc_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.erfc_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.erfc_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.erfc_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.erfc(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.erfc(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.erfc_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn gamma(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.gamma(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.gamma not defined for " ++ @typeName(X)),
+        .int, .float => return float.gamma(x),
+        else => @compileError("zml.gamma not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn gamma_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.gamma_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.gamma_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.gamma_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.gamma(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.gamma(o.*),
+        else => @compileError("zml.gamma_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn gamma_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.gamma_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.gamma_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.gamma_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.gamma(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.gamma(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.gamma_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn lgamma(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.lgamma(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.lgamma not defined for " ++ @typeName(X)),
+        .int, .float => return float.lgamma(x),
+        else => @compileError("zml.lgamma not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn lgamma_(
+    o: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.lgamma_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.lgamma_(o, .{ .allocator = options.allocator });
+
+    switch (types.numericType(O)) {
+        .bool => @compileError("zml.lgamma_ not defined for " ++ @typeName(O) ++ " output type"),
+        .int => o.* = try cast(O, float.lgamma(o.*), .{ .allocator = options.allocator }),
+        .float => o.* = float.lgamma(o.*),
+        else => @compileError("zml.lgamma_ not implemented for " ++ @typeName(O) ++ " yet"),
+    }
+}
+
+pub inline fn lgamma_to(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.lgamma_to requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.lgamma_to(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.lgamma_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, float.lgamma(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.lgamma(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.lgamma_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+// Nearest integer operations
 pub inline fn ceil(
     x: anytype,
     options: struct {
@@ -2150,37 +4778,11 @@ pub inline fn ceil_to(
         return array.ceil_to(o, x, .{ .allocator = options.allocator });
 
     _ = options.allocator;
-    switch (types.numericType(O)) {
-        .bool => switch (types.numericType(X)) {
-            .bool => @compileError("zml.ceil_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.ceil(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.ceil(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.ceil(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.ceil_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .int => switch (types.numericType(X)) {
-            .bool => @compileError("zml.ceil_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.ceil(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.ceil(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.ceil(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.ceil_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .float => switch (types.numericType(X)) {
-            .bool => @compileError("zml.ceil_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.ceil(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.ceil(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.ceil(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.ceil_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        .cfloat => switch (types.numericType(X)) {
-            .bool => @compileError("zml.ceil_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-            .int => o.* = try cast(O, int.ceil(x), .{ .allocator = options.allocator }),
-            .float => o.* = try cast(O, float.ceil(x), .{ .allocator = options.allocator }),
-            .cfloat => o.* = try cast(O, cfloat.ceil(x), .{ .allocator = options.allocator }),
-            else => @compileError("zml.ceil_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
-        },
-        // The idea is that integer, rational, etc. all ap types have special functions
-        // that can use a preinitialized element
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.ceil_to not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, int.ceil(x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.ceil(x), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.ceil(x), .{ .allocator = options.allocator }),
         else => @compileError("zml.ceil_to not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
     }
 }
