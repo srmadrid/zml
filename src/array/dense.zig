@@ -324,6 +324,27 @@ pub inline fn linspace(
     return arr;
 }
 
+pub inline fn logspace(
+    allocator: std.mem.Allocator,
+    comptime T: type,
+    start: anytype,
+    stop: anytype,
+    num: usize,
+    base: anytype,
+    writeable: bool,
+    endpoint: bool,
+) !Array(T) {
+    _ = types.numericType(@TypeOf(start));
+    _ = types.numericType(@TypeOf(stop));
+
+    var arr: Array(T) = try linspace(allocator, T, start, stop, num, writeable, endpoint);
+    errdefer arr.deinit(allocator);
+
+    try ops.pow_to(&arr, base, arr, .{ .allocator = allocator });
+
+    return arr;
+}
+
 pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: T) !void {
     try checkPosition(arr.ndim, arr.shape, position);
 
@@ -926,13 +947,13 @@ pub fn apply2_to(
     allocator: ?std.mem.Allocator,
 ) !void {
     if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)) and
-        !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)))
+        !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y)))
     {
         const opinfo = @typeInfo(@TypeOf(op_to));
         if (opinfo.@"fn".params.len == 3) {
             op_to(&o.data[0], x, y);
         } else if (opinfo.@"fn".params.len == 4) {
-            try op_to(&o.data[o], x, y, .{ .allocator = allocator });
+            try op_to(&o.data[0], x, y, .{ .allocator = allocator });
         }
 
         for (1..o.size) |i| {
@@ -973,17 +994,17 @@ pub fn apply2_to(
         const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
         const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
         var itero: array.Iterator(O) = .init(o);
-        var itery = array.Iterator(Y).init(&yy);
+        var iterx = array.Iterator(Y).init(&yy);
         const opinfo = @typeInfo(@TypeOf(op_to));
         for (0..o.size) |_| {
             if (opinfo.@"fn".params.len == 3) {
-                op_to(&o.data[itero.index], x, yy.data[itery.index]);
+                op_to(&o.data[itero.index], x, yy.data[iterx.index]);
             } else if (opinfo.@"fn".params.len == 4) {
-                try op_to(&o.data[itero.index], x, yy.data[itery.index], .{ .allocator = allocator });
+                try op_to(&o.data[itero.index], x, yy.data[iterx.index], .{ .allocator = allocator });
             }
 
             _ = itero.nextAO(axis, iterationOrder);
-            _ = itery.nextAO(axis, iterationOrder);
+            _ = iterx.nextAO(axis, iterationOrder);
         }
 
         return;

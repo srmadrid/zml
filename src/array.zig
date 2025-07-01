@@ -140,6 +140,33 @@ pub fn Array(comptime T: type) type {
             return dense.linspace(allocator, T, start, stop, num, options.writeable, options.endpoint);
         }
 
+        pub fn logspace(
+            allocator: std.mem.Allocator,
+            start: anytype,
+            stop: anytype,
+            num: usize,
+            base: anytype,
+            options: struct {
+                writeable: bool = true,
+                endpoint: bool = true,
+            },
+        ) !Array(T) {
+            comptime if (types.isComplex(T))
+                @compileError("array.logspace does not support " ++ @typeName(T));
+
+            comptime if (types.isComplex(@TypeOf(start)))
+                @compileError("array.logspace: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
+
+            comptime if (types.isComplex(@TypeOf(stop)))
+                @compileError("array.logspace: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
+
+            if (num == 0) {
+                return Error.ZeroDimension;
+            }
+
+            return dense.logspace(allocator, T, start, stop, num, base, options.writeable, options.endpoint);
+        }
+
         /// Cleans up the array by deinitializing its elements. If the array holds
         /// a fixed precision type this is does not do anything.
         pub fn cleanup(self: *Array(T), allocator: ?std.mem.Allocator) void {

@@ -2763,12 +2763,15 @@ pub inline fn pow_(
     }
 }
 
+fn boolToStr(comptime ok: bool) [5]u8 {
+    return comptime if (ok) .{ '0', 't', 'r', 'u', 'e' } else .{ 'f', 'a', 'l', 's', 'e' };
+}
+
 pub inline fn pow_to(
     o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
-        mode: int.Mode = .default,
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
@@ -2785,7 +2788,7 @@ pub inline fn pow_to(
     if (comptime types.isArray(O) or types.isSlice(O) or
         types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
-        return array.pow_to(o, x, y, .{ .allocator = options.allocator, .mode = options.mode });
+        return array.pow_to(o, x, y, .{ .allocator = options.allocator });
 
     switch (types.numericType(C)) {
         .bool => @compileError("zml.pow_to not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),

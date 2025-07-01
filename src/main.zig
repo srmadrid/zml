@@ -7,13 +7,15 @@ pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const a = gpa.allocator();
-    //_ = a;
+    // _ = a;
+
+    //std.debug.print("{}\n", .{zml.types.isSlice(f64)});
 
     // try symbolicTesting(a);
 
-    // try generalTesting(a);
+    try generalTesting(a);
 
-    try addTesting(a);
+    // try addTesting(a);
 
     // try iterTesting(a);
 
@@ -397,7 +399,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("A.size = {}\n", .{A.size});
 
-    var B: zml.Array(f64) = try .linspace(a, 0, -1, 7, .{});
+    var B: zml.Array(f64) = try .logspace(a, 2, 3, 4, 10, .{});
     defer B.deinit(a);
 
     std.debug.print("B = [", .{});
@@ -533,7 +535,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
     };
     _ = shapes;
 
-    const G_T = try G.transpose(.{});
+    const G_T = try G.transpose(null);
     std.debug.print("G_T = G.transpose()\n", .{});
     std.debug.print("G.shape = [  ", .{});
     for (G.shape[0..G.ndim]) |dim| {
@@ -564,7 +566,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    const H_T = try H.transpose(.{});
+    const H_T = try H.transpose(null);
     std.debug.print("H_T = H.transpose()\n", .{});
     std.debug.print("H_T =\n", .{});
     for (0..H_T.shape[0]) |i| {
@@ -705,8 +707,7 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    //try zml.div_(&H, I, .{});
-    try zml.gamma_to(&H, I, .{});
+    try zml.add_to(&H, 5, I, .{});
     std.debug.print("\nH after add(I) =\n", .{});
     for (0..H.shape[0]) |i| {
         std.debug.print("\t", .{});

@@ -571,7 +571,7 @@ pub fn apply2_to(
     allocator: ?std.mem.Allocator,
 ) !void {
     if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)) and
-        !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)))
+        !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y)))
     {
         const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
         const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
