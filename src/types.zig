@@ -1325,7 +1325,7 @@ pub inline fn scast(
     comptime if (!isFixedPrecision(O))
         @compileError("Expected a fixed precision type, but got " ++ @typeName(O));
 
-    if (I == O) {
+    if (comptime I == O) {
         return value;
     }
 

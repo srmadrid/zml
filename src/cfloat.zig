@@ -183,7 +183,10 @@ pub inline fn add(
         .bool, .int, .float => {
             switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, y).addReal(scast(Scalar(C), x));
+                    return .{
+                        .re = scast(Scalar(C), x) + scast(Scalar(C), y.re),
+                        .im = scast(Scalar(C), y.im),
+                    };
                 },
                 else => unreachable,
             }
@@ -191,51 +194,21 @@ pub inline fn add(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    return scast(C, x).addReal(scast(Scalar(C), y));
+                    return .{
+                        .re = scast(Scalar(C), x.re) + scast(Scalar(C), y),
+                        .im = scast(Scalar(C), x.im),
+                    };
                 },
                 .cfloat => {
-                    return scast(C, x).add(scast(C, y));
+                    return .{
+                        .re = scast(Scalar(C), x.re) + scast(Scalar(C), y.re),
+                        .im = scast(Scalar(C), x.im) + scast(Scalar(C), y.im),
+                    };
                 },
                 else => unreachable,
             }
         },
         else => unreachable,
-    }
-}
-
-pub inline fn add_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-    const Y: type = @TypeOf(y);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("cfloat.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .cfloat)
-        @compileError("cfloat.add_ requires the output type to be a cfloat, got " ++ @typeName(O));
-
-    switch (types.numericType(Y)) {
-        .bool, .int, .float => {
-            o.*.re += scast(Scalar(O), y);
-        },
-        .cfloat => {
-            o.*.re += scast(Scalar(O), y.re);
-            o.*.im += scast(Scalar(O), y.im);
-        },
-        .integer, .rational, .real => {
-            o.*.re += scast(Scalar(O), y);
-        },
-        .complex => {
-            o.*.re += scast(Scalar(O), y.re);
-            o.*.im += scast(Scalar(O), y.im);
-        },
-        .expression => {
-            @compileError("cfloat.add_ does not support expressions yet");
-        },
     }
 }
 
@@ -267,51 +240,21 @@ pub inline fn sub(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    return scast(C, x).subReal(scast(Scalar(C), y));
+                    return .{
+                        .re = scast(Scalar(C), x.re) - scast(Scalar(C), y),
+                        .im = scast(Scalar(C), x.im),
+                    };
                 },
                 .cfloat => {
-                    return scast(C, x).sub(scast(C, y));
+                    return .{
+                        .re = scast(Scalar(C), x.re) - scast(Scalar(C), y.re),
+                        .im = scast(Scalar(C), x.im) - scast(Scalar(C), y.im),
+                    };
                 },
                 else => unreachable,
             }
         },
         else => unreachable,
-    }
-}
-
-pub inline fn sub_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-    const Y: type = @TypeOf(y);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("cfloat.sub_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .cfloat)
-        @compileError("cfloat.sub_ requires the output type to be a cfloat, got " ++ @typeName(O));
-
-    switch (types.numericType(Y)) {
-        .bool, .int, .float => {
-            o.*.re -= scast(Scalar(O), y);
-        },
-        .cfloat => {
-            o.*.re -= scast(Scalar(O), y.re);
-            o.*.im -= scast(Scalar(O), y.im);
-        },
-        .integer, .rational, .real => {
-            o.*.re -= scast(Scalar(O), y);
-        },
-        .complex => {
-            o.*.re -= scast(Scalar(O), y.re);
-            o.*.im -= scast(Scalar(O), y.im);
-        },
-        .expression => {
-            @compileError("cfloat.sub_ does not support expressions yet");
-        },
     }
 }
 
@@ -332,7 +275,10 @@ pub inline fn mul(
         .bool, .int, .float => {
             switch (types.numericType(Y)) {
                 .cfloat => {
-                    return scast(C, y).mulReal(scast(Scalar(C), x));
+                    return .{
+                        .re = scast(Scalar(C), x) * scast(Scalar(C), y.re),
+                        .im = scast(Scalar(C), x) * scast(Scalar(C), y.im),
+                    };
                 },
                 else => unreachable,
             }
@@ -340,7 +286,10 @@ pub inline fn mul(
         .cfloat => {
             switch (types.numericType(Y)) {
                 .bool, .int, .float => {
-                    return scast(C, x).mulReal(scast(Scalar(C), y));
+                    return .{
+                        .re = scast(Scalar(C), x.re) * scast(Scalar(C), y),
+                        .im = scast(Scalar(C), x.im) * scast(Scalar(C), y),
+                    };
                 },
                 .cfloat => {
                     return scast(C, x).mul(scast(C, y));
@@ -349,44 +298,6 @@ pub inline fn mul(
             }
         },
         else => unreachable,
-    }
-}
-
-pub inline fn mul_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-    const Y: type = @TypeOf(y);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("cfloat.mul_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .cfloat)
-        @compileError("cfloat.mul_ requires the output type to be a cfloat, got " ++ @typeName(O));
-
-    switch (types.numericType(Y)) {
-        .bool, .int, .float => {
-            const tmp: Scalar(O) = scast(Scalar(O), y);
-            o.*.re *= tmp;
-            o.*.im *= tmp;
-        },
-        .cfloat => {
-            o.* = o.*.mul(scast(O, y));
-        },
-        .integer, .rational, .real => {
-            const tmp: Scalar(O) = scast(Scalar(O), y);
-            o.*.re *= tmp;
-            o.*.im *= tmp;
-        },
-        .complex => {
-            o.* = o.*.mul(scast(O, y));
-        },
-        .expression => {
-            @compileError("cfloat.mul_ does not support expressions yet");
-        },
     }
 }
 
@@ -427,42 +338,56 @@ pub inline fn div(
     }
 }
 
-pub inline fn div_(
-    o: anytype,
+pub inline fn eq(
+    x: anytype,
     y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
+) bool {
+    const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
 
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("cfloat.div_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.eq requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
 
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .cfloat)
-        @compileError("cfloat.div_ requires the output type to be a cfloat, got " ++ @typeName(O));
-
-    switch (types.numericType(Y)) {
+    switch (types.numericType(X)) {
         .bool, .int, .float => {
-            const tmp: Scalar(O) = scast(Scalar(O), y);
-            o.*.re /= tmp;
-            o.*.im /= tmp;
+            switch (types.numericType(Y)) {
+                .cfloat => {
+                    return y.im == 0 and scast(Scalar(C), x) == scast(Scalar(C), y.re);
+                },
+                else => unreachable,
+            }
         },
         .cfloat => {
-            o.* = o.*.div(scast(O, y));
+            switch (types.numericType(Y)) {
+                .bool, .int, .float => {
+                    return x.im == 0 and scast(Scalar(C), x.re) == scast(Scalar(C), y);
+                },
+                .cfloat => {
+                    return scast(C, x) == scast(C, y);
+                },
+                else => unreachable,
+            }
         },
-        .integer, .rational, .real => {
-            const tmp: Scalar(O) = scast(Scalar(O), y);
-            o.*.re /= tmp;
-            o.*.im /= tmp;
-        },
-        .complex => {
-            o.* = o.*.div(scast(O, y));
-        },
-        .expression => {
-            @compileError("cfloat.div_ does not support expressions yet");
-        },
+        else => unreachable,
     }
+}
+
+pub inline fn ne(
+    x: anytype,
+    y: anytype,
+) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("cfloat.ne requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return !eq(x, y);
 }
 
 pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128

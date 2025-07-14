@@ -13,9 +13,9 @@ pub fn main() !void {
 
     // try symbolicTesting(a);
 
-    try generalTesting(a);
+    // try generalTesting(a);
 
-    // try addTesting(a);
+    try addTesting(a);
 
     // try iterTesting(a);
 
@@ -607,7 +607,7 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    var D: zml.Array(f64) = try zml.add(B, C, .{ .allocator = a });
+    var D: zml.Array(f64) = try zml.div(B, C, .{ .allocator = a });
     defer D.deinit(a);
     std.debug.print("\nD = B + C\n", .{});
     std.debug.print("D.shape = [  ", .{});
@@ -707,7 +707,7 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    try zml.add_to(&H, 5, I, .{});
+    try zml.ge_(&H, H, I, .{});
     std.debug.print("\nH after add(I) =\n", .{});
     for (0..H.shape[0]) |i| {
         std.debug.print("\t", .{});
@@ -725,6 +725,9 @@ fn addTesting(a: std.mem.Allocator) !void {
         }
         std.debug.print("\n", .{});
     }
+
+    const sum: f64 = zml.linalg.blas.dasum(zml.scast(isize, F.size), F.data.ptr, 1);
+    std.debug.print("Sum of F: {d}\n", .{sum});
 }
 
 fn iterTesting(a: std.mem.Allocator) !void {

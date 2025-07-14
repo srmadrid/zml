@@ -4,8 +4,12 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    // Option to provide BLAS and LAPACK implementations
     const options = b.addOptions();
+
+    const opt_max_dimensions = b.option(usize, "max_dimensions", "Maximum number of dimensions for `Array`s") orelse 8;
+    options.addOption(usize, "max_dimensions", opt_max_dimensions);
+
+    // Option to provide BLAS and LAPACK implementations
     const opt_link_cblas = b.option([]const u8, "link_cblas", "Link CBLAS implementation");
     options.addOption(?[]const u8, "link_cblas", opt_link_cblas);
     const opt_link_clapack = b.option([]const u8, "link_clapack", "Link CLAPACK implementation");

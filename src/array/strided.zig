@@ -322,28 +322,7 @@ pub inline fn apply1(
     return newarr;
 }
 
-pub inline fn apply1_(
-    comptime T: type,
-    arr: *Array(T),
-    comptime op_: anytype,
-    allocator: ?std.mem.Allocator,
-) !void {
-    var iter = array.Iterator(T).init(arr);
-    const opinfo = @typeInfo(@TypeOf(op_));
-    for (0..arr.size) |_| {
-        if (opinfo.@"fn".params.len == 1) {
-            op_(&arr.data[iter.index]);
-        } else if (opinfo.@"fn".params.len == 2) {
-            try op_(&arr.data[iter.index], .{ .allocator = allocator });
-        }
-
-        _ = iter.next();
-    }
-
-    return;
-}
-
-pub fn apply1_to(
+pub fn apply1_(
     comptime O: type,
     o: anytype,
     comptime X: type,
@@ -506,61 +485,6 @@ pub fn apply2(
 }
 
 pub fn apply2_(
-    comptime O: type,
-    o: anytype,
-    comptime Y: type,
-    y: anytype,
-    comptime op_: anytype,
-    allocator: ?std.mem.Allocator,
-) !void {
-    if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
-        const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
-        const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
-        var itero: array.Iterator(O) = .init(o);
-        const opinfo = @typeInfo(@TypeOf(op_));
-        for (0..o.size) |_| {
-            if (opinfo.@"fn".params.len == 2) {
-                op_(&o.data[itero.index], y);
-            } else if (opinfo.@"fn".params.len == 3) {
-                try op_(&o.data[itero.index], y, .{ .allocator = allocator });
-            }
-
-            _ = itero.nextAO(axis, iterationOrder);
-        }
-
-        return;
-    }
-
-    const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], y.shape[0..y.ndim] });
-    if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
-        return array.Error.NotBroadcastable;
-    }
-
-    const yy: Array(Y) = if (y.flags.storage == .dense)
-        try dense.broadcast(Y, &y, bct.shape[0..bct.ndim])
-    else
-        try broadcast(Y, &y, bct.shape[0..bct.ndim]);
-
-    const iterationOrder: array.IterationOrder = if (o.flags.order == .rowMajor) .rightToLeft else .leftToRight;
-    const axis: usize = if (o.flags.order == .rowMajor) o.ndim - 1 else 0;
-    var itero: array.Iterator(O) = .init(o);
-    var itery = array.Iterator(Y).init(&yy);
-    const opinfo = @typeInfo(@TypeOf(op_));
-    for (0..o.size) |_| {
-        if (opinfo.@"fn".params.len == 2) {
-            op_(&o.data[itero.index], y.data[itery.index]);
-        } else if (opinfo.@"fn".params.len == 3) {
-            try op_(&o.data[itero.index], y.data[itery.index], .{ .allocator = allocator });
-        }
-
-        _ = itero.nextAO(axis, iterationOrder);
-        _ = itery.nextAO(axis, iterationOrder);
-    }
-
-    return;
-}
-
-pub fn apply2_to(
     comptime O: type,
     o: anytype,
     comptime X: type,

@@ -40,37 +40,10 @@ pub fn apply1(
     }
 }
 
-// Only for in-pleace operations
 pub fn apply1_(
     o: anytype,
-    comptime op_: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("zml.abs_ requires the output to be a mutable pointer, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (!types.isArray(O) and !types.isSlice(O))
-        @compileError("apply1: o must be an array or slice, got " ++ @typeName(O));
-
-    if (o.flags.writeable == false)
-        return error.ArrayNotWriteable;
-
-    switch (o.flags.storage) {
-        .dense => return dense.apply1_(Numeric(O), o, op_, options.allocator),
-        .strided => return strided.apply1_(Numeric(O), o, op_, options.allocator),
-    }
-}
-
-pub fn apply1_to(
-    o: anytype,
     x: anytype,
-    comptime op_to: anytype,
+    comptime op_: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
@@ -79,24 +52,24 @@ pub fn apply1_to(
     const X: type = @TypeOf(x);
 
     comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("apply1_to: o must be a mutable pointer, got " ++ @typeName(O));
+        @compileError("apply1_: o must be a mutable pointer, got " ++ @typeName(O));
 
     O = types.Child(O);
 
     comptime if (!types.isArray(O) and !types.isSlice(O))
-        @compileError("apply1_to: o must be an array or slice, got " ++ @typeName(O));
+        @compileError("apply1_: o must be an array or slice, got " ++ @typeName(O));
 
     if (o.flags.writeable == false)
         return error.ArrayNotWriteable;
 
     switch (o.flags.storage) {
         .dense => switch (x.flags.storage) {
-            .dense => return dense.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
-            .strided => return strided.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
+            .dense => return dense.apply1_(Numeric(O), o, Numeric(X), x, op_, options.allocator),
+            .strided => return strided.apply1_(Numeric(O), o, Numeric(X), x, op_, options.allocator),
         },
         .strided => switch (x.flags.storage) {
-            .dense => return strided.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
-            .strided => return strided.apply1_to(Numeric(O), o, Numeric(X), x, op_to, options.allocator),
+            .dense => return strided.apply1_(Numeric(O), o, Numeric(X), x, op_, options.allocator),
+            .strided => return strided.apply1_(Numeric(O), o, Numeric(X), x, op_, options.allocator),
         },
     }
 }
@@ -147,48 +120,9 @@ pub fn apply2(
 
 pub fn apply2_(
     o: anytype,
-    y: anytype,
-    comptime op_: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    comptime var O: type = @TypeOf(o);
-    const Y: type = @TypeOf(y);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("zml.abs_ requires the output to be a mutable pointer, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (!types.isArray(O) and !types.isSlice(O))
-        @compileError("apply1: o must be an array or slice, got " ++ @typeName(O));
-
-    if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
-        // y is a scalar, only consider o's storage
-        switch (o.flags.storage) {
-            .dense => return dense.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
-            .strided => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
-        }
-    } else {
-        switch (o.flags.storage) {
-            .dense => switch (y.flags.storage) {
-                .dense => return dense.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
-                .strided => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
-            },
-            .strided => switch (y.flags.storage) {
-                .dense => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
-                .strided => return strided.apply2_(Numeric(O), o, Numeric(Y), y, op_, options.allocator),
-            },
-        }
-    }
-}
-
-pub fn apply2_to(
-    o: anytype,
     x: anytype,
     y: anytype,
-    comptime op_to: anytype,
+    comptime op_: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
@@ -209,54 +143,54 @@ pub fn apply2_to(
         if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
             // x and y are scalars, only consider o's storage
             switch (o.flags.storage) {
-                .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .dense => return dense.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
             }
         }
 
         // x is a scalar, only consider o and y's storage
         switch (o.flags.storage) {
             .dense => switch (y.flags.storage) {
-                .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .dense => return dense.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
             },
             .strided => switch (y.flags.storage) {
-                .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .dense => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
             },
         }
     } else if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
         // y is a scalar, only consider o and x's storage
         switch (o.flags.storage) {
             .dense => switch (x.flags.storage) {
-                .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .dense => return dense.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
             },
             .strided => switch (x.flags.storage) {
-                .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                .dense => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
             },
         }
     } else {
         switch (o.flags.storage) {
             .dense => switch (x.flags.storage) {
                 .dense => switch (y.flags.storage) {
-                    .dense => return dense.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .dense => return dense.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                    .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
                 },
                 .strided => switch (y.flags.storage) {
-                    .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .dense => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                    .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
                 },
             },
             .strided => switch (x.flags.storage) {
                 .dense => switch (y.flags.storage) {
-                    .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .dense => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                    .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
                 },
                 .strided => switch (y.flags.storage) {
-                    .dense => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
-                    .strided => return strided.apply2_to(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_to, options.allocator),
+                    .dense => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
+                    .strided => return strided.apply2_(Numeric(O), o, Numeric(X), x, Numeric(Y), y, op_, options.allocator),
                 },
             },
         }
@@ -276,21 +210,12 @@ pub inline fn abs(
 
 pub inline fn abs_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.abs_, .{ .allocator = options.allocator });
-}
-
-pub inline fn abs_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.abs_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.abs_, .{ .allocator = options.allocator });
 }
 
 // Exponential functions
@@ -306,21 +231,12 @@ pub inline fn exp(
 
 pub inline fn exp_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.exp_, .{ .allocator = options.allocator });
-}
-
-pub inline fn exp_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.exp_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.exp_, .{ .allocator = options.allocator });
 }
 
 pub inline fn exp10(
@@ -335,21 +251,12 @@ pub inline fn exp10(
 
 pub inline fn exp10_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.exp10_, .{ .allocator = options.allocator });
-}
-
-pub inline fn exp10_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.exp10_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.exp10_, .{ .allocator = options.allocator });
 }
 
 pub inline fn exp2(
@@ -364,21 +271,12 @@ pub inline fn exp2(
 
 pub inline fn exp2_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.exp2_, .{ .allocator = options.allocator });
-}
-
-pub inline fn exp2_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.exp2_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.exp2_, .{ .allocator = options.allocator });
 }
 
 pub inline fn exp10m1(
@@ -393,21 +291,12 @@ pub inline fn exp10m1(
 
 pub inline fn exp10m1_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.exp10m1_, .{ .allocator = options.allocator });
-}
-
-pub inline fn exp10m1_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.exp10m1_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.exp10m1_, .{ .allocator = options.allocator });
 }
 
 pub inline fn exp2m1(
@@ -422,21 +311,12 @@ pub inline fn exp2m1(
 
 pub inline fn exp2m1_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.exp2m1_, .{ .allocator = options.allocator });
-}
-
-pub inline fn exp2m1_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.exp2m1_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.exp2m1_, .{ .allocator = options.allocator });
 }
 
 pub inline fn expm1(
@@ -451,21 +331,12 @@ pub inline fn expm1(
 
 pub inline fn expm1_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.expm1_, .{ .allocator = options.allocator });
-}
-
-pub inline fn expm1_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.expm1_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.expm1_, .{ .allocator = options.allocator });
 }
 
 pub inline fn log(
@@ -480,21 +351,12 @@ pub inline fn log(
 
 pub inline fn log_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.log_, .{ .allocator = options.allocator });
-}
-
-pub inline fn log_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.log_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.log_, .{ .allocator = options.allocator });
 }
 
 pub inline fn log10(
@@ -509,21 +371,12 @@ pub inline fn log10(
 
 pub inline fn log10_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.log10_, .{ .allocator = options.allocator });
-}
-
-pub inline fn log10_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.log10_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.log10_, .{ .allocator = options.allocator });
 }
 
 pub inline fn log2(
@@ -538,21 +391,12 @@ pub inline fn log2(
 
 pub inline fn log2_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.log2_, .{ .allocator = options.allocator });
-}
-
-pub inline fn log2_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.log2_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.log2_, .{ .allocator = options.allocator });
 }
 
 pub inline fn log10p1(
@@ -567,21 +411,12 @@ pub inline fn log10p1(
 
 pub inline fn log10p1_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.log10p1_, .{ .allocator = options.allocator });
-}
-
-pub inline fn log10p1_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.log10p1_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.log10p1_, .{ .allocator = options.allocator });
 }
 
 pub inline fn log2p1(
@@ -596,21 +431,12 @@ pub inline fn log2p1(
 
 pub inline fn log2p1_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.log2p1_, .{ .allocator = options.allocator });
-}
-
-pub inline fn log2p1_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.log2p1_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.log2p1_, .{ .allocator = options.allocator });
 }
 
 pub inline fn log1p(
@@ -625,21 +451,12 @@ pub inline fn log1p(
 
 pub inline fn log1p_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.log1p_, .{ .allocator = options.allocator });
-}
-
-pub inline fn log1p_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.log1p_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.log1p_, .{ .allocator = options.allocator });
 }
 
 // Power functions
@@ -656,23 +473,13 @@ pub inline fn pow(
 
 pub inline fn pow_(
     o: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply2_(o, y, ops.pow_, .{ .allocator = options.allocator });
-}
-
-pub inline fn pow_to(
-    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply2_to(o, x, y, ops.pow_to, .{ .allocator = options.allocator });
+    return apply2_(o, x, y, ops.pow_, .{ .allocator = options.allocator });
 }
 
 pub inline fn sqrt(
@@ -687,21 +494,12 @@ pub inline fn sqrt(
 
 pub inline fn sqrt_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.sqrt_, .{ .allocator = options.allocator });
-}
-
-pub inline fn sqrt_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.sqrt_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.sqrt_, .{ .allocator = options.allocator });
 }
 
 pub inline fn cbrt(
@@ -716,21 +514,12 @@ pub inline fn cbrt(
 
 pub inline fn cbrt_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.cbrt_, .{ .allocator = options.allocator });
-}
-
-pub inline fn cbrt_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.cbrt_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.cbrt_, .{ .allocator = options.allocator });
 }
 
 pub inline fn hypot(
@@ -746,23 +535,13 @@ pub inline fn hypot(
 
 pub inline fn hypot_(
     o: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply2_(o, y, ops.hypot_, .{ .allocator = options.allocator });
-}
-
-pub inline fn hypot_to(
-    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply2_to(o, x, y, ops.hypot_to, .{ .allocator = options.allocator });
+    return apply2_(o, x, y, ops.hypot_, .{ .allocator = options.allocator });
 }
 
 // Trigonometric functions
@@ -778,21 +557,12 @@ pub inline fn sin(
 
 pub inline fn sin_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.sin_, .{ .allocator = options.allocator });
-}
-
-pub inline fn sin_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.sin_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.sin_, .{ .allocator = options.allocator });
 }
 
 pub inline fn cos(
@@ -807,21 +577,12 @@ pub inline fn cos(
 
 pub inline fn cos_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.cos_, .{ .allocator = options.allocator });
-}
-
-pub inline fn cos_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.cos_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.cos_, .{ .allocator = options.allocator });
 }
 
 pub inline fn tan(
@@ -836,21 +597,12 @@ pub inline fn tan(
 
 pub inline fn tan_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.tan_, .{ .allocator = options.allocator });
-}
-
-pub inline fn tan_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.tan_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.tan_, .{ .allocator = options.allocator });
 }
 
 pub inline fn asin(
@@ -865,21 +617,12 @@ pub inline fn asin(
 
 pub inline fn asin_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.asin_, .{ .allocator = options.allocator });
-}
-
-pub inline fn asin_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.asin_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.asin_, .{ .allocator = options.allocator });
 }
 
 pub inline fn acos(
@@ -894,21 +637,12 @@ pub inline fn acos(
 
 pub inline fn acos_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.acos_, .{ .allocator = options.allocator });
-}
-
-pub inline fn acos_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.acos_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.acos_, .{ .allocator = options.allocator });
 }
 
 pub inline fn atan(
@@ -923,21 +657,12 @@ pub inline fn atan(
 
 pub inline fn atan_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.atan_, .{ .allocator = options.allocator });
-}
-
-pub inline fn atan_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.atan_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.atan_, .{ .allocator = options.allocator });
 }
 
 pub inline fn atan2(
@@ -953,23 +678,13 @@ pub inline fn atan2(
 
 pub inline fn atan2_(
     o: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply2_(o, y, ops.atan2_, .{ .allocator = options.allocator });
-}
-
-pub inline fn atan2_to(
-    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply2_to(o, x, y, ops.atan2_to, .{ .allocator = options.allocator });
+    return apply2_(o, x, y, ops.atan2_, .{ .allocator = options.allocator });
 }
 
 pub inline fn sinpi(
@@ -984,21 +699,12 @@ pub inline fn sinpi(
 
 pub inline fn sinpi_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.sinpi_, .{ .allocator = options.allocator });
-}
-
-pub inline fn sinpi_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.sinpi_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.sinpi_, .{ .allocator = options.allocator });
 }
 
 pub inline fn cospi(
@@ -1013,21 +719,12 @@ pub inline fn cospi(
 
 pub inline fn cospi_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.cospi_, .{ .allocator = options.allocator });
-}
-
-pub inline fn cospi_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.cospi_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.cospi_, .{ .allocator = options.allocator });
 }
 
 pub inline fn tanpi(
@@ -1042,21 +739,12 @@ pub inline fn tanpi(
 
 pub inline fn tanpi_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.tanpi_, .{ .allocator = options.allocator });
-}
-
-pub inline fn tanpi_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.tanpi_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.tanpi_, .{ .allocator = options.allocator });
 }
 
 pub inline fn asinpi(
@@ -1071,21 +759,12 @@ pub inline fn asinpi(
 
 pub inline fn asinpi_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.asinpi_, .{ .allocator = options.allocator });
-}
-
-pub inline fn asinpi_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.asinpi_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.asinpi_, .{ .allocator = options.allocator });
 }
 
 pub inline fn acospi(
@@ -1100,21 +779,12 @@ pub inline fn acospi(
 
 pub inline fn acospi_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.acospi_, .{ .allocator = options.allocator });
-}
-
-pub inline fn acospi_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.acospi_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.acospi_, .{ .allocator = options.allocator });
 }
 
 pub inline fn atanpi(
@@ -1129,21 +799,12 @@ pub inline fn atanpi(
 
 pub inline fn atanpi_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.atanpi_, .{ .allocator = options.allocator });
-}
-
-pub inline fn atanpi_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.atanpi_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.atanpi_, .{ .allocator = options.allocator });
 }
 
 pub inline fn atan2pi(
@@ -1159,23 +820,13 @@ pub inline fn atan2pi(
 
 pub inline fn atan2pi_(
     o: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply2_(o, y, ops.atan2pi_, .{ .allocator = options.allocator });
-}
-
-pub inline fn atan2pi_to(
-    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply2_to(o, x, y, ops.atan2pi_to, .{ .allocator = options.allocator });
+    return apply2_(o, x, y, ops.atan2pi_, .{ .allocator = options.allocator });
 }
 
 // Hyperbolic functions
@@ -1191,21 +842,12 @@ pub inline fn sinh(
 
 pub inline fn sinh_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.sinh_, .{ .allocator = options.allocator });
-}
-
-pub inline fn sinh_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.sinh_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.sinh_, .{ .allocator = options.allocator });
 }
 
 pub inline fn cosh(
@@ -1220,21 +862,12 @@ pub inline fn cosh(
 
 pub inline fn cosh_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.cosh_, .{ .allocator = options.allocator });
-}
-
-pub inline fn cosh_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.cosh_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.cosh_, .{ .allocator = options.allocator });
 }
 
 pub inline fn tanh(
@@ -1249,21 +882,12 @@ pub inline fn tanh(
 
 pub inline fn tanh_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.tanh_, .{ .allocator = options.allocator });
-}
-
-pub inline fn tanh_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.tanh_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.tanh_, .{ .allocator = options.allocator });
 }
 
 pub inline fn asinh(
@@ -1278,21 +902,12 @@ pub inline fn asinh(
 
 pub inline fn asinh_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.asinh_, .{ .allocator = options.allocator });
-}
-
-pub inline fn asinh_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.asinh_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.asinh_, .{ .allocator = options.allocator });
 }
 
 pub inline fn acosh(
@@ -1307,21 +922,12 @@ pub inline fn acosh(
 
 pub inline fn acosh_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.acosh_, .{ .allocator = options.allocator });
-}
-
-pub inline fn acosh_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.acosh_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.acosh_, .{ .allocator = options.allocator });
 }
 
 pub inline fn atanh(
@@ -1336,21 +942,12 @@ pub inline fn atanh(
 
 pub inline fn atanh_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.atanh_, .{ .allocator = options.allocator });
-}
-
-pub inline fn atanh_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.atanh_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.atanh_, .{ .allocator = options.allocator });
 }
 
 // Error and gamma functions
@@ -1366,21 +963,12 @@ pub inline fn erf(
 
 pub inline fn erf_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.erf_, .{ .allocator = options.allocator });
-}
-
-pub inline fn erf_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.erf_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.erf_, .{ .allocator = options.allocator });
 }
 
 pub inline fn erfc(
@@ -1395,21 +983,12 @@ pub inline fn erfc(
 
 pub inline fn erfc_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.erfc_, .{ .allocator = options.allocator });
-}
-
-pub inline fn erfc_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.erfc_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.erfc_, .{ .allocator = options.allocator });
 }
 
 pub inline fn gamma(
@@ -1424,21 +1003,12 @@ pub inline fn gamma(
 
 pub inline fn gamma_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.gamma_, .{ .allocator = options.allocator });
-}
-
-pub inline fn gamma_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.gamma_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.gamma_, .{ .allocator = options.allocator });
 }
 
 pub inline fn lgamma(
@@ -1453,21 +1023,12 @@ pub inline fn lgamma(
 
 pub inline fn lgamma_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.lgamma_, .{ .allocator = options.allocator });
-}
-
-pub inline fn lgamma_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.lgamma_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.lgamma_, .{ .allocator = options.allocator });
 }
 
 // Nearest integer operations
@@ -1483,21 +1044,12 @@ pub inline fn ceil(
 
 pub inline fn ceil_(
     o: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return apply1_(o, ops.ceil_, .{ .allocator = options.allocator });
-}
-
-pub inline fn ceil_to(
-    o: anytype,
     x: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply1_to(o, x, ops.ceil_to, .{ .allocator = options.allocator });
+    return apply1_(o, x, ops.ceil_, .{ .allocator = options.allocator });
 }
 
 inline fn addDefault(
@@ -1563,12 +1115,13 @@ pub inline fn add(
 
 inline fn addDefault_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.add_(o, y, .{
+    return ops.add_(o, x, y, .{
         .mode = int.Mode.default,
         .allocator = options.allocator,
     });
@@ -1576,12 +1129,13 @@ inline fn addDefault_(
 
 inline fn addWrap_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.add_(o, y, .{
+    return ops.add_(o, x, y, .{
         .mode = int.Mode.wrap,
         .allocator = options.allocator,
     });
@@ -1589,12 +1143,13 @@ inline fn addWrap_(
 
 inline fn addSaturate_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.add_(o, y, .{
+    return ops.add_(o, x, y, .{
         .mode = int.Mode.saturate,
         .allocator = options.allocator,
     });
@@ -1602,63 +1157,6 @@ inline fn addSaturate_(
 
 pub inline fn add_(
     o: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-        mode: int.Mode = .default,
-    },
-) !void {
-    switch (options.mode) {
-        .default => return apply2_(o, y, addDefault_, .{ .allocator = options.allocator }),
-        .wrap => return apply2_(o, y, addWrap_, .{ .allocator = options.allocator }),
-        .saturate => return apply2_(o, y, addSaturate_, .{ .allocator = options.allocator }),
-    }
-}
-
-inline fn addDefault_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.add_to(o, x, y, .{
-        .mode = int.Mode.default,
-        .allocator = options.allocator,
-    });
-}
-
-inline fn addWrap_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.add_to(o, x, y, .{
-        .mode = int.Mode.wrap,
-        .allocator = options.allocator,
-    });
-}
-
-inline fn addSaturate_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.add_to(o, x, y, .{
-        .mode = int.Mode.saturate,
-        .allocator = options.allocator,
-    });
-}
-
-pub inline fn add_to(
-    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
@@ -1667,9 +1165,9 @@ pub inline fn add_to(
     },
 ) !void {
     switch (options.mode) {
-        .default => return apply2_to(o, x, y, addDefault_to, .{ .allocator = options.allocator }),
-        .wrap => return apply2_to(o, x, y, addWrap_to, .{ .allocator = options.allocator }),
-        .saturate => return apply2_to(o, x, y, addSaturate_to, .{ .allocator = options.allocator }),
+        .default => return apply2_(o, x, y, addDefault_, .{ .allocator = options.allocator }),
+        .wrap => return apply2_(o, x, y, addWrap_, .{ .allocator = options.allocator }),
+        .saturate => return apply2_(o, x, y, addSaturate_, .{ .allocator = options.allocator }),
     }
 }
 
@@ -1736,12 +1234,13 @@ pub inline fn sub(
 
 inline fn subDefault_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.sub_(o, y, .{
+    return ops.sub_(o, x, y, .{
         .mode = int.Mode.default,
         .allocator = options.allocator,
     });
@@ -1749,12 +1248,13 @@ inline fn subDefault_(
 
 inline fn subWrap_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.sub_(o, y, .{
+    return ops.sub_(o, x, y, .{
         .mode = int.Mode.wrap,
         .allocator = options.allocator,
     });
@@ -1762,12 +1262,13 @@ inline fn subWrap_(
 
 inline fn subSaturate_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.sub_(o, y, .{
+    return ops.sub_(o, x, y, .{
         .mode = int.Mode.saturate,
         .allocator = options.allocator,
     });
@@ -1775,63 +1276,6 @@ inline fn subSaturate_(
 
 pub inline fn sub_(
     o: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-        mode: int.Mode = .default,
-    },
-) !void {
-    switch (options.mode) {
-        .default => return apply2_(o, y, subDefault_, .{ .allocator = options.allocator }),
-        .wrap => return apply2_(o, y, subWrap_, .{ .allocator = options.allocator }),
-        .saturate => return apply2_(o, y, subSaturate_, .{ .allocator = options.allocator }),
-    }
-}
-
-inline fn subDefault_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.sub_to(o, x, y, .{
-        .mode = int.Mode.default,
-        .allocator = options.allocator,
-    });
-}
-
-inline fn subWrap_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.sub_to(o, x, y, .{
-        .mode = int.Mode.wrap,
-        .allocator = options.allocator,
-    });
-}
-
-inline fn subSaturate_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.sub_to(o, x, y, .{
-        .mode = int.Mode.saturate,
-        .allocator = options.allocator,
-    });
-}
-
-pub inline fn sub_to(
-    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
@@ -1840,9 +1284,9 @@ pub inline fn sub_to(
     },
 ) !void {
     switch (options.mode) {
-        .default => return apply2_to(o, x, y, subDefault_to, .{ .allocator = options.allocator }),
-        .wrap => return apply2_to(o, x, y, subWrap_to, .{ .allocator = options.allocator }),
-        .saturate => return apply2_to(o, x, y, subSaturate_to, .{ .allocator = options.allocator }),
+        .default => return apply2_(o, x, y, subDefault_, .{ .allocator = options.allocator }),
+        .wrap => return apply2_(o, x, y, subWrap_, .{ .allocator = options.allocator }),
+        .saturate => return apply2_(o, x, y, subSaturate_, .{ .allocator = options.allocator }),
     }
 }
 
@@ -1909,12 +1353,13 @@ pub inline fn mul(
 
 inline fn mulDefault_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.mul_(o, y, .{
+    return ops.mul_(o, x, y, .{
         .mode = int.Mode.default,
         .allocator = options.allocator,
     });
@@ -1922,12 +1367,13 @@ inline fn mulDefault_(
 
 inline fn mulWrap_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.mul_(o, y, .{
+    return ops.mul_(o, x, y, .{
         .mode = int.Mode.wrap,
         .allocator = options.allocator,
     });
@@ -1935,12 +1381,13 @@ inline fn mulWrap_(
 
 inline fn mulSaturate_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return ops.mul_(o, y, .{
+    return ops.mul_(o, x, y, .{
         .mode = int.Mode.saturate,
         .allocator = options.allocator,
     });
@@ -1948,63 +1395,6 @@ inline fn mulSaturate_(
 
 pub inline fn mul_(
     o: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-        mode: int.Mode = .default,
-    },
-) !void {
-    switch (options.mode) {
-        .default => return apply2_(o, y, mulDefault_, .{ .allocator = options.allocator }),
-        .wrap => return apply2_(o, y, mulWrap_, .{ .allocator = options.allocator }),
-        .saturate => return apply2_(o, y, mulSaturate_, .{ .allocator = options.allocator }),
-    }
-}
-
-inline fn mulDefault_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.mul_to(o, x, y, .{
-        .mode = int.Mode.default,
-        .allocator = options.allocator,
-    });
-}
-
-inline fn mulWrap_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.mul_to(o, x, y, .{
-        .mode = int.Mode.wrap,
-        .allocator = options.allocator,
-    });
-}
-
-inline fn mulSaturate_to(
-    o: anytype,
-    x: anytype,
-    y: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
-) !void {
-    return ops.mul_to(o, x, y, .{
-        .mode = int.Mode.saturate,
-        .allocator = options.allocator,
-    });
-}
-
-pub inline fn mul_to(
-    o: anytype,
     x: anytype,
     y: anytype,
     options: struct {
@@ -2013,9 +1403,9 @@ pub inline fn mul_to(
     },
 ) !void {
     switch (options.mode) {
-        .default => return apply2_to(o, x, y, mulDefault_to, .{ .allocator = options.allocator }),
-        .wrap => return apply2_to(o, x, y, mulWrap_to, .{ .allocator = options.allocator }),
-        .saturate => return apply2_to(o, x, y, mulSaturate_to, .{ .allocator = options.allocator }),
+        .default => return apply2_(o, x, y, mulDefault_, .{ .allocator = options.allocator }),
+        .wrap => return apply2_(o, x, y, mulWrap_, .{ .allocator = options.allocator }),
+        .saturate => return apply2_(o, x, y, mulSaturate_, .{ .allocator = options.allocator }),
     }
 }
 
@@ -2032,15 +1422,27 @@ pub inline fn div(
 
 pub inline fn div_(
     o: anytype,
+    x: anytype,
     y: anytype,
     options: struct {
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply2_(o, y, ops.div_, .{ .allocator = options.allocator });
+    return apply2_(o, x, y, ops.div_, .{ .allocator = options.allocator });
 }
 
-pub inline fn div_to(
+pub inline fn eq(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(bool) {
+    return apply2(allocator, x, y, ops.eq, .{ .writeable = options.writeable });
+}
+
+pub inline fn eq_(
     o: anytype,
     x: anytype,
     y: anytype,
@@ -2048,5 +1450,115 @@ pub inline fn div_to(
         allocator: ?std.mem.Allocator = null,
     },
 ) !void {
-    return apply2_to(o, x, y, ops.div_to, .{ .allocator = options.allocator });
+    return apply2_(o, x, y, ops.eq_, .{ .allocator = options.allocator });
+}
+
+pub inline fn ne(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(bool) {
+    return apply2(allocator, x, y, ops.ne, .{ .writeable = options.writeable });
+}
+
+pub inline fn ne_(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, x, y, ops.ne_, .{ .allocator = options.allocator });
+}
+
+pub inline fn lt(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(bool) {
+    return apply2(allocator, x, y, ops.lt, .{ .writeable = options.writeable });
+}
+
+pub inline fn lt_(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, x, y, ops.lt_, .{ .allocator = options.allocator });
+}
+
+pub inline fn le(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(bool) {
+    return apply2(allocator, x, y, ops.le, .{ .writeable = options.writeable });
+}
+
+pub inline fn le_(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, x, y, ops.le_, .{ .allocator = options.allocator });
+}
+
+pub inline fn gt(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(bool) {
+    return apply2(allocator, x, y, ops.gt, .{ .writeable = options.writeable });
+}
+
+pub inline fn gt_(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, x, y, ops.gt_, .{ .allocator = options.allocator });
+}
+
+pub inline fn ge(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(bool) {
+    return apply2(allocator, x, y, ops.ge, .{ .writeable = options.writeable });
+}
+
+pub inline fn ge_(
+    o: anytype,
+    x: anytype,
+    y: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply2_(o, x, y, ops.ge_, .{ .allocator = options.allocator });
 }
