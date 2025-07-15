@@ -1,44 +1,65 @@
 const std = @import("std");
+
 const types = @import("../../types.zig");
+const scast = types.scast;
+const Scalar = types.Scalar;
+const ops = @import("../../ops.zig");
+const float = @import("../../float.zig");
+
 const blas = @import("../blas.zig");
 
-pub inline fn dotc_sub(comptime T: type, n: isize, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ret: *T) void {
-    @setRuntimeSafety(false);
-    const numericType = types.numericType(T);
+pub fn dotc_sub(
+    n: isize,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    ret: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    const X: type = types.Child(@TypeOf(x));
+    const Y: type = types.Child(@TypeOf(y));
+    const C: type = types.Coerce(X, Y);
 
-    ret.* = T.init(0, 0);
+    try ops.set(ret, 0, .{ .allocator = options.allocator });
 
-    if (n <= 0) return;
+    if (n <= 0) return blas.Error.InvalidArgument;
 
-    switch (numericType) {
-        .bool => @compileError("blas.dotc_sub does not support bool."),
-        .int => @compileError("blas.dotc_sub does not support integers. Use blas.dot instead."),
-        .float => @compileError("blas.dotc_sub does not support floats. Use blas.dot instead."),
-        .cfloat => {
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-            const nu = (n >> 1) << 1;
-            if (nu != 0) {
-                const StX = ix + nu * incx;
-                const incx2 = incx * 2;
-                const incy2 = incy * 2;
-                while (ix != StX) {
-                    ret.*.re += x[@intCast(ix)].re * y[@intCast(iy)].re + x[@intCast(ix)].im * y[@intCast(iy)].im + x[@intCast(ix + incx)].re * y[@intCast(iy + incy)].re + x[@intCast(ix + incx)].im * y[@intCast(iy + incy)].im;
-                    ret.*.im += x[@intCast(ix)].re * y[@intCast(iy)].im - x[@intCast(ix)].im * y[@intCast(iy)].re + x[@intCast(ix + incx)].re * y[@intCast(iy + incy)].im - x[@intCast(ix + incx)].im * y[@intCast(iy + incy)].re;
+    var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+    var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+    if (comptime types.isArbitraryPrecision(C)) {
+        var temp: C = try ops.init(C, .{ .allocator = options.allocator });
+        defer ops.deinit(temp, .{ .allocator = options.allocator });
+        for (0..scast(usize, n)) |_| {
+            try ops.mul_(
+                &temp,
+                ops.conjugate(x[scast(usize, ix)], .{ .copy = false }) catch unreachable,
+                y[scast(usize, iy)],
+                .{ .allocator = options.allocator },
+            );
+            try ops.add_(
+                ret,
+                ret.*,
+                temp,
+                .{ .allocator = options.allocator },
+            );
 
-                    ix += incx2;
-                    iy += incy2;
-                }
-            }
+            ix += incx;
+            iy += incy;
+        }
+    } else {
+        for (0..scast(usize, n)) |_| {
+            try ops.add_(
+                ret,
+                ret.*,
+                ops.mul(ops.conjugate(x[scast(usize, ix)], .{}) catch unreachable, y[scast(usize, iy)], .{}) catch unreachable,
+                .{ .allocator = options.allocator },
+            );
 
-            for (@intCast(nu)..@intCast(n)) |_| {
-                ret.*.re += x[@intCast(ix)].re * y[@intCast(iy)].re + x[@intCast(ix)].im * y[@intCast(iy)].im;
-                ret.*.im += x[@intCast(ix)].re * y[@intCast(iy)].im - x[@intCast(ix)].im * y[@intCast(iy)].re;
-
-                ix += incx;
-                iy += incy;
-            }
-        },
-        .integer, .rational, .real, .complex, .expression => @compileError("blas.dotc_sub only supports simple types."),
+            ix += incx;
+            iy += incy;
+        }
     }
 }

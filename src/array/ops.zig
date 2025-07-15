@@ -218,6 +218,26 @@ pub inline fn abs_(
     return apply1_(o, x, ops.abs_, .{ .allocator = options.allocator });
 }
 
+pub inline fn abs2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    options: struct {
+        writeable: bool = true,
+    },
+) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+    return apply1(allocator, x, ops.abs2, .{ .writeable = options.writeable });
+}
+
+pub inline fn abs2_(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    return apply1_(o, x, ops.abs2_, .{ .allocator = options.allocator });
+}
+
 // Exponential functions
 pub inline fn exp(
     allocator: std.mem.Allocator,

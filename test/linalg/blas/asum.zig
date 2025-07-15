@@ -15,9 +15,9 @@ test asum {
         x1[i] = @floatFromInt(i + 1);
     }
 
-    const result1 = asum(f64, n, x1.ptr, 1);
+    const result1 = asum(n, x1.ptr, 1, .{}) catch unreachable;
     try std.testing.expectEqual(500500, result1);
-    const result2 = asum(f64, n / 2, x1.ptr, 2);
+    const result2 = asum(n / 2, x1.ptr, 2, .{}) catch unreachable;
     try std.testing.expectEqual(250000, result2);
 
     var x2 = try a.alloc(cf64, n);
@@ -27,8 +27,8 @@ test asum {
         x2[i] = cf64.init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast(i + 1))));
     }
 
-    const result3 = asum(cf64, n, x2.ptr, 1);
+    const result3 = asum(n, x2.ptr, 1, .{}) catch unreachable;
     try std.testing.expectEqual(1001000, result3);
-    const result4 = asum(cf64, n / 2, x2.ptr, 2);
+    const result4 = asum(n / 2, x2.ptr, 2, .{}) catch unreachable;
     try std.testing.expectEqual(500000, result4);
 }

@@ -24,15 +24,15 @@ test axpy {
         x4[i] = @floatFromInt(i + 1);
     }
 
-    axpy(f64, n, 2, x1.ptr, 1, x2.ptr, 1);
+    axpy(n, 2, x1.ptr, 1, x2.ptr, 1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + (i + 1))), x2[i]);
     }
-    axpy(f64, n, 2, x1.ptr, 1, x3.ptr, -1);
+    axpy(n, 2, x1.ptr, 1, x3.ptr, -1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (n - i) + (n - i))), x3[i]);
     }
-    axpy(f64, n / 2, 2, x1.ptr, 2, x4.ptr, 2);
+    axpy(n / 2, 2, x1.ptr, 2, x4.ptr, 2, .{}) catch unreachable;
     for (0..n) |i| {
         if (i % 2 == 0) {
             try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + (i + 1))), x4[i]);
@@ -57,17 +57,17 @@ test axpy {
         x8[i] = cf64.init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast((i + 1)))));
     }
 
-    axpy(cf64, n, cf64.init(2, 3), x5.ptr, 1, x6.ptr, 1);
+    axpy(n, cf64.init(2, 3), x5.ptr, 1, x6.ptr, 1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1) + (i + 1))), x6[i].re);
         try std.testing.expectEqual(@as(f64, @floatFromInt(-2 * @as(isize, @intCast(i + 1)) + 3 * @as(isize, @intCast(i + 1)) - @as(isize, @intCast(i + 1)))), x6[i].im);
     }
-    axpy(cf64, n, cf64.init(2, 3), x5.ptr, 1, x7.ptr, -1);
+    axpy(n, cf64.init(2, 3), x5.ptr, 1, x7.ptr, -1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (n - i) + 3 * (n - i) + (n - i))), x7[i].re);
         try std.testing.expectEqual(@as(f64, @floatFromInt(-2 * @as(isize, @intCast(n - i)) + 3 * @as(isize, @intCast(n - i)) - @as(isize, @intCast(n - i)))), x7[i].im);
     }
-    axpy(cf64, n / 2, cf64.init(2, 3), x5.ptr, 2, x8.ptr, 2);
+    axpy(n / 2, cf64.init(2, 3), x5.ptr, 2, x8.ptr, 2, .{}) catch unreachable;
     for (0..n) |i| {
         if (i % 2 == 0) {
             try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1) + (i + 1))), x8[i].re);

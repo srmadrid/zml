@@ -25,15 +25,15 @@ test dotu_sub {
     }
 
     var result1: cf64 = undefined;
-    dotu_sub(cf64, n, x1.ptr, 1, x2.ptr, 1, &result1);
+    dotu_sub(n, x1.ptr, 1, x2.ptr, 1, &result1, .{}) catch unreachable;
     try std.testing.expectEqual(0, result1.re);
     try std.testing.expectEqual(-667667000, result1.im);
     var result2: cf64 = undefined;
-    dotu_sub(cf64, n, x1.ptr, 1, x3.ptr, -1, &result2);
+    dotu_sub(n, x1.ptr, 1, x3.ptr, -1, &result2, .{}) catch unreachable;
     try std.testing.expectEqual(0, result2.re);
     try std.testing.expectEqual(-667667000, result2.im);
     var result3: cf64 = undefined;
-    dotu_sub(cf64, n / 2, x1.ptr, 2, x4.ptr, 2, &result3);
+    dotu_sub(n / 2, x1.ptr, 2, x4.ptr, 2, &result3, .{}) catch unreachable;
     try std.testing.expectEqual(0, result3.re);
     try std.testing.expectEqual(-333333000, result3.im);
 }

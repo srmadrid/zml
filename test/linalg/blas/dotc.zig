@@ -24,13 +24,13 @@ test dotc {
         x4[i] = cf64.init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast(i + 1))));
     }
 
-    const result1 = dotc(cf64, n, x1.ptr, 1, x2.ptr, 1);
+    const result1 = dotc(n, x1.ptr, 1, x2.ptr, 1, .{}) catch unreachable;
     try std.testing.expectEqual(667667000, result1.re);
     try std.testing.expectEqual(0, result1.im);
-    const result2 = dotc(cf64, n, x1.ptr, 1, x3.ptr, -1);
+    const result2 = dotc(n, x1.ptr, 1, x3.ptr, -1, .{}) catch unreachable;
     try std.testing.expectEqual(667667000, result2.re);
     try std.testing.expectEqual(0, result2.im);
-    const result3 = dotc(cf64, n / 2, x1.ptr, 2, x4.ptr, 2);
+    const result3 = dotc(n / 2, x1.ptr, 2, x4.ptr, 2, .{}) catch unreachable;
     try std.testing.expectEqual(333333000, result3.re);
     try std.testing.expectEqual(0, result3.im);
 }

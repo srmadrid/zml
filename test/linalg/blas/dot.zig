@@ -23,10 +23,10 @@ test dot {
         x4[i] = @floatFromInt(i + 1);
     }
 
-    const result1 = dot(f64, n, x1.ptr, 1, x2.ptr, 1);
+    const result1 = dot(n, x1.ptr, 1, x2.ptr, 1, .{}) catch unreachable;
     try std.testing.expectEqual(333833500, result1);
-    const result2 = dot(f64, n, x1.ptr, 1, x3.ptr, -1);
+    const result2 = dot(n, x1.ptr, 1, x3.ptr, -1, .{}) catch unreachable;
     try std.testing.expectEqual(333833500, result2);
-    const result3 = dot(f64, n / 2, x1.ptr, 2, x4.ptr, 2);
+    const result3 = dot(n / 2, x1.ptr, 2, x4.ptr, 2, .{}) catch unreachable;
     try std.testing.expectEqual(166666500, result3);
 }

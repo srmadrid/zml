@@ -8,7 +8,7 @@ const float = @import("../../float.zig");
 
 const blas = @import("../blas.zig");
 
-pub fn dotu_sub(
+pub fn dot_sub(
     n: isize,
     x: anytype,
     incx: isize,

@@ -146,7 +146,7 @@ pub inline fn numericType(comptime T: type) NumericType {
     switch (@typeInfo(T)) {
         .bool => return .bool,
         .int, .comptime_int => {
-            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != comptime_int)
+            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != c_uint and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != c_int and T != comptime_int)
                 @compileError("Unsupported integer type: " ++ @typeName(T));
 
             return .int;
@@ -172,6 +172,36 @@ pub inline fn numericType(comptime T: type) NumericType {
     }
 }
 
+pub fn isNumeric(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .bool => return .bool,
+        .int, .comptime_int => {
+            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != c_uint and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != c_int and T != comptime_int)
+                return false;
+
+            return true;
+        },
+        .float, .comptime_float => return true,
+        else => {
+            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float)) {
+                return true;
+            } else if (T == Integer) {
+                return true;
+            } else if (T == Rational) {
+                return true;
+            } else if (T == Real) {
+                return true;
+            } else if (T == Complex(Integer) or T == Complex(Rational) or T == Complex(Real)) {
+                return true;
+                //} else if (T == Expression or T == Expression) {
+                //    return .expression;
+            } else {
+                return false;
+            }
+        },
+    }
+}
+
 /// Checks if the input type is a one-item pointer.
 ///
 /// Parameters
@@ -192,7 +222,28 @@ pub fn isPointer(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is a constant one-item pointer.
+/// Checks if the input type is a many-item pointer.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a many-item pointer, `false` otherwise.
+pub fn isManyPointer(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .pointer => |info| {
+            if (info.size != .many) return false;
+
+            return true;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is a constant pointer. Works for one-item pointers,
+/// many-item pointers, and slices.
 ///
 /// Parameters
 /// ----------
@@ -205,7 +256,7 @@ pub fn isPointer(comptime T: type) bool {
 pub fn isConstPointer(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .pointer => |info| {
-            if (info.size != .one) return false;
+            if (info.size != .c) return false;
 
             if (info.is_const) {
                 return true;
@@ -523,6 +574,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
 
                 return Y;
             },
+            // .cfloat -> internal float management
             else => return Y,
         },
         .float => {

@@ -7,15 +7,28 @@ pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const a = gpa.allocator();
-    // _ = a;
+    //_ = a;
 
-    //std.debug.print("{}\n", .{zml.types.isSlice(f64)});
+    const n: usize = try ask_user(2);
+    var x1 = try a.alloc(f64, n);
+    defer a.free(x1);
+    var x2 = try a.alloc(f64, n);
+    defer a.free(x2);
+
+    for (0..n) |i| {
+        x1[i] = @floatFromInt(i + n);
+        x2[i] = @floatFromInt(i + n + 1);
+    }
+
+    zml.linalg.blas.rot(zml.scast(isize, n), x1.ptr, 1, x2.ptr, 1, 2, 3, .{}) catch unreachable;
+
+    std.debug.print("x1[0] = {}\n", .{x1[0]});
 
     // try symbolicTesting(a);
 
     // try generalTesting(a);
 
-    try addTesting(a);
+    // try addTesting(a);
 
     // try iterTesting(a);
 

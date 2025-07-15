@@ -1200,6 +1200,7 @@ pub inline fn abs(
     options: struct {
         allocator: ?std.mem.Allocator = null,
         writeable: bool = true,
+        copy: bool = true, // If arbitrary precision, copy the value instead of returning a view (just editing `.positive = true`). For copy = false, allocator is not needed.
     },
 ) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
@@ -1240,6 +1241,54 @@ pub inline fn abs_(
         .float => try set(o, float.abs(x), .{ .allocator = options.allocator }),
         .cfloat => try set(o, cfloat.abs(x), .{ .allocator = options.allocator }),
         else => @compileError("zml.abs_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn abs2(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+    },
+) !EnsureFloat(@TypeOf(x)) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.abs2(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.abs2 not defined for " ++ @typeName(X)),
+        .int => return int.mul(x, x),
+        .float => return float.pow(x, 2),
+        .cfloat => return cfloat.abs2(x),
+        else => @compileError("zml.abs2 not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn abs2_(
+    o: anytype,
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    if (comptime !types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.abs2_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O))
+        return array.abs2_(o, x, .{ .allocator = options.allocator });
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.abs2_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
+        .int => o.* = try cast(O, int.mul(x, x), .{ .allocator = options.allocator }),
+        .float => o.* = try cast(O, float.pow(x, 2), .{ .allocator = options.allocator }),
+        .cfloat => o.* = try cast(O, cfloat.abs2(x), .{ .allocator = options.allocator }),
+        else => @compileError("zml.abs2_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
     }
 }
 
@@ -3097,6 +3146,26 @@ pub inline fn lgamma_(
     }
 }
 
+pub inline fn conjugate(
+    x: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+        writeable: bool = true,
+        copy: bool = true, // If arbitrary precision, copy the value instead of returning a view (just editing `.positive = true`). For copy = false, allocator is not needed.
+    },
+) !@TypeOf(x) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X))
+        return array.conjugate(options.allocator.?, x, .{ .writeable = options.writeable });
+
+    switch (types.numericType(X)) {
+        .bool, .int, .float => return x,
+        .cfloat => return x.conjugate(),
+        else => @compileError("zml.conjugate not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
 // Nearest integer operations
 pub inline fn ceil(
     x: anytype,
@@ -3145,6 +3214,25 @@ pub inline fn ceil_(
         .float => o.* = try cast(O, float.ceil(x), .{ .allocator = options.allocator }),
         .cfloat => o.* = try cast(O, cfloat.ceil(x), .{ .allocator = options.allocator }),
         else => @compileError("zml.ceil_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn init(
+    comptime T: type,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !T {
+    if (comptime types.isArray(T) or types.isSlice(T))
+        @compileError("zml.init not implemented for arrays or slices yet.");
+
+    _ = options.allocator;
+    switch (comptime types.numericType(T)) {
+        .bool => return false,
+        .int => return 0,
+        .float => return 0,
+        .cfloat => return .{ .re = 0, .im = 0 },
+        else => @compileError("zml.init not implemented for " ++ @typeName(T) ++ " yet"),
     }
 }
 

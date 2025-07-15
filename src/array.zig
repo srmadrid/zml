@@ -333,6 +333,8 @@ pub const ge_ = arrops.ge_;
 // Basic operations
 pub const abs = arrops.abs;
 pub const abs_ = arrops.abs_;
+pub const abs2 = arrops.abs2;
+pub const abs2_ = arrops.abs2_;
 
 // Exponential functions
 pub const exp = arrops.exp;

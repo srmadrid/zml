@@ -274,7 +274,41 @@ pub inline fn ge(
     return x >= y;
 }
 
-pub inline fn max(comptime T: type) T {
+pub inline fn max(
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
+
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.max requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return if (x > y) scast(C, x) else scast(C, y);
+}
+
+pub inline fn min(
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
+
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("int.min requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return if (x < y) scast(C, x) else scast(C, y);
+}
+
+pub inline fn maxVal(comptime T: type) T {
     comptime if (types.numericType(T) != .int)
         @compileError("int.max requires T to be an int type, got " ++ @typeName(T));
 
@@ -283,7 +317,7 @@ pub inline fn max(comptime T: type) T {
     return (1 << (bits - scast(@TypeOf(bits), info.int.signedness == .signed))) - 1;
 }
 
-pub inline fn min(comptime T: type) T {
+pub inline fn minVal(comptime T: type) T {
     comptime if (types.numericType(T) != .int)
         @compileError("int.min requires T to be an int type, got " ++ @typeName(T));
 

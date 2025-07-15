@@ -1,48 +1,84 @@
 const std = @import("std");
+
 const types = @import("../../types.zig");
+const scast = types.scast;
+const Scalar = types.Scalar;
+const Child = types.Child;
+const EnsureFloat = types.EnsureFloat;
 const float = @import("../../float.zig");
+const ops = @import("../../ops.zig");
+
 const blas = @import("../blas.zig");
 
-const Scalar = types.Scalar;
+pub fn nrm2(
+    n: isize,
+    x: anytype,
+    incx: isize,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !EnsureFloat(Scalar(Child(@TypeOf(x)))) {
+    const X: type = Child(@TypeOf(x));
 
-pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Scalar(T) {
-    @setRuntimeSafety(false);
-    const numericType = types.numericType(T);
+    if (n <= 0) return blas.Error.InvalidArgument;
 
-    if (n <= 0) return 0;
+    switch (comptime types.numericType(X)) {
+        .int, .float, .cfloat => {
+            const huge = std.math.floatMax(EnsureFloat(Scalar(X)));
+            const tsml: EnsureFloat(Scalar(X)) = float.pow(2, float.ceil((std.math.floatExponentMin(EnsureFloat(Scalar(X))) - 1) * @as(EnsureFloat(Scalar(X)), 0.5)));
+            const tbig: EnsureFloat(Scalar(X)) = float.pow(2, float.floor((std.math.floatExponentMax(EnsureFloat(Scalar(X))) - @bitSizeOf(EnsureFloat(Scalar(X))) + 1) * @as(EnsureFloat(Scalar(X)), 0.5)));
+            const ssml: EnsureFloat(Scalar(X)) = float.pow(2, -float.floor((std.math.floatExponentMin(EnsureFloat(Scalar(X))) - @bitSizeOf(EnsureFloat(Scalar(X)))) * @as(EnsureFloat(Scalar(X)), 0.5)));
+            const sbig: EnsureFloat(Scalar(X)) = float.pow(2, -float.ceil((std.math.floatExponentMax(EnsureFloat(Scalar(X))) + @bitSizeOf(EnsureFloat(Scalar(X))) - 1) * @as(EnsureFloat(Scalar(X)), 0.5)));
 
-    const huge = std.math.floatMax(Scalar(T));
-    const tsml: Scalar(T) = float.pow(2, float.ceil((std.math.floatExponentMin(Scalar(T)) - 1) * @as(Scalar(T), 0.5)));
-    const tbig: Scalar(T) = float.pow(2, float.floor((std.math.floatExponentMax(Scalar(T)) - @bitSizeOf(Scalar(T)) + 1) * @as(Scalar(T), 0.5)));
-    const ssml: Scalar(T) = float.pow(2, -float.floor((std.math.floatExponentMin(Scalar(T)) - @bitSizeOf(Scalar(T))) * @as(Scalar(T), 0.5)));
-    const sbig: Scalar(T) = float.pow(2, -float.ceil((std.math.floatExponentMax(Scalar(T)) + @bitSizeOf(Scalar(T)) - 1) * @as(Scalar(T), 0.5)));
+            var scl: EnsureFloat(Scalar(X)) = 1;
+            var sumsq: EnsureFloat(Scalar(X)) = 0;
 
-    var scl: Scalar(T) = 1;
-    var sumsq: Scalar(T) = 0;
+            var abig: EnsureFloat(Scalar(X)) = 0;
+            var amed: EnsureFloat(Scalar(X)) = 0;
+            var asml: EnsureFloat(Scalar(X)) = 0;
 
-    var abig: Scalar(T) = 0;
-    var amed: Scalar(T) = 0;
-    var asml: Scalar(T) = 0;
-    var ix: isize = if (incx < 0) (1 - (n - 1) * incx) else 0;
+            var notbig: bool = true;
 
-    var notbig = true;
+            if (comptime types.numericType(X) == .cfloat) {
+                var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+                for (0..scast(usize, n)) |_| {
+                    var ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(usize, ix)].re);
+                    if (ax > tbig) {
+                        abig += float.pow(ax * sbig, 2);
+                        notbig = false;
+                    } else if (ax < tsml) {
+                        if (notbig) asml += float.pow(ax * ssml, 2);
+                    } else {
+                        amed += float.pow(ax, 2);
+                    }
 
-    switch (numericType) {
-        .bool => @compileError("blas.nrm2 does not support bool."),
-        .int, .float => {
-            var ax: Scalar(T) = undefined;
-            for (0..@intCast(n)) |_| {
-                ax = @abs(x[@intCast(ix)]);
-                if (ax > tbig) {
-                    abig += float.pow(ax * sbig, 2);
+                    ax = float.abs(x[scast(usize, ix)].im);
+                    if (ax > tbig) {
+                        abig += float.pow(ax * sbig, 2);
+                        notbig = false;
+                    } else if (ax < tsml) {
+                        if (notbig) asml += float.pow(ax * ssml, 2);
+                    } else {
+                        amed += float.pow(ax, 2);
+                    }
 
-                    notbig = false;
-                } else if (ax < tsml) {
-                    if (notbig) asml += float.pow(ax * ssml, 2);
-                } else {
-                    amed += float.pow(ax, 2);
+                    ix += incx;
                 }
-                ix += incx;
+            } else {
+                var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+                for (0..scast(usize, n)) |_| {
+                    const ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(usize, ix)]);
+                    if (ax > tbig) {
+                        abig += float.pow(ax * sbig, 2);
+                        notbig = false;
+                    } else if (ax < tsml) {
+                        if (notbig) asml += float.pow(ax * ssml, 2);
+                    } else {
+                        amed += float.pow(ax, 2);
+                    }
+
+                    ix += incx;
+                }
             }
 
             if (abig > 0) {
@@ -67,56 +103,30 @@ pub inline fn nrm2(comptime T: type, n: isize, x: [*]const T, incx: isize) Scala
                 scl = 1;
                 sumsq = amed;
             }
+
+            return scl * float.sqrt(sumsq);
         },
-        .cfloat => {
-            var ax: Scalar(T) = undefined;
-            for (0..@intCast(n)) |_| {
-                ax = @abs(x[@intCast(ix)].re);
-                if (ax > tbig) {
-                    abig += float.pow(ax * sbig, 2);
-                    notbig = false;
-                } else if (ax < tsml) {
-                    if (notbig) asml += float.pow(ax * ssml, 2);
+        else => {
+            var sum: EnsureFloat(Scalar(X)) = try ops.init(EnsureFloat(Scalar(X)), .{ .allocator = options.allocator });
+            errdefer ops.deinit(&sum, .{ .allocator = options.allocator });
+            var temp: EnsureFloat(Scalar(X)) = try ops.init(EnsureFloat(Scalar(X)), .{ .allocator = options.allocator });
+            defer ops.deinit(&temp, .{ .allocator = options.allocator });
+
+            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+            for (0..scast(usize, n)) |_| {
+                if (comptime types.isComplex(X)) {
+                    try ops.abs2_(&temp, x[scast(usize, ix)], .{ .allocator = options.allocator });
                 } else {
-                    amed += float.pow(ax, 2);
+                    try ops.pow_(&temp, x[scast(usize, ix)], 2, .{ .allocator = options.allocator });
                 }
-                ax = @abs(x[@intCast(ix)].im);
-                if (ax > tbig) {
-                    abig += float.pow(ax * sbig, 2);
-                    notbig = false;
-                } else if (ax < tsml) {
-                    if (notbig) asml += float.pow(ax * ssml, 2);
-                } else {
-                    amed += float.pow(ax, 2);
-                }
+
+                try ops.add_(&sum, sum, temp, .{ .allocator = options.allocator });
+
                 ix += incx;
             }
 
-            if (abig > 0) {
-                if (amed > 0 or amed > huge or amed != amed) {
-                    abig += float.pow(amed * sbig, 2);
-                }
-                scl = 1 / sbig;
-                sumsq = abig;
-            } else if (asml > 0) {
-                if (amed > 0 or amed > huge or amed != amed) {
-                    const sqrt_amed = float.sqrt(amed);
-                    const sqrt_asml = float.sqrt(asml) / ssml;
-                    const ymin = if (sqrt_asml > sqrt_amed) sqrt_amed else sqrt_asml;
-                    const ymax = if (sqrt_asml > sqrt_amed) sqrt_asml else sqrt_amed;
-                    scl = 1;
-                    sumsq = float.pow(ymax, 2) * (1 + float.pow(ymin / ymax, 2));
-                } else {
-                    scl = 1 / ssml;
-                    sumsq = asml;
-                }
-            } else {
-                scl = 1;
-                sumsq = amed;
-            }
+            try ops.sqrt_(&sum, sum, .{ .allocator = options.allocator });
+            return sum;
         },
-        .integer, .rational, .real, .complex, .expression => @compileError("blas.nrm2 only supports simple types."),
     }
-
-    return scl * float.sqrt(sumsq);
 }

@@ -24,19 +24,19 @@ test rot {
         x4[i] = @floatFromInt(i + 1);
     }
 
-    rot(f64, n, x1.ptr, 1, x2.ptr, 1, 2, 3);
+    rot(n, x1.ptr, 1, x2.ptr, 1, 2, 3, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1))), x1[i]);
         try std.testing.expectEqual(@as(f64, @floatFromInt(@as(isize, @intCast(2 * (i + 1))) - @as(isize, @intCast(3 * (i + 1))))), x2[i]);
         x1[i] = @floatFromInt(i + 1);
     }
-    rot(f64, n, x1.ptr, 1, x3.ptr, -1, 2, 3);
+    rot(n, x1.ptr, 1, x3.ptr, -1, 2, 3, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1))), x1[i]);
         try std.testing.expectEqual(@as(f64, @floatFromInt(@as(isize, @intCast(2 * (n - i))) - @as(isize, @intCast(3 * (n - i))))), x3[i]);
         x1[i] = @floatFromInt(i + 1);
     }
-    rot(f64, n / 2, x1.ptr, 2, x4.ptr, 2, 2, 3);
+    rot(n / 2, x1.ptr, 2, x4.ptr, 2, 2, 3, .{}) catch unreachable;
     for (0..n) |i| {
         if (i % 2 == 0) {
             try std.testing.expectEqual(@as(f64, @floatFromInt(2 * (i + 1) + 3 * (i + 1))), x1[i]);

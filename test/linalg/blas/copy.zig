@@ -24,15 +24,15 @@ test copy {
         x4[i] = 0;
     }
 
-    copy(f64, n, x1.ptr, 1, x2.ptr, 1);
+    copy(n, x1.ptr, 1, x2.ptr, 1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x2[i]);
     }
-    copy(f64, n, x1.ptr, 1, x3.ptr, -1);
+    copy(n, x1.ptr, 1, x3.ptr, -1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(n - i)), x3[i]);
     }
-    copy(f64, n / 2, x1.ptr, 2, x4.ptr, 2);
+    copy(n / 2, x1.ptr, 2, x4.ptr, 2, .{}) catch unreachable;
     for (0..n) |i| {
         if (i % 2 == 0) {
             try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x4[i]);
@@ -57,17 +57,17 @@ test copy {
         x8[i] = cf64.init(0, 0);
     }
 
-    copy(cf64, n, x5.ptr, 1, x6.ptr, 1);
+    copy(n, x5.ptr, 1, x6.ptr, 1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x6[i].re);
         try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(i + 1)))), x6[i].im);
     }
-    copy(cf64, n, x5.ptr, 1, x7.ptr, -1);
+    copy(n, x5.ptr, 1, x7.ptr, -1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(n - i)), x7[i].re);
         try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(n - i)))), x7[i].im);
     }
-    copy(cf64, n / 2, x5.ptr, 2, x8.ptr, 2);
+    copy(n / 2, x5.ptr, 2, x8.ptr, 2, .{}) catch unreachable;
     for (0..n) |i| {
         if (i % 2 == 0) {
             try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x8[i].re);

@@ -1,103 +1,123 @@
 const std = @import("std");
+
 const types = @import("../../types.zig");
+const scast = types.scast;
+const Scalar = types.Scalar;
+const ops = @import("../../ops.zig");
+
 const blas = @import("../blas.zig");
 
-const Scalar = types.Scalar;
+pub fn rot(
+    n: isize,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    c: anytype,
+    s: anytype,
+    options: struct {
+        allocator: ?std.mem.Allocator = null,
+    },
+) !void {
+    const X: type = types.Child(@TypeOf(x));
+    const Y: type = types.Child(@TypeOf(y));
+    const C: type = @TypeOf(c);
+    const S: type = @TypeOf(s);
+    const Ca: type = types.Coerce(X, types.Coerce(Y, types.Coerce(C, S)));
 
-pub inline fn rot(comptime T: type, n: isize, x: [*]T, incx: isize, y: [*]T, incy: isize, c: Scalar(T), s: Scalar(T)) void {
-    @setRuntimeSafety(false);
-    const numericType = types.numericType(T);
+    if (n <= 0) return blas.Error.InvalidArgument;
 
-    if (n <= 0 or (c == 1 and s == 0)) return;
+    if (ops.eq(c, 1, .{}) catch unreachable and ops.eq(s, 0, .{}) catch unreachable) return;
 
-    switch (numericType) {
-        .bool => @compileError("blas.rot does not support bool."),
-        .int, .float => {
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-            const nu = (n >> 2) << 2;
-            if (nu != 0) {
-                const StX = ix + nu * incx;
-                const incx2 = incx * 2;
-                const incx3 = incx * 3;
-                const incx4 = incx * 4;
-                const incy2 = incy * 2;
-                const incy3 = incy * 3;
-                const incy4 = incy * 4;
-                while (ix != StX) {
-                    var temp = c * x[@intCast(ix)] + s * y[@intCast(iy)];
-                    y[@intCast(iy)] = c * y[@intCast(iy)] - s * x[@intCast(ix)];
-                    x[@intCast(ix)] = temp;
+    var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+    var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+    switch (comptime types.isArbitraryPrecision(Ca)) {
+        true => {
+            var temp1: Ca = try ops.init(Ca, .{ .allocator = options.allocator });
+            defer ops.deinit(&temp1, .{ .allocator = options.allocator });
+            var temp2: Ca = try ops.init(Ca, .{ .allocator = options.allocator });
+            defer ops.deinit(&temp2, .{ .allocator = options.allocator });
+            for (0..scast(usize, n)) |_| {
+                try ops.mul_(
+                    &temp1,
+                    c,
+                    x[scast(usize, ix)],
+                    .{ .allocator = options.allocator },
+                );
+                try ops.mul_(
+                    &temp2,
+                    s,
+                    y[scast(usize, iy)],
+                    .{ .allocator = options.allocator },
+                );
+                try ops.add_(
+                    &temp1,
+                    temp1,
+                    temp2,
+                    .{ .allocator = options.allocator },
+                );
 
-                    temp = c * x[@intCast(ix + incx)] + s * y[@intCast(iy + incy)];
-                    y[@intCast(iy + incy)] = c * y[@intCast(iy + incy)] - s * x[@intCast(ix + incx)];
-                    x[@intCast(ix + incx)] = temp;
+                try ops.mul_(
+                    &temp2,
+                    s,
+                    x[scast(usize, ix)],
+                    .{ .allocator = options.allocator },
+                );
 
-                    temp = c * x[@intCast(ix + incx2)] + s * y[@intCast(iy + incy2)];
-                    y[@intCast(iy + incy2)] = c * y[@intCast(iy + incy2)] - s * x[@intCast(ix + incx2)];
-                    x[@intCast(ix + incx2)] = temp;
+                try ops.set(
+                    &x[scast(usize, ix)],
+                    temp1,
+                    .{ .allocator = options.allocator },
+                );
 
-                    temp = c * x[@intCast(ix + incx3)] + s * y[@intCast(iy + incy3)];
-                    y[@intCast(iy + incy3)] = c * y[@intCast(iy + incy3)] - s * x[@intCast(ix + incx3)];
-                    x[@intCast(ix + incx3)] = temp;
-
-                    ix += incx4;
-                    iy += incy4;
-                }
-            }
-
-            for (@intCast(nu)..@intCast(n)) |_| {
-                const temp = c * x[@intCast(ix)] + s * y[@intCast(iy)];
-                y[@intCast(iy)] = c * y[@intCast(iy)] - s * x[@intCast(ix)];
-                x[@intCast(ix)] = temp;
-
-                ix += incx;
-                iy += incy;
-            }
-        },
-        .cfloat => {
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-            const nu = (n >> 2) << 2;
-            if (nu != 0) {
-                const StX = ix + nu * incx;
-                const incx2 = incx * 2;
-                const incy2 = incy * 2;
-                while (ix != StX) {
-                    var temp = c * x[@intCast(ix)].re + s * y[@intCast(iy)].re;
-                    y[@intCast(iy)].re = c * y[@intCast(iy)].re - s * x[@intCast(ix)].re;
-                    x[@intCast(ix)].re = temp;
-
-                    temp = c * x[@intCast(ix)].im + s * y[@intCast(iy)].im;
-                    y[@intCast(iy)].im = c * y[@intCast(iy)].im - s * x[@intCast(ix)].im;
-                    x[@intCast(ix)].im = temp;
-
-                    temp = c * x[@intCast(ix + incx)].re + s * y[@intCast(iy + incy)].re;
-                    y[@intCast(iy + incy)].re = c * y[@intCast(iy + incy)].re - s * x[@intCast(ix + incx)].re;
-                    x[@intCast(ix + incx)].re = temp;
-
-                    temp = c * x[@intCast(ix + incx)].im + s * y[@intCast(iy + incy)].im;
-                    y[@intCast(iy + incy)].im = c * y[@intCast(iy + incy)].im - s * x[@intCast(ix + incx)].im;
-                    x[@intCast(ix + incx)].im = temp;
-
-                    ix += incx2;
-                    iy += incy2;
-                }
-            }
-
-            for (@intCast(nu)..@intCast(n)) |_| {
-                const temp = c * x[@intCast(ix)].re + s * y[@intCast(iy)].re;
-                y[@intCast(iy)].re = c * y[@intCast(iy)].re - s * x[@intCast(ix)].re;
-                x[@intCast(ix)].re = temp;
-
-                const temp2 = c * x[@intCast(ix)].im + s * y[@intCast(iy)].im;
-                y[@intCast(iy)].im = c * y[@intCast(iy)].im - s * x[@intCast(ix)].im;
-                x[@intCast(ix)].im = temp2;
+                try ops.mul_(
+                    &temp1,
+                    c,
+                    y[scast(usize, iy)],
+                    .{ .allocator = options.allocator },
+                );
+                try ops.sub_(
+                    &temp1,
+                    temp1,
+                    temp2,
+                    .{ .allocator = options.allocator },
+                );
+                try ops.set(
+                    &y[scast(usize, iy)],
+                    temp1,
+                    .{ .allocator = options.allocator },
+                );
 
                 ix += incx;
                 iy += incy;
             }
         },
-        .integer, .rational, .real, .complex, .expression => @compileError("blas.rot only supports simple types."),
+        false => {
+            var temp: Ca = try ops.init(Ca, .{});
+            for (0..scast(usize, n)) |_| {
+                ops.add_(
+                    &temp,
+                    ops.mul(c, x[scast(usize, ix)], .{}) catch unreachable,
+                    ops.mul(s, y[scast(usize, iy)], .{}) catch unreachable,
+                    .{},
+                ) catch unreachable;
+
+                ops.sub_(
+                    &y[scast(usize, iy)],
+                    ops.mul(c, y[scast(usize, iy)], .{}) catch unreachable,
+                    ops.mul(s, x[scast(usize, ix)], .{}) catch unreachable,
+                    .{},
+                ) catch unreachable;
+
+                ops.set(
+                    &x[scast(usize, ix)],
+                    temp,
+                    .{},
+                ) catch unreachable;
+
+                ix += incx;
+                iy += incy;
+            }
+        },
     }
 }
