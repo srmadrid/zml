@@ -6,9 +6,7 @@ const Order = types.Order;
 pub inline fn add(
     x: anytype,
     y: anytype,
-    options: struct {
-        mode: Mode = .default,
-    },
+    comptime mode: Mode,
 ) Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
@@ -20,43 +18,17 @@ pub inline fn add(
         @compileError("int.add requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (options.mode) {
+    switch (comptime mode) {
         .default => return scast(C, x) + scast(C, y),
         .wrap => return scast(C, x) +% scast(C, y),
         .saturate => return scast(C, x) +| scast(C, y),
     }
 }
 
-pub inline fn add_(
-    o: anytype,
-    y: anytype,
-    options: struct {
-        mode: Mode = .default,
-    },
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("int.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .int)
-        @compileError("int.add_ requires the output type to be an int, got " ++ @typeName(O));
-
-    switch (options.mode) {
-        .default => o.* += scast(O, y),
-        .wrap => o.* +%= scast(O, y),
-        .saturate => o.* +|= scast(O, y),
-    }
-}
-
 pub inline fn sub(
     x: anytype,
     y: anytype,
-    options: struct {
-        mode: Mode = .default,
-    },
+    comptime mode: Mode,
 ) Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
@@ -68,43 +40,17 @@ pub inline fn sub(
         @compileError("int.sub requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (options.mode) {
+    switch (comptime mode) {
         .default => return scast(C, x) - scast(C, y),
         .wrap => return scast(C, x) -% scast(C, y),
         .saturate => return scast(C, x) -| scast(C, y),
     }
 }
 
-pub inline fn sub_(
-    o: anytype,
-    y: anytype,
-    options: struct {
-        mode: Mode = .default,
-    },
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("int.sub_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .int)
-        @compileError("int.sub_ requires the output type to be an int, got " ++ @typeName(O));
-
-    switch (options.mode) {
-        .default => o.* -= scast(O, y),
-        .wrap => o.* -%= scast(O, y),
-        .saturate => o.* -|= scast(O, y),
-    }
-}
-
 pub inline fn mul(
     x: anytype,
     y: anytype,
-    options: struct {
-        mode: Mode = .default,
-    },
+    comptime mode: Mode,
 ) Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
@@ -116,34 +62,10 @@ pub inline fn mul(
         @compileError("int.mul requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (options.mode) {
+    switch (comptime mode) {
         .default => return scast(C, x) * scast(C, y),
         .wrap => return scast(C, x) *% scast(C, y),
         .saturate => return scast(C, x) *| scast(C, y),
-    }
-}
-
-pub inline fn mul_(
-    o: anytype,
-    y: anytype,
-    options: struct {
-        mode: Mode = .default,
-    },
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("int.mul_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .int)
-        @compileError("int.mul_ requires the output type to be an int, got " ++ @typeName(O));
-
-    switch (options.mode) {
-        .default => o.* *= scast(O, y),
-        .wrap => o.* *%= scast(O, y),
-        .saturate => o.* *|= scast(O, y),
     }
 }
 
@@ -162,23 +84,6 @@ pub inline fn div(
             @typeName(X) ++ " and " ++ @typeName(Y));
 
     return @divTrunc(scast(C, x), scast(C, y));
-}
-
-pub inline fn div_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("int.div_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .int)
-        @compileError("int.div_ requires the output type to be an int, got " ++ @typeName(O));
-
-    o.* = @divTrunc(o, scast(O, y));
 }
 
 pub inline fn cmp(
@@ -282,11 +187,8 @@ pub inline fn max(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
-        @compileError("int.max requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.max requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     return if (x > y) scast(C, x) else scast(C, y);
 }
@@ -299,11 +201,8 @@ pub inline fn min(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
-        @compileError("int.min requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (types.numericType(X) != .int or types.numericType(Y) != .int)
+        @compileError("int.max requires both x and y to be int types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     return if (x < y) scast(C, x) else scast(C, y);
 }

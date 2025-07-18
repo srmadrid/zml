@@ -5,10 +5,13 @@ const opts = @import("options");
 const types = @import("types.zig");
 const scast = types.scast;
 const cast = types.cast;
+const validateContext = types.validateContext;
+const getFieldOrDefault = types.getFieldOrDefault;
 
 const ops = @import("ops.zig");
 
 const int = @import("int.zig");
+const float = @import("float.zig");
 
 const dense = @import("array/dense.zig");
 const strided = @import("array/strided.zig");
@@ -17,16 +20,16 @@ pub const Iterator = @import("array/iterators.zig").Iterator;
 //pub const MultiIterator = @import("array/iterators.zig").MultiIterator;
 pub const IterationOrder = @import("array/iterators.zig").IterationOrder;
 
-pub const maxDimensions = opts.max_dimensions;
+pub const max_dimensions = opts.max_dimensions;
 
 pub fn Array(comptime T: type) type {
-    // Catch any attempt to create with unsupported type.
-    _ = types.numericType(T);
+    if (!types.isNumeric(T))
+        @compileError("Array requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: []T,
         ndim: usize,
-        shape: [maxDimensions]usize,
+        shape: [max_dimensions]usize,
         size: usize,
         base: ?*const Array(T),
         flags: Flags,
@@ -35,12 +38,12 @@ pub fn Array(comptime T: type) type {
         pub const empty: Array(T) = .{
             .data = &.{},
             .ndim = 0,
-            .shape = .{0} ** maxDimensions,
+            .shape = .{0} ** max_dimensions,
             .size = 0,
             .base = null,
             .flags = .{},
             .metadata = .{ .dense = .{
-                .strides = .{0} ** maxDimensions,
+                .strides = .{0} ** max_dimensions,
             } },
         };
 
@@ -48,11 +51,11 @@ pub fn Array(comptime T: type) type {
             allocator: std.mem.Allocator,
             shape: []const usize,
             options: struct {
-                order: Order = .rowMajor,
+                order: Order = .col_major,
                 storage: Storage = .dense,
             },
         ) !Array(T) {
-            if (shape.len > maxDimensions) {
+            if (shape.len > max_dimensions) {
                 return Error.TooManyDimensions;
             }
 
@@ -63,7 +66,7 @@ pub fn Array(comptime T: type) type {
             }
 
             switch (options.storage) {
-                .dense => return dense.init(allocator, T, shape, options.order),
+                .dense => return dense.init(T, allocator, shape, options.order),
                 .strided => return Error.InvalidFlags,
             }
         }
@@ -73,11 +76,21 @@ pub fn Array(comptime T: type) type {
             shape: []const usize,
             value: anytype,
             options: struct {
-                order: Order = .rowMajor,
+                order: Order = .col_major,
                 storage: Storage = .dense,
             },
+            ctx: anytype,
         ) !Array(T) {
-            if (shape.len > maxDimensions) {
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            if (shape.len > max_dimensions) {
                 return Error.TooManyDimensions;
             }
 
@@ -88,7 +101,7 @@ pub fn Array(comptime T: type) type {
             }
 
             switch (options.storage) {
-                .dense => return dense.full(allocator, T, shape, value, options.order),
+                .dense => return dense.full(T, allocator, shape, value, options.order, ctx),
                 .strided => return Error.InvalidFlags,
             }
         }
@@ -98,23 +111,39 @@ pub fn Array(comptime T: type) type {
             start: anytype,
             stop: anytype,
             step: anytype,
-            options: struct {
-                writeable: bool = true,
-            },
+            ctx: anytype,
         ) !Array(T) {
             comptime if (types.isComplex(T))
                 @compileError("array.arange does not support " ++ @typeName(T));
 
+            comptime if (!types.isNumeric(@TypeOf(start)))
+                @compileError("array.arange: start must be numeric, got " ++ @typeName(@TypeOf(start)));
+
             comptime if (types.isComplex(@TypeOf(start)))
                 @compileError("array.arange: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
+
+            comptime if (!types.isNumeric(@TypeOf(stop)))
+                @compileError("array.arange: stop must be numeric, got " ++ @typeName(@TypeOf(stop)));
 
             comptime if (types.isComplex(@TypeOf(stop)))
                 @compileError("array.arange: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
 
+            comptime if (!types.isNumeric(@TypeOf(step)))
+                @compileError("array.arange: step must be numeric, got " ++ @typeName(@TypeOf(step)));
+
             comptime if (types.isComplex(@TypeOf(step)))
                 @compileError("array.arange: step cannot be complex, got " ++ @typeName(@TypeOf(step)));
 
-            return dense.arange(allocator, T, start, stop, step, options.writeable);
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            return dense.arange(T, allocator, start, stop, step, ctx);
         }
 
         pub fn linspace(
@@ -122,16 +151,21 @@ pub fn Array(comptime T: type) type {
             start: anytype,
             stop: anytype,
             num: usize,
-            options: struct {
-                writeable: bool = true,
-                endpoint: bool = true,
-            },
+            endpoint: bool,
+            retstep: ?*T,
+            ctx: anytype,
         ) !Array(T) {
             comptime if (types.isComplex(T))
                 @compileError("array.linspace does not support " ++ @typeName(T));
 
+            comptime if (!types.isNumeric(@TypeOf(start)))
+                @compileError("array.arange: start must be numeric, got " ++ @typeName(@TypeOf(start)));
+
             comptime if (types.isComplex(@TypeOf(start)))
                 @compileError("array.linspace: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
+
+            comptime if (!types.isNumeric(@TypeOf(stop)))
+                @compileError("array.linspace: stop must be numeric, got " ++ @typeName(@TypeOf(stop)));
 
             comptime if (types.isComplex(@TypeOf(stop)))
                 @compileError("array.linspace: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
@@ -140,7 +174,16 @@ pub fn Array(comptime T: type) type {
                 return Error.ZeroDimension;
             }
 
-            return dense.linspace(allocator, T, start, stop, num, options.writeable, options.endpoint);
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            return dense.linspace(T, allocator, start, stop, num, endpoint, retstep, ctx);
         }
 
         pub fn logspace(
@@ -149,16 +192,20 @@ pub fn Array(comptime T: type) type {
             stop: anytype,
             num: usize,
             base: anytype,
-            options: struct {
-                writeable: bool = true,
-                endpoint: bool = true,
-            },
+            endpoint: bool,
+            ctx: anytype,
         ) !Array(T) {
             comptime if (types.isComplex(T))
                 @compileError("array.logspace does not support " ++ @typeName(T));
 
+            comptime if (!types.isNumeric(@TypeOf(start)))
+                @compileError("array.arange: start must be numeric, got " ++ @typeName(@TypeOf(start)));
+
             comptime if (types.isComplex(@TypeOf(start)))
                 @compileError("array.logspace: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
+
+            comptime if (!types.isNumeric(@TypeOf(stop)))
+                @compileError("array.logspace: stop must be numeric, got " ++ @typeName(@TypeOf(stop)));
 
             comptime if (types.isComplex(@TypeOf(stop)))
                 @compileError("array.logspace: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
@@ -167,16 +214,34 @@ pub fn Array(comptime T: type) type {
                 return Error.ZeroDimension;
             }
 
-            return dense.logspace(allocator, T, start, stop, num, base, options.writeable, options.endpoint);
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            return dense.logspace(T, allocator, start, stop, num, base, endpoint, ctx);
         }
 
         /// Cleans up the array by deinitializing its elements. If the array holds
         /// a fixed precision type this is does not do anything.
-        pub fn cleanup(self: *Array(T), allocator: ?std.mem.Allocator) void {
-            if (types.isArbitraryPrecision(T)) {
+        pub fn cleanup(self: *Array(T), ctx: anytype) void {
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            if (comptime types.isArbitraryPrecision(T)) {
                 switch (self.flags.storage) {
-                    .dense => dense.cleanup(T, allocator, self.data),
-                    .strided => {}, // strided.cleanup(T, self),
+                    .dense => dense.cleanup(T, self.data, ctx),
+                    .strided => strided.cleanup(T, self, self.size, self.flags.order.toIterationOrder(), ctx),
                 }
             }
         }
@@ -186,7 +251,7 @@ pub fn Array(comptime T: type) type {
         /// If the array holds an arbitrary precision type, it will not free the
         /// elements; call `cleanup` first to do that.
         pub fn deinit(self: *Array(T), allocator: ?std.mem.Allocator) void {
-            if (self.flags.ownsData) {
+            if (self.flags.owns_data) {
                 allocator.?.free(self.data);
             }
 
@@ -194,10 +259,6 @@ pub fn Array(comptime T: type) type {
         }
 
         pub fn set(self: *Array(T), position: []const usize, value: T) !void {
-            if (!self.flags.writeable) {
-                return Error.ArrayNotWriteable;
-            }
-
             switch (self.flags.storage) {
                 .dense => return dense.set(T, self, position, value),
                 .strided => return strided.set(T, self, position, value),
@@ -212,7 +273,7 @@ pub fn Array(comptime T: type) type {
         }
 
         pub fn reshape(self: *const Array(T), shape: []const usize) !Array(T) {
-            if (shape.len > maxDimensions) {
+            if (shape.len > max_dimensions) {
                 return Error.TooManyDimensions;
             }
 
@@ -241,25 +302,25 @@ pub fn Array(comptime T: type) type {
             self: *const Array(T),
             axes: ?[]const usize,
         ) !Array(T) {
-            const axess: []const usize =
+            const axes_: []const usize =
                 axes orelse
                 trivialReversePermutation(self.ndim)[0..self.ndim];
 
-            if (axess.len == 0) {
+            if (axes_.len == 0) {
                 return Error.ZeroDimension;
             }
 
-            if (axess.len > self.ndim) {
+            if (axes_.len > self.ndim) {
                 return Error.TooManyDimensions;
             }
 
-            if (!isPermutation(self.ndim, axess)) {
+            if (!isPermutation(self.ndim, axes_)) {
                 return Error.InvalidAxes; // axes must be a valid permutation of [0, ..., ndim - 1]
             }
 
             switch (self.flags.storage) {
-                .dense => return dense.transpose(T, self, axess),
-                .strided => return strided.transpose(T, self, axess),
+                .dense => return dense.transpose(T, self, axes_),
+                .strided => return strided.transpose(T, self, axes_),
             }
         }
 
@@ -275,8 +336,11 @@ pub fn Array(comptime T: type) type {
         }
 
         pub fn broadcast(self: *const Array(T), shape: []const usize) !Array(T) {
-            if (shape.len > maxDimensions or shape.len < self.ndim) {
+            if (shape.len > max_dimensions)
                 return Error.TooManyDimensions;
+
+            if (shape.len < self.ndim) {
+                return Error.TooLittleDimensions;
             }
 
             var i: isize = scast(isize, shape.len - 1);
@@ -329,6 +393,11 @@ pub const gt = arrops.gt;
 pub const gt_ = arrops.gt_;
 pub const ge = arrops.ge;
 pub const ge_ = arrops.ge_;
+
+pub const max = arrops.max;
+pub const max_ = arrops.max_;
+pub const min = arrops.min;
+pub const min_ = arrops.min_;
 
 // Basic operations
 pub const abs = arrops.abs;
@@ -432,7 +501,7 @@ pub const ceil_ = arrops.ceil_;
 
 pub const Broadcast = struct {
     ndim: usize,
-    shape: [maxDimensions]usize,
+    shape: [max_dimensions]usize,
 };
 
 pub fn broadcastShapes(
@@ -448,7 +517,7 @@ pub fn broadcastShapes(
             return Error.ZeroDimension;
         }
 
-        if (shape.len > maxDimensions) {
+        if (shape.len > max_dimensions) {
             return Error.TooManyDimensions;
         }
 
@@ -457,7 +526,7 @@ pub fn broadcastShapes(
         }
     }
 
-    var result: [maxDimensions]usize = .{0} ** maxDimensions;
+    var result: [max_dimensions]usize = .{0} ** max_dimensions;
     var i: isize = scast(isize, ndim - 1);
     while (i >= 0) : (i -= 1) {
         var max_dim: usize = 1;
@@ -502,11 +571,11 @@ pub fn isPermutation(
         return false; // axes must match the shape length
     }
 
-    if (ndim == 0 or ndim > maxDimensions) {
+    if (ndim == 0 or ndim > max_dimensions) {
         return false; // empty or too many dimensions is not a valid permutation
     }
 
-    var seen: [maxDimensions]bool = .{false} ** maxDimensions;
+    var seen: [max_dimensions]bool = .{false} ** max_dimensions;
     for (axes) |axis| {
         if (axis >= ndim) {
             return false; // axis out of bounds
@@ -522,10 +591,10 @@ pub fn isPermutation(
     return true; // is a permutation
 }
 
-pub fn trivialPermutation(ndim: usize) [maxDimensions]usize {
-    var result: [maxDimensions]usize = .{0} ** maxDimensions;
+pub fn trivialPermutation(ndim: usize) [max_dimensions]usize {
+    var result: [max_dimensions]usize = .{0} ** max_dimensions;
 
-    if (ndim == 0 or ndim > maxDimensions)
+    if (ndim == 0 or ndim > max_dimensions)
         return result; // empty or too many dimensions, return trivial permutation
 
     for (result[0..ndim], 0..) |*axis, i| {
@@ -535,10 +604,10 @@ pub fn trivialPermutation(ndim: usize) [maxDimensions]usize {
     return result;
 }
 
-pub fn trivialReversePermutation(ndim: usize) [maxDimensions]usize {
-    var result: [maxDimensions]usize = .{0} ** maxDimensions;
+pub fn trivialReversePermutation(ndim: usize) [max_dimensions]usize {
+    var result: [max_dimensions]usize = .{0} ** max_dimensions;
 
-    if (ndim == 0 or ndim > maxDimensions)
+    if (ndim == 0 or ndim > max_dimensions)
         return result; // empty or too many dimensions, return empty permutation
 
     for (result[0..ndim], 0..) |*axis, i| {
@@ -551,6 +620,7 @@ pub fn trivialReversePermutation(ndim: usize) [maxDimensions]usize {
 pub const Error = error{
     ArrayNotWriteable,
     TooManyDimensions,
+    TooLittleDimensions,
     InvalidFlags,
     InvalidAxes,
     ZeroDimension,
@@ -565,15 +635,42 @@ pub const Error = error{
 };
 
 pub const Flags = packed struct {
-    order: Order = .rowMajor,
+    order: Order = .col_major,
     storage: Storage = .dense,
-    ownsData: bool = true,
-    writeable: bool = true,
+    owns_data: bool = true,
 };
 
 pub const Order = enum(u1) {
-    rowMajor,
-    columnMajor,
+    row_major,
+    col_major,
+
+    pub fn toIterationOrder(self: Order) IterationOrder {
+        return switch (self) {
+            .row_major => .right_to_left,
+            .col_major => .left_to_right,
+        };
+    }
+
+    pub fn resolve2(self: Order, other: Order) Order {
+        if (self == other) {
+            return self;
+        }
+
+        return .col_major; // default order
+    }
+
+    pub fn resolve3(self: Order, other1: Order, other2: Order) Order {
+        if (self == other1 and self == other2)
+            return self;
+
+        if (self == other1 or self == other2)
+            return self;
+
+        if (other1 == other2)
+            return other1;
+
+        return .col_major; // default order
+    }
 };
 
 pub const Storage = enum(u1) {
@@ -587,27 +684,25 @@ pub const Storage = enum(u1) {
 pub const Metadata = union(Storage) {
     dense: Dense,
     strided: Strided,
-    //csr: CSR,
-    //csc: CSC,
-    //coo: COO,
+    //sparse: Sparse,
 
     pub const Dense = struct {
-        strides: [maxDimensions]usize,
+        strides: [max_dimensions]usize,
     };
 
     pub const Strided = struct {
-        strides: [maxDimensions]isize,
+        strides: [max_dimensions]isize,
         offset: usize,
     };
 
-    pub const CSR = struct {
-        // # of nonzero elements
-        // data holds the data, with the first element (index 0) being the default value, and the rest being the nonzero elements, so row[i] and column[i] refer to data[i+1]
+    pub const Sparse = struct {
+        // data holds the data, with the first element (index 0) being the
+        // default value, and the rest being the nonzero elements.
+        //
+        // number of nonzero elements
+        nnz: usize,
+        // todo: explained in TODO.md
     };
-
-    pub const CSC = struct {};
-
-    pub const COO = struct {};
 };
 
 pub const Range = struct {
@@ -615,14 +710,14 @@ pub const Range = struct {
     stop: usize,
     step: isize,
 
-    pub const all: Range = .{ .start = 0, .stop = int.max(usize), .step = 1 };
+    pub const all: Range = .{ .start = 0, .stop = int.maxVal(usize), .step = 1 };
 
-    pub const all_reverse: Range = .{ .start = int.max(usize), .stop = int.max(usize), .step = -1 };
+    pub const all_reverse: Range = .{ .start = int.maxVal(usize), .stop = int.maxVal(usize), .step = -1 };
 
     pub fn init(start: ?usize, stop: ?usize, step: ?isize) !Range {
         const range: Range = .{
-            .start = start orelse int.max(usize),
-            .stop = stop orelse int.max(usize),
+            .start = start orelse int.maxVal(usize),
+            .stop = stop orelse int.maxVal(usize),
             .step = step orelse 1,
         };
 
@@ -632,7 +727,7 @@ pub const Range = struct {
 
         if (((range.step > 0 and range.start >= range.stop) or
             (range.step < 0 and range.start <= range.stop)) and
-            (range.start != int.max(usize) and range.stop != int.max(usize)))
+            (range.start != int.maxVal(usize) and range.stop != int.maxVal(usize)))
         {
             return Error.RangeOutOfBounds;
         }

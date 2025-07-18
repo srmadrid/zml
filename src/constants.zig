@@ -5,7 +5,8 @@ const Scalar = types.Scalar;
 const Coerce = types.Coerce;
 const CoerceToArray = types.CoerceToArray;
 const Child = types.Child;
-const needsAllocator = types.needsAllocator;
+const isArbitraryPrecision = types.isArbitraryPrecision;
+const validateContext = types.validateContext;
 
 const int = @import("int.zig");
 const float = @import("float.zig");
@@ -17,11 +18,17 @@ const complex = @import("complex.zig");
 
 pub inline fn pi(
     comptime T: type,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
+    ctx: anytype,
 ) !T {
-    _ = options;
+    comptime if (types.isArbitraryPrecision(T)) {
+        validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
     switch (types.numericType(T)) {
         .bool => @compileError("zml.pi not defined for " ++ @typeName(T)),
         .int => @compileError("zml.pi not defined for " ++ @typeName(T)),

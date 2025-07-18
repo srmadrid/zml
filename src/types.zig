@@ -174,7 +174,7 @@ pub inline fn numericType(comptime T: type) NumericType {
 
 pub fn isNumeric(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .bool => return .bool,
+        .bool => return true,
         .int, .comptime_int => {
             if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != c_uint and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != c_int and T != comptime_int)
                 return false;
@@ -1436,17 +1436,12 @@ pub inline fn scast(
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to cast to. Must be a supported numeric type.
+/// comptime `T` (`type`): The type to cast to. Must be a supported numeric type.
 ///
-/// value (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): The value to cast.
+/// `value` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`):The value to cast.
 ///
-/// options (`struct`): Optional parameters for the cast.
-/// - `allocator` (`std.mem.Allocator`): An allocator to use for allocating
-/// memory for the output value. Only needed if the output type is of arbitrary
-/// precision.
-/// - `copy`: Wether to copy the value or not. Only needed if the output type
-/// is of arbitrary precision.
+/// `ctx` (`struct`): The context for the cast operation.
 ///
 /// Returns
 /// -------
@@ -1464,55 +1459,66 @@ pub inline fn scast(
 ///
 /// Notes
 /// -----
-/// When the output type is of arbitrary precision, it will allocate a new value
-/// using the provided allocator, unless the output type is equal to the type of
-/// the input value and `copy` is set to `false`, in which case it will return
-/// the input value directly.
-///
-/// Setting `copy` to `true` with a fixed precision type has no effect.
-///
 /// This function does not check if the cast is safe, which could lead to
-/// runtime panics if the value cannot be represented in the target type.
+/// runtime panics.
 pub inline fn cast(
     comptime T: type,
     value: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-        copy: bool = false,
-    },
+    ctx: anytype,
 ) !T {
     const I: type = @TypeOf(value);
     const O: type = T;
 
+    comptime if (isArbitraryPrecision(O)) {
+        if (I == O) {
+            validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .copy = .{ .type = bool, .required = false },
+                },
+            );
+        } else {
+            validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+        }
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
     if (I == O) {
-        switch (numericType(O)) {
+        switch (comptime numericType(O)) {
             .bool, .int, .float, .cfloat => return value,
-            .integer => if (options.copy) {
-                // return integer.copy(options.allocator, value);
+            .integer => if (getFieldOrDefault(ctx, "copy", bool, false)) {
+                // return integer.copy(ctx.allocator, value);
                 return value;
             } else {
                 return value;
             },
-            .rational => if (options.copy) {
-                // return rational.copy(options.allocator, value);
+            .rational => if (getFieldOrDefault(ctx, "copy", bool, false)) {
+                // return rational.copy(ctx.allocator, value);
                 return value;
             } else {
                 return value;
             },
-            .real => if (options.copy) {
-                // return real.copy(options.allocator, value);
+            .real => if (getFieldOrDefault(ctx, "copy", bool, false)) {
+                // return real.copy(ctx.allocator, value);
                 return value;
             } else {
                 return value;
             },
-            .complex => if (options.copy) {
-                // return complex.copy(options.allocator, value);
+            .complex => if (getFieldOrDefault(ctx, "copy", bool, false)) {
+                // return complex.copy(ctx.allocator, value);
                 return value;
             } else {
                 return value;
             },
-            .expression => if (options.copy) {
-                // return expression.copy(options.allocator, value);
+            .expression => if (getFieldOrDefault(ctx, "copy", bool, false)) {
+                // return expression.copy(ctx.allocator, value);
                 return value;
             } else {
                 return value;
@@ -1670,12 +1676,12 @@ pub fn Child(comptime T: type) type {
 ///
 /// This function is useful when the return type of the function depends on
 /// the type of the parameter passed to it. The function may have a second
-/// parameter that is an options struct.
+/// parameter that is a context struct.
 pub fn ReturnType1(comptime op: anytype, comptime X: type) type {
     const opinfo = @typeInfo(@TypeOf(op));
 
     comptime if (opinfo.@"fn".params.len != 1 and opinfo.@"fn".params.len != 2)
-        @compileError("ReturnType1: op must be a function with one parameter, or two if the second is an options struct");
+        @compileError("ReturnType1: op must be a function with one parameter, or two if the second is an context struct");
 
     const val: X = if (isArbitraryPrecision(X))
         .empty
@@ -1704,12 +1710,12 @@ pub fn ReturnType1(comptime op: anytype, comptime X: type) type {
 ///
 /// This function is useful when the return type of the function depends on
 /// the types of the parameters passed to it. The function may have a third
-/// parameter that is an options struct.
+/// parameter that is a context struct.
 pub fn ReturnType2(comptime op: anytype, comptime X: type, comptime Y: type) type {
     const opinfo = @typeInfo(@TypeOf(op));
 
     comptime if (opinfo.@"fn".params.len != 2 and opinfo.@"fn".params.len != 3)
-        @compileError("ReturnType2: op must be a function with two parameters, or three if the third is an options struct");
+        @compileError("ReturnType2: op must be a function with two parameters, or three if the third is an context struct");
 
     const val1: X = if (isArbitraryPrecision(X))
         .empty
@@ -1737,4 +1743,202 @@ pub fn ReturnType2(comptime op: anytype, comptime X: type, comptime Y: type) typ
         .error_union => return resinfo.error_union.payload,
         else => return result_type,
     }
+}
+
+/// Validates a context struct against a specification struct.
+///
+/// This function checks that the context struct matches the specification
+/// struct, ensuring that all required fields are present and have the correct
+/// types. It also checks for unexpected fields in the context struct.
+///
+/// Parameters
+/// ----------
+/// ctx (`anytype`): The context struct to validate. Must be a struct type.
+/// spec (`anytype`): The specification struct that defines the expected fields
+/// and their types. Must have the following structure:
+/// ```zig
+/// .{
+///     .field_name = .{ .type = type, .required = bool },
+///     ...
+/// }
+/// ```
+/// where `field_name` is the name of the field, `type` is the expected type of
+/// the field, and `required` is a boolean indicating whether the field is
+/// required or not.
+///
+/// Returns
+/// -------
+/// `void`: If the context struct is valid according to the specification.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the context struct does not match the specification.
+///
+/// Notes
+/// -----
+/// If the specification struct has no fields, the context struct is allowed to
+/// be `void`.
+pub fn validateContext(comptime Ctx: type, comptime spec: anytype) void {
+    const ctxinfo = @typeInfo(Ctx);
+
+    const SpecType = @TypeOf(spec);
+    const specinfo = @typeInfo(SpecType);
+
+    if (specinfo.@"struct".fields.len == 0 and Ctx == void)
+        return; // No context needed, nothing to validate
+
+    if (ctxinfo != .@"struct")
+        @compileError("Expected struct for context, got " ++ @typeName(Ctx));
+
+    if (ctxinfo.@"struct".fields.len != 0 and specinfo.@"struct".fields.len == 0)
+        @compileError("Context struct must be empty");
+
+    // Check that all required fields exist and types match
+    inline for (specinfo.@"struct".fields) |field| {
+        const field_spec = @field(spec, field.name);
+        const required = @hasField(@TypeOf(field_spec), "required") and field_spec.required;
+        const expected_type = field_spec.type;
+
+        if (@hasField(Ctx, field.name)) {
+            const actual_type = @FieldType(Ctx, field.name);
+            const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
+                const type_info = @typeInfo(expected_type);
+                break :blk type_info == .@"enum";
+            } else actual_type == expected_type;
+
+            if (!types_match)
+                @compileError("Field '" ++ field.name ++ "' has type " ++ @typeName(actual_type) ++ ", expected " ++ @typeName(expected_type));
+        } else if (required) {
+            @compileError("Required field '" ++ field.name ++ "' missing from context");
+        }
+    }
+
+    if (ctxinfo.@"struct".fields.len != 0 and specinfo.@"struct".fields.len == 0)
+        @compileError("Context struct must be empty");
+
+    // Check for unexpected fields in context
+    inline for (ctxinfo.@"struct".fields) |ctx_field| {
+        if (!@hasField(SpecType, ctx_field.name)) {
+            @compileError("Unexpected field '" ++ ctx_field.name ++ "' in context");
+        }
+    }
+}
+
+pub fn getFieldOrDefault(ctx: anytype, comptime field_name: []const u8, comptime FieldType: type, default_value: FieldType) FieldType {
+    const T = @TypeOf(ctx);
+    if (@hasField(T, field_name)) {
+        if (@FieldType(T, field_name) != FieldType)
+            @compileError("Field '" ++ field_name ++ "' has type " ++ @typeName(@FieldType(T, field_name)) ++ ", expected " ++ @typeName(FieldType));
+
+        return @field(ctx, field_name);
+    }
+
+    return default_value;
+}
+
+pub fn MixStructs(comptime S1: type, comptime S2: type) type {
+    const info1 = @typeInfo(S1);
+    const info2 = @typeInfo(S2);
+
+    if (info1 != .@"struct" or info2 != .@"struct")
+        @compileError("MixStructs: both types must be structs");
+
+    for (info1.@"struct".fields) |field| {
+        if (@hasField(S2, field.name))
+            @compileError("Field '" ++ field.name ++ "' already exists in the second struct");
+    }
+
+    return @Type(.{
+        .@"struct" = .{
+            .layout = .auto,
+            .fields = info1.@"struct".fields ++ info2.@"struct".fields,
+            .decls = &.{},
+            .is_tuple = false,
+        },
+    });
+}
+
+pub fn mixStructs(s1: anytype, s2: anytype) MixStructs(@TypeOf(s1), @TypeOf(s2)) {
+    const S1 = @TypeOf(s1);
+    const S2 = @TypeOf(s2);
+
+    const info1 = @typeInfo(S1);
+    const info2 = @typeInfo(S2);
+
+    if (info1 != .@"struct" or info2 != .@"struct")
+        @compileError("mixStructs: both types must be structs");
+
+    var result: MixStructs(S1, S2) = .{};
+    inline for (info1.@"struct".fields) |field| {
+        if (@hasField(S2, field.name))
+            @compileError("Field '" ++ field.name ++ "' already exists in the second struct");
+
+        @field(result, field.name) = @field(s1, field.name);
+    }
+    inline for (info2.@"struct".fields) |field| {
+        @field(result, field.name) = @field(s2, field.name);
+    }
+
+    return result;
+}
+
+pub fn StripStruct(comptime S: type, comptime fields_to_remove: []const []const u8) type {
+    const info = @typeInfo(S);
+    if (info != .@"struct")
+        @compileError("Type must be a struct");
+
+    // Calculate how many fields will remain
+    comptime var remaining_count: usize = 0;
+    inline for (info.@"struct".fields) |field| {
+        comptime var should_remove: bool = false;
+        inline for (fields_to_remove) |field_to_remove| {
+            if (std.mem.eql(u8, field.name, field_to_remove)) {
+                should_remove = true;
+                break;
+            }
+        }
+
+        if (!should_remove) {
+            remaining_count += 1;
+        }
+    }
+
+    // Create new fields array
+    comptime var new_fields: [remaining_count]std.builtin.Type.StructField = undefined;
+    comptime var new_field_index: usize = 0;
+    inline for (info.@"struct".fields) |field| {
+        var should_remove = false;
+        inline for (fields_to_remove) |field_to_remove| {
+            if (std.mem.eql(u8, field.name, field_to_remove)) {
+                should_remove = true;
+                break;
+            }
+        }
+
+        if (!should_remove) {
+            new_fields[new_field_index] = field;
+            new_field_index += 1;
+        }
+    }
+
+    return @Type(.{ .@"struct" = .{
+        .layout = .auto,
+        .fields = &new_fields,
+        .decls = &.{},
+        .is_tuple = false,
+    } });
+}
+
+pub fn stripStruct(s: anytype, comptime fields_to_remove: []const []const u8) StripStruct(@TypeOf(s), fields_to_remove) {
+    const S = @TypeOf(s);
+    const info = @typeInfo(S);
+    if (info != .@"struct")
+        @compileError("Type must be a struct");
+
+    var result: StripStruct(S, fields_to_remove) = .{};
+    inline for (@typeInfo(@TypeOf(result)).@"struct".fields) |field| {
+        @field(result, field.name) = @field(s, field.name);
+    }
+
+    return result;
 }

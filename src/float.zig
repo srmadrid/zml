@@ -65,23 +65,6 @@ pub inline fn add(
     return scast(C, x) + scast(C, y);
 }
 
-pub inline fn add_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("float.add_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .float)
-        @compileError("float.add_ requires the output type to be a float, got " ++ @typeName(O));
-
-    o.* += scast(O, y);
-}
-
 pub inline fn sub(
     x: anytype,
     y: anytype,
@@ -97,23 +80,6 @@ pub inline fn sub(
             @typeName(X) ++ " and " ++ @typeName(Y));
 
     return scast(C, x) - scast(C, y);
-}
-
-pub inline fn sub_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("float.sub_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .float)
-        @compileError("float.sub_ requires the output type to be a float, got " ++ @typeName(O));
-
-    o.* -= scast(O, y);
 }
 
 pub inline fn mul(
@@ -133,23 +99,6 @@ pub inline fn mul(
     return scast(C, x) * scast(C, y);
 }
 
-pub inline fn mul_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("float.mul_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .float)
-        @compileError("float.mul_ requires the output type to be a float, got " ++ @typeName(O));
-
-    o.* *= scast(O, y);
-}
-
 pub inline fn div(
     x: anytype,
     y: anytype,
@@ -165,23 +114,6 @@ pub inline fn div(
             @typeName(X) ++ " and " ++ @typeName(Y));
 
     return scast(C, x) / scast(C, y);
-}
-
-pub inline fn div_(
-    o: anytype,
-    y: anytype,
-) void {
-    comptime var O: type = @TypeOf(o);
-
-    comptime if (!types.isPointer(O) or types.isConstPointer(O))
-        @compileError("float.div_ requires the output to be a pointer to a mutable type, got " ++ @typeName(O));
-
-    O = types.Child(O);
-
-    comptime if (types.numericType(O) != .float)
-        @compileError("float.div_ requires the output type to be a float, got " ++ @typeName(O));
-
-    o.* /= scast(O, y);
 }
 
 pub inline fn cmp(
@@ -296,6 +228,40 @@ pub inline fn ge(
             @typeName(X) ++ " and " ++ @typeName(Y));
 
     return x >= y;
+}
+
+pub inline fn max(
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
+
+    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
+        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
+        (types.numericType(X) != .float and types.numericType(Y) != .float))
+        @compileError("float.ge requires at least one of x or y to be a float, the other must be an int or float, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return if (x > y) scast(C, x) else scast(C, y);
+}
+
+pub inline fn min(
+    x: anytype,
+    y: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
+
+    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
+        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
+        (types.numericType(X) != .float and types.numericType(Y) != .float))
+        @compileError("float.min requires at least one of x or y to be a float, the other must be an int or float, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return if (x < y) scast(C, x) else scast(C, y);
 }
 
 // Basic operations

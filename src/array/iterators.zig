@@ -10,7 +10,7 @@ const maxArrays: usize = 8;
 pub fn Iterator(comptime T: type) type {
     return struct {
         arr: *const Array(T),
-        position: [array.maxDimensions]usize,
+        position: [array.max_dimensions]usize,
         index: usize,
 
         pub fn init(arr: *const Array(T)) Iterator(T) {
@@ -18,14 +18,14 @@ pub fn Iterator(comptime T: type) type {
                 .dense => {
                     return Iterator(T){
                         .arr = arr,
-                        .position = .{0} ** array.maxDimensions,
+                        .position = .{0} ** array.max_dimensions,
                         .index = 0,
                     };
                 },
                 .strided => {
                     return Iterator(T){
                         .arr = arr,
-                        .position = .{0} ** array.maxDimensions,
+                        .position = .{0} ** array.max_dimensions,
                         .index = arr.metadata.strided.offset,
                     };
                 },
@@ -33,7 +33,7 @@ pub fn Iterator(comptime T: type) type {
 
             return Iterator(T){
                 .arr = arr,
-                .position = .{0} ** array.maxDimensions,
+                .position = .{0} ** array.max_dimensions,
                 .index = 0,
             };
         }
@@ -42,11 +42,11 @@ pub fn Iterator(comptime T: type) type {
             switch (self.arr.flags.storage) {
                 .dense, .strided => {
                     switch (self.arr.flags.order) {
-                        .rowMajor => {
-                            return self.nextAO(self.arr.ndim - 1, .rightToLeft);
+                        .row_major => {
+                            return self.nextAO(self.arr.ndim - 1, .right_to_left);
                         },
-                        .columnMajor => {
-                            return self.nextAO(0, .leftToRight);
+                        .col_major => {
+                            return self.nextAO(0, .left_to_right);
                         },
                     }
                 },
@@ -63,10 +63,10 @@ pub fn Iterator(comptime T: type) type {
                     var index: isize = undefined;
                     var stride: isize = undefined;
 
-                    const ax = if (order == .rightToLeft) self.arr.ndim - axis - 1 else axis;
+                    const ax = if (order == .right_to_left) self.arr.ndim - axis - 1 else axis;
 
                     for (ax..self.arr.ndim) |i| {
-                        const idx = if (order == .rightToLeft) self.arr.ndim - i - 1 else i;
+                        const idx = if (order == .right_to_left) self.arr.ndim - i - 1 else i;
                         prev = scast(isize, self.position[idx]);
                         self.position[idx] += 1;
 
@@ -109,9 +109,9 @@ pub fn MultiIterator(comptime T: type) type {
         /// Subiterators for the arrs.
         iterators: [maxArrays]Iterator(T),
         /// Broadscasted shape.
-        shape: [array.maxDimensions]usize,
+        shape: [array.max_dimensions]usize,
         /// Broadscasted strides.
-        strides: [array.maxDimensions]isize,
+        strides: [array.max_dimensions]isize,
         /// Offset of the first element of the iterator.
         offset: usize,
         /// Broadscasted size.
@@ -119,7 +119,7 @@ pub fn MultiIterator(comptime T: type) type {
         /// Flags of the (theoretical) broadscasted arr.
         flags: array.Flags,
         /// Current position.
-        position: [array.maxDimensions]usize,
+        position: [array.max_dimensions]usize,
         /// Current index.
         index: usize,
 
@@ -154,7 +154,7 @@ pub fn MultiIterator(comptime T: type) type {
                 }
             }
 
-            var shape: [array.maxDimensions]usize = .{0} ** array.maxDimensions;
+            var shape: [array.max_dimensions]usize = .{0} ** array.max_dimensions;
             for (0..narr) |i| {
                 for (0..arrs[i].ndim) |j| {
                     if (shape[ndim - j - 1] != arrs[i].shape[arrs[i].ndim - j - 1]) {
@@ -169,7 +169,7 @@ pub fn MultiIterator(comptime T: type) type {
             }
 
             var size: usize = 1;
-            var strides: [array.maxDimensions]isize = .{0} ** array.maxDimensions;
+            var strides: [array.max_dimensions]isize = .{0} ** array.max_dimensions;
 
             for (0..ndim) |i| {
                 const idx = if (flags.order == .RowMajor) ndim - i - 1 else i;
@@ -186,7 +186,7 @@ pub fn MultiIterator(comptime T: type) type {
                 .offset = 0,
                 .size = size,
                 .flags = flags,
-                .position = [_]usize{0} ** array.maxDimensions,
+                .position = [_]usize{0} ** array.max_dimensions,
                 .index = 0,
             };
         }
@@ -253,7 +253,7 @@ pub fn MultiIterator(comptime T: type) type {
         ///
         /// **Input Parameters**:
         /// - `self`: the iterator.
-        /// - `rowMajorOrder`: what order to iterate with. If `true`, iterates
+        /// - `row_majorOrder`: what order to iterate with. If `true`, iterates
         /// in row major order (right to left, `(...,0,0)->(...,0,1)->...->
         /// (...,0,n)->(...,1,0))`, which is very efficient for arrs stored in
         /// row major order; if `false`, iterates in column major order (left to
@@ -359,6 +359,6 @@ pub const Error = error{
 };
 
 pub const IterationOrder = enum {
-    leftToRight,
-    rightToLeft,
+    left_to_right,
+    right_to_left,
 };
