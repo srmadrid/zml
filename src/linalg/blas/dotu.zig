@@ -14,18 +14,16 @@ pub fn dotu(
     incx: isize,
     y: anytype,
     incy: isize,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
+    ctx: anytype,
 ) !Coerce(Child(@TypeOf(x)), Child(@TypeOf(y))) {
     const X: type = types.Child(@TypeOf(x));
     const Y: type = types.Child(@TypeOf(y));
     const C: type = types.Coerce(X, Y);
 
-    var sum: C = try ops.init(C, .{ .allocator = options.allocator });
-    errdefer ops.deinit(&sum, .{ .allocator = options.allocator });
+    var sum: C = try ops.init(C, ctx);
+    errdefer ops.deinit(&sum, ctx);
 
-    try @import("dotu_sub.zig").dotu_sub(n, x, incx, y, incy, &sum, .{ .allocator = options.allocator });
+    try @import("dotu_sub.zig").dotu_sub(n, x, incx, y, incy, &sum, ctx);
 
     return sum;
 }

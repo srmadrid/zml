@@ -8,8 +8,9 @@ test rotmg {
     var x1: f64 = 1;
     const y1: f64 = 1;
     var param: [5]f64 = undefined;
+    const param_ptr: []f64 = &param;
 
-    rotmg(f64, &d1, &d2, &x1, y1, &param);
+    rotmg(&d1, &d2, &x1, y1, param_ptr.ptr, .{}) catch unreachable;
 
     try std.testing.expectApproxEqAbs(1.3333333333333333, d1, 0.0000000001);
     try std.testing.expectApproxEqAbs(0.6666666666666666, d2, 0.0000000001);

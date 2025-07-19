@@ -11,16 +11,14 @@ pub fn asum(
     n: isize,
     x: anytype,
     incx: isize,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
+    ctx: anytype,
 ) !Scalar(Child(@TypeOf(x))) {
     const X: type = types.Child(@TypeOf(x));
 
-    var sum: Scalar(X) = try ops.init(Scalar(X), .{ .allocator = options.allocator });
-    errdefer ops.deinit(&sum, .{ .allocator = options.allocator });
+    var sum: Scalar(X) = try ops.init(Scalar(X), ctx);
+    errdefer ops.deinit(&sum, ctx);
 
-    try @import("asum_sub.zig").asum_sub(n, x, incx, &sum, .{ .allocator = options.allocator });
+    try @import("asum_sub.zig").asum_sub(n, x, incx, &sum, ctx);
 
     return sum;
 }

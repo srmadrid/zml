@@ -747,8 +747,8 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    //const sum: f64 = zml.linalg.blas.dasum(zml.scast(isize, F.size), F.data.ptr, 1);
-    //std.debug.print("Sum of F: {d}\n", .{sum});
+    const sum: f64 = zml.linalg.blas.dasum(zml.scast(isize, F.size), F.data.ptr, 1);
+    std.debug.print("Sum of F: {d}\n", .{sum});
 }
 
 fn iterTesting(a: std.mem.Allocator) !void {

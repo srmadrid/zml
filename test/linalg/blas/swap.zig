@@ -24,19 +24,19 @@ test swap {
         x4[i] = @floatFromInt(i + 2);
     }
 
-    swap(f64, n, x1.ptr, 1, x2.ptr, 1);
+    swap(n, x1.ptr, 1, x2.ptr, 1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(i + 2)), x1[i]);
         try std.testing.expectEqual(@as(f64, @floatFromInt(i + 1)), x2[i]);
         x1[i] = @floatFromInt(i + 1);
     }
-    swap(f64, n, x1.ptr, 1, x3.ptr, -1);
+    swap(n, x1.ptr, 1, x3.ptr, -1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(i + 2)), x1[i]);
         try std.testing.expectEqual(@as(f64, @floatFromInt(n - i)), x3[i]);
         x1[i] = @floatFromInt(i + 1);
     }
-    swap(f64, n / 2, x1.ptr, 2, x4.ptr, 2);
+    swap(n / 2, x1.ptr, 2, x4.ptr, 2, .{}) catch unreachable;
     for (0..n) |i| {
         if (i % 2 == 0) {
             try std.testing.expectEqual(@as(f64, @floatFromInt(i + 2)), x1[i]);
@@ -63,7 +63,7 @@ test swap {
         x8[i] = cf64.init(@floatFromInt(i + 2), @floatFromInt(-@as(isize, @intCast((i + 2)))));
     }
 
-    swap(cf64, n, x5.ptr, 1, x6.ptr, 1);
+    swap(n, x5.ptr, 1, x6.ptr, 1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(i + 2)), x5[i].re);
         try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(i + 2)))), x5[i].im);
@@ -71,7 +71,7 @@ test swap {
         try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(i + 1)))), x6[i].im);
         x5[i] = cf64.init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast((i + 1)))));
     }
-    swap(cf64, n, x5.ptr, 1, x7.ptr, -1);
+    swap(n, x5.ptr, 1, x7.ptr, -1, .{}) catch unreachable;
     for (0..n) |i| {
         try std.testing.expectEqual(@as(f64, @floatFromInt(i + 2)), x5[i].re);
         try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(i + 2)))), x5[i].im);
@@ -79,7 +79,7 @@ test swap {
         try std.testing.expectEqual(@as(f64, @floatFromInt(-@as(isize, @intCast(n - i)))), x7[i].im);
         x5[i] = cf64.init(@floatFromInt(i + 1), @floatFromInt(-@as(isize, @intCast((i + 1)))));
     }
-    swap(cf64, n / 2, x5.ptr, 2, x8.ptr, 2);
+    swap(n / 2, x5.ptr, 2, x8.ptr, 2, .{}) catch unreachable;
     for (0..n) |i| {
         if (i % 2 == 0) {
             try std.testing.expectEqual(@as(f64, @floatFromInt(i + 2)), x5[i].re);

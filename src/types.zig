@@ -1384,8 +1384,8 @@ pub inline fn scast(
     const onumeric = numericType(O);
     const inumeric = numericType(I);
 
-    switch (inumeric) {
-        .bool => switch (onumeric) {
+    switch (comptime inumeric) {
+        .bool => switch (comptime onumeric) {
             .bool => unreachable,
             .int => return if (value) 1 else 0,
             .float => return if (value) 1 else 0,
@@ -1395,7 +1395,7 @@ pub inline fn scast(
             },
             else => unreachable,
         },
-        .int => switch (onumeric) {
+        .int => switch (comptime onumeric) {
             .bool => return if (value != 0) true else false,
             .int => return @intCast(value),
             .float => return @floatFromInt(value),
@@ -1405,7 +1405,7 @@ pub inline fn scast(
             },
             else => unreachable,
         },
-        .float => switch (onumeric) {
+        .float => switch (comptime onumeric) {
             .bool => return if (value != 0) true else false,
             .int => return @intFromFloat(value),
             .float => return @floatCast(value),
@@ -1418,7 +1418,7 @@ pub inline fn scast(
             },
             else => unreachable,
         },
-        .cfloat => switch (onumeric) {
+        .cfloat => switch (comptime onumeric) {
             .bool => return if (value.re != 0 or value.im != 0) true else false,
             .int => return @intFromFloat(value.re),
             .float => return if (Scalar(I) == O) value.re else @floatCast(value.re),
@@ -1531,7 +1531,7 @@ pub inline fn cast(
     const inumeric = comptime numericType(I);
 
     switch (inumeric) {
-        .bool => switch (onumeric) {
+        .bool => switch (comptime onumeric) {
             .bool => unreachable,
             .int => return if (value) 1 else 0,
             .float => return if (value) 1 else 0,
@@ -1545,7 +1545,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from bool to complex"),
             .expression => @compileError("Not implemented yet: casting from bool to expression"),
         },
-        .int => switch (onumeric) {
+        .int => switch (comptime onumeric) {
             .bool => return if (value != 0) true else false,
             .int => return @intCast(value),
             .float => return @floatFromInt(value),
@@ -1559,7 +1559,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from int to complex"),
             .expression => @compileError("Not implemented yet: casting from int to expression"),
         },
-        .float => switch (onumeric) {
+        .float => switch (comptime onumeric) {
             .bool => return if (value != 0) true else false,
             .int => return @intFromFloat(value),
             .float => return @floatCast(value),
@@ -1576,7 +1576,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from float to complex"),
             .expression => @compileError("Not implemented yet: casting from float to expression"),
         },
-        .cfloat => switch (onumeric) {
+        .cfloat => switch (comptime onumeric) {
             .bool => return if (value.re != 0 or value.im != 0) true else false,
             .int => return @intFromFloat(value.re),
             .float => return if (Scalar(I) == O) value.re else @floatCast(value.re),
@@ -1590,7 +1590,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from cfloat to complex"),
             .expression => @compileError("Not implemented yet: casting from cfloat to expression"),
         },
-        .integer => switch (onumeric) {
+        .integer => switch (comptime onumeric) {
             .bool => @compileError("Not implemented yet: casting from integer to bool"),
             .int => @compileError("Not implemented yet: casting from integer to int"),
             .float => @compileError("Not implemented yet: casting from integer to float"),
@@ -1601,7 +1601,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from integer to complex"),
             .expression => @compileError("Not implemented yet: casting from integer to expression"),
         },
-        .rational => switch (onumeric) {
+        .rational => switch (comptime onumeric) {
             .bool => @compileError("Not implemented yet: casting from rational to bool"),
             .int => @compileError("Not implemented yet: casting from rational to int"),
             .float => @compileError("Not implemented yet: casting from rational to float"),
@@ -1612,7 +1612,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from rational to complex"),
             .expression => @compileError("Not implemented yet: casting from rational to expression"),
         },
-        .real => switch (onumeric) {
+        .real => switch (comptime onumeric) {
             .bool => @compileError("Not implemented yet: casting from real to bool"),
             .int => @compileError("Not implemented yet: casting from real to int"),
             .float => @compileError("Not implemented yet: casting from real to float"),
@@ -1623,7 +1623,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from real to complex"),
             .expression => @compileError("Not implemented yet: casting from real to expression"),
         },
-        .complex => switch (onumeric) {
+        .complex => switch (comptime onumeric) {
             .bool => @compileError("Not implemented yet: casting from complex to bool"),
             .int => @compileError("Not implemented yet: casting from complex to int"),
             .float => @compileError("Not implemented yet: casting from complex to float"),
@@ -1634,7 +1634,7 @@ pub inline fn cast(
             .complex => return value, // Will have to check the type held by the Complex
             .expression => @compileError("Not implemented yet: casting from complex to expression"),
         },
-        .expression => switch (onumeric) {
+        .expression => switch (comptime onumeric) {
             .bool => @compileError("Not implemented yet: casting from expression to bool"),
             .int => @compileError("Not implemented yet: casting from expression to int"),
             .float => @compileError("Not implemented yet: casting from expression to float"),

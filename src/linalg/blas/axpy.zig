@@ -14,13 +14,12 @@ pub fn axpy(
     incx: isize,
     y: anytype,
     incy: isize,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
+    ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
     const X: type = types.Child(@TypeOf(x));
     const C: type = types.Coerce(Al, X);
+    const Y: type = types.Child(@TypeOf(y));
 
     if (n <= 0) return blas.Error.InvalidArgument;
 
@@ -28,40 +27,53 @@ pub fn axpy(
 
     var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
     var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-    switch (comptime types.isArbitraryPrecision(C)) {
-        true => {
-            var temp: C = try ops.init(C, .{ .allocator = options.allocator });
-            defer ops.deinit(temp, .{ .allocator = options.allocator });
+    if (comptime types.isArbitraryPrecision(C)) {
+        if (comptime types.isArbitraryPrecision(Y)) {
+            // Orientative implementation for arbitrary precision types
+            var temp: C = try ops.init(C, ctx);
+            defer ops.deinit(temp, ctx);
             for (0..scast(usize, n)) |_| {
                 try ops.mul_(
                     &temp,
                     alpha,
                     x[scast(usize, ix)],
-                    .{ .allocator = options.allocator },
+                    ctx,
                 );
+
                 try ops.add_(
                     &y[scast(usize, iy)],
                     y[scast(usize, iy)],
                     temp,
-                    .{ .allocator = options.allocator },
+                    ctx,
                 );
 
                 ix += incx;
                 iy += incy;
             }
-        },
-        false => {
+
+            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet, got " ++ @typeName(Al) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        } else {
+            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet, got " ++ @typeName(Al) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        }
+    } else {
+        if (comptime types.isArbitraryPrecision(Y)) {
+            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet, got " ++ @typeName(Al) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        } else {
             for (0..scast(usize, n)) |_| {
-                try ops.add_(
+                ops.add_( // y[iy] += alpha * x[ix]
                     &y[scast(usize, iy)],
                     y[scast(usize, iy)],
-                    ops.mul(alpha, x[scast(usize, ix)], .{}) catch unreachable,
-                    .{ .allocator = options.allocator },
-                );
+                    ops.mul(
+                        alpha,
+                        x[scast(usize, ix)],
+                        ctx,
+                    ) catch unreachable,
+                    ctx,
+                ) catch unreachable;
 
                 ix += incx;
                 iy += incy;
             }
-        },
+        }
     }
 }

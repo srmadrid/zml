@@ -9,7 +9,7 @@ test rotg {
     var c: f64 = undefined;
     var s: f64 = undefined;
 
-    rotg(f64, &a, &b, &c, &s);
+    rotg(&a, &b, &c, &s, .{}) catch unreachable;
 
     try std.testing.expectApproxEqAbs(2.8284271247461903, a, 0.0000001);
     try std.testing.expectApproxEqAbs(1.4142135623730951, b, 0.0000001);
@@ -21,7 +21,7 @@ test rotg {
     var c_c: f64 = undefined;
     var s_c: cf64 = undefined;
 
-    rotg(cf64, &a_c, &b_c, &c_c, &s_c);
+    rotg(&a_c, &b_c, &c_c, &s_c, .{}) catch unreachable;
 
     //try std.testing.expectApproxEqAbs(2.449489742783178, a_c.re, 0.0000001);
     //try std.testing.expectApproxEqAbs(-5.375387381226731e102, a_c.im, 0.0000001);

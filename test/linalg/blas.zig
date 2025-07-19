@@ -8,10 +8,10 @@ test {
         _ = @import("blas/axpy.zig");
         _ = @import("blas/copy.zig");
         _ = @import("blas/dot.zig");
-        _ = @import("blas/dotc.zig");
         _ = @import("blas/dotc_sub.zig");
-        _ = @import("blas/dotu.zig");
+        _ = @import("blas/dotc.zig");
         _ = @import("blas/dotu_sub.zig");
+        _ = @import("blas/dotu.zig");
         _ = @import("blas/nrm2.zig");
         _ = @import("blas/rot.zig");
         _ = @import("blas/rotg.zig");

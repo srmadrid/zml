@@ -13,46 +13,82 @@ pub fn asum_sub(
     x: anytype,
     incx: isize,
     ret: anytype,
-    options: struct {
-        allocator: ?std.mem.Allocator = null,
-    },
+    ctx: anytype,
 ) !void {
     const X: type = types.Child(@TypeOf(x));
+    const R: type = types.Child(@TypeOf(ret));
 
-    try ops.set(ret, 0, .{ .allocator = options.allocator });
+    try ops.set(ret, 0, ctx);
 
     if (n <= 0 or incx <= 0) return blas.Error.InvalidArgument;
 
     var ix: isize = 0;
-    switch (comptime types.numericType(X)) {
-        .cfloat => {
-            for (0..scast(usize, n)) |_| {
-                try ops.add_(ret, ret.*, float.abs(x[scast(usize, ix)].re) + float.abs(x[scast(usize, ix)].im), .{ .allocator = options.allocator });
+    if (comptime types.isArbitraryPrecision(R)) {
+        if (comptime types.isArbitraryPrecision(X)) {
+            // Orientative implementation for arbitrary precision types
+            if (comptime types.isComplex(X)) {
+                var temp: Scalar(X) = try ops.init(Scalar(X), ctx);
+                defer ops.deinit(&temp, ctx);
+                for (0..scast(usize, n)) |_| {
+                    try ops.add_(
+                        &temp,
+                        ops.abs(x[scast(usize, ix)].re, types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
+                        ops.abs(x[scast(usize, ix)].im, types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
+                        ctx,
+                    );
 
-                ix += incx;
-            }
-        },
-        .complex => {
-            var temp: Scalar(X) = try ops.init(Scalar(X), .{ .allocator = options.allocator });
-            defer ops.deinit(temp, .{ .allocator = options.allocator });
-            for (0..scast(usize, n)) |_| {
-                try ops.add_(
-                    &temp,
-                    ops.abs(x[scast(usize, ix)].re, .{ .copy = false }) catch unreachable,
-                    ops.abs(x[scast(usize, ix)].im, .{ .copy = false }) catch unreachable,
-                    .{ .allocator = options.allocator },
-                );
-                try ops.add_(ret, ret.*, temp, .{ .allocator = options.allocator });
+                    try ops.add_(ret, ret.*, temp, ctx);
 
-                ix += incx;
-            }
-        },
-        else => {
-            for (0..scast(usize, n)) |_| {
-                try ops.add_(ret, ret.*, ops.abs(x[scast(usize, ix)], .{ .copy = false }) catch unreachable, .{ .allocator = options.allocator });
+                    ix += incx;
+                }
+            } else {
+                for (0..scast(usize, n)) |_| {
+                    try ops.add_(
+                        ret,
+                        ret.*,
+                        ops.abs(x[scast(usize, ix)], types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
+                        ctx,
+                    );
 
-                ix += incx;
+                    ix += incx;
+                }
             }
-        },
+
+            @compileError("zml.linalg.blas.asum_sub not implemented for arbitrary precision types yet");
+        } else {
+            @compileError("zml.linalg.blas.asum_sub not implemented for arbitrary precision types yet");
+        }
+    } else {
+        if (comptime types.isArbitraryPrecision(X)) {
+            @compileError("zml.linalg.blas.asum_sub not implemented for arbitrary precision types yet");
+        } else {
+            if (comptime types.isComplex(X)) {
+                for (0..scast(usize, n)) |_| {
+                    ops.add_( // ret += |x[ix].re| + |x[ix].im|
+                        ret,
+                        ret.*,
+                        ops.add(
+                            ops.abs(x[scast(usize, ix)].re, ctx) catch unreachable,
+                            ops.abs(x[scast(usize, ix)].im, ctx) catch unreachable,
+                            ctx,
+                        ) catch unreachable,
+                        ctx,
+                    ) catch unreachable;
+
+                    ix += incx;
+                }
+            } else {
+                for (0..scast(usize, n)) |_| {
+                    ops.add_( // ret += |x[ix]|
+                        ret,
+                        ret.*,
+                        ops.abs(x[scast(usize, ix)], ctx) catch unreachable,
+                        ctx,
+                    ) catch unreachable;
+
+                    ix += incx;
+                }
+            }
+        }
     }
 }
