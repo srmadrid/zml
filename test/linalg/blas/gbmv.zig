@@ -65,7 +65,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .RowMajor, .NoTrans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x1.ptr, 2, beta, y1.ptr, 2);
+    gbmv(.row_major, .no_trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x1.ptr, 2, beta, y1.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(43, y1[0]);
     try std.testing.expectEqual(146, y1[2]);
@@ -100,7 +100,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .RowMajor, .NoTrans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x2.ptr, -2, beta, y2.ptr, -2);
+    gbmv(.row_major, .no_trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x2.ptr, -2, beta, y2.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(43, y2[6]);
     try std.testing.expectEqual(146, y2[4]);
@@ -135,7 +135,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .ColumnMajor, .NoTrans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x3.ptr, 2, beta, y3.ptr, 2);
+    gbmv(.col_major, .no_trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x3.ptr, 2, beta, y3.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(87, y3[0]);
     try std.testing.expectEqual(206, y3[2]);
@@ -170,7 +170,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .ColumnMajor, .NoTrans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x4.ptr, -2, beta, y4.ptr, -2);
+    gbmv(.col_major, .no_trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x4.ptr, -2, beta, y4.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(87, y4[6]);
     try std.testing.expectEqual(206, y4[4]);
@@ -205,7 +205,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .RowMajor, .Trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x5.ptr, 2, beta, y5.ptr, 2);
+    gbmv(.row_major, .trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x5.ptr, 2, beta, y5.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(27, y5[0]);
     try std.testing.expectEqual(90, y5[2]);
@@ -241,7 +241,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .RowMajor, .Trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x6.ptr, -2, beta, y6.ptr, -2);
+    gbmv(.row_major, .trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x6.ptr, -2, beta, y6.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(27, y6[8]);
     try std.testing.expectEqual(90, y6[6]);
@@ -277,7 +277,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .ColumnMajor, .Trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x7.ptr, 2, beta, y7.ptr, 2);
+    gbmv(.col_major, .trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x7.ptr, 2, beta, y7.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(25, y7[0]);
     try std.testing.expectEqual(94, y7[2]);
@@ -313,7 +313,7 @@ test gbmv {
         0,
     });
 
-    gbmv(f64, .ColumnMajor, .Trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x8.ptr, -2, beta, y8.ptr, -2);
+    gbmv(.col_major, .trans, m, n, kl, ku, alpha, A.ptr, kl + ku + 1, x8.ptr, -2, beta, y8.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(25, y8[8]);
     try std.testing.expectEqual(94, y8[6]);
@@ -376,7 +376,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .NoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x9.ptr, 2, delta, y9.ptr, 2);
+    gbmv(.row_major, .no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x9.ptr, 2, delta, y9.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-160, y9[0].re);
     try std.testing.expectEqual(130, y9[0].im);
@@ -415,7 +415,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .NoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x10.ptr, -2, delta, y10.ptr, -2);
+    gbmv(.row_major, .no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x10.ptr, -2, delta, y10.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-160, y10[6].re);
     try std.testing.expectEqual(130, y10[6].im);
@@ -454,7 +454,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .NoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x11.ptr, 2, delta, y11.ptr, 2);
+    gbmv(.col_major, .no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x11.ptr, 2, delta, y11.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-336, y11[0].re);
     try std.testing.expectEqual(270, y11[0].im);
@@ -493,7 +493,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .NoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x12.ptr, -2, delta, y12.ptr, -2);
+    gbmv(.col_major, .no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x12.ptr, -2, delta, y12.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-336, y12[6].re);
     try std.testing.expectEqual(270, y12[6].im);
@@ -532,7 +532,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .ConjNoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x13.ptr, 2, delta, y13.ptr, 2);
+    gbmv(.row_major, .conj_no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x13.ptr, 2, delta, y13.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(124, y13[0].re);
     try std.testing.expectEqual(166, y13[0].im);
@@ -571,7 +571,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .ConjNoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x14.ptr, -2, delta, y14.ptr, -2);
+    gbmv(.row_major, .conj_no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x14.ptr, -2, delta, y14.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(124, y14[6].re);
     try std.testing.expectEqual(166, y14[6].im);
@@ -610,7 +610,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .ConjNoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x15.ptr, 2, delta, y15.ptr, 2);
+    gbmv(.col_major, .conj_no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x15.ptr, 2, delta, y15.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(264, y15[0].re);
     try std.testing.expectEqual(342, y15[0].im);
@@ -649,7 +649,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .ConjNoTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x16.ptr, -2, delta, y16.ptr, -2);
+    gbmv(.col_major, .conj_no_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x16.ptr, -2, delta, y16.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(264, y16[6].re);
     try std.testing.expectEqual(342, y16[6].im);
@@ -688,7 +688,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .Trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x17.ptr, 2, delta, y17.ptr, 2);
+    gbmv(.row_major, .trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x17.ptr, 2, delta, y17.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-96, y17[0].re);
     try std.testing.expectEqual(74, y17[0].im);
@@ -729,7 +729,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .Trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x18.ptr, -2, delta, y18.ptr, -2);
+    gbmv(.row_major, .trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x18.ptr, -2, delta, y18.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-96, y18[8].re);
     try std.testing.expectEqual(74, y18[8].im);
@@ -770,7 +770,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .Trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x19.ptr, 2, delta, y19.ptr, 2);
+    gbmv(.col_major, .trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x19.ptr, 2, delta, y19.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-88, y19[0].re);
     try std.testing.expectEqual(66, y19[0].im);
@@ -811,7 +811,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .Trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x20.ptr, -2, delta, y20.ptr, -2);
+    gbmv(.col_major, .trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x20.ptr, -2, delta, y20.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-88, y20[8].re);
     try std.testing.expectEqual(66, y20[8].im);
@@ -852,7 +852,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .ConjTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x21.ptr, 2, delta, y21.ptr, 2);
+    gbmv(.row_major, .conj_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x21.ptr, 2, delta, y21.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(68, y21[0].re);
     try std.testing.expectEqual(102, y21[0].im);
@@ -893,7 +893,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .RowMajor, .ConjTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x22.ptr, -2, delta, y22.ptr, -2);
+    gbmv(.row_major, .conj_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x22.ptr, -2, delta, y22.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(68, y22[8].re);
     try std.testing.expectEqual(102, y22[8].im);
@@ -934,7 +934,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .ConjTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x23.ptr, 2, delta, y23.ptr, 2);
+    gbmv(.col_major, .conj_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x23.ptr, 2, delta, y23.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(60, y23[0].re);
     try std.testing.expectEqual(94, y23[0].im);
@@ -975,7 +975,7 @@ test gbmv {
         cf64.init(0, 0),
     });
 
-    gbmv(cf64, .ColumnMajor, .ConjTrans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x24.ptr, -2, delta, y24.ptr, -2);
+    gbmv(.col_major, .conj_trans, m, n, kl, ku, gamma, B.ptr, kl + ku + 1, x24.ptr, -2, delta, y24.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(60, y24[8].re);
     try std.testing.expectEqual(94, y24[8].im);

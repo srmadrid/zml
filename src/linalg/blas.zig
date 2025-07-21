@@ -12,35 +12,15 @@ const cfloat = @import("../cfloat.zig");
 const cf32 = cfloat.cf32;
 const cf64 = cfloat.cf64;
 const ops = @import("../ops.zig");
+const linalg = @import("../linalg.zig");
 
 const ci = @import("../c.zig");
 
-pub const Order = enum(c_uint) {
-    RowMajor = 101,
-    ColumnMajor = 102,
-};
-
-pub const Transpose = enum(c_uint) {
-    NoTrans = 111,
-    Trans = 112,
-    ConjTrans = 113,
-    ConjNoTrans = 114,
-};
-
-pub const Uplo = enum(c_uint) {
-    Upper = 121,
-    Lower = 122,
-};
-
-pub const Diag = enum(c_uint) {
-    NonUnit = 131,
-    Unit = 132,
-};
-
-pub const Side = enum(c_uint) {
-    Left = 141,
-    Right = 142,
-};
+const Order = linalg.Order;
+const Transpose = linalg.Transpose;
+const Uplo = linalg.Uplo;
+const Diag = linalg.Diag;
+const Side = linalg.Side;
 
 // Level 1 BLAS
 
@@ -134,16 +114,16 @@ pub inline fn asum_sub(
     if (comptime opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     try ops.set(ret, ci.cblas_sasum(scast(c_int, n), x, scast(c_int, incx)), ctx);
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     try ops.set(ret, ci.cblas_dasum(scast(c_int, n), x, scast(c_int, incx)), ctx);
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     try ops.set(ret, ci.cblas_scasum(scast(c_int, n), x, scast(c_int, incx)), ctx);
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     try ops.set(ret, ci.cblas_dzasum(scast(c_int, n), x, scast(c_int, incx)), ctx);
                 }
             },
@@ -357,16 +337,16 @@ pub inline fn asum(
     if (opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_sasum(scast(c_int, n), x, scast(c_int, incx));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_dasum(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_scasum(scast(c_int, n), x, scast(c_int, incx));
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_dzasum(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
@@ -608,16 +588,16 @@ pub inline fn axpy(
     if (comptime Al == X and Al == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(Al)) {
             .float => {
-                if (Al == f32) {
+                if (comptime Al == f32) {
                     return ci.cblas_saxpy(scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (Al == f64) {
+                } else if (comptime Al == f64) {
                     return ci.cblas_daxpy(scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
             .cfloat => {
-                if (Scalar(Al) == f32) {
+                if (comptime Scalar(Al) == f32) {
                     return ci.cblas_caxpy(scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (Scalar(Al) == f64) {
+                } else if (comptime Scalar(Al) == f64) {
                     return ci.cblas_zaxpy(scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
@@ -870,16 +850,16 @@ pub inline fn copy(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_scopy(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_dcopy(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_ccopy(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zcopy(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
@@ -1145,9 +1125,9 @@ pub inline fn dot_sub(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     try ops.set(ret, ci.cblas_sdot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy)), ctx);
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     try ops.set(ret, ci.cblas_ddot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy)), ctx);
                 }
             },
@@ -1322,9 +1302,9 @@ pub inline fn dot(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_sdot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_ddot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
@@ -1517,9 +1497,9 @@ pub inline fn dotc_sub(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_cdotc_sub(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), ret);
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zdotc_sub(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), ret);
                 }
             },
@@ -1693,11 +1673,11 @@ pub inline fn dotc(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     var temp: cf32 = undefined;
                     ci.cblas_cdotc_sub(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), &temp);
                     return temp;
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     var temp: cf64 = undefined;
                     ci.cblas_zdotc_sub(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), &temp);
                     return temp;
@@ -1891,9 +1871,9 @@ pub inline fn dotu_sub(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_cdotu_sub(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), ret);
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zdotu_sub(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), ret);
                 }
             },
@@ -2069,9 +2049,9 @@ pub inline fn dotu(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_sdot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_ddot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
@@ -2220,16 +2200,16 @@ pub inline fn nrm2(
     if (comptime opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_snrm2(scast(c_int, n), x, scast(c_int, incx));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_dnrm2(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_scnrm2(scast(c_int, n), x, scast(c_int, incx));
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_dznrm2(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
@@ -2474,16 +2454,16 @@ pub inline fn rot(
     if (comptime X == Y and X == C and X == S and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_srot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), c, s);
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_drot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), c, s);
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_csrot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), c, s);
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zdrot(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), c, s);
                 }
             },
@@ -2767,16 +2747,16 @@ pub inline fn rotg(
     if (comptime A == B and A == C and A == S and opts.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
-                if (A == f32) {
+                if (comptime A == f32) {
                     return ci.cblas_srotg(a, b, c, s);
-                } else if (A == f64) {
+                } else if (comptime A == f64) {
                     return ci.cblas_drotg(a, b, c, s);
                 }
             },
             .cfloat => {
-                if (Scalar(A) == f32) {
+                if (comptime Scalar(A) == f32) {
                     return ci.cblas_crotg(a, b, c, s);
-                } else if (Scalar(A) == f64) {
+                } else if (comptime Scalar(A) == f64) {
                     return ci.cblas_zrotg(a, b, c, s);
                 }
             },
@@ -3105,9 +3085,9 @@ pub inline fn rotm(
     if (comptime X == Y and X == P and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_srotm(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), param);
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_drotm(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy), param);
                 }
             },
@@ -3455,12 +3435,12 @@ pub inline fn rotmg(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime D1 == D2 and D1 == X1 and D1 == P and opts.link_cblas != null) {
+    if (comptime D1 == D2 and D1 == X1 and D1 == Y1 and D1 == P and opts.link_cblas != null) {
         switch (comptime types.numericType(D1)) {
             .float => {
-                if (D1 == f32) {
+                if (comptime D1 == f32) {
                     return ci.cblas_srotmg(d1, d2, x1, y1, param);
-                } else if (D1 == f64) {
+                } else if (comptime D1 == f64) {
                     return ci.cblas_drotmg(d1, d2, x1, y1, param);
                 }
             },
@@ -3712,16 +3692,16 @@ pub inline fn scal(
     if (comptime X == Al and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_sscal(scast(c_int, n), alpha, x, scast(c_int, incx));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_dscal(scast(c_int, n), alpha, x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_cscal(scast(c_int, n), &alpha, x, scast(c_int, incx));
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zscal(scast(c_int, n), &alpha, x, scast(c_int, incx));
                 }
             },
@@ -4017,16 +3997,16 @@ pub inline fn swap(
     if (comptime X == Y and opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_sswap(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_dswap(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_cswap(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zswap(scast(c_int, n), x, scast(c_int, incx), y, scast(c_int, incy));
                 }
             },
@@ -4226,16 +4206,16 @@ pub inline fn iamax(
     if (comptime opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_isamax(scast(c_int, n), x, scast(c_int, incx));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_idamax(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_icamax(scast(c_int, n), x, scast(c_int, incx));
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_izamax(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
@@ -4443,16 +4423,16 @@ pub inline fn iamin(
     if (comptime opts.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
-                if (X == f32) {
+                if (comptime X == f32) {
                     return ci.cblas_isamax(scast(c_int, n), x, scast(c_int, incx));
-                } else if (X == f64) {
+                } else if (comptime X == f64) {
                     return ci.cblas_idamax(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(X) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_icamax(scast(c_int, n), x, scast(c_int, incx));
-                } else if (Scalar(X) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_izamax(scast(c_int, n), x, scast(c_int, incx));
                 }
             },
@@ -4592,1044 +4572,2953 @@ pub fn izamin(n: isize, x: [*]const cf64, incx: isize) usize {
 }
 
 // Level 2 BLAS
-pub inline fn gbmv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+
+/// Computes a matrix-vector product with a general band matrix.
+///
+/// The `gbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))` when `transa` is `no_transpose` or
+/// `conj_no_transpose`, or `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (m - 1) * abs(incy))` when `transa` is `no_transpose` or
+/// `conj_no_transpose`, or `(1 + (n - 1) * abs(incy))` otherwise. On return,
+/// contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `m`, `n`, `kl` or `ku` are less than
+/// 0, if `lda` is less than `kl + ku + 1`, or if `incx` or `incy` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn gbmv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    kl: isize,
+    ku: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
+
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.gbmv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.gbmv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.gbmv requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.gbmv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.gbmv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.gbmv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.gbmv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.gbmv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.gbmv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.gbmv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
+            .float => {
+                if (comptime Al == f32) {
+                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                } else if (comptime Al == f64) {
+                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(Al) == f32) {
+                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                } else if (comptime Scalar(Al) == f64) {
+                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/gbmv.zig").gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, ctx);
+}
+
+/// Computes a matrix-vector product with a general band matrix.
+///
+/// The `sgbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]f32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn sgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product with a general band matrix.
+///
+/// The `dgbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]f64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn dgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product with a general band matrix.
+///
+/// The `cgbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]cf32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn cgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product with a general band matrix.
+///
+/// The `zgbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
+/// be greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]cf64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn zgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product using a general matrix.
+///
+/// The `gemv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * k`, where
+/// `k` is `n` when `order` is `col_major`, or `m` when `order` is `row_major`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))` when `transa` is `no_transpose` or
+/// `conj_no_transpose`, or `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (m - 1) * abs(incy))` when `transa` is `no_transpose` or
+/// `conj_no_transpose`, or `(1 + (n - 1) * abs(incy))` otherwise. On return,
+/// contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
+/// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn gemv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
+
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.gemv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.gemv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.gemv requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.gemv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.gemv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.gemv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.gemv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.gemv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.gemv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.gemv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
+            .float => {
+                if (comptime Al == f32) {
+                    return ci.cblas_sgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                } else if (comptime Al == f64) {
+                    return ci.cblas_dgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(Al) == f32) {
+                    return ci.cblas_cgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                } else if (comptime Scalar(Al) == f64) {
+                    return ci.cblas_zgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/gemv.zig").gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, ctx);
+}
+
+/// Computes a matrix-vector product using a general matrix.
+///
+/// The `sgemv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
+///
+/// `y` (`[*]f32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn sgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product using a general matrix.
+///
+/// The `dgemv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
+///
+/// `y` (`[*]f64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn dgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product using a general matrix.
+///
+/// The `cgemv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
+///
+/// `y` (`[*]cf32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn cgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product using a general matrix.
+///
+/// The `zgemv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^T * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * conj(A) * x + beta * y
+/// ```
+///
+/// or
+///
+/// ```zig
+///     y = alpha * A^H * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed on `A`:
+/// - `no_transpose`: `y = alpha * A * x + beta * y`
+/// - `transpose`: `y = alpha * A^T * x + beta * y`
+/// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
+/// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (m - 1) * abs(incx))` otherwise.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
+///
+/// `y` (`[*]cf64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `transa` is `no_transpose` or `conj_no_transpose`, or
+/// `(1 + (n - 1) * abs(incy))` otherwise. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn zgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Performs a rank-1 update of a general matrix.
+///
+/// The `ger` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
+/// is `row_major`. On return, contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
+/// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
+/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn ger(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    comptime var A: type = @TypeOf(a);
+
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.ger requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.ger requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.ger requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(Y))
+        @compileError("zml.linalg.blas.ger requires y to be a many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.ger requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.ger requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.ger requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and Y == bool and A == bool)
+        @compileError("zml.linalg.blas.ger does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Y) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.ger not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
+            .float => {
+                if (comptime Al == f32) {
+                    return ci.cblas_sger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (comptime Al == f64) {
+                    return ci.cblas_dger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/ger.zig").ger(order, m, n, alpha, x, incx, y, incy, a, lda, ctx);
+}
+
+/// Performs a rank-1 update of a general matrix.
+///
+/// The `sger` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
+/// contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn sger(order: Order, m: isize, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, a: [*]f32, lda: isize) void {
+    return ger(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
+}
+
+/// Performs a rank-1 update of a general matrix.
+///
+/// The `dger` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (`[*]f64`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
+/// contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, a: [*]f64, lda: isize) void {
+    return ger(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
+}
+
+/// Performs a rank-1 update (conjugated) of a general matrix.
+///
+/// The `gerc` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conj(y^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
+/// is `row_major`. On return, contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
+/// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
+/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn gerc(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    comptime var A: type = @TypeOf(a);
+
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.gerc requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.gerc requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.gerc requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(Y))
+        @compileError("zml.linalg.blas.gerc requires y to be a many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.gerc requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.gerc requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.gerc requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and Y == bool and A == bool)
+        @compileError("zml.linalg.blas.gerc does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Y) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.gerc not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
+            .cfloat => {
+                if (comptime Scalar(Al) == f32) {
+                    return ci.cblas_cgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (comptime Scalar(Al) == f64) {
+                    return ci.cblas_zgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/gerc.zig").gerc(order, m, n, alpha, x, incx, y, incy, a, lda, ctx);
+}
+
+/// Performs a rank-1 update (conjugated) of a general matrix.
+///
+/// The `cgerc` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
+/// contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, a: [*]cf32, lda: isize) void {
+    return gerc(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
+}
+
+/// Performs a rank-1 update (conjugated) of a general matrix.
+///
+/// The `zgerc` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (`[*]cf64`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
+/// contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, a: [*]cf64, lda: isize) void {
+    return gerc(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
+}
+
+/// Performs a rank-1 update of a general matrix.
+///
+/// The `geru` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integeru`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integeru`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integeru`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integeru`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
+/// is `row_major`. On return, contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
+/// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
+/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn geru(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    comptime var A: type = @TypeOf(a);
+
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.geru requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.geru requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.geru requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(Y))
+        @compileError("zml.linalg.blas.geru requires y to be a many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.geru requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.geru requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.geru requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and Y == bool and A == bool)
+        @compileError("zml.linalg.blas.geru does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Y) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.geru not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
+            .cfloat => {
+                if (comptime Scalar(Al) == f32) {
+                    return ci.cblas_cgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (comptime Scalar(Al) == f64) {
+                    return ci.cblas_zgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/geru.zig").geru(order, m, n, alpha, x, incx, y, incy, a, lda, ctx);
+}
+
+/// Performs a rank-1 update of a general matrix.
+///
+/// The `cgeru` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
+/// contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn cgeru(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, a: [*]cf32, lda: isize) void {
+    return geru(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
+}
+
+/// Performs a rank-1 update of a general matrix.
+///
+/// The `zgeru` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
+/// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
+/// than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `a` (`[*]cf64`): Array, size at least `lda * k`, where `k` is `n` when
+/// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
+/// contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` when
+/// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn zgeru(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, a: [*]cf64, lda: isize) void {
+    return geru(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
+}
+
+/// Computes a matrix-vector product using a Hermitian band matrix.
+///
+/// The `hbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// `A` is an `n`-by-`n` Hermitian band matrix, with `k` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
+/// is less than `k + 1`, or if `incx` or `incy` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn hbmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    k: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
+
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.hbmv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.hbmv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.hbmv requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.hbmv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.hbmv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.hbmv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.hbmv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.hbmv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.hbmv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.hbmv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
+            .cfloat => {
+                if (comptime Scalar(Al) == f32) {
+                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                } else if (comptime Scalar(Al) == f64) {
+                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/hbmv.zig").hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, ctx);
+}
+
+/// Computes a matrix-vector product using a Hermitian band matrix.
+///
+/// The `chbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// `A` is an `n`-by-`n` Hermitian band matrix, with `k` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
+///
+/// `y` (`[*]cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+/// Computes a matrix-vector product using a Hermitian band matrix.
+///
+/// The `zhbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// `A` is an `n`-by-`n` Hermitian band matrix, with `k` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
+///
+/// `y` (`[*]cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
+pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
+}
+
+pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = types.numericType(T);
+
+    if (opts.link_cblas != null) {
+        switch (supported) {
+            .cfloat => {
+                if (Scalar(T) == f32) {
+                    return ci.cblas_chemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                } else if (Scalar(T) == f64) {
+                    return ci.cblas_zhemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/hemv.zig").hemv(T, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+}
+pub fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return hemv(cf32, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+}
+pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return hemv(cf64, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+}
+
+pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, a: [*]T, lda: isize) void {
+    const supported = types.numericType(T);
+
+    if (opts.link_cblas != null) {
+        switch (supported) {
+            .cfloat => {
+                if (Scalar(T) == f32) {
+                    return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
+                } else if (Scalar(T) == f64) {
+                    return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/her.zig").her(T, order, uplo, n, alpha, x, incx, a, lda);
+}
+pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, a: [*]cf32, lda: isize) void {
+    return her(cf32, order, uplo, n, alpha, x, incx, a, lda);
+}
+pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, a: [*]cf64, lda: isize) void {
+    return her(cf64, order, uplo, n, alpha, x, incx, a, lda);
+}
+
+pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, a: [*]T, lda: isize) void {
+    const supported = types.numericType(T);
+
+    if (opts.link_cblas != null) {
+        switch (supported) {
+            .cfloat => {
+                if (Scalar(T) == f32) {
+                    return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (Scalar(T) == f64) {
+                    return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/her2.zig").her2(T, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+}
+pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, a: [*]cf32, lda: isize) void {
+    return her2(cf32, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+}
+pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, a: [*]cf64, lda: isize) void {
+    return her2(cf64, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+}
+
+pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+    const supported = types.numericType(T);
+
+    if (opts.link_cblas != null) {
+        switch (supported) {
+            .cfloat => {
+                if (Scalar(T) == f32) {
+                    return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                } else if (Scalar(T) == f64) {
+                    return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/hpmv.zig").hpmv(T, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+}
+pub fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: cf32, ap: [*]const cf32, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+    return hpmv(cf32, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+}
+pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: cf64, ap: [*]const cf64, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+    return hpmv(cf64, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+}
+
+pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, ap: [*]T) void {
+    const supported = types.numericType(T);
+
+    if (opts.link_cblas != null) {
+        switch (supported) {
+            .cfloat => {
+                if (Scalar(T) == f32) {
+                    return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
+                } else if (Scalar(T) == f64) {
+                    return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/hpr.zig").hpr(T, order, uplo, n, alpha, x, incx, ap);
+}
+pub fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, ap: [*]cf32) void {
+    return hpr(cf32, order, uplo, n, alpha, x, incx, ap);
+}
+pub fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, ap: [*]cf64) void {
+    return hpr(cf64, order, uplo, n, alpha, x, incx, ap);
+}
+
+pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ap: [*]T) void {
+    const supported = types.numericType(T);
+
+    if (opts.link_cblas != null) {
+        switch (supported) {
+            .cfloat => {
+                if (Scalar(T) == f32) {
+                    return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                } else if (Scalar(T) == f64) {
+                    return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("blas/hpr2.zig").hpr2(T, order, uplo, n, alpha, x, incx, y, incy, ap);
+}
+pub fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, ap: [*]cf32) void {
+    return hpr2(cf32, order, uplo, n, alpha, x, incx, y, incy, ap);
+}
+pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, ap: [*]cf64) void {
+    return hpr2(cf64, order, uplo, n, alpha, x, incx, y, incy, ap);
+}
+
+pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_ssbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 } else if (T == f64) {
-                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                }
-            },
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                    return ci.cblas_dsbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/gbmv.zig").gbmv(T, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+    return @import("blas/sbmv.zig").sbmv(T, order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
 }
-pub fn sgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f32, A: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return gbmv(f32, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+pub fn ssbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return sbmv(f32, order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
 }
-pub fn dgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return gbmv(f64, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn cgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
-    return gbmv(cf32, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn zgbmv(order: Order, transA: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
-    return gbmv(cf64, order, transA, m, n, kl, ku, alpha, A, lda, x, incx, beta, y, incy);
+pub fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return sbmv(f64, order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
 }
 
-pub inline fn gemv(comptime T: type, order: Order, transA: Transpose, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_sgemv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_sspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 } else if (T == f64) {
-                    return ci.cblas_dgemv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                }
-            },
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_cgemv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zgemv(@intFromEnum(order), @intFromEnum(transA), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                    return ci.cblas_dspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/gemv.zig").gemv(T, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
+    return @import("blas/spmv.zig").spmv(T, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
 }
-pub fn sgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: f32, A: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return gemv(f32, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
+pub fn sspmv(order: Order, uplo: Uplo, n: isize, alpha: f32, ap: [*]const f32, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return spmv(f32, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
 }
-pub fn dgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return gemv(f64, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn cgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
-    return gemv(cf32, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn zgemv(order: Order, transA: Transpose, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
-    return gemv(cf64, order, transA, m, n, alpha, A, lda, x, incx, beta, y, incy);
+pub fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, ap: [*]const f64, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return spmv(f64, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
 }
 
-pub inline fn ger(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
+pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, ap: [*]T) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_sger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
+                    return ci.cblas_sspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
                 } else if (T == f64) {
-                    return ci.cblas_dger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
+                    return ci.cblas_dspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/ger.zig").ger(T, order, m, n, alpha, x, incx, y, incy, A, lda);
+    return @import("blas/spr.zig").spr(T, order, uplo, n, alpha, x, incx, ap);
 }
-pub fn sger(order: Order, m: isize, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, A: [*]f32, lda: isize) void {
-    return ger(f32, order, m, n, alpha, x, incx, y, incy, A, lda);
+pub fn sspr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, ap: [*]f32) void {
+    return spr(f32, order, uplo, n, alpha, x, incx, ap);
 }
-pub fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, A: [*]f64, lda: isize) void {
-    return ger(f64, order, m, n, alpha, x, incx, y, incy, A, lda);
-}
-
-pub inline fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_cgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/gerc.zig").gerc(T, order, m, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, A: [*]cf32, lda: isize) void {
-    return gerc(cf32, order, m, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, A: [*]cf64, lda: isize) void {
-    return gerc(cf64, order, m, n, alpha, x, incx, y, incy, A, lda);
+pub fn dspr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, ap: [*]f64) void {
+    return spr(f64, order, uplo, n, alpha, x, incx, ap);
 }
 
-pub inline fn geru(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_cgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/geru.zig").geru(T, order, m, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn cgeru(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, A: [*]cf32, lda: isize) void {
-    return geru(cf32, order, m, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn zgeru(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, A: [*]cf64, lda: isize) void {
-    return geru(cf64, order, m, n, alpha, x, incx, y, incy, A, lda);
-}
-
-pub inline fn hbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ap: [*]T) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_sspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 } else if (T == f64) {
-                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                }
-            },
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                    return ci.cblas_dspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/hbmv.zig").hbmv(T, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+    return @import("blas/spr2.zig").spr2(T, order, uplo, n, alpha, x, incx, y, incy, ap);
 }
-pub fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
-    return hbmv(cf32, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+pub fn sspr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, ap: [*]f32) void {
+    return spr2(f32, order, uplo, n, alpha, x, incx, y, incy, ap);
 }
-pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
-    return hbmv(cf64, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
-}
-
-pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_chemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zhemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, A, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/hemv.zig").hemv(T, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
-    return hemv(cf32, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
-    return hemv(cf64, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
+pub fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, ap: [*]f64) void {
+    return spr2(f64, order, uplo, n, alpha, x, incx, y, incy, ap);
 }
 
-pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), A, scast(c_int, lda));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), A, scast(c_int, lda));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/her.zig").her(T, order, uplo, n, alpha, x, incx, A, lda);
-}
-pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, A: [*]cf32, lda: isize) void {
-    return her(cf32, order, uplo, n, alpha, x, incx, A, lda);
-}
-pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, A: [*]cf64, lda: isize) void {
-    return her(cf64, order, uplo, n, alpha, x, incx, A, lda);
-}
-
-pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/her2.zig").her2(T, order, uplo, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, A: [*]cf32, lda: isize) void {
-    return her2(cf32, order, uplo, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, A: [*]cf64, lda: isize) void {
-    return her2(cf64, order, uplo, n, alpha, x, incx, y, incy, A, lda);
-}
-
-pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, Ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, Ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/hpmv.zig").hpmv(T, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
-}
-pub fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: cf32, Ap: [*]const cf32, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
-    return hpmv(cf32, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
-}
-pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: cf64, Ap: [*]const cf64, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
-    return hpmv(cf64, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
-}
-
-pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), Ap);
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), Ap);
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/hpr.zig").hpr(T, order, uplo, n, alpha, x, incx, Ap);
-}
-pub fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, Ap: [*]cf32) void {
-    return hpr(cf32, order, uplo, n, alpha, x, incx, Ap);
-}
-pub fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, Ap: [*]cf64) void {
-    return hpr(cf64, order, uplo, n, alpha, x, incx, Ap);
-}
-
-pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), Ap);
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), Ap);
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/hpr2.zig").hpr2(T, order, uplo, n, alpha, x, incx, y, incy, Ap);
-}
-pub fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, Ap: [*]cf32) void {
-    return hpr2(cf32, order, uplo, n, alpha, x, incx, y, incy, Ap);
-}
-pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, Ap: [*]cf64) void {
-    return hpr2(cf64, order, uplo, n, alpha, x, incx, y, incy, Ap);
-}
-
-pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_ssbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_ssymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 } else if (T == f64) {
-                    return ci.cblas_dsbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_dsymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/sbmv.zig").sbmv(T, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+    return @import("blas/symv.zig").symv(T, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
 }
-pub fn ssbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f32, A: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return sbmv(f32, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+pub fn ssymv(order: Order, uplo: Uplo, n: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+    return symv(f32, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
 }
-pub fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return sbmv(f64, order, uplo, n, k, alpha, A, lda, x, incx, beta, y, incy);
+pub fn dsymv(order: Order, uplo: Uplo, n: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+    return symv(f64, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
 }
 
-pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, Ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
+pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, a: [*]T, lda: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_sspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, Ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_ssyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
                 } else if (T == f64) {
-                    return ci.cblas_dspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, Ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_dsyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/spmv.zig").spmv(T, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+    return @import("blas/syr.zig").syr(T, order, uplo, n, alpha, x, incx, a, lda);
 }
-pub fn sspmv(order: Order, uplo: Uplo, n: isize, alpha: f32, Ap: [*]const f32, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return spmv(f32, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+pub fn ssyr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, a: [*]f32, lda: isize) void {
+    return syr(f32, order, uplo, n, alpha, x, incx, a, lda);
 }
-pub fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, Ap: [*]const f64, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return spmv(f64, order, uplo, n, alpha, Ap, x, incx, beta, y, incy);
+pub fn dsyr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, a: [*]f64, lda: isize) void {
+    return syr(f64, order, uplo, n, alpha, x, incx, a, lda);
 }
 
-pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, Ap: [*]T) void {
+pub inline fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, a: [*]T, lda: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_sspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), Ap);
+                    return ci.cblas_ssyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 } else if (T == f64) {
-                    return ci.cblas_dspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), Ap);
+                    return ci.cblas_dsyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/spr.zig").spr(T, order, uplo, n, alpha, x, incx, Ap);
+    return @import("blas/syr2.zig").syr2(T, order, uplo, n, alpha, x, incx, y, incy, a, lda);
 }
-pub fn sspr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, Ap: [*]f32) void {
-    return spr(f32, order, uplo, n, alpha, x, incx, Ap);
+pub fn ssyr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, a: [*]f32, lda: isize) void {
+    return syr2(f32, order, uplo, n, alpha, x, incx, y, incy, a, lda);
 }
-pub fn dspr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, Ap: [*]f64) void {
-    return spr(f64, order, uplo, n, alpha, x, incx, Ap);
+pub fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, a: [*]f64, lda: isize) void {
+    return syr2(f64, order, uplo, n, alpha, x, incx, y, incy, a, lda);
 }
 
-pub inline fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, Ap: [*]T) void {
+pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_sspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), Ap);
+                    return ci.cblas_stbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (T == f64) {
-                    return ci.cblas_dspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), Ap);
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/spr2.zig").spr2(T, order, uplo, n, alpha, x, incx, y, incy, Ap);
-}
-pub fn sspr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, Ap: [*]f32) void {
-    return spr2(f32, order, uplo, n, alpha, x, incx, y, incy, Ap);
-}
-pub fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, Ap: [*]f64) void {
-    return spr2(f64, order, uplo, n, alpha, x, incx, y, incy, Ap);
-}
-
-pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, A: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .float => {
-                if (T == f32) {
-                    return ci.cblas_ssymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (T == f64) {
-                    return ci.cblas_dsymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, A, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/symv.zig").symv(T, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn ssymv(order: Order, uplo: Uplo, n: isize, alpha: f32, A: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return symv(f32, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
-}
-pub fn dsymv(order: Order, uplo: Uplo, n: isize, alpha: f64, A: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return symv(f64, order, uplo, n, alpha, A, lda, x, incx, beta, y, incy);
-}
-
-pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .float => {
-                if (T == f32) {
-                    return ci.cblas_ssyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), A, scast(c_int, lda));
-                } else if (T == f64) {
-                    return ci.cblas_dsyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), A, scast(c_int, lda));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/syr.zig").syr(T, order, uplo, n, alpha, x, incx, A, lda);
-}
-pub fn ssyr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, A: [*]f32, lda: isize) void {
-    return syr(f32, order, uplo, n, alpha, x, incx, A, lda);
-}
-pub fn dsyr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, A: [*]f64, lda: isize) void {
-    return syr(f64, order, uplo, n, alpha, x, incx, A, lda);
-}
-
-pub inline fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .float => {
-                if (T == f32) {
-                    return ci.cblas_ssyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                } else if (T == f64) {
-                    return ci.cblas_dsyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), A, scast(c_int, lda));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return @import("blas/syr2.zig").syr2(T, order, uplo, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn ssyr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, A: [*]f32, lda: isize) void {
-    return syr2(f32, order, uplo, n, alpha, x, incx, y, incy, A, lda);
-}
-pub fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, A: [*]f64, lda: isize) void {
-    return syr2(f64, order, uplo, n, alpha, x, incx, y, incy, A, lda);
-}
-
-pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
-    const supported = types.numericType(T);
-
-    if (opts.link_cblas != null) {
-        switch (supported) {
-            .float => {
-                if (T == f32) {
-                    return ci.cblas_stbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
-                } else if (T == f64) {
-                    return ci.cblas_dtbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/tbmv.zig").tbmv(T, order, uplo, transA, diag, n, k, A, lda, x, incx);
+    return @import("blas/tbmv.zig").tbmv(T, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn stbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
-    return tbmv(f32, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn stbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+    return tbmv(f32, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn dtbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
-    return tbmv(f64, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn dtbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+    return tbmv(f64, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn ctbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
-    return tbmv(cf32, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ctbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return tbmv(cf32, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn ztbmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
-    return tbmv(cf64, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ztbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return tbmv(cf64, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
 
-pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_stbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_stbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (T == f64) {
-                    return ci.cblas_dtbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/tbsv.zig").tbsv(T, order, uplo, transA, diag, n, k, A, lda, x, incx);
+    return @import("blas/tbsv.zig").tbsv(T, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn stbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
-    return tbsv(f32, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn stbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+    return tbsv(f32, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn dtbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
-    return tbsv(f64, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn dtbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+    return tbsv(f64, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn ctbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
-    return tbsv(cf32, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ctbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return tbsv(cf32, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
-pub fn ztbsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, k: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
-    return tbsv(cf64, order, uplo, transA, diag, n, k, A, lda, x, incx);
+pub fn ztbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return tbsv(cf64, order, uplo, transa, diag, n, k, a, lda, x, incx);
 }
 
-pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
+pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const T, x: [*]T, incx: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_stpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_stpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (T == f64) {
-                    return ci.cblas_dtpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_dtpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_ctpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_ztpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/tpmv.zig").tpmv(T, order, uplo, transA, diag, n, Ap, x, incx);
+    return @import("blas/tpmv.zig").tpmv(T, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn stpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f32, x: [*]f32, incx: isize) void {
-    return tpmv(f32, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn stpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f32, x: [*]f32, incx: isize) void {
+    return tpmv(f32, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn dtpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f64, x: [*]f64, incx: isize) void {
-    return tpmv(f64, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn dtpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f64, x: [*]f64, incx: isize) void {
+    return tpmv(f64, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn ctpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf32, x: [*]cf32, incx: isize) void {
-    return tpmv(cf32, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ctpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf32, x: [*]cf32, incx: isize) void {
+    return tpmv(cf32, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn ztpmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf64, x: [*]cf64, incx: isize) void {
-    return tpmv(cf64, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ztpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf64, x: [*]cf64, incx: isize) void {
+    return tpmv(cf64, order, uplo, transa, diag, n, ap, x, incx);
 }
 
-pub inline fn tpsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
+pub inline fn tpsv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const T, x: [*]T, incx: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_stpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_stpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (T == f64) {
-                    return ci.cblas_dtpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_dtpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_ctpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), Ap, x, scast(c_int, incx));
+                    return ci.cblas_ztpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/tpsv.zig").tpsv(T, order, uplo, transA, diag, n, Ap, x, incx);
+    return @import("blas/tpsv.zig").tpsv(T, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn stpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f32, x: [*]f32, incx: isize) void {
-    return tpsv(f32, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn stpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f32, x: [*]f32, incx: isize) void {
+    return tpsv(f32, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn dtpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const f64, x: [*]f64, incx: isize) void {
-    return tpsv(f64, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn dtpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f64, x: [*]f64, incx: isize) void {
+    return tpsv(f64, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn ctpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf32, x: [*]cf32, incx: isize) void {
-    return tpsv(cf32, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ctpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf32, x: [*]cf32, incx: isize) void {
+    return tpsv(cf32, order, uplo, transa, diag, n, ap, x, incx);
 }
-pub fn ztpsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const cf64, x: [*]cf64, incx: isize) void {
-    return tpsv(cf64, order, uplo, transA, diag, n, Ap, x, incx);
+pub fn ztpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf64, x: [*]cf64, incx: isize) void {
+    return tpsv(cf64, order, uplo, transa, diag, n, ap, x, incx);
 }
 
-pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+pub inline fn trmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_strmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_strmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (T == f64) {
-                    return ci.cblas_dtrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/trmv.zig").trmv(T, order, uplo, transA, diag, n, A, lda, x, incx);
+    return @import("blas/trmv.zig").trmv(T, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn strmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
-    return trmv(f32, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn strmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+    return trmv(f32, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn dtrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
-    return trmv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn dtrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+    return trmv(f64, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn ctrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
-    return trmv(cf32, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ctrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return trmv(cf32, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn ztrmv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
-    return trmv(cf64, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ztrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return trmv(cf64, order, uplo, transa, diag, n, a, lda, x, incx);
 }
 
-pub inline fn trsv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const T, lda: isize, x: [*]T, incx: isize) void {
+pub inline fn trsv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const T, lda: isize, x: [*]T, incx: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_strsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_strsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (T == f64) {
-                    return ci.cblas_dtrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, n), A, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/trsv.zig").trsv(T, order, uplo, transA, diag, n, A, lda, x, incx);
+    return @import("blas/trsv.zig").trsv(T, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn strsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
-    return trsv(f32, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn strsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+    return trsv(f32, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn dtrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
-    return trsv(f64, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn dtrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+    return trsv(f64, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn ctrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
-    return trsv(cf32, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ctrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+    return trsv(cf32, order, uplo, transa, diag, n, a, lda, x, incx);
 }
-pub fn ztrsv(order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, A: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
-    return trsv(cf64, order, uplo, transA, diag, n, A, lda, x, incx);
+pub fn ztrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+    return trsv(cf64, order, uplo, transa, diag, n, a, lda, x, incx);
 }
 
 // Level 3 BLAS
-pub inline fn gemm(comptime T: type, order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn gemm(comptime T: type, order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_sgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), scast(c_int, m), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_sgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 } else if (T == f64) {
-                    return ci.cblas_dgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), scast(c_int, m), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_dgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_cgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_cgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_zgemm(@intFromEnum(order), @intFromEnum(transA), @intFromEnum(transB), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_zgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/gemm.zig").gemm(T, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+    return @import("blas/gemm.zig").gemm(T, order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn sgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]const f32, ldb: isize, beta: f32, C: [*]f32, ldc: isize) void {
-    return gemm(f32, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn sgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
+    return gemm(f32, order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn dgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
-    return gemm(f64, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn dgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
+    return gemm(f64, order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn cgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
-    return gemm(cf32, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn cgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+    return gemm(cf32, order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn zgemm(order: Order, transA: Transpose, transB: Transpose, m: isize, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
-    return gemm(cf64, order, transA, transB, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+    return gemm(cf64, order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
-pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/hemm.zig").hemm(T, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+    return @import("blas/hemm.zig").hemm(T, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
-    return hemm(cf32, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+    return hemm(cf32, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
-    return hemm(cf64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+    return hemm(cf64, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
-pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Scalar(T), A: [*]const T, lda: isize, beta: Scalar(T), C: [*]T, ldc: isize) void {
+pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Scalar(T), a: [*]const T, lda: isize, beta: Scalar(T), c: [*]T, ldc: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), beta, C, scast(c_int, ldc));
+                    return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), beta, C, scast(c_int, ldc));
+                    return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/herk.zig").herk(T, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+    return @import("blas/herk.zig").herk(T, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
-pub fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, A: [*]const cf32, lda: isize, beta: f32, C: [*]cf32, ldc: isize) void {
-    return herk(cf32, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const cf32, lda: isize, beta: f32, c: [*]cf32, ldc: isize) void {
+    return herk(cf32, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
-pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const cf64, lda: isize, beta: f64, C: [*]cf64, ldc: isize) void {
-    return herk(cf64, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const cf64, lda: isize, beta: f64, c: [*]cf64, ldc: isize) void {
+    return herk(cf64, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
 
-pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: Scalar(T), C: [*]T, ldc: isize) void {
+pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: Scalar(T), c: [*]T, ldc: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/her2k.zig").her2k(T, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+    return @import("blas/her2k.zig").her2k(T, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: f32, C: [*]cf32, ldc: isize) void {
-    return her2k(cf32, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: f32, c: [*]cf32, ldc: isize) void {
+    return her2k(cf32, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: f64, C: [*]cf64, ldc: isize) void {
-    return her2k(cf64, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: f64, c: [*]cf64, ldc: isize) void {
+    return her2k(cf64, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
-pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_ssymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_ssymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 } else if (T == f64) {
-                    return ci.cblas_dsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_dsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_csymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_csymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_zsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_zsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/symm.zig").symm(T, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+    return @import("blas/symm.zig").symm(T, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]const f32, ldb: isize, beta: f32, C: [*]f32, ldc: isize) void {
-    return symm(f32, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
+    return symm(f32, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
-    return symm(f64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
+    return symm(f64, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
-    return symm(cf32, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+    return symm(cf32, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
-    return symm(cf64, order, side, uplo, m, n, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+    return symm(cf64, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
-pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, beta: T, c: [*]T, ldc: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_ssyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), beta, C, scast(c_int, ldc));
+                    return ci.cblas_ssyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
                 } else if (T == f64) {
-                    return ci.cblas_dsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), beta, C, scast(c_int, ldc));
+                    return ci.cblas_dsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_csyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_csyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), &beta, c, scast(c_int, ldc));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_zsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_zsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), &beta, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/syrk.zig").syrk(T, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+    return @import("blas/syrk.zig").syrk(T, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
-pub fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, A: [*]const f32, lda: isize, beta: f32, C: [*]f32, ldc: isize) void {
-    return syrk(f32, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, beta: f32, c: [*]f32, ldc: isize) void {
+    return syrk(f32, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
-pub fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, beta: f64, C: [*]f64, ldc: isize) void {
-    return syrk(f64, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, beta: f64, c: [*]f64, ldc: isize) void {
+    return syrk(f64, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
-pub fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
-    return syrk(cf32, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+    return syrk(cf32, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
-pub fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
-    return syrk(cf64, order, uplo, trans, n, k, alpha, A, lda, beta, C, ldc);
+pub fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+    return syrk(cf64, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
 }
 
-pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
+pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_ssyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_ssyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 } else if (T == f64) {
-                    return ci.cblas_dsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, A, scast(c_int, lda), B, scast(c_int, ldb), beta, C, scast(c_int, ldc));
+                    return ci.cblas_dsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_csyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_csyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_zsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb), &beta, C, scast(c_int, ldc));
+                    return ci.cblas_zsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/syr2k.zig").syr2k(T, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+    return @import("blas/syr2k.zig").syr2k(T, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]const f32, ldb: isize, beta: f32, C: [*]f32, ldc: isize) void {
-    return syr2k(f32, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
+    return syr2k(f32, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]const f64, ldb: isize, beta: f64, C: [*]f64, ldc: isize) void {
-    return syr2k(f64, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
+    return syr2k(f64, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]const cf32, ldb: isize, beta: cf32, C: [*]cf32, ldc: isize) void {
-    return syr2k(cf32, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+    return syr2k(cf32, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
-pub fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]const cf64, ldb: isize, beta: cf64, C: [*]cf64, ldc: isize) void {
-    return syr2k(cf64, order, uplo, trans, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+pub fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+    return syr2k(cf64, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
 }
 
-pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]T, ldb: isize) void {
+pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]T, ldb: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_strmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_strmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (T == f64) {
-                    return ci.cblas_dtrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_dtrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_ctrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_ztrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/trmm.zig").trmm(T, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+    return @import("blas/trmm.zig").trmm(T, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn strmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]f32, ldb: isize) void {
-    return trmm(f32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn strmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) void {
+    return trmm(f32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn dtrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]f64, ldb: isize) void {
-    return trmm(f64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn dtrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) void {
+    return trmm(f64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn ctrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]cf32, ldb: isize) void {
-    return trmm(cf32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ctrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) void {
+    return trmm(cf32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn ztrmm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]cf64, ldb: isize) void {
-    return trmm(cf64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ztrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) void {
+    return trmm(cf64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
 
-pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]T, ldb: isize) void {
+pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]T, ldb: isize) void {
     const supported = types.numericType(T);
 
     if (opts.link_cblas != null) {
         switch (supported) {
             .float => {
                 if (T == f32) {
-                    return ci.cblas_strsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_strsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (T == f64) {
-                    return ci.cblas_dtrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_dtrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             .cfloat => {
                 if (Scalar(T) == f32) {
-                    return ci.cblas_ctrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_ctrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transA), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, A, scast(c_int, lda), B, scast(c_int, ldb));
+                    return ci.cblas_ztrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/trsm.zig").trsm(T, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+    return @import("blas/trsm.zig").trsm(T, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn strsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, A: [*]const f32, lda: isize, B: [*]f32, ldb: isize) void {
-    return trsm(f32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn strsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) void {
+    return trsm(f32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn dtrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, A: [*]const f64, lda: isize, B: [*]f64, ldb: isize) void {
-    return trsm(f64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn dtrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) void {
+    return trsm(f64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn ctrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, A: [*]const cf32, lda: isize, B: [*]cf32, ldb: isize) void {
-    return trsm(cf32, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ctrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) void {
+    return trsm(cf32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
-pub fn ztrsm(order: Order, side: Side, uplo: Uplo, transA: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, A: [*]const cf64, lda: isize, B: [*]cf64, ldb: isize) void {
-    return trsm(cf64, order, side, uplo, transA, diag, m, n, alpha, A, lda, B, ldb);
+pub fn ztrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) void {
+    return trsm(cf64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
 }
 
 pub const Error = error{

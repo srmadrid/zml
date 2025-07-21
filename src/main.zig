@@ -9,6 +9,41 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
+    const alpha: f64 = 2;
+    const beta: f64 = 3;
+
+    const A: []f64 = try a.alloc(f64, 1000 * 1500);
+    defer a.free(A);
+    const B: []f64 = try a.alloc(f64, 1500 * 2000);
+    defer a.free(B);
+    const C: []f64 = try a.alloc(f64, 1000 * 2000);
+    defer a.free(C);
+
+    const x: []f64 = try a.alloc(f64, 1500);
+    defer a.free(x);
+    const y: []f64 = try a.alloc(f64, 1000);
+    defer a.free(y);
+
+    for (0..A.len) |i| {
+        A[i] = @floatFromInt(i + 1);
+    }
+
+    for (0..B.len) |i| {
+        B[i] = @floatFromInt(i + 1);
+    }
+
+    for (0..C.len) |i| {
+        C[i] = 0;
+    }
+
+    const start_time: i128 = std.time.nanoTimestamp();
+    for (0..100) |_| {
+        zml.linalg.blas.dgemv(.col_major, .no_trans, 1000, 1500, alpha, A.ptr, 1000, x.ptr, 1, beta, y.ptr, 1);
+    }
+    const end_time: i128 = std.time.nanoTimestamp();
+
+    std.debug.print("zml.linalg.blas.gemm took: {d} nanoseconds\n", .{end_time - start_time});
+
     // const a: u64 = 1000;
     // const b: f64 = 1000;
     // const c = zml.add(a, b, .{}) catch unreachable;
@@ -36,7 +71,7 @@ pub fn main() !void {
 
     // try generalTesting(a);
 
-    try addTesting(a);
+    // try addTesting(a);
 
     // try iterTesting(a);
 

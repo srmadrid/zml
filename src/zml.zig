@@ -152,6 +152,8 @@ pub const lgamma_ = ops.lgamma_;
 pub const ceil = ops.ceil;
 pub const ceil_ = ops.ceil_;
 
+pub const set = ops.set;
+
 pub const linalg = @import("linalg.zig");
 
 // Symbolic system.

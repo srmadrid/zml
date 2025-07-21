@@ -1,80 +1,194 @@
 const std = @import("std");
+
 const types = @import("../../types.zig");
+const scast = types.scast;
+const Scalar = types.Scalar;
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
+
+const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = blas.Order;
+const Order = linalg.Order;
+const Transpose = linalg.Transpose;
 
-pub inline fn gerc(comptime T: type, order: Order, m: isize, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, A: [*]T, lda: isize) void {
-    @setRuntimeSafety(false);
-    const numericType = types.numericType(T);
-
-    if (m <= 0 or n <= 0) return;
-
-    var M = m;
-    var N = n;
-    if (order == .RowMajor) {
-        M = n;
-        N = m;
+pub inline fn gerc(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    if (order == .col_major) {
+        return k_gerc(m, n, alpha, x, incx, y, incy, a, lda, true, ctx);
+    } else {
+        return k_gerc(n, m, alpha, y, incy, x, incx, a, lda, false, ctx);
     }
+}
 
-    if (lda < @max(1, M)) return;
+pub fn k_gerc(
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    a: anytype,
+    lda: isize,
+    noconj: bool,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    const X: type = types.Child(@TypeOf(x));
+    const Y: type = types.Child(@TypeOf(y));
+    const C1: type = types.Coerce(Al, Y);
+    const A: type = types.Child(@TypeOf(a));
+    const CC: type = types.Coerce(Al, types.Coerce(X, types.Coerce(Y, A)));
 
-    const LENX = m;
-    const LENY = n;
+    if (m < 0 or n < 0 or lda < int.max(1, m) or incx == 0 or incy == 0)
+        return blas.Error.InvalidArgument;
 
-    switch (numericType) {
-        .bool => @compileError("blas.gerc does not support bool."),
-        .int, .float => @compileError("blas.gerc does not support integer or float types."),
-        .cfloat => {
-            if (alpha.re == 0 and alpha.im == 0) return;
+    // Quick return if possible.
+    if (m == 0 or n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
+        return;
 
-            if (order == .ColumnMajor) {
+    var jy: isize = if (incy < 0) (-n + 1) * incy else 0;
+
+    if (comptime !types.isArbitraryPrecision(CC)) {
+        if (noconj) {
+            if (incx == 1) {
                 var j: isize = 0;
-                var jaj: isize = 0;
-                var jy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
-                while (j < N) {
-                    const t0 = T.init(alpha.re * y[@intCast(jy)].re + alpha.im * y[@intCast(jy)].im, alpha.im * y[@intCast(jy)].re - alpha.re * y[@intCast(jy)].im);
+                while (j < n) : (j += 1) {
+                    if (ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * conj(y[jy])
+                            alpha,
+                            ops.conjugate(y[scast(usize, jy)], ctx) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
 
-                    var i: isize = 0;
-                    var iaij: isize = jaj;
-                    var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                    while (i < M) {
-                        A[@intCast(iaij)].re += x[@intCast(ix)].re * t0.re - x[@intCast(ix)].im * t0.im;
-                        A[@intCast(iaij)].im += x[@intCast(ix)].re * t0.im + x[@intCast(ix)].im * t0.re;
-
-                        i += 1;
-                        iaij += 1;
-                        ix += incx;
+                        var i: isize = 0;
+                        while (i < m) : (i += 1) {
+                            ops.add_( // a[i + j * lda] += x[i] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    x[scast(usize, i)],
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+                        }
                     }
 
-                    j += 1;
-                    jaj += lda;
                     jy += incy;
                 }
             } else {
+                const kx: isize = if (incx < 0) (-m + 1) * incx else 0;
+
                 var j: isize = 0;
-                var jaj: isize = 0;
-                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                while (j < N) {
-                    const t0 = T.init(alpha.re * x[@intCast(jx)].re - alpha.im * x[@intCast(jx)].im, alpha.im * x[@intCast(jx)].re + alpha.re * x[@intCast(jx)].im);
+                while (j < n) : (j += 1) {
+                    if (ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * conj(y[jy])
+                            alpha,
+                            ops.conjugate(y[scast(usize, jy)], ctx) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
 
-                    var i: isize = 0;
-                    var iaij: isize = jaj;
-                    var iy: isize = if (incy < 0) (-LENY + 1) * incy else 0;
-                    while (i < M) {
-                        A[@intCast(iaij)].re += y[@intCast(iy)].re * t0.re + y[@intCast(iy)].im * t0.im;
-                        A[@intCast(iaij)].im += y[@intCast(iy)].re * t0.im - y[@intCast(iy)].im * t0.re;
+                        var ix: isize = kx;
+                        var i: isize = 0;
+                        while (i < m) : (i += 1) {
+                            ops.add_( // a[i + j * lda] += x[ix] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    x[scast(usize, ix)],
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
 
-                        i += 1;
-                        iaij += 1;
-                        iy += incy;
+                            ix += incx;
+                        }
                     }
 
-                    j += 1;
-                    jaj += lda;
-                    jx += incx;
+                    jy += incy;
                 }
             }
-        },
-        .integer, .rational, .real, .complex, .expression => @compileError("blas.gerc only supports simple types."),
+        } else {
+            if (incx == 1) {
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    if (ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * conj(y[jy])
+                            alpha,
+                            y[scast(usize, jy)],
+                            ctx,
+                        ) catch unreachable;
+
+                        var i: isize = 0;
+                        while (i < m) : (i += 1) {
+                            ops.add_( // a[i + j * lda] += x[i] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    ops.conjugate(x[scast(usize, i)], ctx) catch unreachable,
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+                        }
+                    }
+
+                    jy += incy;
+                }
+            } else {
+                const kx: isize = if (incx < 0) (-m + 1) * incx else 0;
+
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    if (ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * conj(y[jy])
+                            alpha,
+                            y[scast(usize, jy)],
+                            ctx,
+                        ) catch unreachable;
+
+                        var ix: isize = kx;
+                        var i: isize = 0;
+                        while (i < m) : (i += 1) {
+                            ops.add_( // a[i + j * lda] += x[ix] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    ops.conjugate(x[scast(usize, ix)], ctx) catch unreachable,
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+
+                            ix += incx;
+                        }
+                    }
+
+                    jy += incy;
+                }
+            }
+        }
+    } else {
+        // Arbitrary precision types not supported yet
+        @compileError("zml.linalg.blas.gerc not implemented for arbitrary precision types yet");
     }
+
+    return;
 }

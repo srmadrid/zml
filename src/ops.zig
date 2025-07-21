@@ -7091,6 +7091,116 @@ pub inline fn lgamma_(
     }
 }
 
+pub inline fn re(
+    x: anytype,
+    ctx: anytype,
+) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X)) {
+        comptime if (types.isArbitraryPrecision(Numeric(X))) {
+            validateContext(
+                @TypeOf(ctx),
+                .{
+                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .order = .{ .type = ?array.Order, .required = false },
+                },
+            );
+        } else {
+            validateContext(
+                @TypeOf(ctx),
+                .{
+                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .order = .{ .type = ?array.Order, .required = false },
+                },
+            );
+        };
+
+        return array.re(
+            ctx.array_allocator,
+            x,
+            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            stripStruct(ctx, &.{ "array_allocator", "order" }),
+        );
+    }
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.re not defined for " ++ @typeName(X)),
+        .int => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return x;
+        },
+        .float => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return x;
+        },
+        .cfloat => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return x.re;
+        },
+        else => @compileError("zml.re not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn im(
+    x: anytype,
+    ctx: anytype,
+) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X) or types.isSlice(X)) {
+        comptime if (types.isArbitraryPrecision(Numeric(X))) {
+            validateContext(
+                @TypeOf(ctx),
+                .{
+                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .order = .{ .type = ?array.Order, .required = false },
+                },
+            );
+        } else {
+            validateContext(
+                @TypeOf(ctx),
+                .{
+                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .order = .{ .type = ?array.Order, .required = false },
+                },
+            );
+        };
+
+        return array.im(
+            ctx.array_allocator,
+            x,
+            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            stripStruct(ctx, &.{ "array_allocator", "order" }),
+        );
+    }
+
+    switch (types.numericType(X)) {
+        .bool => @compileError("zml.im not defined for " ++ @typeName(X)),
+        .int => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return 0;
+        },
+        .float => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return 0;
+        },
+        .cfloat => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return x.im;
+        },
+        else => @compileError("zml.im not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
 pub inline fn conjugate(
     x: anytype,
     ctx: anytype,
@@ -7128,10 +7238,97 @@ pub inline fn conjugate(
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.conjugate not defined for " ++ @typeName(X)),
-        .int => return x,
-        .float => return x,
-        .cfloat => return x.conjugate(),
+        .int => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return x;
+        },
+        .float => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return x;
+        },
+        .cfloat => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return x.conjugate();
+        },
         else => @compileError("zml.conjugate not implemented for " ++ @typeName(X) ++ " yet"),
+    }
+}
+
+pub inline fn conjugate_(
+    o: anytype,
+    x: anytype,
+    ctx: anytype,
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.conjugate_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O) or types.isSlice(O)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O))) {
+            if (types.isArbitraryPrecision(Numeric(X))) {
+                if (Numeric(O) == Numeric(X)) {
+                    validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                } else {
+                    validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{ .type = std.mem.Allocator, .required = true },
+                            .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                }
+            } else {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            }
+        } else {
+            if (types.isArbitraryPrecision(Numeric(X))) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            }
+        };
+
+        return array.conjugate_(o, x, ctx);
+    } else if (comptime types.isArray(X) or types.isSlice(X)) {
+        @compileError("zml.conjugate_: o must be an `Array` or slice if x is an `Array` or slice, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+    }
+
+    switch (comptime types.numericType(X)) {
+        .bool => @compileError("zml.conjugate_ not defined for " ++ @typeName(X) ++ " input type"),
+        .int => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            o.* = try cast(O, x, ctx);
+        },
+        .float => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            o.* = try cast(O, x, ctx);
+        },
+        .cfloat => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            o.* = try cast(O, x.conjugate(), ctx);
+        },
+        else => @compileError("zml.conjugate_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
     }
 }
 

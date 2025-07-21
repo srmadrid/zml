@@ -60,7 +60,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .RowMajor, .Upper, n, k, alpha, A.ptr, k + 1, x1.ptr, 2, beta, y1.ptr, 2);
+    hbmv(.row_major, .upper, n, k, alpha, A.ptr, k + 1, x1.ptr, 2, beta, y1.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-17, y1[0].re);
     try std.testing.expectEqual(21, y1[0].im);
@@ -103,7 +103,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .RowMajor, .Upper, n, k, alpha, A.ptr, k + 1, x2.ptr, -2, beta, y2.ptr, -2);
+    hbmv(.row_major, .upper, n, k, alpha, A.ptr, k + 1, x2.ptr, -2, beta, y2.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-17, y2[8].re);
     try std.testing.expectEqual(21, y2[8].im);
@@ -146,7 +146,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .ColumnMajor, .Upper, n, k, alpha, A.ptr, k + 1, x3.ptr, 2, beta, y3.ptr, 2);
+    hbmv(.col_major, .upper, n, k, alpha, A.ptr, k + 1, x3.ptr, 2, beta, y3.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-26, y3[0].re);
     try std.testing.expectEqual(30, y3[0].im);
@@ -189,7 +189,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .ColumnMajor, .Upper, n, k, alpha, A.ptr, k + 1, x4.ptr, -2, beta, y4.ptr, -2);
+    hbmv(.col_major, .upper, n, k, alpha, A.ptr, k + 1, x4.ptr, -2, beta, y4.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-26, y4[8].re);
     try std.testing.expectEqual(30, y4[8].im);
@@ -232,7 +232,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .RowMajor, .Lower, n, k, alpha, A.ptr, k + 1, x5.ptr, 2, beta, y5.ptr, 2);
+    hbmv(.row_major, .lower, n, k, alpha, A.ptr, k + 1, x5.ptr, 2, beta, y5.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(16, y5[0].re);
     try std.testing.expectEqual(36, y5[0].im);
@@ -275,7 +275,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .RowMajor, .Lower, n, k, alpha, A.ptr, k + 1, x6.ptr, -2, beta, y6.ptr, -2);
+    hbmv(.row_major, .lower, n, k, alpha, A.ptr, k + 1, x6.ptr, -2, beta, y6.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(16, y6[8].re);
     try std.testing.expectEqual(36, y6[8].im);
@@ -318,7 +318,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .ColumnMajor, .Lower, n, k, alpha, A.ptr, k + 1, x7.ptr, 2, beta, y7.ptr, 2);
+    hbmv(.col_major, .lower, n, k, alpha, A.ptr, k + 1, x7.ptr, 2, beta, y7.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(11, y7[0].re);
     try std.testing.expectEqual(25, y7[0].im);
@@ -361,7 +361,7 @@ test hbmv {
         cf64.init(0, 0),
     });
 
-    hbmv(cf64, .ColumnMajor, .Lower, n, k, alpha, A.ptr, k + 1, x8.ptr, -2, beta, y8.ptr, -2);
+    hbmv(.col_major, .lower, n, k, alpha, A.ptr, k + 1, x8.ptr, -2, beta, y8.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(11, y8[8].re);
     try std.testing.expectEqual(25, y8[8].im);

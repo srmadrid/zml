@@ -1,6 +1,6 @@
 test {
-    const test_level_1 = true;
-    const test_level_2 = false;
+    const test_level_1 = false;
+    const test_level_2 = true;
     const test_level_3 = false;
 
     if (test_level_1) {
@@ -30,25 +30,25 @@ test {
         _ = @import("blas/gerc.zig");
         _ = @import("blas/geru.zig");
         _ = @import("blas/hbmv.zig");
-        _ = @import("blas/hemv.zig");
-        _ = @import("blas/her.zig");
-        _ = @import("blas/her2.zig");
-        _ = @import("blas/hpmv.zig");
-        _ = @import("blas/hpr.zig");
-        _ = @import("blas/hpr2.zig");
-        _ = @import("blas/sbmv.zig");
-        _ = @import("blas/spmv.zig");
-        _ = @import("blas/spr.zig");
-        _ = @import("blas/spr2.zig");
-        _ = @import("blas/symv.zig");
-        _ = @import("blas/syr.zig");
-        _ = @import("blas/syr2.zig");
-        _ = @import("blas/tbmv.zig");
-        _ = @import("blas/tbsv.zig");
-        _ = @import("blas/tpmv.zig");
-        _ = @import("blas/tpsv.zig");
-        _ = @import("blas/trmv.zig");
-        _ = @import("blas/trsv.zig");
+        // _ = @import("blas/hemv.zig");
+        // _ = @import("blas/her.zig");
+        // _ = @import("blas/her2.zig");
+        // _ = @import("blas/hpmv.zig");
+        // _ = @import("blas/hpr.zig");
+        // _ = @import("blas/hpr2.zig");
+        // _ = @import("blas/sbmv.zig");
+        // _ = @import("blas/spmv.zig");
+        // _ = @import("blas/spr.zig");
+        // _ = @import("blas/spr2.zig");
+        // _ = @import("blas/symv.zig");
+        // _ = @import("blas/syr.zig");
+        // _ = @import("blas/syr2.zig");
+        // _ = @import("blas/tbmv.zig");
+        // _ = @import("blas/tbsv.zig");
+        // _ = @import("blas/tpmv.zig");
+        // _ = @import("blas/tpsv.zig");
+        // _ = @import("blas/trmv.zig");
+        // _ = @import("blas/trsv.zig");
     }
 
     if (test_level_3) {

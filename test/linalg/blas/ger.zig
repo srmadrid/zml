@@ -61,7 +61,7 @@ test ger {
         0,
     });
 
-    ger(f64, .RowMajor, m, n, alpha, x1.ptr, 2, y1.ptr, 2, A.ptr, n);
+    ger(.row_major, m, n, alpha, x1.ptr, 2, y1.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(3, A[0]);
     try std.testing.expectEqual(6, A[1]);
@@ -112,7 +112,7 @@ test ger {
         0,
     });
 
-    ger(f64, .RowMajor, m, n, alpha, x2.ptr, -2, y2.ptr, -2, A.ptr, n);
+    ger(.row_major, m, n, alpha, x2.ptr, -2, y2.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(5, A[0]);
     try std.testing.expectEqual(10, A[1]);
@@ -163,7 +163,7 @@ test ger {
         0,
     });
 
-    ger(f64, .ColumnMajor, m, n, alpha, x3.ptr, 2, y3.ptr, 2, A.ptr, m);
+    ger(.col_major, m, n, alpha, x3.ptr, 2, y3.ptr, 2, A.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(7, A[0]);
     try std.testing.expectEqual(14, A[1]);
@@ -214,7 +214,7 @@ test ger {
         0,
     });
 
-    ger(f64, .ColumnMajor, m, n, alpha, x4.ptr, -2, y4.ptr, -2, A.ptr, m);
+    ger(.col_major, m, n, alpha, x4.ptr, -2, y4.ptr, -2, A.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(9, A[0]);
     try std.testing.expectEqual(18, A[1]);

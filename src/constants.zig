@@ -16,6 +16,31 @@ const rational = @import("rational.zig");
 const real = @import("real.zig");
 const complex = @import("complex.zig");
 
+pub inline fn zero(
+    comptime T: type,
+    ctx: anytype,
+) !T {
+    comptime if (types.isArbitraryPrecision(T)) {
+        validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    switch (types.numericType(T)) {
+        .bool => return false,
+        .int => return 0,
+        .float => return 0,
+        .cfloat => return .{
+            .re = 0,
+            .im = 0,
+        },
+        else => @compileError("zml.zero not implemented for " ++ @typeName(T) ++ " yet"),
+    }
+}
+
 pub inline fn pi(
     comptime T: type,
     ctx: anytype,
