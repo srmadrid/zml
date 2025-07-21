@@ -5687,6 +5687,9 @@ pub fn zgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: cf64, a
 /// `real`, `complex` or `expression`): Array, size at least
 /// `(1 + (n - 1) * abs(incy))`.
 ///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
 /// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
@@ -5823,6 +5826,9 @@ pub inline fn ger(
 ///
 /// `y` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
 ///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
 /// `a` (`[*]f32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
@@ -5873,6 +5879,9 @@ pub fn sger(order: Order, m: isize, n: isize, alpha: f32, x: [*]const f32, incx:
 /// different from 0.
 ///
 /// `y` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
@@ -5929,6 +5938,9 @@ pub fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64, incx:
 /// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
 ///
 /// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
@@ -6066,6 +6078,9 @@ pub inline fn gerc(
 ///
 /// `y` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
 ///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
 /// `a` (`[*]cf32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
@@ -6116,6 +6131,9 @@ pub fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, in
 /// different from 0.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
@@ -6172,6 +6190,9 @@ pub fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, in
 /// `y` (many-item pointer of `int`, `float`, `cfloat`, `integeru`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
 ///
 /// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integeru`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
@@ -6309,6 +6330,9 @@ pub inline fn geru(
 ///
 /// `y` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
 ///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
 /// `a` (`[*]cf32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
@@ -6359,6 +6383,9 @@ pub fn cgeru(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, in
 /// different from 0.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
@@ -6664,15 +6691,152 @@ pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a: [*]co
     return hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
-pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-vector product using a Hermitian matrix.
+///
+/// The `hemv` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` or `incy` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn hemv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.hemv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.hemv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.hemv requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.hemv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.hemv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.hemv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.hemv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.hemv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.hemv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.hemv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (Scalar(Al) == f32) {
                     return ci.cblas_chemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(T) == f64) {
+                } else if (Scalar(Al) == f64) {
                     return ci.cblas_zhemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
                 }
             },
@@ -6680,24 +6844,240 @@ pub inline fn hemv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/hemv.zig").hemv(T, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+    return @import("blas/hemv.zig").hemv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, ctx);
 }
+
+/// Computes a matrix-vector product using a Hermitian matrix.
+///
+/// The `chemv` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
-    return hemv(cf32, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+    return hemv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
+
+/// Computes a matrix-vector product using a Hermitian matrix.
+///
+/// The `zhemv` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
-    return hemv(cf64, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+    return hemv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
-pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, a: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
+/// Performs a rank-1 update of a Hermitian matrix.
+///
+/// The `her` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conj(y^T) + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `integeru`, `rational`, `real` or
+/// `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integeru`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integeru`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is complex or not a numeric type, if
+/// the type of `x` or `y` is not a many-item pointer, if the type of `a` is not
+/// a mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn her(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var A: type = @TypeOf(a);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.her requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (types.isComplex(Al))
+        @compileError("zml.linalg.blas.her does not support complex alpha, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.her requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.her requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.her requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.her requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and A == bool)
+        @compileError("zml.linalg.blas.her does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.her not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime X == A and Scalar(X) == Al and opts.link_cblas != null) {
+        switch (comptime types.numericType(X)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
                 }
             },
@@ -6705,24 +7085,224 @@ pub inline fn her(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: S
         }
     }
 
-    return @import("blas/her.zig").her(T, order, uplo, n, alpha, x, incx, a, lda);
+    return @import("blas/her.zig").her(order, uplo, n, alpha, x, incx, a, lda, ctx);
 }
+
+/// Performs a rank-1 update of a Hermitian matrix.
+///
+/// The `cher` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conj(y^T) + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, a: [*]cf32, lda: isize) void {
-    return her(cf32, order, uplo, n, alpha, x, incx, a, lda);
+    return her(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
+
+/// Performs a rank-1 update of a Hermitian matrix.
+///
+/// The `zher` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conj(y^T) + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `a` (`[*]cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, a: [*]cf64, lda: isize) void {
-    return her(cf64, order, uplo, n, alpha, x, incx, a, lda);
+    return her(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
 
-pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, a: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
+/// Performs a rank-2 update of a Hermitian matrix.
+///
+/// The `her2` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * n`. On return, contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
+/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn her2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    comptime var A: type = @TypeOf(a);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.ger requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.ger requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.ger requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(Y))
+        @compileError("zml.linalg.blas.ger requires y to be a many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.ger requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.ger requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.ger requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and Y == bool and A == bool)
+        @compileError("zml.linalg.blas.ger does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Y) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.ger not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (Scalar(Al) == f32) {
                     return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (Scalar(T) == f64) {
+                } else if (Scalar(Al) == f64) {
                     return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
@@ -6730,13 +7310,105 @@ pub inline fn her2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/her2.zig").her2(T, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+    return @import("blas/her2.zig").her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, ctx);
 }
+
+/// Performs a rank-2 update of a Hermitian matrix.
+///
+/// The `cher2` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
+/// result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, a: [*]cf32, lda: isize) void {
-    return her2(cf32, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+    return her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
+
+/// Performs a rank-2 update of a Hermitian matrix.
+///
+/// The `zher2` routines perform a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` Hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
+/// result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, a: [*]cf64, lda: isize) void {
-    return her2(cf64, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+    return her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
 pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {

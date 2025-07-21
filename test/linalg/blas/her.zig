@@ -54,7 +54,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .RowMajor, .Upper, n, alpha, x1.ptr, 2, A.ptr, n);
+    her(.row_major, .upper, n, alpha, x1.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(11, A[0].re);
     try std.testing.expectEqual(0, A[0].im);
@@ -123,7 +123,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .RowMajor, .Upper, n, alpha, x2.ptr, -2, A.ptr, n);
+    her(.row_major, .upper, n, alpha, x2.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(21, A[0].re);
     try std.testing.expectEqual(0, A[0].im);
@@ -192,7 +192,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .ColumnMajor, .Upper, n, alpha, x3.ptr, 2, A.ptr, n);
+    her(.col_major, .upper, n, alpha, x3.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(31, A[0].re);
     try std.testing.expectEqual(0, A[0].im);
@@ -261,7 +261,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .ColumnMajor, .Upper, n, alpha, x4.ptr, -2, A.ptr, n);
+    her(.col_major, .upper, n, alpha, x4.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(41, A[0].re);
     try std.testing.expectEqual(0, A[0].im);
@@ -330,7 +330,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .RowMajor, .Lower, n, alpha, x5.ptr, 2, A.ptr, n);
+    her(.row_major, .lower, n, alpha, x5.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(51, A[0].re);
     try std.testing.expectEqual(0, A[0].im);
@@ -399,7 +399,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .RowMajor, .Lower, n, alpha, x6.ptr, -2, A.ptr, n);
+    her(.row_major, .lower, n, alpha, x6.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(61, A[0].re);
     try std.testing.expectEqual(0, A[0].im);
@@ -468,7 +468,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .ColumnMajor, .Lower, n, alpha, x7.ptr, 2, A.ptr, n);
+    her(.col_major, .lower, n, alpha, x7.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(71, A[0].re);
     try std.testing.expectEqual(0, A[0].im);
@@ -537,7 +537,7 @@ test her {
         cf64.init(0, 0),
     });
 
-    her(cf64, .ColumnMajor, .Lower, n, alpha, x8.ptr, -2, A.ptr, n);
+    her(.col_major, .lower, n, alpha, x8.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(81, A[0].re);
     try std.testing.expectEqual(0, A[0].im);

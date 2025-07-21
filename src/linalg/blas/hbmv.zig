@@ -94,7 +94,7 @@ fn k_hbmv(
                         }
                     } else {
                         for (0..scast(usize, n)) |i| {
-                            ops.mul_( // y[i] *= beta
+                            ops.mul_( // y[i] = conj(y[i]) * conj(beta)
                                 &y[i],
                                 ops.conjugate(y[i], ctx) catch unreachable,
                                 ops.conjugate(beta, ctx) catch unreachable,
@@ -129,7 +129,7 @@ fn k_hbmv(
                         }
                     } else {
                         for (0..scast(usize, n)) |_| {
-                            ops.mul_( // y[iy] *= conj(beta)
+                            ops.mul_( // y[iy] = conj(y[iy]) * conj(beta)
                                 &y[scast(usize, iy)],
                                 ops.conjugate(y[scast(usize, iy)], ctx) catch unreachable,
                                 ops.conjugate(beta, ctx) catch unreachable,

@@ -30,9 +30,9 @@ test {
         _ = @import("blas/gerc.zig");
         _ = @import("blas/geru.zig");
         _ = @import("blas/hbmv.zig");
-        // _ = @import("blas/hemv.zig");
-        // _ = @import("blas/her.zig");
-        // _ = @import("blas/her2.zig");
+        _ = @import("blas/hemv.zig");
+        _ = @import("blas/her.zig");
+        _ = @import("blas/her2.zig");
         // _ = @import("blas/hpmv.zig");
         // _ = @import("blas/hpr.zig");
         // _ = @import("blas/hpr2.zig");
