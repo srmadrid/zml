@@ -568,7 +568,7 @@ fn k_hbmv(
                                 ctx,
                             ) catch unreachable;
 
-                            ops.add_( // temp2 += conj(a[l + i + j * lda]) * x[i]
+                            ops.add_( // temp2 += conj(a[l + i + j * lda]) * conj(x[i])
                                 &temp2,
                                 temp2,
                                 ops.mul(
@@ -633,7 +633,7 @@ fn k_hbmv(
                                 ctx,
                             ) catch unreachable;
 
-                            ops.add_( // temp2 += conj(a[l + i + j * lda]) * x[ix]
+                            ops.add_( // temp2 += conj(a[l + i + j * lda]) * conj(x[ix])
                                 &temp2,
                                 temp2,
                                 ops.mul(

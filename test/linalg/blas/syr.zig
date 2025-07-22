@@ -53,7 +53,7 @@ test syr {
         0,
     });
 
-    syr(f64, .RowMajor, .Upper, n, alpha, x1.ptr, 2, A.ptr, n);
+    syr(.row_major, .upper, n, alpha, x1.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(3, A[0]);
     try std.testing.expectEqual(6, A[1]);
@@ -97,7 +97,7 @@ test syr {
         0,
     });
 
-    syr(f64, .RowMajor, .Upper, n, alpha, x2.ptr, -2, A.ptr, n);
+    syr(.row_major, .upper, n, alpha, x2.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(5, A[0]);
     try std.testing.expectEqual(10, A[1]);
@@ -141,7 +141,7 @@ test syr {
         0,
     });
 
-    syr(f64, .ColumnMajor, .Upper, n, alpha, x3.ptr, 2, A.ptr, n);
+    syr(.col_major, .upper, n, alpha, x3.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(7, A[0]);
     try std.testing.expectEqual(10, A[1]);
@@ -185,7 +185,7 @@ test syr {
         0,
     });
 
-    syr(f64, .ColumnMajor, .Upper, n, alpha, x4.ptr, -2, A.ptr, n);
+    syr(.col_major, .upper, n, alpha, x4.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(9, A[0]);
     try std.testing.expectEqual(10, A[1]);
@@ -229,7 +229,7 @@ test syr {
         0,
     });
 
-    syr(f64, .RowMajor, .Lower, n, alpha, x5.ptr, 2, A.ptr, n);
+    syr(.row_major, .lower, n, alpha, x5.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(11, A[0]);
     try std.testing.expectEqual(10, A[1]);
@@ -273,7 +273,7 @@ test syr {
         0,
     });
 
-    syr(f64, .RowMajor, .Lower, n, alpha, x6.ptr, -2, A.ptr, n);
+    syr(.row_major, .lower, n, alpha, x6.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(13, A[0]);
     try std.testing.expectEqual(10, A[1]);
@@ -317,7 +317,7 @@ test syr {
         0,
     });
 
-    syr(f64, .ColumnMajor, .Lower, n, alpha, x7.ptr, 2, A.ptr, n);
+    syr(.col_major, .lower, n, alpha, x7.ptr, 2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(15, A[0]);
     try std.testing.expectEqual(14, A[1]);
@@ -361,7 +361,7 @@ test syr {
         0,
     });
 
-    syr(f64, .ColumnMajor, .Lower, n, alpha, x8.ptr, -2, A.ptr, n);
+    syr(.col_major, .lower, n, alpha, x8.ptr, -2, A.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(17, A[0]);
     try std.testing.expectEqual(18, A[1]);

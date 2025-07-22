@@ -68,7 +68,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .RowMajor, .Upper, n, alpha, A.ptr, x1.ptr, 2, beta, y1.ptr, 2);
+    spmv(.row_major, .upper, n, alpha, A.ptr, x1.ptr, 2, beta, y1.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y1[0]);
     try std.testing.expectEqual(230, y1[2]);
@@ -106,7 +106,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .RowMajor, .Upper, n, alpha, A.ptr, x2.ptr, -2, beta, y2.ptr, -2);
+    spmv(.row_major, .upper, n, alpha, A.ptr, x2.ptr, -2, beta, y2.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y2[8]);
     try std.testing.expectEqual(230, y2[6]);
@@ -144,7 +144,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .ColumnMajor, .Upper, n, alpha, A.ptr, x3.ptr, 2, beta, y3.ptr, 2);
+    spmv(.col_major, .upper, n, alpha, A.ptr, x3.ptr, 2, beta, y3.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(203, y3[0]);
     try std.testing.expectEqual(236, y3[2]);
@@ -182,7 +182,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .ColumnMajor, .Upper, n, alpha, A.ptr, x4.ptr, -2, beta, y4.ptr, -2);
+    spmv(.col_major, .upper, n, alpha, A.ptr, x4.ptr, -2, beta, y4.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(203, y4[8]);
     try std.testing.expectEqual(236, y4[6]);
@@ -220,7 +220,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .RowMajor, .Lower, n, alpha, A.ptr, x5.ptr, 2, beta, y5.ptr, 2);
+    spmv(.row_major, .lower, n, alpha, A.ptr, x5.ptr, 2, beta, y5.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(203, y5[0]);
     try std.testing.expectEqual(236, y5[2]);
@@ -258,7 +258,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .RowMajor, .Lower, n, alpha, A.ptr, x6.ptr, -2, beta, y6.ptr, -2);
+    spmv(.row_major, .lower, n, alpha, A.ptr, x6.ptr, -2, beta, y6.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(203, y6[8]);
     try std.testing.expectEqual(236, y6[6]);
@@ -296,7 +296,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .ColumnMajor, .Lower, n, alpha, A.ptr, x7.ptr, 2, beta, y7.ptr, 2);
+    spmv(.col_major, .lower, n, alpha, A.ptr, x7.ptr, 2, beta, y7.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y7[0]);
     try std.testing.expectEqual(230, y7[2]);
@@ -334,7 +334,7 @@ test spmv {
         0,
     });
 
-    spmv(f64, .ColumnMajor, .Lower, n, alpha, A.ptr, x8.ptr, -2, beta, y8.ptr, -2);
+    spmv(.col_major, .lower, n, alpha, A.ptr, x8.ptr, -2, beta, y8.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y8[8]);
     try std.testing.expectEqual(230, y8[6]);

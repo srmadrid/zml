@@ -33,16 +33,16 @@ test {
         _ = @import("blas/hemv.zig");
         _ = @import("blas/her.zig");
         _ = @import("blas/her2.zig");
-        // _ = @import("blas/hpmv.zig");
-        // _ = @import("blas/hpr.zig");
-        // _ = @import("blas/hpr2.zig");
-        // _ = @import("blas/sbmv.zig");
-        // _ = @import("blas/spmv.zig");
-        // _ = @import("blas/spr.zig");
-        // _ = @import("blas/spr2.zig");
-        // _ = @import("blas/symv.zig");
-        // _ = @import("blas/syr.zig");
-        // _ = @import("blas/syr2.zig");
+        _ = @import("blas/hpmv.zig");
+        _ = @import("blas/hpr.zig");
+        _ = @import("blas/hpr2.zig");
+        _ = @import("blas/sbmv.zig");
+        _ = @import("blas/spmv.zig");
+        _ = @import("blas/spr.zig");
+        _ = @import("blas/spr2.zig");
+        _ = @import("blas/symv.zig");
+        _ = @import("blas/syr.zig");
+        _ = @import("blas/syr2.zig");
         // _ = @import("blas/tbmv.zig");
         // _ = @import("blas/tbsv.zig");
         // _ = @import("blas/tpmv.zig");
@@ -52,14 +52,14 @@ test {
     }
 
     if (test_level_3) {
-        _ = @import("blas/gemm.zig");
-        _ = @import("blas/hemm.zig");
-        _ = @import("blas/herk.zig");
-        _ = @import("blas/her2k.zig");
-        _ = @import("blas/symm.zig");
-        _ = @import("blas/syrk.zig");
-        _ = @import("blas/syr2k.zig");
-        _ = @import("blas/trmm.zig");
-        _ = @import("blas/trsm.zig");
+        // _ = @import("blas/gemm.zig");
+        // _ = @import("blas/hemm.zig");
+        // _ = @import("blas/herk.zig");
+        // _ = @import("blas/her2k.zig");
+        // _ = @import("blas/symm.zig");
+        // _ = @import("blas/syrk.zig");
+        // _ = @import("blas/syr2k.zig");
+        // _ = @import("blas/trmm.zig");
+        // _ = @import("blas/trsm.zig");
     }
 }

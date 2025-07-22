@@ -69,7 +69,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .RowMajor, .Upper, n, alpha, A.ptr, x1.ptr, 2, beta, y1.ptr, 2);
+    hpmv(.row_major, .upper, n, alpha, A.ptr, x1.ptr, 2, beta, y1.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-217, y1[0].re);
     try std.testing.expectEqual(197, y1[0].im);
@@ -112,7 +112,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .RowMajor, .Upper, n, alpha, A.ptr, x2.ptr, -2, beta, y2.ptr, -2);
+    hpmv(.row_major, .upper, n, alpha, A.ptr, x2.ptr, -2, beta, y2.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-217, y2[8].re);
     try std.testing.expectEqual(197, y2[8].im);
@@ -155,7 +155,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .ColumnMajor, .Upper, n, alpha, A.ptr, x3.ptr, 2, beta, y3.ptr, 2);
+    hpmv(.col_major, .upper, n, alpha, A.ptr, x3.ptr, 2, beta, y3.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-397, y3[0].re);
     try std.testing.expectEqual(357, y3[0].im);
@@ -198,7 +198,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .ColumnMajor, .Upper, n, alpha, A.ptr, x4.ptr, -2, beta, y4.ptr, -2);
+    hpmv(.col_major, .upper, n, alpha, A.ptr, x4.ptr, -2, beta, y4.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(-397, y4[8].re);
     try std.testing.expectEqual(357, y4[8].im);
@@ -241,7 +241,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .RowMajor, .Lower, n, alpha, A.ptr, x5.ptr, 2, beta, y5.ptr, 2);
+    hpmv(.row_major, .lower, n, alpha, A.ptr, x5.ptr, 2, beta, y5.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(347, y5[0].re);
     try std.testing.expectEqual(405, y5[0].im);
@@ -284,7 +284,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .RowMajor, .Lower, n, alpha, A.ptr, x6.ptr, -2, beta, y6.ptr, -2);
+    hpmv(.row_major, .lower, n, alpha, A.ptr, x6.ptr, -2, beta, y6.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(347, y6[8].re);
     try std.testing.expectEqual(405, y6[8].im);
@@ -327,7 +327,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .ColumnMajor, .Lower, n, alpha, A.ptr, x7.ptr, 2, beta, y7.ptr, 2);
+    hpmv(.col_major, .lower, n, alpha, A.ptr, x7.ptr, 2, beta, y7.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(187, y7[0].re);
     try std.testing.expectEqual(225, y7[0].im);
@@ -370,7 +370,7 @@ test hpmv {
         cf64.init(0, 0),
     });
 
-    hpmv(cf64, .ColumnMajor, .Lower, n, alpha, A.ptr, x8.ptr, -2, beta, y8.ptr, -2);
+    hpmv(.col_major, .lower, n, alpha, A.ptr, x8.ptr, -2, beta, y8.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(187, y8[8].re);
     try std.testing.expectEqual(225, y8[8].im);

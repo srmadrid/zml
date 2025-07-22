@@ -385,7 +385,7 @@ pub inline fn asum(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn sasum(n: isize, x: [*]const f32, incx: isize) f32 {
-    return asum(f32, n, x, incx, .{}) catch 0;
+    return asum(n, x, incx, .{}) catch 0;
 }
 
 /// Computes the sum of magnitudes of the vector elements.
@@ -416,7 +416,7 @@ pub fn sasum(n: isize, x: [*]const f32, incx: isize) f32 {
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn dasum(n: isize, x: [*]const f64, incx: isize) f64 {
-    return asum(f64, n, x, incx, .{}) catch 0;
+    return asum(n, x, incx, .{}) catch 0;
 }
 
 /// Computes the sum of magnitudes of the vector elements.
@@ -448,7 +448,7 @@ pub fn dasum(n: isize, x: [*]const f64, incx: isize) f64 {
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn scasum(n: isize, x: [*]const cf32, incx: isize) f32 {
-    return asum(cf32, n, x, incx, .{}) catch 0;
+    return asum(n, x, incx, .{}) catch 0;
 }
 
 /// Computes the sum of magnitudes of the vector elements.
@@ -480,7 +480,7 @@ pub fn scasum(n: isize, x: [*]const cf32, incx: isize) f32 {
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn dzasum(n: isize, x: [*]const cf64, incx: isize) f64 {
-    return asum(cf64, n, x, incx, .{}) catch 0;
+    return asum(n, x, incx, .{}) catch 0;
 }
 
 /// Computes a vector-scalar product and adds the result to a vector.
@@ -2247,7 +2247,7 @@ pub inline fn nrm2(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn snrm2(n: isize, x: [*]const f32, incx: isize) f32 {
-    return nrm2(f32, n, x, incx);
+    return nrm2(n, x, incx);
 }
 
 /// Computes the Euclidean norm of a vector.
@@ -2277,7 +2277,7 @@ pub fn snrm2(n: isize, x: [*]const f32, incx: isize) f32 {
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn dnrm2(n: isize, x: [*]const f64, incx: isize) f64 {
-    return nrm2(f64, n, x, incx);
+    return nrm2(n, x, incx);
 }
 
 /// Computes the Euclidean norm of a vector.
@@ -2307,7 +2307,7 @@ pub fn dnrm2(n: isize, x: [*]const f64, incx: isize) f64 {
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn scnrm2(n: isize, x: [*]const cf32, incx: isize) f32 {
-    return nrm2(cf32, n, x, incx);
+    return nrm2(n, x, incx);
 }
 
 /// Computes the Euclidean norm of a vector.
@@ -2337,7 +2337,7 @@ pub fn scnrm2(n: isize, x: [*]const cf32, incx: isize) f32 {
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn dznrm2(n: isize, x: [*]const cf64, incx: isize) f64 {
-    return nrm2(cf64, n, x, incx);
+    return nrm2(n, x, incx);
 }
 
 /// Performs rotation of points in the plane.
@@ -3612,7 +3612,7 @@ pub fn srotmg(d1: *f32, d2: *f32, x1: *f32, y1: f32, param: [*]f32) void {
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub fn drotmg(d1: *f64, d2: *f64, x1: *f64, y1: f64, param: [*]f64) void {
-    return rotmg(f64, d1, d2, x1, y1, param, .{}) catch {};
+    return rotmg(d1, d2, x1, y1, param, .{}) catch {};
 }
 
 /// Computes the product of a vector by a scalar.
@@ -6052,7 +6052,7 @@ pub inline fn gerc(
 /// The `cgerc` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     A = alpha * x * y^T + A,
+///     A = alpha * x * conj(y^T) + A,
 /// ```
 ///
 /// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
@@ -6106,7 +6106,7 @@ pub fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, in
 /// The `zgerc` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     A = alpha * x * y^T + A,
+///     A = alpha * x * conj(y^T) + A,
 /// ```
 ///
 /// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
@@ -6177,24 +6177,24 @@ pub fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, in
 /// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integeru`, `rational`, `real`,
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
 /// `complex` or `expression`): Specifies the scalar `alpha`.
 ///
-/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integeru`, `rational`,
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `(1 + (m - 1) * abs(incx))`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integeru`, `rational`,
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `(1 + (n - 1) * abs(incy))`.
 ///
 /// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
-/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integeru`,
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
 /// is `row_major`. On return, contains the result of the operation.
@@ -6415,7 +6415,7 @@ pub fn zgeru(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, in
 ///     y = alpha * A * x + beta * y
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian band matrix, with `k` super-diagonals.
 ///
 /// Parameters
@@ -6575,7 +6575,7 @@ pub inline fn hbmv(
 ///     y = alpha * A * x + beta * y
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian band matrix, with `k` super-diagonals.
 ///
 /// Parameters
@@ -6637,7 +6637,7 @@ pub fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf32, a: [*]co
 ///     y = alpha * A * x + beta * y
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian band matrix, with `k` super-diagonals.
 ///
 /// Parameters
@@ -6693,13 +6693,13 @@ pub fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a: [*]co
 
 /// Computes a matrix-vector product using a Hermitian matrix.
 ///
-/// The `hemv` routines perform a matrix-vector operation defined as:
+/// The `hemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
 ///     y = alpha * A * x + beta * y
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian matrix.
 ///
 /// Parameters
@@ -6849,13 +6849,13 @@ pub inline fn hemv(
 
 /// Computes a matrix-vector product using a Hermitian matrix.
 ///
-/// The `chemv` routines perform a matrix-vector operation defined as:
+/// The `chemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
 ///     y = alpha * A * x + beta * y
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian matrix.
 ///
 /// Parameters
@@ -6908,13 +6908,13 @@ pub fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const cf32, 
 
 /// Computes a matrix-vector product using a Hermitian matrix.
 ///
-/// The `zhemv` routines perform a matrix-vector operation defined as:
+/// The `zhemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
 ///     y = alpha * A * x + beta * y
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-elements vectors,
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian matrix.
 ///
 /// Parameters
@@ -6967,10 +6967,10 @@ pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const cf64, 
 
 /// Performs a rank-1 update of a Hermitian matrix.
 ///
-/// The `her` routines perform a matrix-vector operation defined as:
+/// The `her` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     A = alpha * x * conj(y^T) + A,
+///     A = alpha * x * conj(x^T) + A,
 /// ```
 ///
 /// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
@@ -6981,20 +6981,27 @@ pub fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const cf64, 
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
 /// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `alpha` (`bool`, `int`, `float`, `integeru`, `rational`, `real` or
+/// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
 /// `expression`): Specifies the scalar `alpha`.
 ///
-/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integeru`, `rational`,
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `(1 + (n - 1) * abs(incx))`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integeru`,
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * n`.
 ///
@@ -7090,10 +7097,10 @@ pub inline fn her(
 
 /// Performs a rank-1 update of a Hermitian matrix.
 ///
-/// The `cher` routines perform a matrix-vector operation defined as:
+/// The `cher` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     A = alpha * x * conj(y^T) + A,
+///     A = alpha * x * conj(x^T) + A,
 /// ```
 ///
 /// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
@@ -7103,6 +7110,13 @@ pub inline fn her(
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
@@ -7133,10 +7147,10 @@ pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, in
 
 /// Performs a rank-1 update of a Hermitian matrix.
 ///
-/// The `zher` routines perform a matrix-vector operation defined as:
+/// The `zher` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     A = alpha * x * conj(y^T) + A,
+///     A = alpha * x * conj(x^T) + A,
 /// ```
 ///
 /// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
@@ -7146,6 +7160,13 @@ pub fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, in
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
@@ -7176,7 +7197,7 @@ pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, in
 
 /// Performs a rank-2 update of a Hermitian matrix.
 ///
-/// The `her2` routines perform a matrix-vector operation defined as:
+/// The `her2` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
 ///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
@@ -7189,6 +7210,13 @@ pub fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, in
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
@@ -7257,34 +7285,34 @@ pub inline fn her2(
     comptime var A: type = @TypeOf(a);
 
     comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.ger requires alpha to be numeric, got " ++ @typeName(Al));
+        @compileError("zml.linalg.blas.her2 requires alpha to be numeric, got " ++ @typeName(Al));
 
     comptime if (!types.isManyPointer(X))
-        @compileError("zml.linalg.blas.ger requires x to be a many-item pointer, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.her2 requires x to be a many-item pointer, got " ++ @typeName(X));
 
     X = types.Child(X);
 
     comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.ger requires x's child type to be numeric, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.her2 requires x's child type to be numeric, got " ++ @typeName(X));
 
     comptime if (!types.isManyPointer(Y))
-        @compileError("zml.linalg.blas.ger requires y to be a many-item pointer, got " ++ @typeName(Y));
+        @compileError("zml.linalg.blas.her2 requires y to be a many-item pointer, got " ++ @typeName(Y));
 
     Y = types.Child(Y);
 
     comptime if (!types.isNumeric(Y))
-        @compileError("zml.linalg.blas.ger requires y's child type to be numeric, got " ++ @typeName(Y));
+        @compileError("zml.linalg.blas.her2 requires y's child type to be numeric, got " ++ @typeName(Y));
 
     comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
-        @compileError("zml.linalg.blas.ger requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.her2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
 
     A = types.Child(A);
 
     comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.ger requires a's child type to numeric, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.her2 requires a's child type to numeric, got " ++ @typeName(A));
 
     comptime if (Al == bool and X == bool and Y == bool and A == bool)
-        @compileError("zml.linalg.blas.ger does not support alpha, a, x, beta and y all being bool");
+        @compileError("zml.linalg.blas.her2 does not support alpha, a, x, beta and y all being bool");
 
     comptime if (types.isArbitraryPrecision(Al) or
         types.isArbitraryPrecision(X) or
@@ -7292,7 +7320,7 @@ pub inline fn her2(
         types.isArbitraryPrecision(A))
     {
         // When implemented, expand if
-        @compileError("zml.linalg.blas.ger not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.her2 not implemented for arbitrary precision types yet");
     } else {
         validateContext(@TypeOf(ctx), .{});
     };
@@ -7300,9 +7328,9 @@ pub inline fn her2(
     if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
         switch (comptime types.numericType(Al)) {
             .cfloat => {
-                if (Scalar(Al) == f32) {
+                if (comptime Scalar(Al) == f32) {
                     return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (Scalar(Al) == f64) {
+                } else if (comptime Scalar(Al) == f64) {
                     return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
@@ -7315,7 +7343,7 @@ pub inline fn her2(
 
 /// Performs a rank-2 update of a Hermitian matrix.
 ///
-/// The `cher2` routines perform a matrix-vector operation defined as:
+/// The `cher2` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
 ///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
@@ -7328,6 +7356,13 @@ pub inline fn her2(
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
@@ -7364,7 +7399,7 @@ pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, 
 
 /// Performs a rank-2 update of a Hermitian matrix.
 ///
-/// The `zher2` routines perform a matrix-vector operation defined as:
+/// The `zher2` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
 ///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
@@ -7377,6 +7412,13 @@ pub fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, 
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
@@ -7411,15 +7453,149 @@ pub fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, 
     return her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
-pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-vector product using a Hermitian packed matrix.
+///
+/// The `hpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `ap` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(n * (n + 1)) / 2`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
+/// `incy` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn hpmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    ap: anytype,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(ap);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.hpmv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.hpmv requires ap to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.hpmv requires ap's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.hpmv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.hpmv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.hpmv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.hpmv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.hpmv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.hpmv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.hpmv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(Al) == f32) {
                     return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(Al) == f64) {
                     return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
                 }
             },
@@ -7427,24 +7603,239 @@ pub inline fn hpmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/hpmv.zig").hpmv(T, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+    return @import("blas/hpmv.zig").hpmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, ctx);
 }
+
+/// Computes a matrix-vector product using a Hermitian packed matrix.
+///
+/// The `chpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `ap` (`[*]const cf32`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
+///
+/// `y` (`[*]cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: cf32, ap: [*]const cf32, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
-    return hpmv(cf32, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+    return hpmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
+
+/// Computes a matrix-vector product using a Hermitian packed matrix.
+///
+/// The `zhpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `ap` (`[*]const cf64`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
+///
+/// `y` (`[*]cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: cf64, ap: [*]const cf64, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
-    return hpmv(cf64, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+    return hpmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
 
-pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, ap: [*]T) void {
-    const supported = types.numericType(T);
+/// Performs a rank-1 update of a Hermitian packed matrix.
+///
+/// The `hpr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conj(x^T) + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+///`uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
+/// `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `ap` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(n * (n + 1)) / 2`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
+/// `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is complex or not a numeric type, if
+/// the type of `x` is not a many-item pointer, if the type of `ap` is not a
+/// mutable many-item pointer, if the child type of `ap` or `x` is not a numeric
+/// type, or if `alpha`, `x` and `ap` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn hpr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    ap: anytype,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var A: type = @TypeOf(ap);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.hpr requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (types.isComplex(Al))
+        @compileError("zml.linalg.blas.hpr does not support complex alpha, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.hpr requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.hpr requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.hpr requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.hpr requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and A == bool)
+        @compileError("zml.linalg.blas.hpr does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.hpr not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime X == A and Scalar(X) == Al and opts.link_cblas != null) {
+        switch (comptime types.numericType(X)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(X) == f32) {
                     return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(X) == f64) {
                     return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
                 }
             },
@@ -7452,24 +7843,235 @@ pub inline fn hpr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: S
         }
     }
 
-    return @import("blas/hpr.zig").hpr(T, order, uplo, n, alpha, x, incx, ap);
+    return @import("blas/hpr.zig").hpr(order, uplo, n, alpha, x, incx, ap, ctx);
 }
+
+/// Performs a rank-1 update of a Hermitian packed matrix.
+///
+/// The `chpr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conj(x^T) + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+///`uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]cf32`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, ap: [*]cf32) void {
-    return hpr(cf32, order, uplo, n, alpha, x, incx, ap);
+    return hpr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
+
+/// Performs a rank-1 update of a Hermitian packed matrix.
+///
+/// The `zhpr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conj(x^T) + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+///`uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]cf64`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, ap: [*]cf64) void {
-    return hpr(cf64, order, uplo, n, alpha, x, incx, ap);
+    return hpr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
 
-pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ap: [*]T) void {
-    const supported = types.numericType(T);
+/// Performs a rank-2 update of a Hermitian packed matrix.
+///
+/// The `hpr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `ap` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(n * (n + 1)) / 2`. On return, contains the result of the operation.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
+/// `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
+/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn hpr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    ap: anytype,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    comptime var A: type = @TypeOf(ap);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.hpr2 requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.hpr2 requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.hpr2 requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(Y))
+        @compileError("zml.linalg.blas.hpr2 requires y to be a many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.hpr2 requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.hpr2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.hpr2 requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and Y == bool and A == bool)
+        @compileError("zml.linalg.blas.hpr2 does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Y) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.hpr2 not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(Al) == f32) {
                     return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(Al) == f64) {
                     return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 }
             },
@@ -7477,24 +8079,265 @@ pub inline fn hpr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/hpr2.zig").hpr2(T, order, uplo, n, alpha, x, incx, y, incy, ap);
+    return @import("blas/hpr2.zig").hpr2(order, uplo, n, alpha, x, incx, y, incy, ap, ctx);
 }
+
+/// Performs a rank-2 update of a Hermitian packed matrix.
+///
+/// The `chpr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]cf32`): Array, size at least `(n * (n + 1)) / 2`. On return,
+/// contains the result of the operation.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, ap: [*]cf32) void {
-    return hpr2(cf32, order, uplo, n, alpha, x, incx, y, incy, ap);
+    return hpr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
+
+/// Performs a rank-2 update of a Hermitian packed matrix.
+///
+/// The `zhpr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const cf64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]cf364`): Array, size at least `(n * (n + 1)) / 2`. On return,
+/// contains the result of the operation.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, ap: [*]cf64) void {
-    return hpr2(cf64, order, uplo, n, alpha, x, incx, y, incy, ap);
+    return hpr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
 
-pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-vector product with a symmetric band matrix.
+///
+/// The `sbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` symmetryc band matrix, with `k` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
+/// is less than `k + 1`, or if `incx` or `incy` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn sbmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    k: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.sbmv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.sbmv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.sbmv requires aT, 's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.sbmv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.sbmv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.sbmv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.sbmv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.sbmv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.sbmv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.sbmv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .float => {
-                if (T == f32) {
+                if (comptime Al == f32) {
                     return ci.cblas_ssbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (T == f64) {
+                } else if (comptime Al == f64) {
                     return ci.cblas_dsbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
@@ -7502,24 +8345,276 @@ pub inline fn sbmv(comptime T: type, order: Order, uplo: Uplo, n: isize, k: isiz
         }
     }
 
-    return @import("blas/sbmv.zig").sbmv(T, order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
+    return @import("blas/sbmv.zig").sbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, ctx);
 }
+
+/// Computes a matrix-vector product with a symmetric band matrix.
+///
+/// The `ssbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` symmetryc band matrix, with `k` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
+///
+/// `y` (`[*]f32`): Array, size at least `(1 + (n - 1) * abs(incy))`. On return,
+/// contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ssbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return sbmv(f32, order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
+    return sbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
+
+/// Computes a matrix-vector product with a symmetric band matrix.
+///
+/// The `dsbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` symmetryc band matrix, with `k` super-diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric band matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
+///
+/// `y` (`[*]f64`): Array, size at least `(1 + (n - 1) * abs(incy))`. On return,
+/// contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return sbmv(f64, order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy);
+    return sbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
-pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, ap: [*]const T, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-vector product with a symmetric packed matrix.
+///
+/// The `spmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `ap` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(n * (n + 1)) / 2`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
+/// `incy` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn spmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    ap: anytype,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(ap);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.spmv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.spmv requires ap to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.spmv requires ap's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.spmv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.spmv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.spmv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.spmv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.spmv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.spmv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.spmv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .float => {
-                if (T == f32) {
+                if (comptime Al == f32) {
                     return ci.cblas_sspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (T == f64) {
+                } else if (comptime Al == f64) {
                     return ci.cblas_dspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
@@ -7527,24 +8622,236 @@ pub inline fn spmv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/spmv.zig").spmv(T, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+    return @import("blas/spmv.zig").spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, ctx);
 }
+
+/// Computes a matrix-vector product using a Hermitian packed matrix.
+///
+/// The `sspmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `ap` (`[*]const f32`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
+///
+/// `y` (`[*]f32`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn sspmv(order: Order, uplo: Uplo, n: isize, alpha: f32, ap: [*]const f32, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return spmv(f32, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+    return spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
+
+/// Computes a matrix-vector product using a Hermitian packed matrix.
+///
+/// The `dspmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `ap` (`[*]const f64`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
+///
+/// `y` (`[*]f64`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, ap: [*]const f64, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return spmv(f64, order, uplo, n, alpha, ap, x, incx, beta, y, incy);
+    return spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
 
-pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: Scalar(T), x: [*]const T, incx: isize, ap: [*]T) void {
-    const supported = types.numericType(T);
+/// Performs a rank-1 update of a symmetric packed matrix.
+///
+/// The `spr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * x^T + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` symmetric matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+///`uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `ap` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(n * (n + 1)) / 2`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
+/// `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` is not a many-item pointer, if the type of `ap` is not a mutable
+/// many-item pointer, if the child type of `ap` or `x` is not a numeric type,
+/// or if `alpha`, `x` and `ap` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn spr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    ap: anytype,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var A: type = @TypeOf(ap);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.spr requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.spr requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.spr requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.spr requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.spr requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and A == bool)
+        @compileError("zml.linalg.blas.spr does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.spr not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .float => {
-                if (T == f32) {
+                if (comptime Al == f32) {
                     return ci.cblas_sspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
-                } else if (T == f64) {
+                } else if (comptime Al == f64) {
                     return ci.cblas_dspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
                 }
             },
@@ -7552,24 +8859,235 @@ pub inline fn spr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: S
         }
     }
 
-    return @import("blas/spr.zig").spr(T, order, uplo, n, alpha, x, incx, ap);
+    return @import("blas/spr.zig").spr(order, uplo, n, alpha, x, incx, ap, ctx);
 }
+
+/// Performs a rank-1 update of a Hermitian packed matrix.
+///
+/// The `sspr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * x^T + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` symmetric matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+///`uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]f32`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn sspr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, ap: [*]f32) void {
-    return spr(f32, order, uplo, n, alpha, x, incx, ap);
+    return spr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
+
+/// Performs a rank-1 update of a Hermitian packed matrix.
+///
+/// The `dspr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * x^T + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` symmetric matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+///`uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]f64`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dspr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, ap: [*]f64) void {
-    return spr(f64, order, uplo, n, alpha, x, incx, ap);
+    return spr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
 
-pub inline fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, ap: [*]T) void {
-    const supported = types.numericType(T);
+/// Performs a rank-2 update of a symmetric packed matrix.
+///
+/// The `spr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + alpha * y * x^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` symmetric matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `ap` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(n * (n + 1)) / 2`. On return, contains the result of the operation.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
+/// `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
+/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn spr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    ap: anytype,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    comptime var A: type = @TypeOf(ap);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.spr2 requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.spr2 requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.spr2 requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(Y))
+        @compileError("zml.linalg.blas.spr2 requires y to be a many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.spr2 requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.spr2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.spr2 requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and Y == bool and A == bool)
+        @compileError("zml.linalg.blas.spr2 does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Y) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.spr2 not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .float => {
-                if (T == f32) {
+                if (comptime Al == f32) {
                     return ci.cblas_sspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
-                } else if (T == f64) {
+                } else if (comptime Al == f64) {
                     return ci.cblas_dspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 }
             },
@@ -7577,24 +9095,261 @@ pub inline fn spr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/spr2.zig").spr2(T, order, uplo, n, alpha, x, incx, y, incy, ap);
+    return @import("blas/spr2.zig").spr2(order, uplo, n, alpha, x, incx, y, incy, ap, ctx);
 }
+
+/// Performs a rank-2 update of a symmetric packed matrix.
+///
+/// The `sspr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + alpha * y * x^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` symmetric matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]f32`): Array, size at least `(n * (n + 1)) / 2`. On return,
+/// contains the result of the operation.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn sspr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, ap: [*]f32) void {
-    return spr2(f32, order, uplo, n, alpha, x, incx, y, incy, ap);
+    return spr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
+
+/// Performs a rank-2 update of a symmetric packed matrix.
+///
+/// The `dspr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + alpha * y * x^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` symmetric matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// matrix `A` is supplied in the packed array `ap`:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// supplied in `ap`.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// supplied in `ap`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `ap` (`[*]f64`): Array, size at least `(n * (n + 1)) / 2`. On return,
+/// contains the result of the operation.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `ap`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, ap: [*]f64) void {
-    return spr2(f64, order, uplo, n, alpha, x, incx, y, incy, ap);
+    return spr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
 
-pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, a: [*]const T, lda: isize, x: [*]const T, incx: isize, beta: T, y: [*]T, incy: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-vector product using a symmetric matrix.
+///
+/// The `symv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`. On return, contains the result of the
+/// operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` or `incy` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
+/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
+/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
+/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn symv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    beta: anytype,
+    y: anytype,
+    incy: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
+    const Be: type = @TypeOf(beta);
+    comptime var Y: type = @TypeOf(y);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.hemv requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.hemv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.hemv requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.hemv requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.hemv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.hemv requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
+        @compileError("zml.linalg.blas.hemv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.hemv requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
+        @compileError("zml.linalg.blas.hemv does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(Y))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.hemv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .float => {
-                if (T == f32) {
+                if (comptime Al == f32) {
                     return ci.cblas_ssymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (T == f64) {
+                } else if (comptime Al == f64) {
                     return ci.cblas_dsymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
@@ -7602,24 +9357,244 @@ pub inline fn symv(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/symv.zig").symv(T, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+    return @import("blas/symv.zig").symv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, ctx);
 }
+
+/// Computes a matrix-vector product using a symmetric matrix.
+///
+/// The `ssymv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]f32`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ssymv(order: Order, uplo: Uplo, n: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
-    return symv(f32, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+    return symv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
+
+/// Computes a matrix-vector product using a symmetric matrix.
+///
+/// The `dsymv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     y = alpha * A * x + beta * y
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// `A` is an `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is
+/// 0, then `y` need not be set on input.
+///
+/// `y` (`[*]f64`): Array, size at least `(1 + (n - 1) * abs(incy))`. On
+/// return, contains the result of the operation.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `y`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dsymv(order: Order, uplo: Uplo, n: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
-    return symv(f64, order, uplo, n, alpha, a, lda, x, incx, beta, y, incy);
+    return symv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
-pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, a: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
+/// Performs a rank-1 update of a symmetric matrix.
+///
+/// The `syr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * x^T + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
+/// `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is complex or not a numeric type, if
+/// the type of `x` or `y` is not a many-item pointer, if the type of `a` is not
+/// a mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn syr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var A: type = @TypeOf(a);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.syr requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.syr requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.syr requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.syr requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.syr requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and A == bool)
+        @compileError("zml.linalg.blas.syr does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.syr not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(X)) {
             .float => {
-                if (T == f32) {
+                if (comptime Al == f32) {
                     return ci.cblas_ssyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
-                } else if (T == f64) {
+                } else if (comptime Al == f64) {
                     return ci.cblas_dsyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
                 }
             },
@@ -7627,24 +9602,245 @@ pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T
         }
     }
 
-    return @import("blas/syr.zig").syr(T, order, uplo, n, alpha, x, incx, a, lda);
+    return @import("blas/syr.zig").syr(order, uplo, n, alpha, x, incx, a, lda, ctx);
 }
+
+/// Performs a rank-1 update of a symmetric matrix.
+///
+/// The `ssyr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * x^T + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ssyr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, a: [*]f32, lda: isize) void {
-    return syr(f32, order, uplo, n, alpha, x, incx, a, lda);
+    return syr(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
+
+/// Performs a rank-1 update of a symmetric matrix.
+///
+/// The `dsyr` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * x^T + A,
+/// ```
+///
+/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `a` (`[*]f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dsyr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, a: [*]f64, lda: isize) void {
-    return syr(f64, order, uplo, n, alpha, x, incx, a, lda);
+    return syr(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
 
-pub inline fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, y: [*]const T, incy: isize, a: [*]T, lda: isize) void {
-    const supported = types.numericType(T);
+/// Performs a rank-2 update of a symmetric matrix.
+///
+/// The `syr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * y^T + alpha * y * x^T + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `x` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `a` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * n`. On return, contains the result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` or `incy` are 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
+/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
+/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
+/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn syr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    y: anytype,
+    incy: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var X: type = @TypeOf(x);
+    comptime var Y: type = @TypeOf(y);
+    comptime var A: type = @TypeOf(a);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.syr2 requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(X))
+        @compileError("zml.linalg.blas.syr2 requires x to be a many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.syr2 requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (!types.isManyPointer(Y))
+        @compileError("zml.linalg.blas.syr2 requires y to be a many-item pointer, got " ++ @typeName(Y));
+
+    Y = types.Child(Y);
+
+    comptime if (!types.isNumeric(Y))
+        @compileError("zml.linalg.blas.syr2 requires y's child type to be numeric, got " ++ @typeName(Y));
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.blas.syr2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.syr2 requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (Al == bool and X == bool and Y == bool and A == bool)
+        @compileError("zml.linalg.blas.syr2 does not support alpha, a, x, beta and y all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(X) or
+        types.isArbitraryPrecision(Y) or
+        types.isArbitraryPrecision(A))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.syr2 not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .float => {
-                if (T == f32) {
+                if (Al == f32) {
                     return ci.cblas_ssyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (T == f64) {
+                } else if (Al == f64) {
                     return ci.cblas_dsyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
@@ -7652,13 +9848,119 @@ pub inline fn syr2(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: 
         }
     }
 
-    return @import("blas/syr2.zig").syr2(T, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+    return @import("blas/syr2.zig").syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, ctx);
 }
+
+/// Performs a rank-2 update of a symmetric matrix.
+///
+/// The `ssyr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const f32`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
+/// result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ssyr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, a: [*]f32, lda: isize) void {
-    return syr2(f32, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+    return syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
+
+/// Performs a rank-2 update of a symmetric matrix.
+///
+/// The `dsyr2` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// ```
+///
+/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// an `n`-by-`n` symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
+/// used.
+/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
+/// used.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `x` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// `y` (`[*]const f64`): Array, size at least `(1 + (n - 1) * abs(incy))`.
+///
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// different from 0.
+///
+/// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
+/// result of the operation.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, a: [*]f64, lda: isize) void {
-    return syr2(f64, order, uplo, n, alpha, x, incx, y, incy, a, lda);
+    return syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
 pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const T, lda: isize, x: [*]T, incx: isize) void {

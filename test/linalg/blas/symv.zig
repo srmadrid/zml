@@ -68,7 +68,7 @@ test symv {
         0,
     });
 
-    symv(f64, .RowMajor, .Upper, n, alpha, A.ptr, n, x1.ptr, 2, beta, y1.ptr, 2);
+    symv(.row_major, .upper, n, alpha, A.ptr, n, x1.ptr, 2, beta, y1.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y1[0]);
     try std.testing.expectEqual(258, y1[2]);
@@ -106,7 +106,7 @@ test symv {
         0,
     });
 
-    symv(f64, .RowMajor, .Upper, n, alpha, A.ptr, n, x2.ptr, -2, beta, y2.ptr, -2);
+    symv(.row_major, .upper, n, alpha, A.ptr, n, x2.ptr, -2, beta, y2.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y2[8]);
     try std.testing.expectEqual(258, y2[6]);
@@ -144,7 +144,7 @@ test symv {
         0,
     });
 
-    symv(f64, .ColumnMajor, .Upper, n, alpha, A.ptr, n, x3.ptr, 2, beta, y3.ptr, 2);
+    symv(.col_major, .upper, n, alpha, A.ptr, n, x3.ptr, 2, beta, y3.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(433, y3[0]);
     try std.testing.expectEqual(474, y3[2]);
@@ -182,7 +182,7 @@ test symv {
         0,
     });
 
-    symv(f64, .ColumnMajor, .Upper, n, alpha, A.ptr, n, x4.ptr, -2, beta, y4.ptr, -2);
+    symv(.col_major, .upper, n, alpha, A.ptr, n, x4.ptr, -2, beta, y4.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(433, y4[8]);
     try std.testing.expectEqual(474, y4[6]);
@@ -220,7 +220,7 @@ test symv {
         0,
     });
 
-    symv(f64, .RowMajor, .Lower, n, alpha, A.ptr, n, x5.ptr, 2, beta, y5.ptr, 2);
+    symv(.row_major, .lower, n, alpha, A.ptr, n, x5.ptr, 2, beta, y5.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(433, y5[0]);
     try std.testing.expectEqual(474, y5[2]);
@@ -258,7 +258,7 @@ test symv {
         0,
     });
 
-    symv(f64, .RowMajor, .Lower, n, alpha, A.ptr, n, x6.ptr, -2, beta, y6.ptr, -2);
+    symv(.row_major, .lower, n, alpha, A.ptr, n, x6.ptr, -2, beta, y6.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(433, y6[8]);
     try std.testing.expectEqual(474, y6[6]);
@@ -296,7 +296,7 @@ test symv {
         0,
     });
 
-    symv(f64, .ColumnMajor, .Lower, n, alpha, A.ptr, n, x7.ptr, 2, beta, y7.ptr, 2);
+    symv(.col_major, .lower, n, alpha, A.ptr, n, x7.ptr, 2, beta, y7.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y7[0]);
     try std.testing.expectEqual(258, y7[2]);
@@ -334,7 +334,7 @@ test symv {
         0,
     });
 
-    symv(f64, .ColumnMajor, .Lower, n, alpha, A.ptr, n, x8.ptr, -2, beta, y8.ptr, -2);
+    symv(.col_major, .lower, n, alpha, A.ptr, n, x8.ptr, -2, beta, y8.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(113, y8[8]);
     try std.testing.expectEqual(258, y8[6]);

@@ -53,7 +53,7 @@ test spr {
         0,
     });
 
-    spr(f64, .RowMajor, .Upper, n, alpha, x1.ptr, 2, A.ptr);
+    spr(.row_major, .upper, n, alpha, x1.ptr, 2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(3, A[0]);
     try std.testing.expectEqual(6, A[1]);
@@ -87,7 +87,7 @@ test spr {
         0,
     });
 
-    spr(f64, .RowMajor, .Upper, n, alpha, x2.ptr, -2, A.ptr);
+    spr(.row_major, .upper, n, alpha, x2.ptr, -2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(5, A[0]);
     try std.testing.expectEqual(10, A[1]);
@@ -121,7 +121,7 @@ test spr {
         0,
     });
 
-    spr(f64, .ColumnMajor, .Upper, n, alpha, x3.ptr, 2, A.ptr);
+    spr(.col_major, .upper, n, alpha, x3.ptr, 2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(7, A[0]);
     try std.testing.expectEqual(14, A[1]);
@@ -155,7 +155,7 @@ test spr {
         0,
     });
 
-    spr(f64, .ColumnMajor, .Upper, n, alpha, x4.ptr, -2, A.ptr);
+    spr(.col_major, .upper, n, alpha, x4.ptr, -2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(9, A[0]);
     try std.testing.expectEqual(18, A[1]);
@@ -189,7 +189,7 @@ test spr {
         0,
     });
 
-    spr(f64, .RowMajor, .Lower, n, alpha, x5.ptr, 2, A.ptr);
+    spr(.row_major, .lower, n, alpha, x5.ptr, 2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(11, A[0]);
     try std.testing.expectEqual(22, A[1]);
@@ -223,7 +223,7 @@ test spr {
         0,
     });
 
-    spr(f64, .RowMajor, .Lower, n, alpha, x6.ptr, -2, A.ptr);
+    spr(.row_major, .lower, n, alpha, x6.ptr, -2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(13, A[0]);
     try std.testing.expectEqual(26, A[1]);
@@ -257,21 +257,21 @@ test spr {
         0,
     });
 
-    spr(f64, .ColumnMajor, .Upper, n, alpha, x7.ptr, 2, A.ptr);
+    spr(.col_major, .lower, n, alpha, x7.ptr, 2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(15, A[0]);
     try std.testing.expectEqual(30, A[1]);
-    try std.testing.expectEqual(55, A[2]);
-    try std.testing.expectEqual(50, A[3]);
-    try std.testing.expectEqual(85, A[4]);
-    try std.testing.expectEqual(112, A[5]);
-    try std.testing.expectEqual(71, A[6]);
+    try std.testing.expectEqual(53, A[2]);
+    try std.testing.expectEqual(52, A[3]);
+    try std.testing.expectEqual(83, A[4]);
+    try std.testing.expectEqual(102, A[5]);
+    try std.testing.expectEqual(75, A[6]);
     try std.testing.expectEqual(120, A[7]);
-    try std.testing.expectEqual(169, A[8]);
-    try std.testing.expectEqual(206, A[9]);
-    try std.testing.expectEqual(109, A[10]);
-    try std.testing.expectEqual(172, A[11]);
-    try std.testing.expectEqual(227, A[12]);
+    try std.testing.expectEqual(165, A[8]);
+    try std.testing.expectEqual(192, A[9]);
+    try std.testing.expectEqual(123, A[10]);
+    try std.testing.expectEqual(182, A[11]);
+    try std.testing.expectEqual(229, A[12]);
     try std.testing.expectEqual(294, A[13]);
     try std.testing.expectEqual(365, A[14]);
 
@@ -291,21 +291,21 @@ test spr {
         0,
     });
 
-    spr(f64, .ColumnMajor, .Upper, n, alpha, x8.ptr, -2, A.ptr);
+    spr(.col_major, .lower, n, alpha, x8.ptr, -2, A.ptr, .{}) catch unreachable;
 
     try std.testing.expectEqual(17, A[0]);
     try std.testing.expectEqual(34, A[1]);
-    try std.testing.expectEqual(63, A[2]);
-    try std.testing.expectEqual(56, A[3]);
-    try std.testing.expectEqual(97, A[4]);
-    try std.testing.expectEqual(130, A[5]);
-    try std.testing.expectEqual(79, A[6]);
+    try std.testing.expectEqual(59, A[2]);
+    try std.testing.expectEqual(60, A[3]);
+    try std.testing.expectEqual(93, A[4]);
+    try std.testing.expectEqual(110, A[5]);
+    try std.testing.expectEqual(87, A[6]);
     try std.testing.expectEqual(136, A[7]);
-    try std.testing.expectEqual(193, A[8]);
-    try std.testing.expectEqual(238, A[9]);
-    try std.testing.expectEqual(119, A[10]);
-    try std.testing.expectEqual(192, A[11]);
-    try std.testing.expectEqual(257, A[12]);
+    try std.testing.expectEqual(185, A[8]);
+    try std.testing.expectEqual(210, A[9]);
+    try std.testing.expectEqual(147, A[10]);
+    try std.testing.expectEqual(212, A[11]);
+    try std.testing.expectEqual(261, A[12]);
     try std.testing.expectEqual(334, A[13]);
     try std.testing.expectEqual(415, A[14]);
 }

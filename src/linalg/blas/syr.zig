@@ -1,85 +1,226 @@
 const std = @import("std");
+
 const types = @import("../../types.zig");
+const scast = types.scast;
+const Scalar = types.Scalar;
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
+
+const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = blas.Order;
-const Uplo = blas.Uplo;
+const Order = linalg.Order;
+const Uplo = linalg.Uplo;
 
-pub inline fn syr(comptime T: type, order: Order, uplo: Uplo, n: isize, alpha: T, x: [*]const T, incx: isize, A: [*]T, lda: isize) void {
-    @setRuntimeSafety(false);
-    const numericType = types.numericType(T);
-
-    if (n <= 0) return;
-
-    const N = n;
-    var UPLO = uplo;
-    if (order == .RowMajor) {
-        UPLO = if (uplo == .Upper) .Lower else .Upper;
+pub inline fn syr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    if (order == .col_major) {
+        return k_syr(uplo, n, alpha, x, incx, a, lda, ctx);
+    } else {
+        return k_syr(uplo.invert(), n, alpha, x, incx, a, lda, ctx);
     }
+}
 
-    if (lda < @max(1, N)) return;
+pub fn k_syr(
+    uplo: Uplo,
+    n: isize,
+    alpha: anytype,
+    x: anytype,
+    incx: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    const X: type = types.Child(@TypeOf(x));
+    const C1: type = types.Coerce(Al, X);
+    const A: type = types.Child(@TypeOf(a));
+    const CC: type = types.Coerce(Al, types.Coerce(X, A));
 
-    const LENX = N;
+    if (n < 0 or lda < int.max(1, n) or incx == 0)
+        return blas.Error.InvalidArgument;
 
-    switch (numericType) {
-        .bool => @compileError("blas.syr does not support bool."),
-        .int, .float => {
-            if (alpha == 0) return;
+    // Quick return if possible.
+    if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
+        return;
 
-            if (UPLO == .Upper) {
+    const kx: isize = if (incx < 0) (-n + 1) * incx else 0;
+
+    if (comptime !types.isArbitraryPrecision(CC)) {
+        if (uplo == .upper) {
+            if (incx == 1) {
                 var j: isize = 0;
-                var jaj: isize = 0;
-                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                while (j < N) {
-                    const t0 = alpha * x[@intCast(jx)];
+                while (j < n) : (j += 1) {
+                    if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * x[j]
+                            x[scast(usize, j)],
+                            alpha,
+                            ctx,
+                        ) catch unreachable;
 
-                    var i: isize = 0;
-                    var iaij: isize = jaj;
-                    var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                    while (i < j) {
-                        A[@intCast(iaij)] += t0 * x[@intCast(ix)];
+                        var i: isize = 0;
+                        while (i < j) : (i += 1) {
+                            ops.add_( // a[i + j * lda] += x[i] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    x[scast(usize, i)],
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+                        }
 
-                        i += 1;
-                        iaij += 1;
-                        ix += incx;
+                        ops.add_( // a[j + j * lda] += x[j] * temp
+                            &a[scast(usize, j + j * lda)],
+                            a[scast(usize, j + j * lda)],
+                            ops.mul(
+                                x[scast(usize, j)],
+                                temp,
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
                     }
-
-                    A[@intCast(iaij)] += t0 * x[@intCast(jx)];
-
-                    j += 1;
-                    jaj += lda;
-                    jx += incx;
                 }
             } else {
-                const ldap1 = lda + 1;
-
+                var jx: isize = kx;
                 var j: isize = 0;
-                var jaj: isize = 0;
-                var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                while (j < N) {
-                    const t0 = alpha * x[@intCast(jx)];
-                    const I0: isize = j + 1;
-                    const I1: isize = N;
+                while (j < n) : (j += 1) {
+                    if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * x[jx]
+                            x[scast(usize, jx)],
+                            alpha,
+                            ctx,
+                        ) catch unreachable;
 
-                    A[@intCast(jaj)] += t0 * x[@intCast(jx)];
+                        var ix: isize = kx;
+                        var i: isize = 0;
+                        while (i < j) : (i += 1) {
+                            ops.add_( // a[i + j * lda] += x[ix] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    x[scast(usize, ix)],
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
 
-                    var i: isize = I0;
-                    var iaij: isize = jaj + 1;
-                    var ix: isize = if (incx < 0) (-LENX + 1) * incx + I0 * incx else I0 * incx;
-                    while (i < I1) {
-                        A[@intCast(iaij)] += t0 * x[@intCast(ix)];
+                            ix += incx;
+                        }
 
-                        i += 1;
-                        iaij += 1;
-                        ix += incx;
+                        ops.add_( // a[j + j * lda] += x[jx] * temp
+                            &a[scast(usize, j + j * lda)],
+                            a[scast(usize, j + j * lda)],
+                            ops.mul(
+                                x[scast(usize, jx)],
+                                temp,
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
                     }
 
-                    j += 1;
-                    jaj += ldap1;
                     jx += incx;
                 }
             }
-        },
-        .cfloat => @compileError("blas.syr does not support complex numbers."),
-        .integer, .rational, .real, .complex, .expression => @compileError("blas.syr only supports simple types."),
+        } else {
+            if (incx == 1) {
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * x[j]
+                            x[scast(usize, j)],
+                            alpha,
+                            ctx,
+                        ) catch unreachable;
+
+                        ops.add_( // a[j + j * lda] += x[j] * temp
+                            &a[scast(usize, j + j * lda)],
+                            a[scast(usize, j + j * lda)],
+                            ops.mul(
+                                x[scast(usize, j)],
+                                temp,
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+
+                        var i: isize = j + 1;
+                        while (i < n) : (i += 1) {
+                            ops.add_( // a[i + j * lda] += x[i] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    x[scast(usize, i)],
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+                        }
+                    }
+                }
+            } else {
+                var jx: isize = kx;
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                        const temp: C1 = ops.mul( // temp = alpha * x[jx]
+                            x[scast(usize, jx)],
+                            alpha,
+                            ctx,
+                        ) catch unreachable;
+
+                        ops.add_( // a[j + j * lda] += x[jx] * temp
+                            &a[scast(usize, j + j * lda)],
+                            a[scast(usize, j + j * lda)],
+                            ops.mul(
+                                x[scast(usize, jx)],
+                                temp,
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+
+                        var ix: isize = jx;
+                        var i: isize = j + 1;
+                        while (i < n) : (i += 1) {
+                            ix += incx;
+
+                            ops.add_( // a[i + j * lda] += x[ix] * temp
+                                &a[scast(usize, i + j * lda)],
+                                a[scast(usize, i + j * lda)],
+                                ops.mul(
+                                    x[scast(usize, ix)],
+                                    temp,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+                        }
+                    }
+
+                    jx += incx;
+                }
+            }
+        }
+    } else {
+        // Arbitrary precision types not supported yet
+        @compileError("zml.linalg.blas.her not implemented for arbitrary precision types yet");
     }
+
+    return;
 }
