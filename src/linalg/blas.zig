@@ -9963,22 +9963,151 @@ pub fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, in
     return syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
-pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const T, lda: isize, x: [*]T, incx: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-vector product using a triangular band matrix.
+///
+/// The `tbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular band matrix, with `k + 1` diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
+/// is less than `k + 1`, or if `incx` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
+/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
+/// type, or if `a` and `x` are both `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn tbmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.tbmv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.tbmv requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
+        @compileError("zml.linalg.blas.tbmv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.tbmv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (A == bool and X == bool)
+        @compileError("zml.linalg.blas.tbmv does not support a and x both being bool");
+
+    comptime if (types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.tbmv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == X and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
+                if (comptime A == f32) {
                     return ci.cblas_stbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
-                } else if (T == f64) {
+                } else if (comptime A == f64) {
                     return ci.cblas_dtbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(A) == f32) {
                     return ci.cblas_ctbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(A) == f64) {
                     return ci.cblas_ztbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
@@ -9986,37 +10115,467 @@ pub inline fn tbmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose
         }
     }
 
-    return @import("blas/tbmv.zig").tbmv(T, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return @import("blas/tbmv.zig").tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, ctx);
 }
+
+/// Computes a matrix-vector product using a triangular band matrix.
+///
+/// The `stbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular band matrix, with `k + 1` diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn stbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
-    return tbmv(f32, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
+
+/// Computes a matrix-vector product using a triangular band matrix.
+///
+/// The `dtbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular band matrix, with `k + 1` diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dtbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
-    return tbmv(f64, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
+
+/// Computes a matrix-vector product using a triangular band matrix.
+///
+/// The `ctbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular band matrix, with `k + 1` diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ctbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
-    return tbmv(cf32, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
+
+/// Computes a matrix-vector product using a triangular band matrix.
+///
+/// The `ztbmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular band matrix, with `k + 1` diagonals.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ztbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
-    return tbmv(cf64, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
-pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const T, lda: isize, x: [*]T, incx: isize) void {
-    const supported = types.numericType(T);
+/// Solves a system of linear equations whose coefficients are in a triangular
+/// band matrix.
+///
+/// The `tbsv` routine solves one of the following systems of equations:
+///
+/// ```zig
+///     A * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A^T) * x = b
+/// ```
+///
+/// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
+/// upper or lower triangular band matrix, with `k + 1` diagonals. The routine
+/// does not test for singularity or near-singularity, such tests must be
+/// performed before calling this routine.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the system of equations to be solved:
+/// - If `transa = no_trans`, then the system is `A * x = b`.
+/// - If `transa = trans`, then the system is `A^T * x = b`.
+/// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
+/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`. Before entry, the incremented array `x` must
+/// contain the n-element right-hand side vector `b`. On return, it contains the
+/// solution vector `x`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
+/// is less than `k + 1`, or if `incx` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
+/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
+/// type, or if `a` and `x` are both `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn tbsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: anytype,
+    lda: isize,
+    x: anytype,
+    incx: isize,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var X: type = @TypeOf(x);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.tbsv requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.tbsv requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
+        @compileError("zml.linalg.blas.tbsv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.tbsv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (A == bool and X == bool)
+        @compileError("zml.linalg.blas.tbsv does not support a and x both being bool");
+
+    comptime if (types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.tbsv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == X and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
+                if (comptime A == f32) {
                     return ci.cblas_stbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
-                } else if (T == f64) {
+                } else if (comptime A == f64) {
                     return ci.cblas_dtbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(A) == f32) {
                     return ci.cblas_ctbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(A) == f64) {
                     return ci.cblas_ztbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
@@ -10024,37 +10583,475 @@ pub inline fn tbsv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose
         }
     }
 
-    return @import("blas/tbsv.zig").tbsv(T, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return @import("blas/tbsv.zig").tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, ctx);
 }
+
+/// Solves a system of linear equations whose coefficients are in a triangular
+/// band matrix.
+///
+/// The `stbsv` routine solves one of the following systems of equations:
+///
+/// ```zig
+///     A * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A^T) * x = b
+/// ```
+///
+/// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
+/// upper or lower triangular band matrix, with `k + 1` diagonals. The routine
+/// does not test for singularity or near-singularity, such tests must be
+/// performed before calling this routine.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the system of equations to be solved:
+/// - If `transa = no_trans`, then the system is `A * x = b`.
+/// - If `transa = trans`, then the system is `A^T * x = b`.
+/// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
+/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]f32`): Array, size at least `(1 + (n - 1) * abs(incx))`. Before
+/// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
+/// solution vector `x`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn stbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
-    return tbsv(f32, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
+
+/// Solves a system of linear equations whose coefficients are in a triangular
+/// band matrix.
+///
+/// The `dtbsv` routine solves one of the following systems of equations:
+///
+/// ```zig
+///     A * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A^T) * x = b
+/// ```
+///
+/// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
+/// upper or lower triangular band matrix, with `k + 1` diagonals. The routine
+/// does not test for singularity or near-singularity, such tests must be
+/// performed before calling this routine.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the system of equations to be solved:
+/// - If `transa = no_trans`, then the system is `A * x = b`.
+/// - If `transa = trans`, then the system is `A^T * x = b`.
+/// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
+/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]f64`): Array, size at least `(1 + (n - 1) * abs(incx))`. Before
+/// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
+/// solution vector `x`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dtbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
-    return tbsv(f64, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
+
+/// Solves a system of linear equations whose coefficients are in a triangular
+/// band matrix.
+///
+/// The `ctbsv` routine solves one of the following systems of equations:
+///
+/// ```zig
+///     A * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A^T) * x = b
+/// ```
+///
+/// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
+/// upper or lower triangular band matrix, with `k + 1` diagonals. The routine
+/// does not test for singularity or near-singularity, such tests must be
+/// performed before calling this routine.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the system of equations to be solved:
+/// - If `transa = no_trans`, then the system is `A * x = b`.
+/// - If `transa = trans`, then the system is `A^T * x = b`.
+/// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
+/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`. Before
+/// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
+/// solution vector `x`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ctbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
-    return tbsv(cf32, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
+
+/// Solves a system of linear equations whose coefficients are in a triangular
+/// band matrix.
+///
+/// The `ztbsv` routine solves one of the following systems of equations:
+///
+/// ```zig
+///     A * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * x = b
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A^T) * x = b
+/// ```
+///
+/// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
+/// upper or lower triangular band matrix, with `k + 1` diagonals. The routine
+/// does not test for singularity or near-singularity, such tests must be
+/// performed before calling this routine.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the system of equations to be solved:
+/// - If `transa = no_trans`, then the system is `A * x = b`.
+/// - If `transa = trans`, then the system is `A^T * x = b`.
+/// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
+/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// the matrix `A`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `k + 1`.
+///
+/// `x` (`[*]cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`. Before
+/// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
+/// solution vector `x`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ztbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
-    return tbsv(cf64, order, uplo, transa, diag, n, k, a, lda, x, incx);
+    return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
-pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const T, x: [*]T, incx: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-vector product using a triangular packed matrix.
+///
+/// The `tpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `ap` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least
+/// `(n * (n + 1)) / 2`.
+///
+/// `x` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` is
+/// 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
+/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
+/// type, or if `a` and `x` are both `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn tpmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: anytype,
+    x: anytype,
+    incx: isize,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(ap);
+    comptime var X: type = @TypeOf(x);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.tpmv requires ap to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.tpmv requires ap's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
+        @compileError("zml.linalg.blas.tpmv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
+
+    X = types.Child(X);
+
+    comptime if (!types.isNumeric(X))
+        @compileError("zml.linalg.blas.tpmv requires x's child type to be numeric, got " ++ @typeName(X));
+
+    comptime if (A == bool and X == bool)
+        @compileError("zml.linalg.blas.tpmv does not support a and x both being bool");
+
+    comptime if (types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(X))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.tpmv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == X and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
+                if (comptime A == f32) {
                     return ci.cblas_stpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
-                } else if (T == f64) {
+                } else if (comptime A == f64) {
                     return ci.cblas_dtpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(A) == f32) {
                     return ci.cblas_ctpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(A) == f64) {
                     return ci.cblas_ztpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
@@ -10062,17 +11059,289 @@ pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transa: Transpose
         }
     }
 
-    return @import("blas/tpmv.zig").tpmv(T, order, uplo, transa, diag, n, ap, x, incx);
+    return @import("blas/tpmv.zig").tpmv(order, uplo, transa, diag, n, ap, x, incx, ctx);
 }
+
+/// Computes a matrix-vector product using a triangular packed matrix.
+///
+/// The `stpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `ap` (`[*]const f32`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]f32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn stpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f32, x: [*]f32, incx: isize) void {
     return tpmv(f32, order, uplo, transa, diag, n, ap, x, incx);
 }
+
+/// Computes a matrix-vector product using a triangular packed matrix.
+///
+/// The `dtpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `ap` (`[*]const f64`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]f64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dtpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f64, x: [*]f64, incx: isize) void {
     return tpmv(f64, order, uplo, transa, diag, n, ap, x, incx);
 }
+
+/// Computes a matrix-vector product using a triangular packed matrix.
+///
+/// The `ctpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `ap` (`[*]const cf32`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]cf32`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ctpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf32, x: [*]cf32, incx: isize) void {
     return tpmv(cf32, order, uplo, transa, diag, n, ap, x, incx);
 }
+
+/// Computes a matrix-vector product using a triangular packed matrix.
+///
+/// The `ztpmv` routine performs a matrix-vector operation defined as:
+///
+/// ```zig
+///     x = A * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A) * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = A^T * x
+/// ```
+///
+/// or
+///
+/// ```zig
+///     x = conj(A^T) * x
+/// ```
+///
+/// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
+/// or lower triangular matrix, supplied in packed form.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+/// triangular matrix:
+/// - If `uplo = upper`, then the matrix is upper triangular.
+/// - If `uplo = lower`, then the matrix is lower triangular.
+///
+/// `transa` (`Transpose`): Specifies the operation to be performed:
+/// - If `transa = no_trans`, then the operation is `x = A * x`.
+/// - If `transa = trans`, then the operation is `x = A^T * x`.
+/// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then the matrix is unit triangular.
+/// - If `diag = non_unit`, then the matrix is non-unit triangular.
+///
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `ap` (`[*]const cf64`): Array, size at least `(n * (n + 1)) / 2`.
+///
+/// `x` (`[*]cf64`): Array, size at least `(1 + (n - 1) * abs(incx))`.
+///
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// different from 0.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `x`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ztpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf64, x: [*]cf64, incx: isize) void {
     return tpmv(cf64, order, uplo, transa, diag, n, ap, x, incx);
 }

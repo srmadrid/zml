@@ -43,9 +43,9 @@ test {
         _ = @import("blas/symv.zig");
         _ = @import("blas/syr.zig");
         _ = @import("blas/syr2.zig");
-        // _ = @import("blas/tbmv.zig");
-        // _ = @import("blas/tbsv.zig");
-        // _ = @import("blas/tpmv.zig");
+        _ = @import("blas/tbmv.zig");
+        _ = @import("blas/tbsv.zig");
+        _ = @import("blas/tpmv.zig");
         // _ = @import("blas/tpsv.zig");
         // _ = @import("blas/trmv.zig");
         // _ = @import("blas/trsv.zig");

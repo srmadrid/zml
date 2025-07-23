@@ -8,7 +8,7 @@ test tpmv {
 
     const n = 5;
 
-    const A = try a.alloc(f64, n * n);
+    const A = try a.alloc(f64, (n * (n + 1)) / 2);
     defer a.free(A);
     const x1 = try a.alloc(f64, 2 * n);
     defer a.free(x1);
@@ -29,16 +29,6 @@ test tpmv {
         13,
         14,
         15,
-        16,
-        17,
-        18,
-        19,
-        20,
-        21,
-        22,
-        23,
-        24,
-        25,
     });
     @memcpy(x1.ptr, &[_]f64{
         1,
@@ -53,7 +43,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Upper, .NoTrans, .NonUnit, n, A.ptr, x1.ptr, 2);
+    tpmv(.row_major, .upper, .no_trans, .non_unit, n, A.ptr, x1.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(55, x1[0]);
     try std.testing.expectEqual(110, x1[2]);
@@ -77,7 +67,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Upper, .NoTrans, .Unit, n, A.ptr, x2.ptr, -2);
+    tpmv(.row_major, .upper, .no_trans, .unit, n, A.ptr, x2.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(55, x2[8]);
     try std.testing.expectEqual(100, x2[6]);
@@ -101,7 +91,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Upper, .NoTrans, .NonUnit, n, A.ptr, x3.ptr, 2);
+    tpmv(.col_major, .upper, .no_trans, .non_unit, n, A.ptr, x3.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(100, x3[0]);
     try std.testing.expectEqual(113, x3[2]);
@@ -125,7 +115,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Upper, .NoTrans, .Unit, n, A.ptr, x4.ptr, -2);
+    tpmv(.col_major, .upper, .no_trans, .unit, n, A.ptr, x4.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(100, x4[8]);
     try std.testing.expectEqual(109, x4[6]);
@@ -149,7 +139,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Upper, .Trans, .NonUnit, n, A.ptr, x5.ptr, 2);
+    tpmv(.row_major, .upper, .trans, .non_unit, n, A.ptr, x5.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x5[0]);
     try std.testing.expectEqual(14, x5[2]);
@@ -173,7 +163,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Upper, .Trans, .Unit, n, A.ptr, x6.ptr, -2);
+    tpmv(.row_major, .upper, .trans, .unit, n, A.ptr, x6.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x6[8]);
     try std.testing.expectEqual(4, x6[6]);
@@ -197,7 +187,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Upper, .Trans, .NonUnit, n, A.ptr, x7.ptr, 2);
+    tpmv(.col_major, .upper, .trans, .non_unit, n, A.ptr, x7.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x7[0]);
     try std.testing.expectEqual(8, x7[2]);
@@ -221,7 +211,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Upper, .Trans, .Unit, n, A.ptr, x8.ptr, -2);
+    tpmv(.col_major, .upper, .trans, .unit, n, A.ptr, x8.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x8[8]);
     try std.testing.expectEqual(4, x8[6]);
@@ -245,7 +235,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Lower, .NoTrans, .NonUnit, n, A.ptr, x9.ptr, 2);
+    tpmv(.row_major, .lower, .no_trans, .non_unit, n, A.ptr, x9.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x9[0]);
     try std.testing.expectEqual(8, x9[2]);
@@ -269,7 +259,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Lower, .NoTrans, .Unit, n, A.ptr, x10.ptr, -2);
+    tpmv(.row_major, .lower, .no_trans, .unit, n, A.ptr, x10.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x10[8]);
     try std.testing.expectEqual(4, x10[6]);
@@ -293,7 +283,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Lower, .NoTrans, .NonUnit, n, A.ptr, x11.ptr, 2);
+    tpmv(.col_major, .lower, .no_trans, .non_unit, n, A.ptr, x11.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x11[0]);
     try std.testing.expectEqual(14, x11[2]);
@@ -317,7 +307,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Lower, .NoTrans, .Unit, n, A.ptr, x12.ptr, -2);
+    tpmv(.col_major, .lower, .no_trans, .unit, n, A.ptr, x12.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x12[8]);
     try std.testing.expectEqual(4, x12[6]);
@@ -341,7 +331,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Lower, .Trans, .NonUnit, n, A.ptr, x13.ptr, 2);
+    tpmv(.row_major, .lower, .trans, .non_unit, n, A.ptr, x13.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(100, x13[0]);
     try std.testing.expectEqual(113, x13[2]);
@@ -365,7 +355,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .RowMajor, .Lower, .Trans, .Unit, n, A.ptr, x14.ptr, -2);
+    tpmv(.row_major, .lower, .trans, .unit, n, A.ptr, x14.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(100, x14[8]);
     try std.testing.expectEqual(109, x14[6]);
@@ -389,7 +379,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Lower, .Trans, .NonUnit, n, A.ptr, x15.ptr, 2);
+    tpmv(.col_major, .lower, .trans, .non_unit, n, A.ptr, x15.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(55, x15[0]);
     try std.testing.expectEqual(110, x15[2]);
@@ -413,7 +403,7 @@ test tpmv {
         0,
     });
 
-    tpmv(f64, .ColumnMajor, .Lower, .Trans, .Unit, n, A.ptr, x16.ptr, -2);
+    tpmv(.col_major, .lower, .trans, .unit, n, A.ptr, x16.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(55, x16[8]);
     try std.testing.expectEqual(100, x16[6]);
@@ -466,7 +456,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .NoTrans, .NonUnit, n, B.ptr, x17.ptr, 2);
+    tpmv(.row_major, .upper, .no_trans, .non_unit, n, B.ptr, x17.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x17[0].re);
     try std.testing.expectEqual(110, x17[0].im);
@@ -495,7 +485,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .NoTrans, .Unit, n, B.ptr, x18.ptr, -2);
+    tpmv(.row_major, .upper, .no_trans, .unit, n, B.ptr, x18.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x18[8].re);
     try std.testing.expectEqual(109, x18[8].im);
@@ -524,7 +514,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .NoTrans, .NonUnit, n, B.ptr, x19.ptr, 2);
+    tpmv(.col_major, .upper, .no_trans, .non_unit, n, B.ptr, x19.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x19[0].re);
     try std.testing.expectEqual(200, x19[0].im);
@@ -553,7 +543,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .NoTrans, .Unit, n, B.ptr, x20.ptr, -2);
+    tpmv(.col_major, .upper, .no_trans, .unit, n, B.ptr, x20.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x20[8].re);
     try std.testing.expectEqual(199, x20[8].im);
@@ -582,7 +572,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .ConjNoTrans, .NonUnit, n, B.ptr, x21.ptr, 2);
+    tpmv(.row_major, .upper, .conj_no_trans, .non_unit, n, B.ptr, x21.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(110, x21[0].re);
     try std.testing.expectEqual(0, x21[0].im);
@@ -611,7 +601,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .ConjNoTrans, .Unit, n, B.ptr, x22.ptr, -2);
+    tpmv(.row_major, .upper, .conj_no_trans, .unit, n, B.ptr, x22.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(109, x22[8].re);
     try std.testing.expectEqual(1, x22[8].im);
@@ -640,7 +630,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .ConjNoTrans, .NonUnit, n, B.ptr, x23.ptr, 2);
+    tpmv(.col_major, .upper, .conj_no_trans, .non_unit, n, B.ptr, x23.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(200, x23[0].re);
     try std.testing.expectEqual(0, x23[0].im);
@@ -669,7 +659,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .ConjNoTrans, .Unit, n, B.ptr, x24.ptr, -2);
+    tpmv(.col_major, .upper, .conj_no_trans, .unit, n, B.ptr, x24.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(199, x24[8].re);
     try std.testing.expectEqual(1, x24[8].im);
@@ -698,7 +688,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .Trans, .NonUnit, n, B.ptr, x25.ptr, 2);
+    tpmv(.row_major, .upper, .trans, .non_unit, n, B.ptr, x25.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x25[0].re);
     try std.testing.expectEqual(2, x25[0].im);
@@ -727,7 +717,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .Trans, .Unit, n, B.ptr, x26.ptr, -2);
+    tpmv(.row_major, .upper, .trans, .unit, n, B.ptr, x26.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x26[8].re);
     try std.testing.expectEqual(1, x26[8].im);
@@ -756,7 +746,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .Trans, .NonUnit, n, B.ptr, x27.ptr, 2);
+    tpmv(.col_major, .upper, .trans, .non_unit, n, B.ptr, x27.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x27[0].re);
     try std.testing.expectEqual(2, x27[0].im);
@@ -785,7 +775,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .Trans, .Unit, n, B.ptr, x28.ptr, -2);
+    tpmv(.col_major, .upper, .trans, .unit, n, B.ptr, x28.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x28[8].re);
     try std.testing.expectEqual(1, x28[8].im);
@@ -814,7 +804,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .ConjTrans, .NonUnit, n, B.ptr, x29.ptr, 2);
+    tpmv(.row_major, .upper, .conj_trans, .non_unit, n, B.ptr, x29.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(2, x29[0].re);
     try std.testing.expectEqual(0, x29[0].im);
@@ -843,7 +833,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Upper, .ConjTrans, .Unit, n, B.ptr, x30.ptr, -2);
+    tpmv(.row_major, .upper, .conj_trans, .unit, n, B.ptr, x30.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x30[8].re);
     try std.testing.expectEqual(1, x30[8].im);
@@ -872,7 +862,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .ConjTrans, .NonUnit, n, B.ptr, x31.ptr, 2);
+    tpmv(.col_major, .upper, .conj_trans, .non_unit, n, B.ptr, x31.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(2, x31[0].re);
     try std.testing.expectEqual(0, x31[0].im);
@@ -901,7 +891,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Upper, .ConjTrans, .Unit, n, B.ptr, x32.ptr, -2);
+    tpmv(.col_major, .upper, .conj_trans, .unit, n, B.ptr, x32.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x32[8].re);
     try std.testing.expectEqual(1, x32[8].im);
@@ -930,7 +920,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .NoTrans, .NonUnit, n, B.ptr, x33.ptr, 2);
+    tpmv(.row_major, .lower, .no_trans, .non_unit, n, B.ptr, x33.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x33[0].re);
     try std.testing.expectEqual(2, x33[0].im);
@@ -959,7 +949,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .NoTrans, .Unit, n, B.ptr, x34.ptr, -2);
+    tpmv(.row_major, .lower, .no_trans, .unit, n, B.ptr, x34.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x34[8].re);
     try std.testing.expectEqual(1, x34[8].im);
@@ -988,7 +978,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .NoTrans, .NonUnit, n, B.ptr, x35.ptr, 2);
+    tpmv(.col_major, .lower, .no_trans, .non_unit, n, B.ptr, x35.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x35[0].re);
     try std.testing.expectEqual(2, x35[0].im);
@@ -1017,7 +1007,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .NoTrans, .Unit, n, B.ptr, x36.ptr, -2);
+    tpmv(.col_major, .lower, .no_trans, .unit, n, B.ptr, x36.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x36[8].re);
     try std.testing.expectEqual(1, x36[8].im);
@@ -1046,7 +1036,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .ConjNoTrans, .NonUnit, n, B.ptr, x37.ptr, 2);
+    tpmv(.row_major, .lower, .conj_no_trans, .non_unit, n, B.ptr, x37.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(2, x37[0].re);
     try std.testing.expectEqual(0, x37[0].im);
@@ -1075,7 +1065,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .ConjNoTrans, .Unit, n, B.ptr, x38.ptr, -2);
+    tpmv(.row_major, .lower, .conj_no_trans, .unit, n, B.ptr, x38.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x38[8].re);
     try std.testing.expectEqual(1, x38[8].im);
@@ -1104,7 +1094,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .ConjNoTrans, .NonUnit, n, B.ptr, x39.ptr, 2);
+    tpmv(.col_major, .lower, .conj_no_trans, .non_unit, n, B.ptr, x39.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(2, x39[0].re);
     try std.testing.expectEqual(0, x39[0].im);
@@ -1133,7 +1123,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .ConjNoTrans, .Unit, n, B.ptr, x40.ptr, -2);
+    tpmv(.col_major, .lower, .conj_no_trans, .unit, n, B.ptr, x40.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x40[8].re);
     try std.testing.expectEqual(1, x40[8].im);
@@ -1162,7 +1152,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .Trans, .NonUnit, n, B.ptr, x41.ptr, 2);
+    tpmv(.row_major, .lower, .trans, .non_unit, n, B.ptr, x41.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x41[0].re);
     try std.testing.expectEqual(200, x41[0].im);
@@ -1191,7 +1181,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .Trans, .Unit, n, B.ptr, x42.ptr, -2);
+    tpmv(.row_major, .lower, .trans, .unit, n, B.ptr, x42.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x42[8].re);
     try std.testing.expectEqual(199, x42[8].im);
@@ -1220,7 +1210,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .Trans, .NonUnit, n, B.ptr, x43.ptr, 2);
+    tpmv(.col_major, .lower, .trans, .non_unit, n, B.ptr, x43.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, x43[0].re);
     try std.testing.expectEqual(110, x43[0].im);
@@ -1249,7 +1239,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .Trans, .Unit, n, B.ptr, x44.ptr, -2);
+    tpmv(.col_major, .lower, .trans, .unit, n, B.ptr, x44.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(1, x44[8].re);
     try std.testing.expectEqual(109, x44[8].im);
@@ -1278,7 +1268,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .ConjTrans, .NonUnit, n, B.ptr, x45.ptr, 2);
+    tpmv(.row_major, .lower, .conj_trans, .non_unit, n, B.ptr, x45.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(200, x45[0].re);
     try std.testing.expectEqual(0, x45[0].im);
@@ -1307,7 +1297,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .RowMajor, .Lower, .ConjTrans, .Unit, n, B.ptr, x46.ptr, -2);
+    tpmv(.row_major, .lower, .conj_trans, .unit, n, B.ptr, x46.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(199, x46[8].re);
     try std.testing.expectEqual(1, x46[8].im);
@@ -1336,7 +1326,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .ConjTrans, .NonUnit, n, B.ptr, x47.ptr, 2);
+    tpmv(.col_major, .lower, .conj_trans, .non_unit, n, B.ptr, x47.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectEqual(110, x47[0].re);
     try std.testing.expectEqual(0, x47[0].im);
@@ -1365,7 +1355,7 @@ test tpmv {
         cf64.init(0, 0),
     });
 
-    tpmv(cf64, .ColumnMajor, .Lower, .ConjTrans, .Unit, n, B.ptr, x48.ptr, -2);
+    tpmv(.col_major, .lower, .conj_trans, .unit, n, B.ptr, x48.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectEqual(109, x48[8].re);
     try std.testing.expectEqual(1, x48[8].im);

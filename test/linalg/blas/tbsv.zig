@@ -54,7 +54,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Upper, .NoTrans, .NonUnit, n, k, A.ptr, k + 1, x1.ptr, 2);
+    tbsv(.row_major, .upper, .no_trans, .non_unit, n, k, A.ptr, k + 1, x1.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1.46984126984127, x1[0], 0.0000001);
     try std.testing.expectApproxEqRel(-0.23492063492063497, x1[2], 0.0000001);
@@ -78,7 +78,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Upper, .NoTrans, .Unit, n, k, A.ptr, k + 1, x2.ptr, -2);
+    tbsv(.row_major, .upper, .no_trans, .unit, n, k, A.ptr, k + 1, x2.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1749, x2[8], 0.0000001);
     try std.testing.expectApproxEqRel(-874, x2[6], 0.0000001);
@@ -102,7 +102,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Upper, .NoTrans, .NonUnit, n, k, A.ptr, k + 1, x3.ptr, 2);
+    tbsv(.col_major, .upper, .no_trans, .non_unit, n, k, A.ptr, k + 1, x3.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.8242187499999999, x3[0], 0.0000001);
     try std.testing.expectApproxEqRel(-0.2161458333333333, x3[2], 0.0000001);
@@ -126,7 +126,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Upper, .NoTrans, .Unit, n, k, A.ptr, k + 1, x4.ptr, -2);
+    tbsv(.col_major, .upper, .no_trans, .unit, n, k, A.ptr, k + 1, x4.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4345, x4[8], 0.0000001);
     try std.testing.expectApproxEqRel(-1448, x4[6], 0.0000001);
@@ -150,7 +150,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Upper, .Trans, .NonUnit, n, k, A.ptr, k + 1, x5.ptr, 2);
+    tbsv(.row_major, .upper, .trans, .non_unit, n, k, A.ptr, k + 1, x5.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x5[0], 0.0000001);
     try std.testing.expectApproxEqRel(0, x5[2], 0.0000001);
@@ -174,7 +174,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Upper, .Trans, .Unit, n, k, A.ptr, k + 1, x6.ptr, -2);
+    tbsv(.row_major, .upper, .trans, .unit, n, k, A.ptr, k + 1, x6.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x6[8], 0.0000001);
     try std.testing.expectApproxEqRel(0, x6[6], 0.0000001);
@@ -198,7 +198,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Upper, .Trans, .NonUnit, n, k, A.ptr, k + 1, x7.ptr, 2);
+    tbsv(.col_major, .upper, .trans, .non_unit, n, k, A.ptr, k + 1, x7.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.5, x7[0], 0.0000001);
     try std.testing.expectApproxEqRel(0.125, x7[2], 0.0000001);
@@ -222,7 +222,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Upper, .Trans, .Unit, n, k, A.ptr, k + 1, x8.ptr, -2);
+    tbsv(.col_major, .upper, .trans, .unit, n, k, A.ptr, k + 1, x8.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x8[8], 0.0000001);
     try std.testing.expectApproxEqRel(-1, x8[6], 0.0000001);
@@ -246,7 +246,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Lower, .NoTrans, .NonUnit, n, k, A.ptr, k + 1, x9.ptr, 2);
+    tbsv(.row_major, .lower, .no_trans, .non_unit, n, k, A.ptr, k + 1, x9.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.5, x9[0], 0.0000001);
     try std.testing.expectApproxEqRel(0.125, x9[2], 0.0000001);
@@ -270,7 +270,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Lower, .NoTrans, .Unit, n, k, A.ptr, k + 1, x10.ptr, -2);
+    tbsv(.row_major, .lower, .no_trans, .unit, n, k, A.ptr, k + 1, x10.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x10[8], 0.0000001);
     try std.testing.expectApproxEqRel(-1, x10[6], 0.0000001);
@@ -294,7 +294,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Lower, .NoTrans, .NonUnit, n, k, A.ptr, k + 1, x11.ptr, 2);
+    tbsv(.col_major, .lower, .no_trans, .non_unit, n, k, A.ptr, k + 1, x11.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x11[0], 0.0000001);
     try std.testing.expectApproxEqRel(0, x11[2], 0.0000001);
@@ -318,7 +318,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Lower, .NoTrans, .Unit, n, k, A.ptr, k + 1, x12.ptr, -2);
+    tbsv(.col_major, .lower, .no_trans, .unit, n, k, A.ptr, k + 1, x12.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x12[8], 0.0000001);
     try std.testing.expectApproxEqRel(0, x12[6], 0.0000001);
@@ -342,7 +342,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Lower, .Trans, .NonUnit, n, k, A.ptr, k + 1, x13.ptr, 2);
+    tbsv(.row_major, .lower, .trans, .non_unit, n, k, A.ptr, k + 1, x13.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.8242187499999999, x13[0], 0.0000001);
     try std.testing.expectApproxEqRel(-0.2161458333333333, x13[2], 0.0000001);
@@ -366,7 +366,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .RowMajor, .Lower, .Trans, .Unit, n, k, A.ptr, k + 1, x14.ptr, -2);
+    tbsv(.row_major, .lower, .trans, .unit, n, k, A.ptr, k + 1, x14.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4345, x14[8], 0.0000001);
     try std.testing.expectApproxEqRel(-1448, x14[6], 0.0000001);
@@ -390,7 +390,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Lower, .Trans, .NonUnit, n, k, A.ptr, k + 1, x15.ptr, 2);
+    tbsv(.col_major, .lower, .trans, .non_unit, n, k, A.ptr, k + 1, x15.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1.46984126984127, x15[0], 0.0000001);
     try std.testing.expectApproxEqRel(-0.23492063492063497, x15[2], 0.0000001);
@@ -414,7 +414,7 @@ test tbsv {
         0,
     });
 
-    tbsv(f64, .ColumnMajor, .Lower, .Trans, .Unit, n, k, A.ptr, k + 1, x16.ptr, -2);
+    tbsv(.col_major, .lower, .trans, .unit, n, k, A.ptr, k + 1, x16.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1749, x16[8], 0.0000001);
     try std.testing.expectApproxEqRel(-874, x16[6], 0.0000001);
@@ -467,7 +467,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .NoTrans, .NonUnit, n, k, B.ptr, k + 1, x17.ptr, 2);
+    tbsv(.row_major, .upper, .no_trans, .non_unit, n, k, B.ptr, k + 1, x17.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1.46984126984127, x17[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x17[0].im, 0.0000001);
@@ -496,7 +496,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .NoTrans, .Unit, n, k, B.ptr, k + 1, x18.ptr, -2);
+    tbsv(.row_major, .upper, .no_trans, .unit, n, k, B.ptr, k + 1, x18.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-6959, x18[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-7639, x18[8].im, 0.0000001);
@@ -525,7 +525,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .NoTrans, .NonUnit, n, k, B.ptr, k + 1, x19.ptr, 2);
+    tbsv(.col_major, .upper, .no_trans, .non_unit, n, k, B.ptr, k + 1, x19.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.8242187499999999, x19[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x19[0].im, 0.0000001);
@@ -554,7 +554,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .NoTrans, .Unit, n, k, B.ptr, k + 1, x20.ptr, -2);
+    tbsv(.col_major, .upper, .no_trans, .unit, n, k, B.ptr, k + 1, x20.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-17309, x20[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-18821, x20[8].im, 0.0000001);
@@ -583,7 +583,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .ConjNoTrans, .NonUnit, n, k, B.ptr, k + 1, x21.ptr, 2);
+    tbsv(.row_major, .upper, .conj_no_trans, .non_unit, n, k, B.ptr, k + 1, x21.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x21[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.46984126984127, x21[0].im, 0.0000001);
@@ -612,7 +612,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .ConjNoTrans, .Unit, n, k, B.ptr, k + 1, x22.ptr, -2);
+    tbsv(.row_major, .upper, .conj_no_trans, .unit, n, k, B.ptr, k + 1, x22.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-7639, x22[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-6959, x22[8].im, 0.0000001);
@@ -641,7 +641,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .ConjNoTrans, .NonUnit, n, k, B.ptr, k + 1, x23.ptr, 2);
+    tbsv(.col_major, .upper, .conj_no_trans, .non_unit, n, k, B.ptr, k + 1, x23.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x23[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.8242187499999999, x23[0].im, 0.0000001);
@@ -670,7 +670,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .ConjNoTrans, .Unit, n, k, B.ptr, k + 1, x24.ptr, -2);
+    tbsv(.col_major, .upper, .conj_no_trans, .unit, n, k, B.ptr, k + 1, x24.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-18821, x24[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-17309, x24[8].im, 0.0000001);
@@ -699,7 +699,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .Trans, .NonUnit, n, k, B.ptr, k + 1, x25.ptr, 2);
+    tbsv(.row_major, .upper, .trans, .non_unit, n, k, B.ptr, k + 1, x25.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x25[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x25[0].im, 0.0000001);
@@ -728,7 +728,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .Trans, .Unit, n, k, B.ptr, k + 1, x26.ptr, -2);
+    tbsv(.row_major, .upper, .trans, .unit, n, k, B.ptr, k + 1, x26.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x26[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x26[8].im, 0.0000001);
@@ -757,7 +757,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .Trans, .NonUnit, n, k, B.ptr, k + 1, x27.ptr, 2);
+    tbsv(.col_major, .upper, .trans, .non_unit, n, k, B.ptr, k + 1, x27.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.5, x27[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x27[0].im, 0.0000001);
@@ -786,7 +786,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .Trans, .Unit, n, k, B.ptr, k + 1, x28.ptr, -2);
+    tbsv(.col_major, .upper, .trans, .unit, n, k, B.ptr, k + 1, x28.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x28[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x28[8].im, 0.0000001);
@@ -815,7 +815,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .ConjTrans, .NonUnit, n, k, B.ptr, k + 1, x29.ptr, 2);
+    tbsv(.row_major, .upper, .conj_trans, .non_unit, n, k, B.ptr, k + 1, x29.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x29[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x29[0].im, 0.0000001);
@@ -844,7 +844,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Upper, .ConjTrans, .Unit, n, k, B.ptr, k + 1, x30.ptr, -2);
+    tbsv(.row_major, .upper, .conj_trans, .unit, n, k, B.ptr, k + 1, x30.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x30[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x30[8].im, 0.0000001);
@@ -873,7 +873,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .ConjTrans, .NonUnit, n, k, B.ptr, k + 1, x31.ptr, 2);
+    tbsv(.col_major, .upper, .conj_trans, .non_unit, n, k, B.ptr, k + 1, x31.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x31[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.5, x31[0].im, 0.0000001);
@@ -902,7 +902,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Upper, .ConjTrans, .Unit, n, k, B.ptr, k + 1, x32.ptr, -2);
+    tbsv(.col_major, .upper, .conj_trans, .unit, n, k, B.ptr, k + 1, x32.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x32[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x32[8].im, 0.0000001);
@@ -931,7 +931,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .NoTrans, .NonUnit, n, k, B.ptr, k + 1, x33.ptr, 2);
+    tbsv(.row_major, .lower, .no_trans, .non_unit, n, k, B.ptr, k + 1, x33.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.5, x33[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x33[0].im, 0.0000001);
@@ -960,7 +960,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .NoTrans, .Unit, n, k, B.ptr, k + 1, x34.ptr, -2);
+    tbsv(.row_major, .lower, .no_trans, .unit, n, k, B.ptr, k + 1, x34.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x34[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x34[8].im, 0.0000001);
@@ -989,7 +989,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .NoTrans, .NonUnit, n, k, B.ptr, k + 1, x35.ptr, 2);
+    tbsv(.col_major, .lower, .no_trans, .non_unit, n, k, B.ptr, k + 1, x35.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x35[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x35[0].im, 0.0000001);
@@ -1018,7 +1018,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .NoTrans, .Unit, n, k, B.ptr, k + 1, x36.ptr, -2);
+    tbsv(.col_major, .lower, .no_trans, .unit, n, k, B.ptr, k + 1, x36.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x36[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x36[8].im, 0.0000001);
@@ -1047,7 +1047,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .ConjNoTrans, .NonUnit, n, k, B.ptr, k + 1, x37.ptr, 2);
+    tbsv(.row_major, .lower, .conj_no_trans, .non_unit, n, k, B.ptr, k + 1, x37.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x37[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.5, x37[0].im, 0.0000001);
@@ -1076,7 +1076,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .ConjNoTrans, .Unit, n, k, B.ptr, k + 1, x38.ptr, -2);
+    tbsv(.row_major, .lower, .conj_no_trans, .unit, n, k, B.ptr, k + 1, x38.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x38[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x38[8].im, 0.0000001);
@@ -1105,7 +1105,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .ConjNoTrans, .NonUnit, n, k, B.ptr, k + 1, x39.ptr, 2);
+    tbsv(.col_major, .lower, .conj_no_trans, .non_unit, n, k, B.ptr, k + 1, x39.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x39[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x39[0].im, 0.0000001);
@@ -1134,7 +1134,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .ConjNoTrans, .Unit, n, k, B.ptr, k + 1, x40.ptr, -2);
+    tbsv(.col_major, .lower, .conj_no_trans, .unit, n, k, B.ptr, k + 1, x40.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1, x40[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(1, x40[8].im, 0.0000001);
@@ -1163,7 +1163,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .Trans, .NonUnit, n, k, B.ptr, k + 1, x41.ptr, 2);
+    tbsv(.row_major, .lower, .trans, .non_unit, n, k, B.ptr, k + 1, x41.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0.8242187499999999, x41[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x41[0].im, 0.0000001);
@@ -1192,7 +1192,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .Trans, .Unit, n, k, B.ptr, k + 1, x42.ptr, -2);
+    tbsv(.row_major, .lower, .trans, .unit, n, k, B.ptr, k + 1, x42.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-17309, x42[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-18821, x42[8].im, 0.0000001);
@@ -1221,7 +1221,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .Trans, .NonUnit, n, k, B.ptr, k + 1, x43.ptr, 2);
+    tbsv(.col_major, .lower, .trans, .non_unit, n, k, B.ptr, k + 1, x43.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1.46984126984127, x43[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, x43[0].im, 0.0000001);
@@ -1250,7 +1250,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .Trans, .Unit, n, k, B.ptr, k + 1, x44.ptr, -2);
+    tbsv(.col_major, .lower, .trans, .unit, n, k, B.ptr, k + 1, x44.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-6959, x44[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-7639, x44[8].im, 0.0000001);
@@ -1279,7 +1279,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .ConjTrans, .NonUnit, n, k, B.ptr, k + 1, x45.ptr, 2);
+    tbsv(.row_major, .lower, .conj_trans, .non_unit, n, k, B.ptr, k + 1, x45.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x45[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.8242187499999999, x45[0].im, 0.0000001);
@@ -1308,7 +1308,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .RowMajor, .Lower, .ConjTrans, .Unit, n, k, B.ptr, k + 1, x46.ptr, -2);
+    tbsv(.row_major, .lower, .conj_trans, .unit, n, k, B.ptr, k + 1, x46.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-18821, x46[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-17309, x46[8].im, 0.0000001);
@@ -1337,7 +1337,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .ConjTrans, .NonUnit, n, k, B.ptr, k + 1, x47.ptr, 2);
+    tbsv(.col_major, .lower, .conj_trans, .non_unit, n, k, B.ptr, k + 1, x47.ptr, 2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, x47[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.46984126984127, x47[0].im, 0.0000001);
@@ -1366,7 +1366,7 @@ test tbsv {
         cf64.init(0, 0),
     });
 
-    tbsv(cf64, .ColumnMajor, .Lower, .ConjTrans, .Unit, n, k, B.ptr, k + 1, x48.ptr, -2);
+    tbsv(.col_major, .lower, .conj_trans, .unit, n, k, B.ptr, k + 1, x48.ptr, -2, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-7639, x48[8].re, 0.0000001);
     try std.testing.expectApproxEqRel(-6959, x48[8].im, 0.0000001);

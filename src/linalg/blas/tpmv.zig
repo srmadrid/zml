@@ -1,707 +1,593 @@
 const std = @import("std");
+
 const types = @import("../../types.zig");
+const scast = types.scast;
+const Scalar = types.Scalar;
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
+
+const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Transpose = blas.Transpose;
-const Order = blas.Order;
-const Uplo = blas.Uplo;
-const Diag = blas.Diag;
+const Uplo = linalg.Uplo;
+const Diag = linalg.Diag;
+const Order = linalg.Order;
+const Transpose = linalg.Transpose;
 
-pub inline fn tpmv(comptime T: type, order: Order, uplo: Uplo, transA: Transpose, diag: Diag, n: isize, Ap: [*]const T, x: [*]T, incx: isize) void {
-    @setRuntimeSafety(false);
-    const numericType = types.numericType(T);
-
-    if (n <= 0) return;
-
-    const N = n;
-    var UPLO = uplo;
-    var TRANSA = transA;
-    if (order == .RowMajor) {
-        UPLO = if (uplo == .Upper) .Lower else .Upper;
-        TRANSA = if (transA == .NoTrans) .Trans else if (transA == .ConjNoTrans) .ConjTrans else if (transA == .Trans) .NoTrans else .ConjNoTrans;
+pub inline fn tpmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: anytype,
+    x: anytype,
+    incx: isize,
+    ctx: anytype,
+) !void {
+    if (order == .col_major) {
+        return k_tpmv(uplo, transa, diag, n, ap, x, incx, ctx);
+    } else {
+        return k_tpmv(uplo.invert(), transa.invert(), diag, n, ap, x, incx, ctx);
     }
+}
 
-    const LENX = N;
+fn k_tpmv(
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: anytype,
+    x: anytype,
+    incx: isize,
+    ctx: anytype,
+) !void {
+    const A: type = types.Child(@TypeOf(ap));
+    const X: type = types.Child(@TypeOf(x));
+    const C1: type = types.Coerce(A, X);
+    const CC: type = types.Coerce(A, X);
 
-    switch (numericType) {
-        .bool => @compileError("blas.tpmv does not support bool."),
-        .int, .float => {
-            if (UPLO == .Upper) {
-                if (TRANSA == .NoTrans or TRANSA == .ConjNoTrans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = 1;
-                        while (j < N) {
-                            const t0 = x[@intCast(jx)];
+    if (n < 0 or incx == 0)
+        return blas.Error.InvalidArgument;
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                x[@intCast(ix)] += t0 * Ap[@intCast(iaij)];
+    // Quick return if possible.
+    if (n == 0)
+        return;
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+    const noconj: bool = transa == .no_trans or transa == .trans;
+    const nounit: bool = diag == .non_unit;
+
+    var kx: isize = if (incx < 0) (-n + 1) * incx else 0;
+
+    if (comptime !types.isArbitraryPrecision(CC)) {
+        if (transa == .no_trans or transa == .conj_no_trans) {
+            if (uplo == .upper) {
+                var kk: isize = 0;
+                if (incx == 1) {
+                    var j: isize = 0;
+                    while (j < n) : (j += 1) {
+                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(usize, j)];
+                            if (noconj) {
+                                var k: isize = kk;
+                                var i: isize = 0;
+                                while (i < j) : (i += 1) {
+                                    ops.add_( // x[i] += temp * ap[k]
+                                        &x[scast(usize, i)],
+                                        x[scast(usize, i)],
+                                        ops.mul(
+                                            temp,
+                                            ap[scast(usize, k)],
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+
+                                    k += 1;
+                                }
+
+                                if (nounit) {
+                                    ops.mul_( // x[j] *= ap[kk + j]
+                                        &x[scast(usize, j)],
+                                        x[scast(usize, j)],
+                                        ap[scast(usize, kk + j)],
+                                        ctx,
+                                    ) catch unreachable;
+                                }
+                            } else {
+                                var k: isize = kk;
+                                var i: isize = 0;
+                                while (i < j) : (i += 1) {
+                                    ops.add_( // x[i] += temp * conj(ap[k])
+                                        &x[scast(usize, i)],
+                                        x[scast(usize, i)],
+                                        ops.mul(
+                                            temp,
+                                            ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+
+                                    k += 1;
+                                }
+
+                                if (nounit) {
+                                    ops.mul_( // x[j] *= conj(ap[kk + j])
+                                        &x[scast(usize, j)],
+                                        x[scast(usize, j)],
+                                        ops.conjugate(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+                                }
                             }
-
-                            x[@intCast(jx)] *= Ap[@intCast(iaij)];
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda += 1;
                         }
-                    } else {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = 1;
-                        while (j < N) {
-                            const t0 = x[@intCast(jx)];
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                x[@intCast(ix)] += t0 * Ap[@intCast(iaij)];
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda += 1;
-                        }
+                        kk += j + 1;
                     }
                 } else {
-                    if (diag == .NonUnit) {
-                        var j: isize = N - 1;
-                        var jaj: isize = ((N - 1) * N) >> 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = N;
-                        while (j >= 0) {
-                            var t0: T = 0;
+                    var jx: isize = kx;
+                    var j: isize = 0;
+                    while (j < n) : (j += 1) {
+                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(usize, jx)];
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                t0 += x[@intCast(ix)] * Ap[@intCast(iaij)];
+                            if (noconj) {
+                                var ix: isize = kx;
+                                var k: isize = kk;
+                                while (k < kk + j) : (k += 1) {
+                                    ops.add_( // x[ix] += temp * ap[k]
+                                        &x[scast(usize, ix)],
+                                        x[scast(usize, ix)],
+                                        ops.mul(
+                                            temp,
+                                            ap[scast(usize, k)],
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                    ix += incx;
+                                }
+
+                                if (nounit) {
+                                    ops.mul_( // x[jx] *= ap[kk + j]
+                                        &x[scast(usize, jx)],
+                                        x[scast(usize, jx)],
+                                        ap[scast(usize, kk + j)],
+                                        ctx,
+                                    ) catch unreachable;
+                                }
+                            } else {
+                                var ix: isize = kx;
+                                var k: isize = kk;
+                                while (k < kk + j) : (k += 1) {
+                                    ops.add_( // x[ix] += temp * conj(ap[k])
+                                        &x[scast(usize, ix)],
+                                        x[scast(usize, ix)],
+                                        ops.mul(
+                                            temp,
+                                            ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+
+                                    ix += incx;
+                                }
+
+                                if (nounit) {
+                                    ops.mul_( // x[jx] *= conj(ap[kk + j])
+                                        &x[scast(usize, jx)],
+                                        x[scast(usize, jx)],
+                                        ops.conjugate(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+                                }
                             }
-
-                            x[@intCast(jx)] = t0 + x[@intCast(jx)] * Ap[@intCast(iaij)];
-
-                            j -= 1;
-                            lda -= 1;
-                            jaj -= lda;
-                            jx -= incx;
                         }
-                    } else {
-                        var j: isize = N - 1;
-                        var jaj: isize = ((N - 1) * N) >> 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = N;
-                        while (j >= 0) {
-                            var t0: T = 0;
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                t0 += x[@intCast(ix)] * Ap[@intCast(iaij)];
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            x[@intCast(jx)] += t0;
-
-                            j -= 1;
-                            lda -= 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
+                        jx += incx;
+                        kk += j + 1;
                     }
                 }
             } else {
-                if (TRANSA == .NoTrans or TRANSA == .ConjNoTrans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = N - 1;
-                        var jaj: isize = (((N + 1) * N) >> 1) - 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = 1;
-                        while (j >= 0) {
-                            const t0 = x[@intCast(jx)];
-                            x[@intCast(jx)] *= Ap[@intCast(jaj)];
+                var kk: isize = int.div(n * (n + 1), 2) - 1;
+                if (incx == 1) {
+                    var j: isize = n - 1;
+                    while (j >= 0) : (j -= 1) {
+                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(usize, j)];
 
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                x[@intCast(ix)] += t0 * Ap[@intCast(iaij)];
+                            if (noconj) {
+                                var k: isize = kk;
+                                var i: isize = n - 1;
+                                while (i > j) : (i -= 1) {
+                                    ops.add_( // x[i] += temp * ap[k]
+                                        &x[scast(usize, i)],
+                                        x[scast(usize, i)],
+                                        ops.mul(
+                                            temp,
+                                            ap[scast(usize, k)],
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                    k -= 1;
+                                }
+                                if (nounit) {
+                                    ops.mul_( // x[j] *= ap[kk - (n - 1) + j]
+                                        &x[scast(usize, j)],
+                                        x[scast(usize, j)],
+                                        ap[scast(usize, kk - (n - 1) + j)],
+                                        ctx,
+                                    ) catch unreachable;
+                                }
+                            } else {
+                                var k: isize = kk;
+                                var i: isize = n - 1;
+                                while (i > j) : (i -= 1) {
+                                    ops.add_( // x[i] += temp * conj(ap[k])
+                                        &x[scast(usize, i)],
+                                        x[scast(usize, i)],
+                                        ops.mul(
+                                            temp,
+                                            ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+
+                                    k -= 1;
+                                }
+                                if (nounit) {
+                                    ops.mul_( // x[j] *= conj(ap[kk - (n - 1) + j])
+                                        &x[scast(usize, j)],
+                                        x[scast(usize, j)],
+                                        ops.conjugate(ap[scast(usize, kk - (n - 1) + j)], ctx) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+                                }
                             }
-
-                            j -= 1;
-                            lda += 1;
-                            jaj -= lda;
-                            jx -= incx;
                         }
-                    } else {
-                        var j: isize = N - 1;
-                        var jaj: isize = (((N + 1) * N) >> 1) - 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = 1;
-                        while (j >= 0) {
-                            const t0 = x[@intCast(jx)];
 
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                x[@intCast(ix)] += t0 * Ap[@intCast(iaij)];
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            j -= 1;
-                            lda += 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
+                        kk -= n - j;
                     }
                 } else {
-                    if (diag == .NonUnit) {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = N;
-                        while (j < N) {
-                            var t0 = x[@intCast(jx)];
-                            t0 *= Ap[@intCast(jaj)];
+                    kx += (n - 1) * incx;
+                    var jx: isize = kx;
+                    var j: isize = n - 1;
+                    while (j >= 0) : (j -= 1) {
+                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(usize, jx)];
 
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                t0 += x[@intCast(ix)] * Ap[@intCast(iaij)];
+                            if (noconj) {
+                                var ix: isize = kx;
+                                var k: isize = kk;
+                                while (k > kk - (n - (j + 1))) : (k -= 1) {
+                                    ops.add_( // x[ix] += temp * ap[k]
+                                        &x[scast(usize, ix)],
+                                        x[scast(usize, ix)],
+                                        ops.mul(
+                                            temp,
+                                            ap[scast(usize, k)],
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                    ix -= incx;
+                                }
+
+                                if (nounit) {
+                                    ops.mul_( // x[jx] *= ap[kk - (n - 1) + j]
+                                        &x[scast(usize, jx)],
+                                        x[scast(usize, jx)],
+                                        ap[scast(usize, kk - (n - 1) + j)],
+                                        ctx,
+                                    ) catch unreachable;
+                                }
+                            } else {
+                                var ix: isize = kx;
+                                var k: isize = kk;
+                                while (k > kk - (n - (j + 1))) : (k -= 1) {
+                                    ops.add_( // x[ix] += temp * conj(ap[k])
+                                        &x[scast(usize, ix)],
+                                        x[scast(usize, ix)],
+                                        ops.mul(
+                                            temp,
+                                            ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                            ctx,
+                                        ) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+
+                                    ix -= incx;
+                                }
+
+                                if (nounit) {
+                                    ops.mul_( // x[jx] *= conj(ap[kk - (n - 1) + j])
+                                        &x[scast(usize, jx)],
+                                        x[scast(usize, jx)],
+                                        ops.conjugate(ap[scast(usize, kk - (n - 1) + j)], ctx) catch unreachable,
+                                        ctx,
+                                    ) catch unreachable;
+                                }
                             }
-
-                            x[@intCast(jx)] = t0;
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda -= 1;
                         }
-                    } else {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = N;
-                        while (j < N) {
-                            var t0 = x[@intCast(jx)];
 
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                t0 += x[@intCast(ix)] * Ap[@intCast(iaij)];
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            x[@intCast(jx)] = t0;
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda -= 1;
-                        }
+                        jx -= incx;
+                        kk -= n - j;
                     }
                 }
             }
-        },
-        .cfloat => {
-            if (UPLO == .Upper) {
-                if (TRANSA == .NoTrans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = 1;
-                        while (j < N) {
-                            const t0 = x[@intCast(jx)];
+        } else {
+            if (uplo == .upper) {
+                var kk: isize = int.div(n * (n + 1), 2) - 1;
+                if (incx == 1) {
+                    var j: isize = n - 1;
+                    while (j >= 0) : (j -= 1) {
+                        var temp: C1 = scast(C1, x[scast(usize, j)]);
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re - t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.re * Ap[@intCast(iaij)].im + t0.im * Ap[@intCast(iaij)].re;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                        if (noconj) {
+                            if (nounit) {
+                                ops.mul_( // temp *= ap[kk]
+                                    &temp,
+                                    temp,
+                                    ap[scast(usize, kk)],
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            x[@intCast(jx)].re = t0.re * Ap[@intCast(iaij)].re - t0.im * Ap[@intCast(iaij)].im;
-                            x[@intCast(jx)].im = t0.re * Ap[@intCast(iaij)].im + t0.im * Ap[@intCast(iaij)].re;
+                            var k: isize = kk - 1;
+                            var i: isize = j + 1;
+                            while (i >= 0) : (i -= 1) {
+                                ops.add_( // temp += ap[k] * x[i]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ap[scast(usize, k)],
+                                        x[scast(usize, i)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
 
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda += 1;
-                        }
-                    } else {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = 1;
-                        while (j < N) {
-                            const t0 = x[@intCast(jx)];
-
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re - t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.re * Ap[@intCast(iaij)].im + t0.im * Ap[@intCast(iaij)].re;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                k -= 1;
+                            }
+                        } else {
+                            if (nounit) {
+                                ops.mul_( // temp *= conj(ap[kk])
+                                    &temp,
+                                    temp,
+                                    ops.conjugate(ap[scast(usize, kk)], ctx) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda += 1;
-                        }
-                    }
-                } else if (TRANSA == .ConjNoTrans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = 1;
-                        while (j < N) {
-                            const t0 = x[@intCast(jx)];
+                            var k: isize = kk - 1;
+                            var i: isize = j + 1;
+                            while (i >= 0) : (i -= 1) {
+                                ops.add_( // temp += conj(ap[k]) * x[i]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                        x[scast(usize, i)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re + t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.im * Ap[@intCast(iaij)].re - t0.re * Ap[@intCast(iaij)].im;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                k -= 1;
                             }
-
-                            x[@intCast(jx)].re = t0.re * Ap[@intCast(iaij)].re + t0.im * Ap[@intCast(iaij)].im;
-                            x[@intCast(jx)].im = t0.im * Ap[@intCast(iaij)].re - t0.re * Ap[@intCast(iaij)].im;
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda += 1;
                         }
-                    } else {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = 1;
-                        while (j < N) {
-                            const t0 = x[@intCast(jx)];
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re + t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.im * Ap[@intCast(iaij)].re - t0.re * Ap[@intCast(iaij)].im;
+                        x[scast(usize, j)] = scast(X, temp);
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda += 1;
-                        }
-                    }
-                } else if (TRANSA == .Trans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = N - 1;
-                        var jaj: isize = ((N - 1) * N) >> 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = N;
-                        while (j >= 0) {
-                            var t0 = T.init(0, 0);
-
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re - x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].re * Ap[@intCast(iaij)].im + x[@intCast(ix)].im * Ap[@intCast(iaij)].re;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            const temp = t0.im + x[@intCast(jx)].re * Ap[@intCast(iaij)].im + x[@intCast(jx)].im * Ap[@intCast(iaij)].re;
-                            x[@intCast(jx)].re = t0.re + x[@intCast(jx)].re * Ap[@intCast(iaij)].re - x[@intCast(jx)].im * Ap[@intCast(iaij)].im;
-                            x[@intCast(jx)].im = temp;
-
-                            j -= 1;
-                            lda -= 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
-                    } else {
-                        var j: isize = N - 1;
-                        var jaj: isize = ((N - 1) * N) >> 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = N;
-                        while (j >= 0) {
-                            var t0 = T.init(0, 0);
-
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re - x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].re * Ap[@intCast(iaij)].im + x[@intCast(ix)].im * Ap[@intCast(iaij)].re;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            x[@intCast(jx)].re += t0.re;
-                            x[@intCast(jx)].im += t0.im;
-
-                            j -= 1;
-                            lda -= 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
+                        kk -= j;
                     }
                 } else {
-                    if (diag == .NonUnit) {
-                        var j: isize = N - 1;
-                        var jaj: isize = ((N - 1) * N) >> 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = N;
-                        while (j >= 0) {
-                            var t0 = T.init(0, 0);
+                    var jx: isize = kx + (n - 1) * incx;
+                    var j: isize = n - 1;
+                    while (j >= 0) : (j -= 1) {
+                        var temp: C1 = scast(C1, x[scast(usize, jx)]);
 
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re + x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].im * Ap[@intCast(iaij)].re - x[@intCast(ix)].re * Ap[@intCast(iaij)].im;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                        var ix: isize = jx;
+                        if (noconj) {
+                            if (nounit) {
+                                ops.mul_( // temp *= ap[kk]
+                                    &temp,
+                                    temp,
+                                    ap[scast(usize, kk)],
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            const temp = t0.im + x[@intCast(jx)].im * Ap[@intCast(iaij)].re - x[@intCast(jx)].re * Ap[@intCast(iaij)].im;
-                            x[@intCast(jx)].re = t0.re + x[@intCast(jx)].re * Ap[@intCast(iaij)].re + x[@intCast(jx)].im * Ap[@intCast(iaij)].im;
-                            x[@intCast(jx)].im = temp;
+                            var k: isize = kk - 1;
+                            while (k >= kk - j) : (k -= 1) {
+                                ix -= incx;
 
-                            j -= 1;
-                            lda -= 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
-                    } else {
-                        var j: isize = N - 1;
-                        var jaj: isize = ((N - 1) * N) >> 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = N;
-                        while (j >= 0) {
-                            var t0 = T.init(0, 0);
-
-                            var i: isize = 0;
-                            var iaij: isize = jaj;
-                            var ix: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                            while (i < j) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re + x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].im * Ap[@intCast(iaij)].re - x[@intCast(ix)].re * Ap[@intCast(iaij)].im;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                ops.add_( // temp += ap[k] * x[ix]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ap[scast(usize, k)],
+                                        x[scast(usize, ix)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
+                            }
+                        } else {
+                            if (nounit) {
+                                ops.mul_( // temp *= conj(ap[kk])
+                                    &temp,
+                                    temp,
+                                    ops.conjugate(ap[scast(usize, kk)], ctx) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            x[@intCast(jx)].re += t0.re;
-                            x[@intCast(jx)].im += t0.im;
+                            var k: isize = kk - 1;
+                            while (k >= kk - j) : (k -= 1) {
+                                ix -= incx;
 
-                            j -= 1;
-                            lda -= 1;
-                            jaj -= lda;
-                            jx -= incx;
+                                ops.add_( // temp += conj(ap[k]) * x[ix]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                        x[scast(usize, ix)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
+                            }
                         }
+
+                        x[scast(usize, jx)] = scast(X, temp);
+
+                        jx -= incx;
+                        kk -= j + 1;
                     }
                 }
             } else {
-                if (TRANSA == .NoTrans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = N - 1;
-                        var jaj: isize = (((N + 1) * N) >> 1) - 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = 1;
-                        while (j >= 0) {
-                            const t0 = x[@intCast(jx)];
-                            x[@intCast(jx)].re = t0.re * Ap[@intCast(jaj)].re - t0.im * Ap[@intCast(jaj)].im;
-                            x[@intCast(jx)].im = t0.re * Ap[@intCast(jaj)].im + t0.im * Ap[@intCast(jaj)].re;
+                var kk: isize = 0;
+                if (incx == 1) {
+                    var j: isize = 0;
+                    while (j < n) : (j += 1) {
+                        var temp: C1 = scast(C1, x[scast(usize, j)]);
 
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re - t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.re * Ap[@intCast(iaij)].im + t0.im * Ap[@intCast(iaij)].re;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                        var k: isize = kk + 1;
+                        if (noconj) {
+                            if (nounit) {
+                                ops.mul_( // temp *= ap[kk]
+                                    &temp,
+                                    temp,
+                                    ap[scast(usize, kk)],
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            j -= 1;
-                            lda += 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
-                    } else {
-                        var j: isize = N - 1;
-                        var jaj: isize = (((N + 1) * N) >> 1) - 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = 1;
-                        while (j >= 0) {
-                            const t0 = x[@intCast(jx)];
-
                             var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re - t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.re * Ap[@intCast(iaij)].im + t0.im * Ap[@intCast(iaij)].re;
+                            while (i < n) : (i += 1) {
+                                ops.add_( // temp += ap[k] * x[i]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ap[scast(usize, k)],
+                                        x[scast(usize, i)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                k += 1;
+                            }
+                        } else {
+                            if (nounit) {
+                                ops.mul_( // temp *= conj(ap[kk])
+                                    &temp,
+                                    temp,
+                                    ops.conjugate(ap[scast(usize, kk)], ctx) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            j -= 1;
-                            lda += 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
-                    }
-                } else if (TRANSA == .ConjNoTrans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = N - 1;
-                        var jaj: isize = (((N + 1) * N) >> 1) - 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = 1;
-                        while (j >= 0) {
-                            const t0 = x[@intCast(jx)];
-                            x[@intCast(jx)].re = t0.re * Ap[@intCast(jaj)].re + t0.im * Ap[@intCast(jaj)].im;
-                            x[@intCast(jx)].im = t0.im * Ap[@intCast(jaj)].re - t0.re * Ap[@intCast(jaj)].im;
-
                             var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re + t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.im * Ap[@intCast(iaij)].re - t0.re * Ap[@intCast(iaij)].im;
+                            while (i < n) : (i += 1) {
+                                ops.add_( // temp += conj(ap[k]) * x[i]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                        x[scast(usize, i)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                                k += 1;
                             }
-
-                            j -= 1;
-                            lda += 1;
-                            jaj -= lda;
-                            jx -= incx;
                         }
-                    } else {
-                        var j: isize = N - 1;
-                        var jaj: isize = (((N + 1) * N) >> 1) - 1;
-                        var jx: isize = if (incx < 0) 0 else (LENX - 1) * incx;
-                        var lda: isize = 1;
-                        while (j >= 0) {
-                            const t0 = x[@intCast(jx)];
 
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                x[@intCast(ix)].re += t0.re * Ap[@intCast(iaij)].re + t0.im * Ap[@intCast(iaij)].im;
-                                x[@intCast(ix)].im += t0.im * Ap[@intCast(iaij)].re - t0.re * Ap[@intCast(iaij)].im;
+                        x[scast(usize, j)] = scast(X, temp);
 
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            j -= 1;
-                            lda += 1;
-                            jaj -= lda;
-                            jx -= incx;
-                        }
-                    }
-                } else if (TRANSA == .Trans) {
-                    if (diag == .NonUnit) {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = N;
-                        while (j < N) {
-                            var t0: T = undefined;
-                            t0.re = x[@intCast(jx)].re * Ap[@intCast(jaj)].re - x[@intCast(jx)].im * Ap[@intCast(jaj)].im;
-                            t0.im = x[@intCast(jx)].re * Ap[@intCast(jaj)].im + x[@intCast(jx)].im * Ap[@intCast(jaj)].re;
-
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re - x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].re * Ap[@intCast(iaij)].im + x[@intCast(ix)].im * Ap[@intCast(iaij)].re;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            x[@intCast(jx)] = t0;
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda -= 1;
-                        }
-                    } else {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = N;
-                        while (j < N) {
-                            var t0 = x[@intCast(jx)];
-
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re - x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].re * Ap[@intCast(iaij)].im + x[@intCast(ix)].im * Ap[@intCast(iaij)].re;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
-                            }
-
-                            x[@intCast(jx)] = t0;
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda -= 1;
-                        }
+                        kk += n - j;
                     }
                 } else {
-                    if (diag == .NonUnit) {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = N;
-                        while (j < N) {
-                            var t0: T = undefined;
-                            t0.re = x[@intCast(jx)].re * Ap[@intCast(jaj)].re + x[@intCast(jx)].im * Ap[@intCast(jaj)].im;
-                            t0.im = x[@intCast(jx)].im * Ap[@intCast(jaj)].re - x[@intCast(jx)].re * Ap[@intCast(jaj)].im;
+                    var jx: isize = kx;
+                    var j: isize = 0;
+                    while (j < n) : (j += 1) {
+                        var temp: C1 = scast(C1, x[scast(usize, jx)]);
 
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re + x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].im * Ap[@intCast(iaij)].re - x[@intCast(ix)].re * Ap[@intCast(iaij)].im;
-
-                                i += 1;
-                                iaij += 1;
-                                ix += incx;
+                        if (noconj) {
+                            if (nounit) {
+                                ops.mul_( // temp *= ap[kk]
+                                    &temp,
+                                    temp,
+                                    ap[scast(usize, kk)],
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            x[@intCast(jx)] = t0;
-
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda -= 1;
-                        }
-                    } else {
-                        var j: isize = 0;
-                        var jaj: isize = 0;
-                        var jx: isize = if (incx < 0) (-LENX + 1) * incx else 0;
-                        var lda: isize = N;
-                        while (j < N) {
-                            var t0 = x[@intCast(jx)];
-
-                            var i: isize = j + 1;
-                            var iaij: isize = jaj + 1;
-                            var ix: isize = jx + incx;
-                            while (i < N) {
-                                t0.re += x[@intCast(ix)].re * Ap[@intCast(iaij)].re + x[@intCast(ix)].im * Ap[@intCast(iaij)].im;
-                                t0.im += x[@intCast(ix)].im * Ap[@intCast(iaij)].re - x[@intCast(ix)].re * Ap[@intCast(iaij)].im;
-
-                                i += 1;
-                                iaij += 1;
+                            var ix: isize = jx;
+                            var k: isize = kk + 1;
+                            while (k < kk + n - j) : (k += 1) {
                                 ix += incx;
+
+                                ops.add_( // temp += ap[k] * x[ix]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ap[scast(usize, k)],
+                                        x[scast(usize, ix)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
+                            }
+                        } else {
+                            if (nounit) {
+                                ops.mul_( // temp *= conj(ap[kk])
+                                    &temp,
+                                    temp,
+                                    ops.conjugate(ap[scast(usize, kk)], ctx) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
                             }
 
-                            x[@intCast(jx)] = t0;
+                            var ix: isize = jx;
+                            var k: isize = kk + 1;
+                            while (k <= kk + n - j - 1) : (k += 1) {
+                                ix += incx;
 
-                            j += 1;
-                            jaj += lda;
-                            jx += incx;
-                            lda -= 1;
+                                ops.add_( // temp += conj(ap[k]) * x[ix]
+                                    &temp,
+                                    temp,
+                                    ops.mul(
+                                        ops.conjugate(ap[scast(usize, k)], ctx) catch unreachable,
+                                        x[scast(usize, ix)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable;
+                            }
                         }
+
+                        x[scast(usize, jx)] = scast(X, temp);
+                        jx += incx;
+                        kk += n - j;
                     }
                 }
             }
-        },
-        .integer, .rational, .real, .complex, .expression => @compileError("blas.tpmv only supports simple types."),
+        }
+    } else {
+        // Arbitrary precision types not supported yet
+        @compileError("zml.linalg.blas.gbmv not implemented for arbitrary precision types yet");
     }
+
+    return;
 }
