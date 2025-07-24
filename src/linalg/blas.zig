@@ -13273,15 +13273,163 @@ pub fn zgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: is
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
-pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-matrix product where one input matrix is Hermitian.
+///
+/// The `hemm` routines compute a scalar-matrix-matrix product using a Hermitian
+/// matrix `A` and a general matrix `B` and add the result to a scalar-matrix
+/// product using a general matrix `C`. The operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a Hermitian matrix, `B` and `C`
+/// are `m`-by-`n` general matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the Hermitian matrix `A` appears on the
+/// left or right in the operation as follows:
+/// - If `side = left`, then the operation is `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then the operation is `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * ka`, where
+/// `ka` is `m` if `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `ldb * kb`, where
+/// `kb` is `n` if `order = col_major` and `m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`.
+///
+/// `c` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `ldc * n` if `order = col_major` and `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn hemm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+    const Be: type = @TypeOf(beta);
+    comptime var C: type = @TypeOf(c);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.hemm requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.hemm requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.hemm requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B))
+        @compileError("zml.linalg.blas.hemm requires b to be a many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.blas.hemm requires b's child type to numeric, got " ++ @typeName(B));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.hemm requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
+        @compileError("zml.linalg.blas.hemm requires c to be a mutable many-item pointer, got " ++ @typeName(C));
+
+    C = types.Child(C);
+
+    comptime if (!types.isNumeric(C))
+        @compileError("zml.linalg.blas.hemm requires c's child type to be numeric, got " ++ @typeName(C));
+
+    comptime if (Al == bool and A == bool and B == bool and Be == bool and C == bool)
+        @compileError("zml.linalg.blas.hemm does not support alpha, a, b, beta and c all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(C))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.hemm not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == B and Al == Be and Al == C and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(Al) == f32) {
                     return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(Al) == f64) {
                     return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
                 }
             },
@@ -13289,24 +13437,309 @@ pub inline fn hemm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: is
         }
     }
 
-    return @import("blas/hemm.zig").hemm(T, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return @import("blas/hemm.zig").hemm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
 }
+
+/// Computes a matrix-matrix product where one input matrix is Hermitian.
+///
+/// The `chemm` routines compute a scalar-matrix-matrix product using a Hermitian
+/// matrix `A` and a general matrix `B` and add the result to a scalar-matrix
+/// product using a general matrix `C`. The operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a Hermitian matrix, `B` and `C`
+/// are `m`-by-`n` general matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the Hermitian matrix `A` appears on the
+/// left or right in the operation as follows:
+/// - If `side = left`, then the operation is `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then the operation is `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * ka`, where `ka` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]const cf32`): Array, size at least `ldb * kb`, where `kb` is `n` if
+/// `order = col_major` and `m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf32`): Array, size at least `ldc * n` if `order = col_major` and
+/// `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
-    return hemm(cf32, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return hemm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Computes a matrix-matrix product where one input matrix is Hermitian.
+///
+/// The `zhemm` routines compute a scalar-matrix-matrix product using a Hermitian
+/// matrix `A` and a general matrix `B` and add the result to a scalar-matrix
+/// product using a general matrix `C`. The operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a Hermitian matrix, `B` and `C`
+/// are `m`-by-`n` general matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the Hermitian matrix `A` appears on the
+/// left or right in the operation as follows:
+/// - If `side = left`, then the operation is `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then the operation is `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * ka`, where `ka` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]const cf64`): Array, size at least `ldb * kb`, where `kb` is `n` if
+/// `order = col_major` and `m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf64`): Array, size at least `ldc * n` if `order = col_major` and
+/// `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
-    return hemm(cf64, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return hemm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
-pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: Scalar(T), a: [*]const T, lda: isize, beta: Scalar(T), c: [*]T, ldc: isize) void {
-    const supported = types.numericType(T);
+/// Performs a Hermitian rank-`k` update.
+///
+/// The `herk` routines perform a rank-`k` matrix-matrix operation using a
+/// general matrix `A` and a Hermitian matrix `C`. The operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * A^H + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^H * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^H + beta * C`.
+/// - If `trans = conj_trans`, then `C = alpha * A^H * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
+/// `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`             |
+/// | `order = row_major` | `lda * m`           | `lda * k`             |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `beta` (`bool`, `int`, `float`, `integer`, `rational`, `real`, or
+/// `expression`): Specifies the scalar `beta`.
+///
+/// `c` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn herk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    const Be: type = @TypeOf(beta);
+    comptime var C: type = @TypeOf(c);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.herk requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (types.isComplex(Al))
+        @compileError("zml.linalg.blas.herk does not support complex alpha, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.herk requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.herk requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.herk requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (types.isComplex(Be))
+        @compileError("zml.linalg.blas.herk does not support complex beta, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
+        @compileError("zml.linalg.blas.herk requires c to be a mutable many-item pointer, got " ++ @typeName(C));
+
+    C = types.Child(C);
+
+    comptime if (!types.isNumeric(C))
+        @compileError("zml.linalg.blas.herk requires c's child type to be numeric, got " ++ @typeName(C));
+
+    comptime if (Al == bool and A == bool and Be == bool and C == bool)
+        @compileError("zml.linalg.blas.herk does not support alpha, a, b, beta and c all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(C))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.herk not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Scalar(A) == Al and Scalar(A) == Be and A == C and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(A) == f32) {
                     return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(A) == f64) {
                     return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
                 }
             },
@@ -13314,24 +13747,323 @@ pub inline fn herk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose,
         }
     }
 
-    return @import("blas/herk.zig").herk(T, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return @import("blas/herk.zig").herk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, ctx);
 }
+
+/// Performs a Hermitian rank-`k` update.
+///
+/// The `cherk` routines perform a rank-`k` matrix-matrix operation using a
+/// general matrix `A` and a Hermitian matrix `C`. The operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * A^H + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^H * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^H + beta * C`.
+/// - If `trans = conj_trans`, then `C = alpha * A^H * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`             |
+/// | `order = row_major` | `lda * m`           | `lda * k`             |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `beta` (`f32`): Specifies the scalar `beta`.
+///
+/// `c` ([*]cf32`): Array, size at least
+/// `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const cf32, lda: isize, beta: f32, c: [*]cf32, ldc: isize) void {
-    return herk(cf32, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return herk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a Hermitian rank-`k` update.
+///
+/// The `zherk` routines perform a rank-`k` matrix-matrix operation using a
+/// general matrix `A` and a Hermitian matrix `C`. The operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * A^H + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^H * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^H + beta * C`.
+/// - If `trans = conj_trans`, then `C = alpha * A^H * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`             |
+/// | `order = row_major` | `lda * m`           | `lda * k`             |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `beta` (`f64`): Specifies the scalar `beta`.
+///
+/// `c` ([*]cf64`): Array, size at least
+/// `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const cf64, lda: isize, beta: f64, c: [*]cf64, ldc: isize) void {
-    return herk(cf64, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return herk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
-pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: Scalar(T), c: [*]T, ldc: isize) void {
-    const supported = types.numericType(T);
+/// Performs a Hermitian rank-2k update.
+///
+/// The `her2k` routine performs a rank-`2k` matrix-matrix operation using
+/// general matrices `A` and `B` and a Hermitian matrix `C`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C`.
+/// - If `trans = conj_trans`, then `C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = conj_trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`             |
+/// | `order = row_major` | `lda * n`           | `lda * k`             |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `b` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`             |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`             |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `beta` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
+/// `expression`): Specifies the scalar `beta`.
+///
+/// `c` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn her2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+    const Be: type = @TypeOf(beta);
+    comptime var C: type = @TypeOf(c);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.her2k requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.her2k requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.her2k requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B))
+        @compileError("zml.linalg.blas.her2k requires b to be a many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.blas.her2k requires b's child type to numeric, got " ++ @typeName(B));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.her2k requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (types.isComplex(Be))
+        @compileError("zml.linalg.blas.her2k does not support complex beta, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
+        @compileError("zml.linalg.blas.her2k requires c to be a mutable many-item pointer, got " ++ @typeName(C));
+
+    C = types.Child(C);
+
+    comptime if (!types.isNumeric(C))
+        @compileError("zml.linalg.blas.her2k requires c's child type to be numeric, got " ++ @typeName(C));
+
+    comptime if (Al == bool and A == bool and B == bool and Be == bool and C == bool)
+        @compileError("zml.linalg.blas.her2k does not support alpha, a, b, beta and c all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(C))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.her2k not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime Al == A and Al == B and Scalar(Al) == Be and Al == C and opts.link_cblas != null) {
+        switch (comptime types.numericType(Al)) {
             .cfloat => {
-                if (Scalar(T) == f32) {
+                if (comptime Scalar(Al) == f32) {
                     return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
-                } else if (Scalar(T) == f64) {
+                } else if (comptime Scalar(Al) == f64) {
                     return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
                 }
             },
@@ -13339,13 +14071,183 @@ pub inline fn her2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose
         }
     }
 
-    return @import("blas/her2k.zig").her2k(T, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return @import("blas/her2k.zig").her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
 }
+
+/// Performs a Hermitian rank-2k update.
+///
+/// The `cher2k` routine performs a rank-`2k` matrix-matrix operation using
+/// general matrices `A` and `B` and a Hermitian matrix `C`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C`.
+/// - If `trans = conj_trans`, then `C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = conj_trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`             |
+/// | `order = row_major` | `lda * n`           | `lda * k`             |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `b` (`[*]const cf32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`             |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`             |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `beta` (`f32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf32`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: f32, c: [*]cf32, ldc: isize) void {
-    return her2k(cf32, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a Hermitian rank-2k update.
+///
+/// The `zher2k` routine performs a rank-`2k` matrix-matrix operation using
+/// general matrices `A` and `B` and a Hermitian matrix `C`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C`.
+/// - If `trans = conj_trans`, then `C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = conj_trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`             |
+/// | `order = row_major` | `lda * n`           | `lda * k`             |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `b` (`[*]const cf64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`             |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`             |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = conj_trans` |
+/// |---------------------|---------------------|-----------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`           |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`           |
+///
+/// `beta` (`f64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf64`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: f64, c: [*]cf64, ldc: isize) void {
-    return her2k(cf64, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
 pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {

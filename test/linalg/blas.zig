@@ -53,9 +53,9 @@ test {
 
     if (test_level_3) {
         _ = @import("blas/gemm.zig");
-        // _ = @import("blas/hemm.zig");
-        // _ = @import("blas/herk.zig");
-        // _ = @import("blas/her2k.zig");
+        _ = @import("blas/hemm.zig");
+        _ = @import("blas/herk.zig");
+        _ = @import("blas/her2k.zig");
         // _ = @import("blas/symm.zig");
         // _ = @import("blas/syrk.zig");
         // _ = @import("blas/syr2k.zig");

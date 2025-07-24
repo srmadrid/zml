@@ -110,7 +110,7 @@ test hemm {
         cf64.init(20, 20),
     });
 
-    hemm(cf64, .RowMajor, .Left, .Upper, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n);
+    hemm(.row_major, .left, .upper, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-436, D[0].re);
     try std.testing.expectEqual(446, D[0].im);
@@ -153,7 +153,7 @@ test hemm {
     try std.testing.expectEqual(1120, D[19].re);
     try std.testing.expectEqual(2520, D[19].im);
 
-    hemm(cf64, .ColumnMajor, .Left, .Upper, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m);
+    hemm(.col_major, .left, .upper, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-3002, D[0].re);
     try std.testing.expectEqual(390, D[0].im);
@@ -196,7 +196,7 @@ test hemm {
     try std.testing.expectEqual(-1168, D[19].re);
     try std.testing.expectEqual(15232, D[19].im);
 
-    hemm(cf64, .RowMajor, .Left, .Lower, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n);
+    hemm(.row_major, .left, .lower, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-8828, D[0].re);
     try std.testing.expectEqual(-6484, D[0].im);
@@ -239,7 +239,7 @@ test hemm {
     try std.testing.expectEqual(-50920, D[19].re);
     try std.testing.expectEqual(45192, D[19].im);
 
-    hemm(cf64, .ColumnMajor, .Left, .Lower, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m);
+    hemm(.col_major, .left, .lower, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-6916, D[0].re);
     try std.testing.expectEqual(-45816, D[0].im);
@@ -282,7 +282,7 @@ test hemm {
     try std.testing.expectEqual(-290096, D[19].re);
     try std.testing.expectEqual(-14144, D[19].im);
 
-    hemm(cf64, .RowMajor, .Right, .Upper, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n);
+    hemm(.row_major, .right, .upper, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(116916, D[0].re);
     try std.testing.expectEqual(-157976, D[0].im);
@@ -325,7 +325,7 @@ test hemm {
     try std.testing.expectEqual(-831456, D[19].re);
     try std.testing.expectEqual(-907120, D[19].im);
 
-    hemm(cf64, .ColumnMajor, .Right, .Upper, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m);
+    hemm(.col_major, .right, .upper, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(827452, D[0].re);
     try std.testing.expectEqual(-120400, D[0].im);
@@ -368,7 +368,7 @@ test hemm {
     try std.testing.expectEqual(223312, D[19].re);
     try std.testing.expectEqual(-5210048, D[19].im);
 
-    hemm(cf64, .RowMajor, .Right, .Lower, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n);
+    hemm(.row_major, .right, .lower, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(2842700, D[0].re);
     try std.testing.expectEqual(2122016, D[0].im);
@@ -411,7 +411,7 @@ test hemm {
     try std.testing.expectEqual(16306400, D[19].re);
     try std.testing.expectEqual(-14951888, D[19].im);
 
-    hemm(cf64, .ColumnMajor, .Right, .Lower, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m);
+    hemm(.col_major, .right, .lower, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(2161356, D[0].re);
     try std.testing.expectEqual(14894848, D[0].im);

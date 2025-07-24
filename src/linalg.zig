@@ -20,6 +20,15 @@ pub const Transpose = enum(c_uint) {
             .conj_trans => .conj_no_trans,
         };
     }
+
+    pub inline fn reverse(self: Transpose) Transpose {
+        return switch (self) {
+            .no_trans => .conj_trans,
+            .trans => .conj_no_trans,
+            .conj_no_trans => .trans,
+            .conj_trans => .no_trans,
+        };
+    }
 };
 
 pub const Uplo = enum(c_uint) {
@@ -37,9 +46,23 @@ pub const Uplo = enum(c_uint) {
 pub const Diag = enum(c_uint) {
     non_unit = 131,
     unit = 132,
+
+    pub inline fn invert(self: Diag) Diag {
+        return switch (self) {
+            .non_unit => .unit,
+            .unit => .non_unit,
+        };
+    }
 };
 
 pub const Side = enum(c_uint) {
     left = 141,
     right = 142,
+
+    pub inline fn invert(self: Side) Side {
+        return switch (self) {
+            .left => .right,
+            .right => .left,
+        };
+    }
 };

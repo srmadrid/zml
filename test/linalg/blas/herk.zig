@@ -8,8 +8,8 @@ test herk {
 
     const n = 5;
     const k = 3;
-    const alpha = 2;
-    const beta = 3;
+    const alpha: f64 = 2;
+    const beta: f64 = 3;
 
     const A = try a.alloc(cf64, n * k);
     defer a.free(A);
@@ -61,7 +61,7 @@ test herk {
         cf64.init(25, 25),
     });
 
-    herk(cf64, .RowMajor, .Upper, .NoTrans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    herk(.row_major, .upper, .no_trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(59, B[0].re);
     try std.testing.expectEqual(0, B[0].im);
@@ -114,7 +114,7 @@ test herk {
     try std.testing.expectEqual(2435, B[24].re);
     try std.testing.expectEqual(0, B[24].im);
 
-    herk(cf64, .ColumnMajor, .Upper, .NoTrans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    herk(.col_major, .upper, .no_trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(809, B[0].re);
     try std.testing.expectEqual(0, B[0].im);
@@ -167,7 +167,7 @@ test herk {
     try std.testing.expectEqual(8705, B[24].re);
     try std.testing.expectEqual(0, B[24].im);
 
-    herk(cf64, .RowMajor, .Upper, .ConjTrans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    herk(.row_major, .upper, .conj_trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(3059, B[0].re);
     try std.testing.expectEqual(0, B[0].im);
@@ -220,7 +220,7 @@ test herk {
     try std.testing.expectEqual(27515, B[24].re);
     try std.testing.expectEqual(0, B[24].im);
 
-    herk(cf64, .ColumnMajor, .Upper, .ConjTrans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    herk(.col_major, .upper, .conj_trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(9233, B[0].re);
     try std.testing.expectEqual(0, B[0].im);
@@ -273,7 +273,7 @@ test herk {
     try std.testing.expectEqual(84905, B[24].re);
     try std.testing.expectEqual(0, B[24].im);
 
-    herk(cf64, .RowMajor, .Lower, .NoTrans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    herk(.row_major, .lower, .no_trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(27755, B[0].re);
     try std.testing.expectEqual(0, B[0].im);
@@ -326,7 +326,7 @@ test herk {
     try std.testing.expectEqual(257075, B[24].re);
     try std.testing.expectEqual(0, B[24].im);
 
-    herk(cf64, .ColumnMajor, .Lower, .NoTrans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    herk(.col_major, .lower, .no_trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(83897, B[0].re);
     try std.testing.expectEqual(0, B[0].im);
@@ -379,7 +379,7 @@ test herk {
     try std.testing.expectEqual(772625, B[24].re);
     try std.testing.expectEqual(0, B[24].im);
 
-    herk(cf64, .RowMajor, .Lower, .ConjTrans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    herk(.row_major, .lower, .conj_trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(252323, B[0].re);
     try std.testing.expectEqual(0, B[0].im);
@@ -432,7 +432,7 @@ test herk {
     try std.testing.expectEqual(2319275, B[24].re);
     try std.testing.expectEqual(0, B[24].im);
 
-    herk(cf64, .ColumnMajor, .Lower, .ConjTrans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    herk(.col_major, .lower, .conj_trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(757025, B[0].re);
     try std.testing.expectEqual(0, B[0].im);

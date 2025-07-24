@@ -9,7 +9,7 @@ test her2k {
     const n = 5;
     const k = 3;
     const alpha = cf64.init(2, 2);
-    const beta = 3;
+    const beta: f64 = 3;
 
     const A = try a.alloc(cf64, n * k);
     defer a.free(A);
@@ -80,7 +80,7 @@ test her2k {
         cf64.init(25, 25),
     });
 
-    her2k(cf64, .RowMajor, .Upper, .NoTrans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n);
+    her2k(.row_major, .upper, .no_trans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(115, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
@@ -133,7 +133,7 @@ test her2k {
     try std.testing.expectEqual(4795, C[24].re);
     try std.testing.expectEqual(0, C[24].im);
 
-    her2k(cf64, .ColumnMajor, .Upper, .NoTrans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n);
+    her2k(.col_major, .upper, .no_trans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1609, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
@@ -186,7 +186,7 @@ test her2k {
     try std.testing.expectEqual(17185, C[24].re);
     try std.testing.expectEqual(0, C[24].im);
 
-    her2k(cf64, .RowMajor, .Upper, .ConjTrans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n);
+    her2k(.row_major, .upper, .conj_trans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(6091, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
@@ -239,7 +239,7 @@ test her2k {
     try std.testing.expectEqual(54355, C[24].re);
     try std.testing.expectEqual(0, C[24].im);
 
-    her2k(cf64, .ColumnMajor, .Upper, .ConjTrans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n);
+    her2k(.col_major, .upper, .conj_trans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(18385, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
@@ -292,7 +292,7 @@ test her2k {
     try std.testing.expectEqual(167785, C[24].re);
     try std.testing.expectEqual(0, C[24].im);
 
-    her2k(cf64, .RowMajor, .Lower, .NoTrans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n);
+    her2k(.row_major, .lower, .no_trans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(55267, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
@@ -345,7 +345,7 @@ test her2k {
     try std.testing.expectEqual(508075, C[24].re);
     try std.testing.expectEqual(0, C[24].im);
 
-    her2k(cf64, .ColumnMajor, .Lower, .NoTrans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n);
+    her2k(.col_major, .lower, .no_trans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(167065, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
@@ -398,7 +398,7 @@ test her2k {
     try std.testing.expectEqual(1527025, C[24].re);
     try std.testing.expectEqual(0, C[24].im);
 
-    her2k(cf64, .RowMajor, .Lower, .ConjTrans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n);
+    her2k(.row_major, .lower, .conj_trans, n, k, alpha, A.ptr, n, B.ptr, n, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(502459, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
@@ -451,7 +451,7 @@ test her2k {
     try std.testing.expectEqual(4583875, C[24].re);
     try std.testing.expectEqual(0, C[24].im);
 
-    her2k(cf64, .ColumnMajor, .Lower, .ConjTrans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n);
+    her2k(.col_major, .lower, .conj_trans, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1507489, C[0].re);
     try std.testing.expectEqual(0, C[0].im);
