@@ -1,7 +1,7 @@
 test {
     const test_level_1 = false;
-    const test_level_2 = true;
-    const test_level_3 = false;
+    const test_level_2 = false;
+    const test_level_3 = true;
 
     if (test_level_1) {
         _ = @import("blas/asum.zig");
@@ -46,13 +46,13 @@ test {
         _ = @import("blas/tbmv.zig");
         _ = @import("blas/tbsv.zig");
         _ = @import("blas/tpmv.zig");
-        // _ = @import("blas/tpsv.zig");
-        // _ = @import("blas/trmv.zig");
-        // _ = @import("blas/trsv.zig");
+        _ = @import("blas/tpsv.zig");
+        _ = @import("blas/trmv.zig");
+        _ = @import("blas/trsv.zig");
     }
 
     if (test_level_3) {
-        // _ = @import("blas/gemm.zig");
+        _ = @import("blas/gemm.zig");
         // _ = @import("blas/hemm.zig");
         // _ = @import("blas/herk.zig");
         // _ = @import("blas/her2k.zig");

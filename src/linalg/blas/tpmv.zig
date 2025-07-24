@@ -341,7 +341,7 @@ fn k_tpmv(
                             }
 
                             var k: isize = kk - 1;
-                            var i: isize = j + 1;
+                            var i: isize = j - 1;
                             while (i >= 0) : (i -= 1) {
                                 ops.add_( // temp += ap[k] * x[i]
                                     &temp,
@@ -367,7 +367,7 @@ fn k_tpmv(
                             }
 
                             var k: isize = kk - 1;
-                            var i: isize = j + 1;
+                            var i: isize = j - 1;
                             while (i >= 0) : (i -= 1) {
                                 ops.add_( // temp += conj(ap[k]) * x[i]
                                     &temp,
@@ -386,7 +386,7 @@ fn k_tpmv(
 
                         x[scast(usize, j)] = scast(X, temp);
 
-                        kk -= j;
+                        kk -= j + 1;
                     }
                 } else {
                     var jx: isize = kx + (n - 1) * incx;

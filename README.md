@@ -20,8 +20,7 @@ This library is in the early stages of development and is not yet ready for use.
     - Element-wise operations
     - Views
   - Linear Algebra:
-    - Blas routines:
-      - `gemm` tests fail on debug mode, but pass on all release modes
+    - Blas routines
 - Symbolic System:
   - Nothing implemented yet
 

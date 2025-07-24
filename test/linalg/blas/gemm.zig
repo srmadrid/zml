@@ -74,7 +74,7 @@ test gemm {
         20,
     });
 
-    gemm(f64, .RowMajor, .NoTrans, .NoTrans, m, n, k, alpha, A.ptr, k, B.ptr, n, beta, C.ptr, n);
+    gemm(.row_major, .no_trans, .no_trans, m, n, k, alpha, A.ptr, k, B.ptr, n, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(95, C[0]);
     try std.testing.expectEqual(110, C[1]);
@@ -97,7 +97,7 @@ test gemm {
     try std.testing.expectEqual(671, C[18]);
     try std.testing.expectEqual(740, C[19]);
 
-    gemm(f64, .ColumnMajor, .NoTrans, .NoTrans, m, n, k, alpha, A.ptr, m, B.ptr, k, beta, C.ptr, m);
+    gemm(.col_major, .no_trans, .no_trans, m, n, k, alpha, A.ptr, m, B.ptr, k, beta, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(361, C[0]);
     try std.testing.expectEqual(418, C[1]);
@@ -120,7 +120,7 @@ test gemm {
     try std.testing.expectEqual(2617, C[18]);
     try std.testing.expectEqual(2908, C[19]);
 
-    gemm(f64, .RowMajor, .Trans, .NoTrans, m, n, k, alpha, A.ptr, m, B.ptr, n, beta, C.ptr, n);
+    gemm(.row_major, .trans, .no_trans, m, n, k, alpha, A.ptr, m, B.ptr, n, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1343, C[0]);
     try std.testing.expectEqual(1544, C[1]);
@@ -143,7 +143,7 @@ test gemm {
     try std.testing.expectEqual(8363, C[18]);
     try std.testing.expectEqual(9284, C[19]);
 
-    gemm(f64, .ColumnMajor, .Trans, .NoTrans, m, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, m);
+    gemm(.col_major, .trans, .no_trans, m, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(4057, C[0]);
     try std.testing.expectEqual(4696, C[1]);
@@ -166,7 +166,7 @@ test gemm {
     try std.testing.expectEqual(25765, C[18]);
     try std.testing.expectEqual(28780, C[19]);
 
-    gemm(f64, .RowMajor, .NoTrans, .Trans, m, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n);
+    gemm(.row_major, .no_trans, .trans, m, n, k, alpha, A.ptr, k, B.ptr, k, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(12199, C[0]);
     try std.testing.expectEqual(14152, C[1]);
@@ -189,7 +189,7 @@ test gemm {
     try std.testing.expectEqual(78025, C[18]);
     try std.testing.expectEqual(87268, C[19]);
 
-    gemm(f64, .ColumnMajor, .NoTrans, .Trans, m, n, k, alpha, A.ptr, m, B.ptr, n, beta, C.ptr, m);
+    gemm(.col_major, .no_trans, .trans, m, n, k, alpha, A.ptr, m, B.ptr, n, beta, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(36857, C[0]);
     try std.testing.expectEqual(42752, C[1]);
@@ -212,7 +212,7 @@ test gemm {
     try std.testing.expectEqual(234575, C[18]);
     try std.testing.expectEqual(262364, C[19]);
 
-    gemm(f64, .RowMajor, .Trans, .Trans, m, n, k, alpha, A.ptr, m, B.ptr, k, beta, C.ptr, n);
+    gemm(.row_major, .trans, .trans, m, n, k, alpha, A.ptr, m, B.ptr, k, beta, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(110647, C[0]);
     try std.testing.expectEqual(128422, C[1]);
@@ -235,7 +235,7 @@ test gemm {
     try std.testing.expectEqual(704269, C[18]);
     try std.testing.expectEqual(787780, C[19]);
 
-    gemm(f64, .ColumnMajor, .Trans, .Trans, m, n, k, alpha, A.ptr, k, B.ptr, n, beta, C.ptr, m);
+    gemm(.col_major, .trans, .trans, m, n, k, alpha, A.ptr, k, B.ptr, n, beta, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(332033, C[0]);
     try std.testing.expectEqual(385466, C[1]);
@@ -322,7 +322,7 @@ test gemm {
         cf64.init(20, 20),
     });
 
-    gemm(cf64, .RowMajor, .NoTrans, .NoTrans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .no_trans, .no_trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-184, F[0].re);
     try std.testing.expectEqual(190, F[0].im);
@@ -365,7 +365,7 @@ test gemm {
     try std.testing.expectEqual(-1360, F[19].re);
     try std.testing.expectEqual(1480, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .NoTrans, .NoTrans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .no_trans, .no_trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-1274, F[0].re);
     try std.testing.expectEqual(170, F[0].im);
@@ -408,7 +408,7 @@ test gemm {
     try std.testing.expectEqual(-9896, F[19].re);
     try std.testing.expectEqual(1736, F[19].im);
 
-    gemm(cf64, .RowMajor, .NoTrans, .ConjNoTrans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .no_trans, .conj_no_trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-4148, F[0].re);
     try std.testing.expectEqual(-3128, F[0].im);
@@ -451,7 +451,7 @@ test gemm {
     try std.testing.expectEqual(-33536, F[19].re);
     try std.testing.expectEqual(-23120, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .NoTrans, .ConjNoTrans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .no_trans, .conj_no_trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-2908, F[0].re);
     try std.testing.expectEqual(-21676, F[0].im);
@@ -494,7 +494,7 @@ test gemm {
     try std.testing.expectEqual(-29872, F[19].re);
     try std.testing.expectEqual(-168592, F[19].im);
 
-    gemm(cf64, .RowMajor, .NoTrans, .Trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .no_trans, .trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(56248, F[0].re);
     try std.testing.expectEqual(-73696, F[0].im);
@@ -537,7 +537,7 @@ test gemm {
     try std.testing.expectEqual(414304, F[19].re);
     try std.testing.expectEqual(-593536, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .NoTrans, .Trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .no_trans, .trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(389312, F[0].re);
     try std.testing.expectEqual(-51824, F[0].im);
@@ -580,7 +580,7 @@ test gemm {
     try std.testing.expectEqual(3022400, F[19].re);
     try std.testing.expectEqual(-536576, F[19].im);
 
-    gemm(cf64, .RowMajor, .NoTrans, .ConjTrans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .no_trans, .conj_trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1323464, F[0].re);
     try std.testing.expectEqual(1012520, F[0].im);
@@ -623,7 +623,7 @@ test gemm {
     try std.testing.expectEqual(10678784, F[19].re);
     try std.testing.expectEqual(7459328, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .NoTrans, .ConjTrans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .no_trans, .conj_trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(933352, F[0].re);
     try std.testing.expectEqual(7008472, F[0].im);
@@ -689,7 +689,7 @@ test gemm {
         cf64.init(20, 20),
     });
 
-    gemm(cf64, .RowMajor, .ConjNoTrans, .NoTrans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .conj_no_trans, .no_trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(184, F[0].re);
     try std.testing.expectEqual(190, F[0].im);
@@ -732,7 +732,7 @@ test gemm {
     try std.testing.expectEqual(1360, F[19].re);
     try std.testing.expectEqual(1480, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjNoTrans, .NoTrans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .conj_no_trans, .no_trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(134, F[0].re);
     try std.testing.expectEqual(1274, F[0].im);
@@ -775,7 +775,7 @@ test gemm {
     try std.testing.expectEqual(1016, F[19].re);
     try std.testing.expectEqual(9896, F[19].im);
 
-    gemm(cf64, .RowMajor, .ConjNoTrans, .ConjNoTrans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .conj_no_trans, .conj_no_trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-3236, F[0].re);
     try std.testing.expectEqual(4040, F[0].im);
@@ -818,7 +818,7 @@ test gemm {
     try std.testing.expectEqual(-25280, F[19].re);
     try std.testing.expectEqual(31376, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjNoTrans, .ConjNoTrans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .conj_no_trans, .conj_no_trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-21676, F[0].re);
     try std.testing.expectEqual(2260, F[0].im);
@@ -861,7 +861,7 @@ test gemm {
     try std.testing.expectEqual(-168592, F[19].re);
     try std.testing.expectEqual(16912, F[19].im);
 
-    gemm(cf64, .RowMajor, .ConjNoTrans, .Trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .conj_no_trans, .trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-71752, F[0].re);
     try std.testing.expectEqual(-58192, F[0].im);
@@ -904,7 +904,7 @@ test gemm {
     try std.testing.expectEqual(-554656, F[19].re);
     try std.testing.expectEqual(-453184, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjNoTrans, .Trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .conj_no_trans, .trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-40160, F[0].re);
     try std.testing.expectEqual(-389312, F[0].im);
@@ -947,7 +947,7 @@ test gemm {
     try std.testing.expectEqual(-303296, F[19].re);
     try std.testing.expectEqual(-3022400, F[19].im);
 
-    gemm(cf64, .RowMajor, .ConjNoTrans, .ConjTrans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .conj_no_trans, .conj_trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1047512, F[0].re);
     try std.testing.expectEqual(-1288472, F[0].im);
@@ -990,7 +990,7 @@ test gemm {
     try std.testing.expectEqual(8159168, F[19].re);
     try std.testing.expectEqual(-9978944, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjNoTrans, .ConjTrans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .conj_no_trans, .conj_trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(7008472, F[0].re);
     try std.testing.expectEqual(-723400, F[0].im);
@@ -1056,7 +1056,7 @@ test gemm {
         cf64.init(20, 20),
     });
 
-    gemm(cf64, .RowMajor, .Trans, .NoTrans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .trans, .no_trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-520, F[0].re);
     try std.testing.expectEqual(526, F[0].im);
@@ -1099,7 +1099,7 @@ test gemm {
     try std.testing.expectEqual(-1120, F[19].re);
     try std.testing.expectEqual(1240, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .Trans, .NoTrans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .trans, .no_trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-3194, F[0].re);
     try std.testing.expectEqual(74, F[0].im);
@@ -1142,7 +1142,7 @@ test gemm {
     try std.testing.expectEqual(-8936, F[19].re);
     try std.testing.expectEqual(2216, F[19].im);
 
-    gemm(cf64, .RowMajor, .Trans, .ConjNoTrans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .trans, .conj_no_trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-9284, F[0].re);
     try std.testing.expectEqual(-8840, F[0].im);
@@ -1185,7 +1185,7 @@ test gemm {
     try std.testing.expectEqual(-32336, F[19].re);
     try std.testing.expectEqual(-19040, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .Trans, .ConjNoTrans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .trans, .conj_no_trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-1276, F[0].re);
     try std.testing.expectEqual(-54316, F[0].im);
@@ -1228,7 +1228,7 @@ test gemm {
     try std.testing.expectEqual(-38032, F[19].re);
     try std.testing.expectEqual(-152272, F[19].im);
 
-    gemm(cf64, .RowMajor, .Trans, .Trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .trans, .trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(158968, F[0].re);
     try std.testing.expectEqual(-166624, F[0].im);
@@ -1271,7 +1271,7 @@ test gemm {
     try std.testing.expectEqual(341344, F[19].re);
     try std.testing.expectEqual(-569536, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .Trans, .Trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .trans, .trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(976592, F[0].re);
     try std.testing.expectEqual(-22784, F[0].im);
@@ -1314,7 +1314,7 @@ test gemm {
     try std.testing.expectEqual(2731280, F[19].re);
     try std.testing.expectEqual(-683216, F[19].im);
 
-    gemm(cf64, .RowMajor, .Trans, .ConjTrans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .trans, .conj_trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(2998280, F[0].re);
     try std.testing.expectEqual(2861576, F[0].im);
@@ -1357,7 +1357,7 @@ test gemm {
     try std.testing.expectEqual(10244864, F[19].re);
     try std.testing.expectEqual(6145568, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .Trans, .ConjTrans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .trans, .conj_trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(410296, F[0].re);
     try std.testing.expectEqual(17579752, F[0].im);
@@ -1423,7 +1423,7 @@ test gemm {
         cf64.init(20, 20),
     });
 
-    gemm(cf64, .RowMajor, .ConjTrans, .NoTrans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .conj_trans, .no_trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(520, F[0].re);
     try std.testing.expectEqual(526, F[0].im);
@@ -1466,7 +1466,7 @@ test gemm {
     try std.testing.expectEqual(1120, F[19].re);
     try std.testing.expectEqual(1240, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjTrans, .NoTrans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .conj_trans, .no_trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(38, F[0].re);
     try std.testing.expectEqual(3194, F[0].im);
@@ -1509,7 +1509,7 @@ test gemm {
     try std.testing.expectEqual(1496, F[19].re);
     try std.testing.expectEqual(8936, F[19].im);
 
-    gemm(cf64, .RowMajor, .ConjTrans, .ConjNoTrans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n);
+    gemm(.row_major, .conj_trans, .conj_no_trans, m, n, k, gamma, D.ptr, m, E.ptr, n, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-8948, F[0].re);
     try std.testing.expectEqual(9176, F[0].im);
@@ -1552,7 +1552,7 @@ test gemm {
     try std.testing.expectEqual(-21200, F[19].re);
     try std.testing.expectEqual(30176, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjTrans, .ConjNoTrans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m);
+    gemm(.col_major, .conj_trans, .conj_no_trans, m, n, k, gamma, D.ptr, k, E.ptr, k, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-54316, F[0].re);
     try std.testing.expectEqual(628, F[0].im);
@@ -1595,7 +1595,7 @@ test gemm {
     try std.testing.expectEqual(-152272, F[19].re);
     try std.testing.expectEqual(25072, F[19].im);
 
-    gemm(cf64, .RowMajor, .ConjTrans, .Trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .conj_trans, .trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-164680, F[0].re);
     try std.testing.expectEqual(-160912, F[0].im);
@@ -1638,7 +1638,7 @@ test gemm {
     try std.testing.expectEqual(-530656, F[19].re);
     try std.testing.expectEqual(-380224, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjTrans, .Trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .conj_trans, .trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-11120, F[0].re);
     try std.testing.expectEqual(-976592, F[0].im);
@@ -1681,7 +1681,7 @@ test gemm {
     try std.testing.expectEqual(-449936, F[19].re);
     try std.testing.expectEqual(-2731280, F[19].im);
 
-    gemm(cf64, .RowMajor, .ConjTrans, .ConjTrans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n);
+    gemm(.row_major, .conj_trans, .conj_trans, m, n, k, gamma, D.ptr, m, E.ptr, k, delta, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(2896568, F[0].re);
     try std.testing.expectEqual(-2963288, F[0].im);
@@ -1724,7 +1724,7 @@ test gemm {
     try std.testing.expectEqual(6845408, F[19].re);
     try std.testing.expectEqual(-9545024, F[19].im);
 
-    gemm(cf64, .ColumnMajor, .ConjTrans, .ConjTrans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m);
+    gemm(.col_major, .conj_trans, .conj_trans, m, n, k, gamma, D.ptr, k, E.ptr, n, delta, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(17579752, F[0].re);
     try std.testing.expectEqual(-200344, F[0].im);
