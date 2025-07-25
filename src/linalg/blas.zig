@@ -14250,42 +14250,496 @@ pub fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, al
     return her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
-pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-matrix product where one input matrix is symmetric.
+///
+/// The `symm` routine computes a scalar-matrix-matrix product with one
+/// symmetric matrix and adds the result to a scalar-matrix product. The
+/// operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
+/// are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the symmetric matrix `A` appears on the
+/// left or right in the operation:
+/// - If `side = left`, then `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * ka`, where
+/// `ka` is `m` if `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
+/// `order = col_major` or `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`.
+///
+/// `c` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `ldc * n` if `order = col_major` or `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
+/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
+/// type, or if `a` and `x` are both `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn symm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+    const Be: type = @TypeOf(beta);
+    comptime var C: type = @TypeOf(c);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.symm requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.symm requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.symm requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B))
+        @compileError("zml.linalg.blas.symm requires b to be a many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.blas.symm requires b's child type to numeric, got " ++ @typeName(B));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.symm requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
+        @compileError("zml.linalg.blas.symm requires c to be a mutable many-item pointer, got " ++ @typeName(C));
+
+    C = types.Child(C);
+
+    comptime if (!types.isNumeric(C))
+        @compileError("zml.linalg.blas.symm requires c's child type to be numeric, got " ++ @typeName(C));
+
+    comptime if (Al == bool and A == bool and B == bool and Be == bool and C == bool)
+        @compileError("zml.linalg.blas.symm does not support alpha, a, b, beta and c all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(C))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.symm not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
-                    return ci.cblas_ssymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
-                } else if (T == f64) {
-                    return ci.cblas_dsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
+                if (comptime A == f32) {
+                    return ci.cblas_ssymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_csymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_csymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/symm.zig").symm(T, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return @import("blas/symm.zig").symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
 }
+
+/// Computes a matrix-matrix product where one input matrix is symmetric.
+///
+/// The `ssymm` routine computes a scalar-matrix-matrix product with one
+/// symmetric matrix and adds the result to a scalar-matrix product. The
+/// operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
+/// are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the symmetric matrix `A` appears on the
+/// left or right in the operation:
+/// - If `side = left`, then `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * ka`, where `ka` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]const f32`): Array, size at least `ldb * n` if `order = col_major`
+/// or `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`f32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]f32`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
-    return symm(f32, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Computes a matrix-matrix product where one input matrix is symmetric.
+///
+/// The `dsymm` routine computes a scalar-matrix-matrix product with one
+/// symmetric matrix and adds the result to a scalar-matrix product. The
+/// operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
+/// are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the symmetric matrix `A` appears on the
+/// left or right in the operation:
+/// - If `side = left`, then `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * ka`, where `ka` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]const f64`): Array, size at least `ldb * n` if `order = col_major`
+/// or `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`f64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]f64`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
-    return symm(f64, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Computes a matrix-matrix product where one input matrix is symmetric.
+///
+/// The `csymm` routine computes a scalar-matrix-matrix product with one
+/// symmetric matrix and adds the result to a scalar-matrix product. The
+/// operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
+/// are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the symmetric matrix `A` appears on the
+/// left or right in the operation:
+/// - If `side = left`, then `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * ka`, where `ka` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]const cf32`): Array, size at least `ldb * n` if `order = col_major`
+/// or `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf32`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
-    return symm(cf32, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Computes a matrix-matrix product where one input matrix is symmetric.
+///
+/// The `zsymm` routine computes a scalar-matrix-matrix product with one
+/// symmetric matrix and adds the result to a scalar-matrix product. The
+/// operation is defined as:
+///
+/// ```zig
+///     C = alpha * A * B + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * B * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
+/// are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the symmetric matrix `A` appears on the
+/// left or right in the operation:
+/// - If `side = left`, then `C = alpha * A * B + beta * C`.
+/// - If `side = right`, then `C = alpha * B * A + beta * C`.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * ka`, where `ka` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` and `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]const cf64`): Array, size at least `ldb * n` if `order = col_major`
+/// or `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf64`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` and `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
-    return symm(cf64, order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc);
+    return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
 pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, beta: T, c: [*]T, ldc: isize) void {

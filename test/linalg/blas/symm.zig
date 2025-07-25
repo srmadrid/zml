@@ -110,7 +110,7 @@ test symm {
         20,
     });
 
-    symm(f64, .RowMajor, .Left, .Upper, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n);
+    symm(.row_major, .left, .upper, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(223, D[0]);
     try std.testing.expectEqual(246, D[1]);
@@ -133,7 +133,7 @@ test symm {
     try std.testing.expectEqual(1177, D[18]);
     try std.testing.expectEqual(1260, D[19]);
 
-    symm(f64, .ColumnMajor, .Left, .Upper, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m);
+    symm(.col_major, .left, .upper, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(849, D[0]);
     try std.testing.expectEqual(944, D[1]);
@@ -156,7 +156,7 @@ test symm {
     try std.testing.expectEqual(5215, D[18]);
     try std.testing.expectEqual(5936, D[19]);
 
-    symm(f64, .RowMajor, .Left, .Lower, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n);
+    symm(.row_major, .left, .lower, m, n, alpha, A.ptr, m, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(3223, D[0]);
     try std.testing.expectEqual(3564, D[1]);
@@ -179,7 +179,7 @@ test symm {
     try std.testing.expectEqual(17029, D[18]);
     try std.testing.expectEqual(19308, D[19]);
 
-    symm(f64, .ColumnMajor, .Left, .Lower, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m);
+    symm(.col_major, .left, .lower, m, n, alpha, A.ptr, m, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(9729, D[0]);
     try std.testing.expectEqual(10826, D[1]);
@@ -202,7 +202,7 @@ test symm {
     try std.testing.expectEqual(52339, D[18]);
     try std.testing.expectEqual(59444, D[19]);
 
-    symm(f64, .RowMajor, .Right, .Upper, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n);
+    symm(.row_major, .right, .upper, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(29297, D[0]);
     try std.testing.expectEqual(32730, D[1]);
@@ -225,7 +225,7 @@ test symm {
     try std.testing.expectEqual(159477, D[18]);
     try std.testing.expectEqual(181132, D[19]);
 
-    symm(f64, .ColumnMajor, .Right, .Upper, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m);
+    symm(.col_major, .right, .upper, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(89281, D[0]);
     try std.testing.expectEqual(99690, D[1]);
@@ -248,7 +248,7 @@ test symm {
     try std.testing.expectEqual(481041, D[18]);
     try std.testing.expectEqual(546236, D[19]);
 
-    symm(f64, .RowMajor, .Right, .Lower, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n);
+    symm(.row_major, .right, .lower, m, n, alpha, B.ptr, n, C.ptr, n, beta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(268273, D[0]);
     try std.testing.expectEqual(299538, D[1]);
@@ -271,7 +271,7 @@ test symm {
     try std.testing.expectEqual(1446543, D[18]);
     try std.testing.expectEqual(1642868, D[19]);
 
-    symm(f64, .ColumnMajor, .Right, .Lower, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m);
+    symm(.col_major, .right, .lower, m, n, alpha, B.ptr, n, C.ptr, m, beta, D.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(805169, D[0]);
     try std.testing.expectEqual(898994, D[1]);
@@ -396,7 +396,7 @@ test symm {
         cf64.init(20, 20),
     });
 
-    symm(cf64, .RowMajor, .Left, .Upper, m, n, gamma, E.ptr, m, G.ptr, n, delta, H.ptr, n);
+    symm(.row_major, .left, .upper, m, n, gamma, E.ptr, m, G.ptr, n, delta, H.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-440, H[0].re);
     try std.testing.expectEqual(446, H[0].im);
@@ -439,7 +439,7 @@ test symm {
     try std.testing.expectEqual(-2400, H[19].re);
     try std.testing.expectEqual(2520, H[19].im);
 
-    symm(cf64, .ColumnMajor, .Left, .Upper, m, n, gamma, E.ptr, m, G.ptr, m, delta, H.ptr, m);
+    symm(.col_major, .left, .upper, m, n, gamma, E.ptr, m, G.ptr, m, delta, H.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-3018, H[0].re);
     try std.testing.expectEqual(378, H[0].im);
@@ -482,7 +482,7 @@ test symm {
     try std.testing.expectEqual(-19072, H[19].re);
     try std.testing.expectEqual(4672, H[19].im);
 
-    symm(cf64, .RowMajor, .Left, .Lower, m, n, gamma, E.ptr, m, G.ptr, n, delta, H.ptr, n);
+    symm(.row_major, .left, .lower, m, n, gamma, E.ptr, m, G.ptr, n, delta, H.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-11540, H[0].re);
     try std.testing.expectEqual(-6568, H[0].im);
@@ -525,7 +525,7 @@ test symm {
     try std.testing.expectEqual(-74232, H[19].re);
     try std.testing.expectEqual(-40200, H[19].im);
 
-    symm(cf64, .ColumnMajor, .Left, .Lower, m, n, gamma, E.ptr, m, G.ptr, m, delta, H.ptr, m);
+    symm(.col_major, .left, .lower, m, n, gamma, E.ptr, m, G.ptr, m, delta, H.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-15036, H[0].re);
     try std.testing.expectEqual(-54204, H[0].im);
@@ -568,7 +568,7 @@ test symm {
     try std.testing.expectEqual(-105136, H[19].re);
     try std.testing.expectEqual(-340256, H[19].im);
 
-    symm(cf64, .RowMajor, .Right, .Upper, m, n, gamma, F.ptr, n, G.ptr, n, delta, H.ptr, n);
+    symm(.row_major, .right, .upper, m, n, gamma, F.ptr, n, G.ptr, n, delta, H.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(117284, H[0].re);
     try std.testing.expectEqual(-207500, H[0].im);
@@ -611,7 +611,7 @@ test symm {
     try std.testing.expectEqual(699760, H[19].re);
     try std.testing.expectEqual(-1330576, H[19].im);
 
-    symm(cf64, .ColumnMajor, .Right, .Upper, m, n, gamma, F.ptr, n, G.ptr, m, delta, H.ptr, m);
+    symm(.col_major, .right, .upper, m, n, gamma, F.ptr, n, G.ptr, m, delta, H.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(971572, H[0].re);
     try std.testing.expectEqual(-267868, H[0].im);
@@ -654,7 +654,7 @@ test symm {
     try std.testing.expectEqual(6085328, H[19].re);
     try std.testing.expectEqual(-1886768, H[19].im);
 
-    symm(cf64, .RowMajor, .Right, .Lower, m, n, gamma, F.ptr, n, G.ptr, n, delta, H.ptr, n);
+    symm(.row_major, .right, .lower, m, n, gamma, F.ptr, n, G.ptr, n, delta, H.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(3717460, H[0].re);
     try std.testing.expectEqual(2111972, H[0].im);
@@ -697,7 +697,7 @@ test symm {
     try std.testing.expectEqual(23907968, H[19].re);
     try std.testing.expectEqual(12604000, H[19].im);
 
-    symm(cf64, .ColumnMajor, .Right, .Lower, m, n, gamma, F.ptr, n, G.ptr, m, delta, H.ptr, m);
+    symm(.col_major, .right, .lower, m, n, gamma, F.ptr, n, G.ptr, m, delta, H.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(4815764, H[0].re);
     try std.testing.expectEqual(17488996, H[0].im);

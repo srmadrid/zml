@@ -1,655 +1,406 @@
 const std = @import("std");
+
 const types = @import("../../types.zig");
+const scast = types.scast;
+const Scalar = types.Scalar;
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
+
+const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = blas.Order;
-const Side = blas.Side;
-const Uplo = blas.Uplo;
+const Order = linalg.Order;
+const Side = linalg.Side;
+const Uplo = linalg.Uplo;
 
-pub inline fn symm(comptime T: type, order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: T, A: [*]const T, lda: isize, B: [*]const T, ldb: isize, beta: T, C: [*]T, ldc: isize) void {
-    @setRuntimeSafety(false);
-    const numericType = types.numericType(T);
-
-    if (m <= 0 or n <= 0) return;
-
-    var M = m;
-    var N = n;
-    var SIDE = side;
-    var UPLO = uplo;
-    if (order == .RowMajor) {
-        M = n;
-        N = m;
-        SIDE = if (side == .Left) .Right else .Left;
-        UPLO = if (uplo == .Upper) .Lower else .Upper;
+pub inline fn symm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    if (order == .col_major) {
+        return k_symm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
+    } else {
+        return k_symm(side.invert(), uplo.invert(), n, m, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
     }
+}
 
-    if (SIDE == .Left and lda < @max(1, M)) return;
-    if (SIDE == .Right and lda < @max(1, N)) return;
-    if (ldb < @max(1, M)) return;
-    if (ldc < @max(1, M)) return;
+fn k_symm(
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    const A: type = types.Child(@TypeOf(a));
+    const B: type = types.Child(@TypeOf(b));
+    const Be: type = @TypeOf(beta);
+    const C: type = types.Child(@TypeOf(c));
+    const T1: type = types.Coerce(Al, B);
+    const T2: type = types.Coerce(A, B);
+    const CC: type = types.Coerce(Al, types.Coerce(A, types.Coerce(B, types.Coerce(Be, C))));
 
-    switch (numericType) {
-        .bool => @compileError("blas.symm does not support bool."),
-        .int, .float => {
-            if (alpha == 0 and beta == 1) return;
+    const nrowa: isize = if (side == .left) m else n;
 
-            if (alpha == 0) {
-                if (beta == 0) {
-                    var j: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = 0;
-                        var ijcj: isize = jcj;
-                        while (i < M) {
-                            C[@intCast(ijcj)] = 0;
+    if (m < 0 or n < 0 or lda < int.max(1, nrowa) or ldb < int.max(1, m) or ldc < int.max(1, m))
+        return blas.Error.InvalidArgument;
 
-                            i += 1;
-                            ijcj += 1;
-                        }
+    // Quick return if possible.
+    if (m == 0 or n == 0 or
+        (ops.eq(alpha, 0, ctx) catch unreachable and ops.eq(beta, 1, ctx) catch unreachable))
+        return;
 
-                        j += 1;
-                        jcj += ldc;
-                    }
-                } else if (beta != 1) {
-                    var j: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = 0;
-                        var ijcj: isize = jcj;
-                        while (i < M) {
-                            C[@intCast(ijcj)] *= beta;
-
-                            i += 1;
-                            ijcj += 1;
-                        }
-
-                        j += 1;
-                        jcj += ldc;
-                    }
-                }
-
-                return;
-            }
-
-            if (SIDE == .Left) {
-                if (UPLO == .Upper) {
-                    var j: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = 0;
-                        var jai: isize = 0;
-                        var ibij: isize = jbj;
-                        var icij: isize = jcj;
-                        while (i < M) {
-                            const t0 = alpha * B[@intCast(ibij)];
-                            var t1: T = 0;
-
-                            var k: isize = 0;
-                            var iaki: isize = jai;
-                            var ibkj: isize = jbj;
-                            var ickj: isize = jcj;
-                            while (k < i) {
-                                C[@intCast(ickj)] += t0 * A[@intCast(iaki)];
-                                t1 += A[@intCast(iaki)] * B[@intCast(ibkj)];
-
-                                k += 1;
-                                iaki += 1;
-                                ibkj += 1;
-                                ickj += 1;
-                            }
-
-                            if (beta == 0) {
-                                C[@intCast(icij)] = 0;
-                            } else if (beta != 1) {
-                                C[@intCast(icij)] *= beta;
-                            }
-
-                            C[@intCast(icij)] += t0 * A[@intCast(i + jai)] + t1 * alpha;
-
-                            i += 1;
-                            jai += lda;
-                            ibij += 1;
-                            icij += 1;
-                        }
-
-                        j += 1;
-                        jbj += ldb;
-                        jcj += ldc;
-                    }
-                } else {
-                    var j: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = M - 1;
-                        var jai: isize = (M - 1) * lda;
-                        var ibij: isize = jbj + (M - 1);
-                        var icij: isize = jcj + (M - 1);
-                        while (i >= 0) {
-                            const t0 = alpha * B[@intCast(ibij)];
-                            var t1: T = 0;
-
-                            var k: isize = i + 1;
-                            var iaki: isize = jai + i + 1;
-                            var ibkj: isize = jbj + i + 1;
-                            var ickj: isize = jcj + i + 1;
-                            while (k < M) {
-                                C[@intCast(ickj)] += t0 * A[@intCast(iaki)];
-                                t1 += A[@intCast(iaki)] * B[@intCast(ibkj)];
-
-                                k += 1;
-                                iaki += 1;
-                                ibkj += 1;
-                                ickj += 1;
-                            }
-
-                            if (beta == 0) {
-                                C[@intCast(icij)] = 0;
-                            } else if (beta != 1) {
-                                C[@intCast(icij)] *= beta;
-                            }
-
-                            C[@intCast(icij)] += t0 * A[@intCast(i + jai)] + t1 * alpha;
-
-                            i -= 1;
-                            jai -= lda;
-                            ibij -= 1;
-                            icij -= 1;
-                        }
-
-                        j += 1;
-                        jbj += ldb;
-                        jcj += ldc;
+    if (comptime !types.isArbitraryPrecision(CC)) {
+        if (ops.eq(alpha, 0, ctx) catch unreachable) {
+            if (ops.eq(beta, 0, ctx) catch unreachable) {
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    var i: isize = 0;
+                    while (i < m) : (i += 1) {
+                        ops.set( // c[i + j * ldc] = 0
+                            &c[scast(usize, i + j * ldc)],
+                            0,
+                            ctx,
+                        ) catch unreachable;
                     }
                 }
             } else {
-                if (UPLO == .Upper) {
-                    var j: isize = 0;
-                    var iaj: isize = 0;
-                    var jaj: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var t0 = alpha * A[@intCast(j + jaj)];
-
-                        var i: isize = 0;
-                        var ibij: isize = jbj;
-                        var icij: isize = jcj;
-                        while (i < M) {
-                            if (beta == 0) {
-                                C[@intCast(icij)] = 0;
-                            } else if (beta != 1) {
-                                C[@intCast(icij)] *= beta;
-                            }
-
-                            C[@intCast(icij)] += t0 * B[@intCast(ibij)];
-
-                            i += 1;
-                            ibij += 1;
-                            icij += 1;
-                        }
-
-                        var k: isize = 0;
-                        var iakj: isize = jaj;
-                        var jbk: isize = 0;
-                        while (k < j) {
-                            t0 = alpha * A[@intCast(iakj)];
-
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)] += t0 * B[@intCast(ibik)];
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iakj += 1;
-                            jbk += ldb;
-                        }
-
-                        k = j + 1;
-                        var iajk: isize = iaj + (j + 1) * lda;
-                        jbk = (j + 1) * ldb;
-                        while (k < N) {
-                            t0 = alpha * A[@intCast(iajk)];
-
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)] += t0 * B[@intCast(ibik)];
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iajk += lda;
-                            jbk += ldb;
-                        }
-
-                        j += 1;
-                        iaj += 1;
-                        jaj += lda;
-                        jbj += ldb;
-                        jcj += ldc;
-                    }
-                } else {
-                    var j: isize = 0;
-                    var iaj: isize = 0;
-                    var jaj: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var t0 = alpha * A[@intCast(j + jaj)];
-
-                        var i: isize = 0;
-                        var ibij: isize = jbj;
-                        var icij: isize = jcj;
-                        while (i < M) {
-                            if (beta == 0) {
-                                C[@intCast(icij)] = 0;
-                            } else if (beta != 1) {
-                                C[@intCast(icij)] *= beta;
-                            }
-
-                            C[@intCast(icij)] += t0 * B[@intCast(ibij)];
-
-                            i += 1;
-                            ibij += 1;
-                            icij += 1;
-                        }
-
-                        var k: isize = 0;
-                        var iajk: isize = iaj;
-                        var jbk: isize = 0;
-                        while (k < j) {
-                            t0 = alpha * A[@intCast(iajk)];
-
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)] += t0 * B[@intCast(ibik)];
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iajk += lda;
-                            jbk += ldb;
-                        }
-
-                        k = j + 1;
-                        var iakj: isize = j + 1 + jaj;
-                        jbk = (j + 1) * ldb;
-                        while (k < N) {
-                            t0 = alpha * A[@intCast(iakj)];
-
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)] += t0 * B[@intCast(ibik)];
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iakj += 1;
-                            jbk += ldb;
-                        }
-
-                        j += 1;
-                        iaj += 1;
-                        jaj += lda;
-                        jbj += ldb;
-                        jcj += ldc;
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    var i: isize = 0;
+                    while (i < m) : (i += 1) {
+                        ops.mul_( // c[i + j * ldc] *= beta
+                            &c[scast(usize, i + j * ldc)],
+                            c[scast(usize, i + j * ldc)],
+                            beta,
+                            ctx,
+                        ) catch unreachable;
                     }
                 }
             }
-        },
-        .cfloat => {
-            if (alpha.re == 0 and alpha.im == 0 and beta.re == 1 and beta.im == 0) return;
 
-            if (alpha.re == 0 and alpha.im == 0) {
-                if (beta.re == 0 and beta.im == 0) {
-                    var j: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = 0;
-                        var ijcj: isize = jcj;
-                        while (i < M) {
-                            C[@intCast(ijcj)].re = 0;
-                            C[@intCast(ijcj)].im = 0;
+            return;
+        }
 
-                            i += 1;
-                            ijcj += 1;
+        if (side == .left) {
+            if (uplo == .upper) {
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    var i: isize = 0;
+                    while (i < m) : (i += 1) {
+                        const temp1: T1 = ops.mul( // temp1 = alpha * b[i + j * ldb]
+                            b[scast(usize, i + j * ldb)],
+                            alpha,
+                            ctx,
+                        ) catch unreachable;
+                        var temp2: T2 = constants.zero(T2, ctx) catch unreachable;
+
+                        var k: isize = 0;
+
+                        while (k < i) : (k += 1) {
+                            ops.add_( // c[k + j * ldc] += temp1 * a[k + i * lda]
+                                &c[scast(usize, k + j * ldc)],
+                                c[scast(usize, k + j * ldc)],
+                                ops.mul(
+                                    temp1,
+                                    a[scast(usize, k + i * lda)],
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+
+                            ops.add_( // temp2 += b[k + j * ldb] * a[k + i * lda]
+                                &temp2,
+                                temp2,
+                                ops.mul(
+                                    b[scast(usize, k + j * ldb)],
+                                    a[scast(usize, k + i * lda)],
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
                         }
 
-                        j += 1;
-                        jcj += ldc;
-                    }
-                } else if (beta.re != 1 or beta.im != 0) {
-                    var j: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = 0;
-                        var ijcj: isize = jcj;
-                        while (i < M) {
-                            const tmp = C[@intCast(ijcj)].re * beta.re - C[@intCast(ijcj)].im * beta.im;
-                            C[@intCast(ijcj)].im = C[@intCast(ijcj)].re * beta.im + C[@intCast(ijcj)].im * beta.re;
-                            C[@intCast(ijcj)].re = tmp;
+                        if (ops.eq(beta, 0, ctx) catch unreachable) {
+                            ops.set( // c[i + j * ldc] = temp1 * a[i + i * lda] + alpha * temp2
+                                &c[scast(usize, i + j * ldc)],
+                                ops.add(
+                                    ops.mul(
+                                        temp1,
+                                        a[scast(usize, i + i * lda)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ops.mul(
+                                        alpha,
+                                        temp2,
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+                        } else {
+                            ops.mul_( // c[i + j * ldc] *= beta
+                                &c[scast(usize, i + j * ldc)],
+                                c[scast(usize, i + j * ldc)],
+                                beta,
+                                ctx,
+                            ) catch unreachable;
 
-                            i += 1;
-                            ijcj += 1;
+                            ops.add_( // c[i + j * ldc] += temp1 * a[i + i * lda] + alpha * temp2
+                                &c[scast(usize, i + j * ldc)],
+                                c[scast(usize, i + j * ldc)],
+                                ops.add(
+                                    ops.mul(
+                                        temp1,
+                                        a[scast(usize, i + i * lda)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ops.mul(
+                                        alpha,
+                                        temp2,
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
                         }
-
-                        j += 1;
-                        jcj += ldc;
-                    }
-                }
-
-                return;
-            }
-
-            if (SIDE == .Left) {
-                if (UPLO == .Upper) {
-                    var j: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = 0;
-                        var jai: isize = 0;
-                        var ibij: isize = jbj;
-                        var icij: isize = jcj;
-                        while (i < M) {
-                            var t0: T = undefined;
-                            t0.re = alpha.re * B[@intCast(ibij)].re - alpha.im * B[@intCast(ibij)].im;
-                            t0.im = alpha.re * B[@intCast(ibij)].im + alpha.im * B[@intCast(ibij)].re;
-                            var t1 = T.init(0, 0);
-
-                            var k: isize = 0;
-                            var iaki: isize = jai;
-                            var ibkj: isize = jbj;
-                            var ickj: isize = jcj;
-                            while (k < i) {
-                                C[@intCast(ickj)].re += t0.re * A[@intCast(iaki)].re - t0.im * A[@intCast(iaki)].im;
-                                C[@intCast(ickj)].im += t0.re * A[@intCast(iaki)].im + t0.im * A[@intCast(iaki)].re;
-                                t1.re += A[@intCast(iaki)].re * B[@intCast(ibkj)].re - A[@intCast(iaki)].im * B[@intCast(ibkj)].im;
-                                t1.im += A[@intCast(iaki)].re * B[@intCast(ibkj)].im + A[@intCast(iaki)].im * B[@intCast(ibkj)].re;
-
-                                k += 1;
-                                iaki += 1;
-                                ibkj += 1;
-                                ickj += 1;
-                            }
-
-                            if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)].re = 0;
-                                C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 or beta.im != 0) {
-                                const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
-                                C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
-                                C[@intCast(icij)].re = tmp;
-                            }
-
-                            k = i + jai;
-                            C[@intCast(icij)].re += t0.re * A[@intCast(k)].re - t0.im * A[@intCast(k)].im + t1.re * alpha.re - t1.im * alpha.im;
-                            C[@intCast(icij)].im += t0.re * A[@intCast(k)].im + t0.im * A[@intCast(k)].re + t1.re * alpha.im + t1.im * alpha.re;
-
-                            i += 1;
-                            jai += lda;
-                            ibij += 1;
-                            icij += 1;
-                        }
-
-                        j += 1;
-                        jbj += ldb;
-                        jcj += ldc;
-                    }
-                } else {
-                    var j: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = M - 1;
-                        var jai: isize = (M - 1) * lda;
-                        var ibij: isize = jbj + (M - 1);
-                        var icij: isize = jcj + (M - 1);
-                        while (i >= 0) {
-                            var t0: T = undefined;
-                            t0.re = alpha.re * B[@intCast(ibij)].re - alpha.im * B[@intCast(ibij)].im;
-                            t0.im = alpha.re * B[@intCast(ibij)].im + alpha.im * B[@intCast(ibij)].re;
-                            var t1 = T.init(0, 0);
-
-                            var k: isize = i + 1;
-                            var iaki: isize = jai + i + 1;
-                            var ibkj: isize = jbj + i + 1;
-                            var ickj: isize = jcj + i + 1;
-                            while (k < M) {
-                                C[@intCast(ickj)].re += t0.re * A[@intCast(iaki)].re - t0.im * A[@intCast(iaki)].im;
-                                C[@intCast(ickj)].im += t0.re * A[@intCast(iaki)].im + t0.im * A[@intCast(iaki)].re;
-                                t1.re += A[@intCast(iaki)].re * B[@intCast(ibkj)].re - A[@intCast(iaki)].im * B[@intCast(ibkj)].im;
-                                t1.im += A[@intCast(iaki)].re * B[@intCast(ibkj)].im + A[@intCast(iaki)].im * B[@intCast(ibkj)].re;
-
-                                k += 1;
-                                iaki += 1;
-                                ibkj += 1;
-                                ickj += 1;
-                            }
-
-                            if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)].re = 0;
-                                C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 or beta.im != 0) {
-                                const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
-                                C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
-                                C[@intCast(icij)].re = tmp;
-                            }
-
-                            k = i + jai;
-                            C[@intCast(icij)].re += t0.re * A[@intCast(k)].re - t0.im * A[@intCast(k)].im + t1.re * alpha.re - t1.im * alpha.im;
-                            C[@intCast(icij)].im += t0.re * A[@intCast(k)].im + t0.im * A[@intCast(k)].re + t1.re * alpha.im + t1.im * alpha.re;
-
-                            i -= 1;
-                            jai -= lda;
-                            ibij -= 1;
-                            icij -= 1;
-                        }
-
-                        j += 1;
-                        jbj += ldb;
-                        jcj += ldc;
                     }
                 }
             } else {
-                if (UPLO == .Upper) {
-                    var j: isize = 0;
-                    var iaj: isize = 0;
-                    var jaj: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = j + jaj;
-                        var t0: T = undefined;
-                        t0.re = alpha.re * A[@intCast(i)].re - alpha.im * A[@intCast(i)].im;
-                        t0.im = alpha.im * A[@intCast(i)].re + alpha.re * A[@intCast(i)].im;
+                var j: isize = 0;
+                while (j < n) : (j += 1) {
+                    var i: isize = m - 1;
+                    while (i >= 0) : (i -= 1) {
+                        const temp1: T1 = ops.mul( // temp1 = alpha * b[i + j * ldb]
+                            b[scast(usize, i + j * ldb)],
+                            alpha,
+                            ctx,
+                        ) catch unreachable;
+                        var temp2: T2 = constants.zero(T2, ctx) catch unreachable;
 
-                        i = 0;
-                        var ibij: isize = jbj;
-                        var icij: isize = jcj;
-                        while (i < M) {
-                            if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)].re = 0;
-                                C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 or beta.im != 0) {
-                                const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
-                                C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
-                                C[@intCast(icij)].re = tmp;
-                            }
+                        var k: isize = i + 1;
+                        while (k < m) : (k += 1) {
+                            ops.add_( // c[k + j * ldc] += temp1 * a[k + i * lda]
+                                &c[scast(usize, k + j * ldc)],
+                                c[scast(usize, k + j * ldc)],
+                                ops.mul(
+                                    temp1,
+                                    a[scast(usize, k + i * lda)],
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
 
-                            C[@intCast(icij)].re += t0.re * B[@intCast(ibij)].re - t0.im * B[@intCast(ibij)].im;
-                            C[@intCast(icij)].im += t0.re * B[@intCast(ibij)].im + t0.im * B[@intCast(ibij)].re;
-
-                            i += 1;
-                            ibij += 1;
-                            icij += 1;
+                            ops.add_( // temp2 += b[k + j * ldb] * a[k + i * lda]
+                                &temp2,
+                                temp2,
+                                ops.mul(
+                                    b[scast(usize, k + j * ldb)],
+                                    a[scast(usize, k + i * lda)],
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
                         }
 
-                        var k: isize = 0;
-                        var iakj: isize = jaj;
-                        var jbk: isize = 0;
-                        while (k < j) {
-                            t0.re = alpha.re * A[@intCast(iakj)].re - alpha.im * A[@intCast(iakj)].im;
-                            t0.im = alpha.re * A[@intCast(iakj)].im + alpha.im * A[@intCast(iakj)].re;
+                        if (ops.eq(beta, 0, ctx) catch unreachable) {
+                            ops.set( // c[i + j * ldc] = temp1 * a[i + i * lda] + alpha * temp2
+                                &c[scast(usize, i + j * ldc)],
+                                ops.add(
+                                    ops.mul(
+                                        temp1,
+                                        a[scast(usize, i + i * lda)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ops.mul(
+                                        alpha,
+                                        temp2,
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
+                        } else {
+                            ops.mul_( // c[i + j * ldc] *= beta
+                                &c[scast(usize, i + j * ldc)],
+                                c[scast(usize, i + j * ldc)],
+                                beta,
+                                ctx,
+                            ) catch unreachable;
 
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)].re += t0.re * B[@intCast(ibik)].re - t0.im * B[@intCast(ibik)].im;
-                                C[@intCast(icij)].im += t0.re * B[@intCast(ibik)].im + t0.im * B[@intCast(ibik)].re;
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iakj += 1;
-                            jbk += ldb;
+                            ops.add_( // c[i + j * ldc] += temp1 * a[i + i * lda] + alpha * temp2
+                                &c[scast(usize, i + j * ldc)],
+                                c[scast(usize, i + j * ldc)],
+                                ops.add(
+                                    ops.mul(
+                                        temp1,
+                                        a[scast(usize, i + i * lda)],
+                                        ctx,
+                                    ) catch unreachable,
+                                    ops.mul(
+                                        alpha,
+                                        temp2,
+                                        ctx,
+                                    ) catch unreachable,
+                                    ctx,
+                                ) catch unreachable,
+                                ctx,
+                            ) catch unreachable;
                         }
-
-                        k = j + 1;
-                        var iajk: isize = iaj + (j + 1) * lda;
-                        jbk = (j + 1) * ldb;
-                        while (k < N) {
-                            t0.re = alpha.re * A[@intCast(iajk)].re - alpha.im * A[@intCast(iajk)].im;
-                            t0.im = alpha.im * A[@intCast(iajk)].re + alpha.re * A[@intCast(iajk)].im;
-
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)].re += t0.re * B[@intCast(ibik)].re - t0.im * B[@intCast(ibik)].im;
-                                C[@intCast(icij)].im += t0.re * B[@intCast(ibik)].im + t0.im * B[@intCast(ibik)].re;
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iajk += lda;
-                            jbk += ldb;
-                        }
-
-                        j += 1;
-                        iaj += 1;
-                        jaj += lda;
-                        jbj += ldb;
-                        jcj += ldc;
-                    }
-                } else {
-                    var j: isize = 0;
-                    var iaj: isize = 0;
-                    var jaj: isize = 0;
-                    var jbj: isize = 0;
-                    var jcj: isize = 0;
-                    while (j < N) {
-                        var i: isize = j + jaj;
-                        var t0: T = undefined;
-                        t0.re = alpha.re * A[@intCast(i)].re - alpha.im * A[@intCast(i)].im;
-                        t0.im = alpha.im * A[@intCast(i)].re + alpha.re * A[@intCast(i)].im;
-
-                        i = 0;
-                        var ibij: isize = jbj;
-                        var icij: isize = jcj;
-                        while (i < M) {
-                            if (beta.re == 0 and beta.im == 0) {
-                                C[@intCast(icij)].re = 0;
-                                C[@intCast(icij)].im = 0;
-                            } else if (beta.re != 1 or beta.im != 0) {
-                                const tmp = C[@intCast(icij)].re * beta.re - C[@intCast(icij)].im * beta.im;
-                                C[@intCast(icij)].im = C[@intCast(icij)].re * beta.im + C[@intCast(icij)].im * beta.re;
-                                C[@intCast(icij)].re = tmp;
-                            }
-
-                            C[@intCast(icij)].re += t0.re * B[@intCast(ibij)].re - t0.im * B[@intCast(ibij)].im;
-                            C[@intCast(icij)].im += t0.re * B[@intCast(ibij)].im + t0.im * B[@intCast(ibij)].re;
-
-                            i += 1;
-                            ibij += 1;
-                            icij += 1;
-                        }
-
-                        var k: isize = 0;
-                        var iajk: isize = iaj;
-                        var jbk: isize = 0;
-                        while (k < j) {
-                            t0.re = alpha.re * A[@intCast(iajk)].re - alpha.im * A[@intCast(iajk)].im;
-                            t0.im = alpha.re * A[@intCast(iajk)].im + alpha.im * A[@intCast(iajk)].re;
-
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)].re += t0.re * B[@intCast(ibik)].re - t0.im * B[@intCast(ibik)].im;
-                                C[@intCast(icij)].im += t0.re * B[@intCast(ibik)].im + t0.im * B[@intCast(ibik)].re;
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iajk += lda;
-                            jbk += ldb;
-                        }
-
-                        k = j + 1;
-                        var iakj: isize = j + 1 + jaj;
-                        jbk = (j + 1) * ldb;
-                        while (k < N) {
-                            t0.re = alpha.re * A[@intCast(iakj)].re - alpha.im * A[@intCast(iakj)].im;
-                            t0.im = alpha.re * A[@intCast(iakj)].im + alpha.im * A[@intCast(iakj)].re;
-
-                            i = 0;
-                            var ibik: isize = jbk;
-                            icij = jcj;
-                            while (i < M) {
-                                C[@intCast(icij)].re += t0.re * B[@intCast(ibik)].re - t0.im * B[@intCast(ibik)].im;
-                                C[@intCast(icij)].im += t0.re * B[@intCast(ibik)].im + t0.im * B[@intCast(ibik)].re;
-
-                                i += 1;
-                                ibik += 1;
-                                icij += 1;
-                            }
-
-                            k += 1;
-                            iakj += 1;
-                            jbk += ldb;
-                        }
-
-                        j += 1;
-                        iaj += 1;
-                        jaj += lda;
-                        jbj += ldb;
-                        jcj += ldc;
                     }
                 }
             }
-        },
-        .integer, .rational, .real, .complex, .expression => @compileError("blas.symm only supports simple types."),
+        } else {
+            var j: isize = 0;
+            while (j < n) : (j += 1) {
+                var temp1: T1 = ops.mul( // temp1 = alpha * a[j + j * lda]
+                    a[scast(usize, j + j * lda)],
+                    alpha,
+                    ctx,
+                ) catch unreachable;
+
+                if (ops.eq(beta, 0, ctx) catch unreachable) {
+                    var i: isize = 0;
+                    while (i < m) : (i += 1) {
+                        ops.set( // c[i + j * ldc] = temp1 * b[i + j * ldb]
+                            &c[scast(usize, i + j * ldc)],
+                            ops.mul(
+                                temp1,
+                                b[scast(usize, i + j * ldb)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    }
+                } else {
+                    var i: isize = 0;
+                    while (i < m) : (i += 1) {
+                        ops.mul_( // c[i + j * ldc] *= beta
+                            &c[scast(usize, i + j * ldc)],
+                            c[scast(usize, i + j * ldc)],
+                            beta,
+                            ctx,
+                        ) catch unreachable;
+
+                        ops.add_( // c[i + j * ldc] += temp1 * b[i + j * ldb]
+                            &c[scast(usize, i + j * ldc)],
+                            c[scast(usize, i + j * ldc)],
+                            ops.mul(
+                                temp1,
+                                b[scast(usize, i + j * ldb)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    }
+                }
+
+                var k: isize = 0;
+                while (k < j) : (k += 1) {
+                    if (uplo == .upper) {
+                        ops.set( // temp1 = alpha * a[k + j * lda]
+                            &temp1,
+                            ops.mul(
+                                alpha,
+                                a[scast(usize, k + j * lda)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    } else {
+                        ops.set( // temp1 = alpha * a[j + k * lda]
+                            &temp1,
+                            ops.mul(
+                                alpha,
+                                a[scast(usize, j + k * lda)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    }
+
+                    var i: isize = 0;
+                    while (i < m) : (i += 1) {
+                        ops.add_( // c[i + j * ldc] += temp1 * b[i + k * ldb]
+                            &c[scast(usize, i + j * ldc)],
+                            c[scast(usize, i + j * ldc)],
+                            ops.mul(
+                                temp1,
+                                b[scast(usize, i + k * ldb)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    }
+                }
+
+                k = j + 1;
+                while (k < n) : (k += 1) {
+                    if (uplo == .upper) {
+                        ops.set( // temp1 = alpha * a[j + k * lda]
+                            &temp1,
+                            ops.mul(
+                                alpha,
+                                a[scast(usize, j + k * lda)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    } else {
+                        ops.set( // temp1 = alpha * a[k + j * lda]
+                            &temp1,
+                            ops.mul(
+                                alpha,
+                                a[scast(usize, k + j * lda)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    }
+
+                    var i: isize = 0;
+                    while (i < m) : (i += 1) {
+                        ops.add_( // c[i + j * ldc] += temp1 * b[i + k * ldb]
+                            &c[scast(usize, i + j * ldc)],
+                            c[scast(usize, i + j * ldc)],
+                            ops.mul(
+                                temp1,
+                                b[scast(usize, i + k * ldb)],
+                                ctx,
+                            ) catch unreachable,
+                            ctx,
+                        ) catch unreachable;
+                    }
+                }
+            }
+        }
+    } else {
+        // Arbitrary precision types not supported yet
+        @compileError("zml.linalg.blas.symm not implemented for arbitrary precision types yet");
     }
+
+    return;
 }
