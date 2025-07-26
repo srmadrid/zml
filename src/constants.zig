@@ -41,6 +41,31 @@ pub inline fn zero(
     }
 }
 
+pub inline fn one(
+    comptime T: type,
+    ctx: anytype,
+) !T {
+    comptime if (types.isArbitraryPrecision(T)) {
+        validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    switch (types.numericType(T)) {
+        .bool => return false,
+        .int => return 1,
+        .float => return 1,
+        .cfloat => return .{
+            .re = 1,
+            .im = 0,
+        },
+        else => @compileError("zml.zero not implemented for " ++ @typeName(T) ++ " yet"),
+    }
+}
+
 pub inline fn pi(
     comptime T: type,
     ctx: anytype,

@@ -20,7 +20,7 @@ This library is in the early stages of development and is not yet ready for use.
     - Element-wise operations
     - Views
   - Linear Algebra:
-    - Blas routines
+    - BLAS routines
 - Symbolic System:
   - Nothing implemented yet
 

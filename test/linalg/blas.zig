@@ -57,9 +57,9 @@ test {
         _ = @import("blas/herk.zig");
         _ = @import("blas/her2k.zig");
         _ = @import("blas/symm.zig");
-        // _ = @import("blas/syrk.zig");
-        // _ = @import("blas/syr2k.zig");
-        // _ = @import("blas/trmm.zig");
-        // _ = @import("blas/trsm.zig");
+        _ = @import("blas/syrk.zig");
+        _ = @import("blas/syr2k.zig");
+        _ = @import("blas/trmm.zig");
+        _ = @import("blas/trsm.zig");
     }
 }

@@ -1,7 +1,6 @@
 const std = @import("std");
 const zml = @import("zml");
 
-// CBLAS
 export const CBLAS_ORDER = enum(c_int) {
     CblasRowMajor = 101,
     CblasColMajor = 102,

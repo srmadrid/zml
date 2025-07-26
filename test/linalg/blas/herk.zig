@@ -8,8 +8,8 @@ test herk {
 
     const n = 5;
     const k = 3;
-    const alpha: f64 = 2;
-    const beta: f64 = 3;
+    const alpha = 2;
+    const beta = 3;
 
     const A = try a.alloc(cf64, n * k);
     defer a.free(A);

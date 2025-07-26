@@ -47,6 +47,21 @@ pub fn build(b: *std.Build) void {
     const run_step = b.step("run", "Run the executable");
     run_step.dependOn(&run_cmd.step);
 
+    // Compile only CBLAS
+    const cblas_lib = b.addStaticLibrary(.{
+        .name = "cblas",
+        .root_source_file = b.path("src/cblas.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    cblas_lib.root_module.addImport("zml", module);
+
+    b.installArtifact(cblas_lib);
+
+    const cblas_step = b.step("cblas", "Compile CBLAS library");
+    cblas_step.dependOn(&cblas_lib.step);
+
     // Tests
     const lib_unit_tests = b.addTest(.{
         .root_source_file = b.path("test/zml.zig"),

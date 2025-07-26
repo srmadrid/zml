@@ -13734,13 +13734,13 @@ pub inline fn herk(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Scalar(A) == Al and Scalar(A) == Be and A == C and opts.link_cblas != null) {
+    if (comptime A == C and types.canCoerce(Al, Scalar(A)) and types.canCoerce(Be, Scalar(A)) and opts.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
+                    return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(Scalar(A), alpha), a, scast(c_int, lda), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
+                    return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(Scalar(A), alpha), a, scast(c_int, lda), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -14742,156 +14742,1933 @@ pub fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
-pub inline fn syrk(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, beta: T, c: [*]T, ldc: isize) void {
-    const supported = types.numericType(T);
+/// Performs a symmetric rank-`k` update.
+///
+/// The `syrk` routine performs a rank-`k` matrix-matrix operation for a
+/// symmetric matrix `C` using a general matrix `A`. The operation is defined
+/// as:
+///
+/// ```zig
+///     C = alpha * A * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`        |
+/// | `order = row_major` | `lda * m`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`.
+///
+/// `c` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn syrk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    const Be: type = @TypeOf(beta);
+    comptime var C: type = @TypeOf(c);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.syrk requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.syrk requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.syrk requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.syrk requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
+        @compileError("zml.linalg.blas.syrk requires c to be a mutable many-item pointer, got " ++ @typeName(C));
+
+    C = types.Child(C);
+
+    comptime if (!types.isNumeric(C))
+        @compileError("zml.linalg.blas.syrk requires c's child type to be numeric, got " ++ @typeName(C));
+
+    comptime if (Al == bool and A == bool and Be == bool and C == bool)
+        @compileError("zml.linalg.blas.syrk does not support alpha, a, b, beta and c all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(C))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.syrk not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
-                    return ci.cblas_ssyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
-                } else if (T == f64) {
-                    return ci.cblas_dsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), beta, c, scast(c_int, ldc));
+                if (comptime A == f32) {
+                    return ci.cblas_ssyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), scast(A, beta), c, scast(c_int, ldc));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_csyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), &beta, c, scast(c_int, ldc));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), &beta, c, scast(c_int, ldc));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_csyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), &beta_casted, c, scast(c_int, ldc));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/syrk.zig").syrk(T, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return @import("blas/syrk.zig").syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, ctx);
 }
+
+/// Performs a symmetric rank-`k` update.
+///
+/// The `ssyrk` routine performs a rank-`k` matrix-matrix operation for a
+/// symmetric matrix `C` using a general matrix `A`. The operation is defined
+/// as:
+///
+/// ```zig
+///     C = alpha * A * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`        |
+/// | `order = row_major` | `lda * m`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`f32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]f32`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, beta: f32, c: [*]f32, ldc: isize) void {
-    return syrk(f32, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a symmetric rank-`k` update.
+///
+/// The `dsyrk` routine performs a rank-`k` matrix-matrix operation for a
+/// symmetric matrix `C` using a general matrix `A`. The operation is defined
+/// as:
+///
+/// ```zig
+///     C = alpha * A * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`        |
+/// | `order = row_major` | `lda * m`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`f64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]f64`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, beta: f64, c: [*]f64, ldc: isize) void {
-    return syrk(f64, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a symmetric rank-`k` update.
+///
+/// The `csyrk` routine performs a rank-`k` matrix-matrix operation for a
+/// symmetric matrix `C` using a general matrix `A`. The operation is defined
+/// as:
+///
+/// ```zig
+///     C = alpha * A * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`        |
+/// | `order = row_major` | `lda * m`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf32`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
-    return syrk(cf32, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a symmetric rank-`k` update.
+///
+/// The `zsyrk` routine performs a rank-`k` matrix-matrix operation for a
+/// symmetric matrix `C` using a general matrix `A`. The operation is defined
+/// as:
+///
+/// ```zig
+///     C = alpha * A * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * A + beta * C,
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric matrix,
+/// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
+/// second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// Hermitian matrix `A` is used:
+/// - If `uplo = upper`, then the upper triangular part of `A` is used.
+/// - If `uplo = lower`, then the lower triangular part of `A` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * m`        |
+/// | `order = row_major` | `lda * m`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf64`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
-    return syrk(cf64, order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc);
+    return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
-pub inline fn syr2k(comptime T: type, order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: T, a: [*]const T, lda: isize, b: [*]const T, ldb: isize, beta: T, c: [*]T, ldc: isize) void {
-    const supported = types.numericType(T);
+/// Performs a symmetric rank-`2k` update.
+///
+/// The `syr2k` routine performs a rank-`2k` matrix-matrix operation for a
+/// symmetric matrix `C` using general matrices `A` and `B`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `b` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`        |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`        |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `beta`.
+///
+/// `c` (mutable many-item pointer of `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn syr2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    beta: anytype,
+    c: anytype,
+    ldc: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+    const Be: type = @TypeOf(beta);
+    comptime var C: type = @TypeOf(c);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.syr2k requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.syr2k requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.syr2k requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B))
+        @compileError("zml.linalg.blas.syr2k requires b to be a many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.blas.syr2k requires b's child type to numeric, got " ++ @typeName(B));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.syr2k requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
+        @compileError("zml.linalg.blas.syr2k requires c to be a mutable many-item pointer, got " ++ @typeName(C));
+
+    C = types.Child(C);
+
+    comptime if (!types.isNumeric(C))
+        @compileError("zml.linalg.blas.syr2k requires c's child type to be numeric, got " ++ @typeName(C));
+
+    comptime if (Al == bool and A == bool and B == bool and Be == bool and C == bool)
+        @compileError("zml.linalg.blas.syr2k does not support alpha, a, b, beta and c all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(C))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.syr2k not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
-                    return ci.cblas_ssyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
-                } else if (T == f64) {
-                    return ci.cblas_dsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
+                if (comptime A == f32) {
+                    return ci.cblas_ssyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_csyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_zsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_csyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/syr2k.zig").syr2k(T, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return @import("blas/syr2k.zig").syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
 }
+
+/// Performs a symmetric rank-`2k` update.
+///
+/// The `ssyr2k` routine performs a rank-`2k` matrix-matrix operation for a
+/// symmetric matrix `C` using general matrices `A` and `B`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `b` (`[*]const f32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`        |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`        |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`f32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]f32`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
-    return syr2k(f32, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a symmetric rank-`2k` update.
+///
+/// The `dsyr2k` routine performs a rank-`2k` matrix-matrix operation for a
+/// symmetric matrix `C` using general matrices `A` and `B`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `b` (`[*]const f64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`        |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`        |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`f64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]f64`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
-    return syr2k(f64, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a symmetric rank-`2k` update.
+///
+/// The `csyr2k` routine performs a rank-`2k` matrix-matrix operation for a
+/// symmetric matrix `C` using general matrices `A` and `B`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `b` (`[*]const cf32`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`        |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`        |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`cf32`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf32`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
-    return syr2k(cf32, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
+
+/// Performs a symmetric rank-`2k` update.
+///
+/// The `zsyr2k` routine performs a rank-`2k` matrix-matrix operation for a
+/// symmetric matrix `C` using general matrices `A` and `B`. The operation is
+/// defined as:
+///
+/// ```zig
+///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+/// ```
+///
+/// or
+///
+/// ```zig
+///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+/// ```
+///
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
+/// matrices in the second case.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
+/// symmetric matrix `C` is used:
+/// - If `uplo = upper`, then the upper triangular part of `C` is used.
+/// - If `uplo = lower`, then the lower triangular part of `C` is used.
+///
+/// `trans` (`Transpose`): Specifies the operation:
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+///
+/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// or equal to 0.
+///
+/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// the matrices `A` and `B`. With `trans = trans`, specifies the number
+/// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `b` (`[*]const cf64`): Array, size at least:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `ldb * k`           | `ldb * n`        |
+/// | `order = row_major` | `ldb * n`           | `ldb * k`        |
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to:
+/// |                     | `transa = no_trans` | `transa = trans` |
+/// |---------------------|---------------------|------------------|
+/// | `order = col_major` | `max(1, n)`         | `max(1, k)`      |
+/// | `order = row_major` | `max(1, k)`         | `max(1, n)`      |
+///
+/// `beta` (`cf64`): Specifies the scalar `beta`.
+///
+/// `c` (`[*]cf64`): Array, size at least `ldc * n`.
+///
+/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `c`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
-    return syr2k(cf64, order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc);
+    return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
-pub inline fn trmm(comptime T: type, order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]T, ldb: isize) void {
-    const supported = types.numericType(T);
+/// Computes a matrix-matrix product where one input matrix is triangular.
+///
+/// The `trmm` routines compute a scalar-matrix-matrix product with one
+/// triangular matrix . The operation is defined as:
+///
+/// ```zig
+///     B = alpha * op(A) * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     B = alpha * B * op(A)
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * k`, where
+/// `k` is `m` if `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
+/// `order = col_major` or `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
+/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
+/// type, or if `a` and `x` are both `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn trmm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.trmm requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.trmm requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.trmm requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B) or types.isConstPointer(B))
+        @compileError("zml.linalg.blas.trmm requires b to be a mutable many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.blas.trmm requires b's child type to numeric, got " ++ @typeName(B));
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.trmm not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == B and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
-                    return ci.cblas_strmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
-                } else if (T == f64) {
-                    return ci.cblas_dtrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
+                if (comptime A == f32) {
+                    return ci.cblas_strmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dtrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_ctrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_ctrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_ztrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/trmm.zig").trmm(T, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return @import("blas/trmm.zig").trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, ctx);
 }
+
+/// Computes a matrix-matrix product where one input matrix is triangular.
+///
+/// The `strmm` routines compute a scalar-matrix-matrix product with one
+/// triangular matrix . The operation is defined as:
+///
+/// ```zig
+///     B = alpha * op(A) * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     B = alpha * B * op(A)
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]f32`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn strmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) void {
-    return trmm(f32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
+
+/// Computes a matrix-matrix product where one input matrix is triangular.
+///
+/// The `dtrmm` routines compute a scalar-matrix-matrix product with one
+/// triangular matrix . The operation is defined as:
+///
+/// ```zig
+///     B = alpha * op(A) * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     B = alpha * B * op(A)
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]f64`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dtrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) void {
-    return trmm(f64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
+
+/// Computes a matrix-matrix product where one input matrix is triangular.
+///
+/// The `ctrmm` routines compute a scalar-matrix-matrix product with one
+/// triangular matrix . The operation is defined as:
+///
+/// ```zig
+///     B = alpha * op(A) * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     B = alpha * B * op(A)
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]cf32`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ctrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) void {
-    return trmm(cf32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
+
+/// Computes a matrix-matrix product where one input matrix is triangular.
+///
+/// The `ztrmm` routines compute a scalar-matrix-matrix product with one
+/// triangular matrix . The operation is defined as:
+///
+/// ```zig
+///     B = alpha * op(A) * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     B = alpha * B * op(A)
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
+/// `m`-by-`n` matrix.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`[*]cf64`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ztrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) void {
-    return trmm(cf64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
-pub inline fn trsm(comptime T: type, order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: T, a: [*]const T, lda: isize, b: [*]T, ldb: isize) void {
-    const supported = types.numericType(T);
+/// Solves a triangular matrix equation.
+///
+/// The `trsm` routine solves one of the following matrix equations:
+///
+/// ```zig
+///     op(A) * X = alpha * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     X * op(A) = alpha * B
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
+/// `X` are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
+/// `complex` or `expression`): Specifies the scalar `alpha`.
+///
+/// `a` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `lda * k`, where
+/// `k` is `m` if `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (many-item pointer of `int`, `float`, `cfloat`, `integer`, `rational`,
+/// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
+/// `order = col_major` or `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Errors
+/// ------
+/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
+/// than `max(1, n)`, or if `incx` is 0.
+///
+/// Raises
+/// ------
+/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
+/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
+/// type, or if `a` and `x` are both `bool`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available. In that case, no errors will be
+/// raised even if the arguments are invalid.
+pub inline fn trsm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: anytype,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
 
-    if (opts.link_cblas != null) {
-        switch (supported) {
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.trsm requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.trsm requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.trsm requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B) or types.isConstPointer(B))
+        @compileError("zml.linalg.blas.trsm requires b to be a mutable many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.blas.trsm requires b's child type to numeric, got " ++ @typeName(B));
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.trsm not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == B and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (T == f32) {
-                    return ci.cblas_strsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
-                } else if (T == f64) {
-                    return ci.cblas_dtrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
+                if (comptime A == f32) {
+                    return ci.cblas_strsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dtrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             .cfloat => {
-                if (Scalar(T) == f32) {
-                    return ci.cblas_ctrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
-                } else if (Scalar(T) == f64) {
-                    return ci.cblas_ztrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_ctrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_ztrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             else => {},
         }
     }
 
-    return @import("blas/trsm.zig").trsm(T, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return @import("blas/trsm.zig").trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, ctx);
 }
+
+/// Solves a triangular matrix equation.
+///
+/// The `strsm` routine solves one of the following matrix equations:
+///
+/// ```zig
+///     op(A) * X = alpha * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     X * op(A) = alpha * B
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
+/// `X` are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`f32`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn strsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) void {
-    return trsm(f32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
+
+/// Solves a triangular matrix equation.
+///
+/// The `dtrsm` routine solves one of the following matrix equations:
+///
+/// ```zig
+///     op(A) * X = alpha * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     X * op(A) = alpha * B
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
+/// `X` are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`f64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`f64`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn dtrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) void {
-    return trsm(f64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
+
+/// Solves a triangular matrix equation.
+///
+/// The `ctrsm` routine solves one of the following matrix equations:
+///
+/// ```zig
+///     op(A) * X = alpha * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     X * op(A) = alpha * B
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
+/// `X` are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf32`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`cf32`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ctrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) void {
-    return trsm(cf32, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
+
+/// Solves a triangular matrix equation.
+///
+/// The `ztrsm` routine solves one of the following matrix equations:
+///
+/// ```zig
+///     op(A) * X = alpha * B
+/// ```
+///
+/// or
+///
+/// ```zig
+///     X * op(A) = alpha * B
+/// ```
+///
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
+/// `X` are `m`-by-`n` matrices.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `side` (`Side`): Specifies whether the triangular matrix `A` is on the left
+/// or right side of the product:
+/// - If `side = left`, then `B = alpha * op(A) * B`.
+/// - If `side = right`, then `B = alpha * B * op(A)`.
+///
+/// `uplo` (`Uplo`): Specifies whether the matrix `A` is upper or lower
+/// triangular:
+/// - If `uplo = upper`, then `A` is an upper triangular matrix.
+/// - If `uplo = lower`, then `A` is a lower triangular matrix.
+///
+/// `transa` (`Transpose`): Specifies the form of `op(A)`:
+/// - If `transa = no_trans`, then `op(A) = A`.
+/// - If `transa = trans`, then `op(A) = A^T`.
+/// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
+/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+///
+/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
+/// - If `diag = unit`, then `A` is a unit triangular matrix.
+/// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
+///
+/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// greater than or equal to 0.
+///
+/// `alpha` (`cf64`): Specifies the scalar `alpha`.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * k`, where `k` is `m` if
+/// `side = left` and `n` if `side = right`.
+///
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `side = left` or `max(1, n)` if `side = right`.
+///
+/// `b` (`cf64`): Array, size at least `ldb * n` if `order = col_major` or
+/// `ldb * m` if `order = row_major`.
+///
+/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding CBLAS function.
 pub fn ztrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) void {
-    return trsm(cf64, order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb);
+    return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
 pub const Error = error{

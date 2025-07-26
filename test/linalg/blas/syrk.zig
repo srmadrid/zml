@@ -61,7 +61,7 @@ test syrk {
         25,
     });
 
-    syrk(f64, .RowMajor, .Upper, .NoTrans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    syrk(.row_major, .upper, .no_trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(31, B[0]);
     try std.testing.expectEqual(70, B[1]);
@@ -89,7 +89,7 @@ test syrk {
     try std.testing.expectEqual(24, B[23]);
     try std.testing.expectEqual(1255, B[24]);
 
-    syrk(f64, .ColumnMajor, .Upper, .NoTrans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    syrk(.col_major, .upper, .no_trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(409, B[0]);
     try std.testing.expectEqual(70, B[1]);
@@ -117,7 +117,7 @@ test syrk {
     try std.testing.expectEqual(712, B[23]);
     try std.testing.expectEqual(4465, B[24]);
 
-    syrk(f64, .RowMajor, .Upper, .Trans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    syrk(.row_major, .upper, .trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1543, B[0]);
     try std.testing.expectEqual(562, B[1]);
@@ -145,7 +145,7 @@ test syrk {
     try std.testing.expectEqual(712, B[23]);
     try std.testing.expectEqual(14095, B[24]);
 
-    syrk(f64, .ColumnMajor, .Upper, .Trans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    syrk(.col_major, .upper, .trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(4657, B[0]);
     try std.testing.expectEqual(562, B[1]);
@@ -173,7 +173,7 @@ test syrk {
     try std.testing.expectEqual(3064, B[23]);
     try std.testing.expectEqual(43465, B[24]);
 
-    syrk(f64, .RowMajor, .Lower, .NoTrans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    syrk(.row_major, .lower, .no_trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(13999, B[0]);
     try std.testing.expectEqual(562, B[1]);
@@ -201,7 +201,7 @@ test syrk {
     try std.testing.expectEqual(10120, B[23]);
     try std.testing.expectEqual(131575, B[24]);
 
-    syrk(f64, .ColumnMajor, .Lower, .NoTrans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    syrk(.col_major, .lower, .no_trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(42313, B[0]);
     try std.testing.expectEqual(2038, B[1]);
@@ -229,7 +229,7 @@ test syrk {
     try std.testing.expectEqual(10120, B[23]);
     try std.testing.expectEqual(395425, B[24]);
 
-    syrk(f64, .RowMajor, .Lower, .Trans, n, k, alpha, A.ptr, n, beta, B.ptr, n);
+    syrk(.row_major, .lower, .trans, n, k, alpha, A.ptr, n, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(127255, B[0]);
     try std.testing.expectEqual(2038, B[1]);
@@ -257,7 +257,7 @@ test syrk {
     try std.testing.expectEqual(31000, B[23]);
     try std.testing.expectEqual(1186975, B[24]);
 
-    syrk(f64, .ColumnMajor, .Lower, .Trans, n, k, alpha, A.ptr, k, beta, B.ptr, n);
+    syrk(.col_major, .lower, .trans, n, k, alpha, A.ptr, k, beta, B.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(381793, B[0]);
     try std.testing.expectEqual(6178, B[1]);
@@ -338,7 +338,7 @@ test syrk {
         cf64.init(25, 25),
     });
 
-    syrk(cf64, .RowMajor, .Upper, .NoTrans, n, k, gamma, C.ptr, k, delta, D.ptr, n);
+    syrk(.row_major, .upper, .no_trans, n, k, gamma, C.ptr, k, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-56, D[0].re);
     try std.testing.expectEqual(62, D[0].im);
@@ -391,7 +391,7 @@ test syrk {
     try std.testing.expectEqual(-2360, D[24].re);
     try std.testing.expectEqual(2510, D[24].im);
 
-    syrk(cf64, .ColumnMajor, .Upper, .NoTrans, n, k, gamma, C.ptr, n, delta, D.ptr, n);
+    syrk(.col_major, .upper, .no_trans, n, k, gamma, C.ptr, n, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-986, D[0].re);
     try std.testing.expectEqual(650, D[0].im);
@@ -444,7 +444,7 @@ test syrk {
     try std.testing.expectEqual(-16010, D[24].re);
     try std.testing.expectEqual(1850, D[24].im);
 
-    syrk(cf64, .RowMajor, .Upper, .Trans, n, k, gamma, C.ptr, n, delta, D.ptr, n);
+    syrk(.row_major, .upper, .trans, n, k, gamma, C.ptr, n, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-5540, D[0].re);
     try std.testing.expectEqual(-376, D[0].im);
@@ -497,7 +497,7 @@ test syrk {
     try std.testing.expectEqual(-54980, D[24].re);
     try std.testing.expectEqual(-41080, D[24].im);
 
-    syrk(cf64, .ColumnMajor, .Upper, .Trans, n, k, gamma, C.ptr, k, delta, D.ptr, n);
+    syrk(.col_major, .upper, .trans, n, k, gamma, C.ptr, k, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-15548, D[0].re);
     try std.testing.expectEqual(-17692, D[0].im);
@@ -550,7 +550,7 @@ test syrk {
     try std.testing.expectEqual(-44060, D[24].re);
     try std.testing.expectEqual(-285820, D[24].im);
 
-    syrk(cf64, .RowMajor, .Lower, .NoTrans, n, k, gamma, C.ptr, k, delta, D.ptr, n);
+    syrk(.row_major, .lower, .no_trans, n, k, gamma, C.ptr, k, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(6376, D[0].re);
     try std.testing.expectEqual(-99664, D[0].im);
@@ -603,7 +603,7 @@ test syrk {
     try std.testing.expectEqual(722920, D[24].re);
     try std.testing.expectEqual(-987280, D[24].im);
 
-    syrk(cf64, .ColumnMajor, .Lower, .NoTrans, n, k, gamma, C.ptr, n, delta, D.ptr, n);
+    syrk(.col_major, .lower, .no_trans, n, k, gamma, C.ptr, n, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(317488, D[0].re);
     try std.testing.expectEqual(-279232, D[0].im);
@@ -656,7 +656,7 @@ test syrk {
     try std.testing.expectEqual(5129200, D[24].re);
     try std.testing.expectEqual(-791680, D[24].im);
 
-    syrk(cf64, .RowMajor, .Lower, .Trans, n, k, gamma, C.ptr, n, delta, D.ptr, n);
+    syrk(.row_major, .lower, .trans, n, k, gamma, C.ptr, n, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1789528, D[0].re);
     try std.testing.expectEqual(115400, D[0].im);
@@ -709,7 +709,7 @@ test syrk {
     try std.testing.expectEqual(17761240, D[24].re);
     try std.testing.expectEqual(13013960, D[24].im);
 
-    syrk(cf64, .ColumnMajor, .Lower, .Trans, n, k, gamma, C.ptr, k, delta, D.ptr, n);
+    syrk(.col_major, .lower, .trans, n, k, gamma, C.ptr, k, delta, D.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(5022328, D[0].re);
     try std.testing.expectEqual(5714840, D[0].im);

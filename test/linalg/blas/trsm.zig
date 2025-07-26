@@ -85,7 +85,7 @@ test trsm {
         20,
     });
 
-    trsm(f64, .RowMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .upper, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-4.545454545454546, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-3.4090909090909096, C[1], 0.0000001);
@@ -108,7 +108,7 @@ test trsm {
     try std.testing.expectApproxEqRel(2.375, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(2.5, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .upper, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-3.0733471074380176, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-0.4390495867768598, C[1], 0.0000001);
@@ -131,7 +131,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.005681818181818182, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(0.3125, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Left, .Upper, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .upper, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-66.17665289256199, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-20.251033057851238, C[1], 0.0000001);
@@ -154,7 +154,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.011363636363636364, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(0.625, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Upper, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .upper, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1136.149449035809, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-300.2031680440763, C[1], 0.0000001);
@@ -177,7 +177,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-18.727272727272727, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(1.25, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Left, .Upper, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .upper, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2272.298898071618, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-600.4063360881526, C[1], 0.0000001);
@@ -200,7 +200,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-51.65023687286084, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(363.8411464855162, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Upper, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .upper, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4544.597796143236, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-3987.300275482081, C[1], 0.0000001);
@@ -223,7 +223,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-58.23918846617944, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(56.20888321252531, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Left, .Upper, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .upper, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(9089.195592286473, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-7974.600550964162, C[1], 0.0000001);
@@ -246,7 +246,7 @@ test trsm {
     try std.testing.expectApproxEqRel(140173.73023814402, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(4576838.768390115, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Upper, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .upper, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(18178.391184572945, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-106841.15702479305, C[1], 0.0000001);
@@ -292,7 +292,7 @@ test trsm {
         20,
     });
 
-    trsm(f64, .RowMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .lower, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(4, C[1], 0.0000001);
@@ -315,7 +315,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.2916666666666668, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-0.39772727272727265, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .lower, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(0, C[1], 0.0000001);
@@ -338,7 +338,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.004017447199265464, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-0.0025109044995408384, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Left, .Lower, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .lower, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(8, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(0, C[1], 0.0000001);
@@ -361,7 +361,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-1996.492883379247, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-22109.27591253444, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Lower, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .lower, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(16, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-32, C[1], 0.0000001);
@@ -384,7 +384,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-9822.566574839306, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(67455.28839531683, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Left, .Lower, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .lower, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1829.1469859580616, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(1849.7299927651184, C[1], 0.0000001);
@@ -407,7 +407,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-1227.8208218549132, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(8431.911049414604, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Lower, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .lower, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-916.4292420458551, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-5643.3891974570815, C[1], 0.0000001);
@@ -430,7 +430,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-1373.0462016210668, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(1053.9888811768255, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Left, .Lower, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trsm(.row_major, .left, .lower, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(774415.4767530857, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(774088.3558279412, C[1], 0.0000001);
@@ -453,7 +453,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-2746.0924032421335, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(2107.977762353651, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Left, .Lower, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trsm(.col_major, .left, .lower, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-432033640.9122368, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(274205641.3917423, C[1], 0.0000001);
@@ -499,7 +499,7 @@ test trsm {
         20,
     });
 
-    trsm(f64, .RowMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .upper, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(0, C[1], 0.0000001);
@@ -522,7 +522,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-1.249277038750723, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-0.8994794679005205, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .upper, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(0, C[1], 0.0000001);
@@ -545,7 +545,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.07034622994733825, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-3.2988800996574277, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Right, .Upper, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .upper, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(8, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-16, C[1], 0.0000001);
@@ -568,7 +568,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-1323.6957756209272, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(25049.409269128242, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Upper, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .upper, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(16, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-32, C[1], 0.0000001);
@@ -591,7 +591,7 @@ test trsm {
     try std.testing.expectApproxEqRel(3724518.2733103833, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-62638118.151138686, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Right, .Upper, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .upper, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-2323.0588118648275, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-241.58823432206924, C[1], 0.0000001);
@@ -614,7 +614,7 @@ test trsm {
     try std.testing.expectApproxEqRel(5666843.4520232985, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-5011049.452091095, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Upper, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .upper, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1704290.5835872542, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-130213.80358934174, C[1], 0.0000001);
@@ -637,7 +637,7 @@ test trsm {
     try std.testing.expectApproxEqRel(453347.4761618639, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-400883.9561672876, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Right, .Upper, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .upper, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(3564271230.245592, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-2183252630.395963, C[1], 0.0000001);
@@ -660,7 +660,7 @@ test trsm {
     try std.testing.expectApproxEqRel(16942053.199015234, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-801767.9123345752, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Upper, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .upper, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(76126470487030.11, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-10388048004726.357, C[1], 0.0000001);
@@ -706,7 +706,7 @@ test trsm {
         20,
     });
 
-    trsm(f64, .RowMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .lower, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-2.0728744939271255, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-0.2591093117408906, C[1], 0.0000001);
@@ -729,7 +729,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.021052631578947666, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(1.6, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .lower, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-4.359647171494604, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(0.28678485375693974, C[1], 0.0000001);
@@ -752,7 +752,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.0016842105263158134, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(0.128, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Right, .Lower, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .lower, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(6058.950402352815, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(-1193.2654342801884, C[1], 0.0000001);
@@ -775,7 +775,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-6.147368421052632, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(0.256, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Lower, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .lower, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-7389740.5995342145, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(642423.5044605597, C[1], 0.0000001);
@@ -798,7 +798,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-12.294736842105264, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(0.512, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Right, .Lower, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .lower, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-14779481.199068429, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(12851676.31476167, C[1], 0.0000001);
@@ -821,7 +821,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-562.9916538708635, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-296.50569637011273, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Lower, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .lower, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-29558962.398136858, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(25703352.62952334, C[1], 0.0000001);
@@ -844,7 +844,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-35912.887501424746, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-8428.277166270682, C[19], 0.0000001);
 
-    trsm(f64, .RowMajor, .Right, .Lower, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trsm(.row_major, .right, .lower, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-59117924.796273716, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(406114254.036689, C[1], 0.0000001);
@@ -867,7 +867,7 @@ test trsm {
     try std.testing.expectApproxEqRel(312418045.1701628, C[18], 0.0000001);
     try std.testing.expectApproxEqRel(-7099161729.261417, C[19], 0.0000001);
 
-    trsm(f64, .ColumnMajor, .Right, .Lower, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trsm(.col_major, .right, .lower, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-118235849.59254743, C[0], 0.0000001);
     try std.testing.expectApproxEqRel(812228508.073378, C[1], 0.0000001);
@@ -967,7 +967,7 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-4.545454545454546, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-4.545454545454546, F[0].im, 0.0000001);
@@ -1010,7 +1010,7 @@ test trsm {
     try std.testing.expectApproxEqRel(2.5, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(2.5, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-3.0733471074380168, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-3.0733471074380168, F[0].im, 0.0000001);
@@ -1053,7 +1053,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.3125, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.3125, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(236.60950413223142, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(320.1962809917356, F[0].im, 0.0000001);
@@ -1096,7 +1096,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.25, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(21211.212121212095, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(52846.26170798899, F[0].im, 0.0000001);
@@ -1139,7 +1139,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-2.5, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(2.5, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-111550.53936054764, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(39401.8756991401, F[0].im, 0.0000001);
@@ -1182,7 +1182,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.3125, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.3125, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-107283.43204253266, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-233114.52260379278, F[0].im, 0.0000001);
@@ -1225,7 +1225,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.0390625, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.0390625, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(248934.44489725732, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-696609.3217568875, F[0].im, 0.0000001);
@@ -1268,7 +1268,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.15625, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(291941123.286915, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(721670897.9579302, F[0].im, 0.0000001);
@@ -1334,7 +1334,7 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(2, F[0].im, 0.0000001);
@@ -1377,7 +1377,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(4, F[0].im, 0.0000001);
@@ -1420,7 +1420,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.03264175849403122, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.03264175849403123, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(16, F[0].im, 0.0000001);
@@ -1463,7 +1463,7 @@ test trsm {
     try std.testing.expectApproxEqRel(19231.5886134068, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(26581.614152892562, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-32, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(32, F[0].im, 0.0000001);
@@ -1506,7 +1506,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-2851540.576331501, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-13768690.494375579, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-64, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-64, F[0].im, 0.0000001);
@@ -1549,7 +1549,7 @@ test trsm {
     try std.testing.expectApproxEqRel(1720054.9510545372, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-354788.9318655742, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(128, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-128, F[0].im, 0.0000001);
@@ -1592,7 +1592,7 @@ test trsm {
     try std.testing.expectApproxEqRel(57179.82255678855, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(219576.2436760699, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Upper, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .upper, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(512, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[0].im, 0.0000001);
@@ -1635,7 +1635,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-29595315.333176825, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-30654587.402474638, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Upper, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .upper, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1024, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1024, F[0].im, 0.0000001);
@@ -1701,7 +1701,7 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(2, F[0].im, 0.0000001);
@@ -1744,7 +1744,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.3977272727272727, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.3977272727272727, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(4, F[0].im, 0.0000001);
@@ -1787,7 +1787,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.0025109044995408536, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.0025109044995408536, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(16, F[0].im, 0.0000001);
@@ -1830,7 +1830,7 @@ test trsm {
     try std.testing.expectApproxEqRel(87351.8751147842, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(118914.78150826445, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-32, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(32, F[0].im, 0.0000001);
@@ -1873,7 +1873,7 @@ test trsm {
     try std.testing.expectApproxEqRel(1501087.7115472911, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(676267.4326216716, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-64, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-64, F[0].im, 0.0000001);
@@ -1916,7 +1916,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-86443.87467695205, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(188347.8333120287, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(128, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-128, F[0].im, 0.0000001);
@@ -1959,7 +1959,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-24775.078791186806, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-13820.021090360951, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(512, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[0].im, 0.0000001);
@@ -2002,7 +2002,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-6591950.079331793, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-9774569.394471677, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1024, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1024, F[0].im, 0.0000001);
@@ -2068,7 +2068,7 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-10.181818181818182, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-10.181818181818182, F[0].im, 0.0000001);
@@ -2111,7 +2111,7 @@ test trsm {
     try std.testing.expectApproxEqRel(2.5, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(2.5, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-11.75103305785124, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-11.75103305785124, F[0].im, 0.0000001);
@@ -2154,7 +2154,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.3125, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.3125, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1112.1880165289258, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1444.6508264462811, F[0].im, 0.0000001);
@@ -2197,7 +2197,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.25, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(317994.11707989, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(636553.249311295, F[0].im, 0.0000001);
@@ -2240,7 +2240,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-2.5, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(2.5, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-1320955.7397111617, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(488902.6230069292, F[0].im, 0.0000001);
@@ -2283,7 +2283,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.3125, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.3125, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-1360646.6357071854, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-2720914.6244045775, F[0].im, 0.0000001);
@@ -2326,7 +2326,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.0390625, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.0390625, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Left, .Lower, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trsm(.row_major, .left, .lower, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(3012076.729212043, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-8241820.25161805, F[0].im, 0.0000001);
@@ -2369,7 +2369,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.15625, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Left, .Lower, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trsm(.col_major, .left, .lower, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2768504759.2345862, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(2570461255.376733, F[0].im, 0.0000001);
@@ -2435,7 +2435,7 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(2, F[0].im, 0.0000001);
@@ -2478,7 +2478,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.899479467900521, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.899479467900521, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(4, F[0].im, 0.0000001);
@@ -2521,7 +2521,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-3.2988800996574272, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-3.2988800996574272, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(16, F[0].im, 0.0000001);
@@ -2564,7 +2564,7 @@ test trsm {
     try std.testing.expectApproxEqRel(35508.58388778371, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-232664.56989938117, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-32, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(32, F[0].im, 0.0000001);
@@ -2607,7 +2607,7 @@ test trsm {
     try std.testing.expectApproxEqRel(769357966.6635193, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-2594648261.869862, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-64, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-64, F[0].im, 0.0000001);
@@ -2650,7 +2650,7 @@ test trsm {
     try std.testing.expectApproxEqRel(183352826.8063734, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(45439822.40158513, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(128, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-128, F[0].im, 0.0000001);
@@ -2693,7 +2693,7 @@ test trsm {
     try std.testing.expectApproxEqRel(4650749.13847106, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(28989101.262512892, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(512.0, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.0, F[0].im, 0.0000001);
@@ -2736,7 +2736,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-3883011905965.481, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(43962663469.83505, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1024, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1024, F[0].im, 0.0000001);
@@ -2802,16 +2802,16 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
-    try std.testing.expectApproxEqRel(0, F[0].re, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[0].im, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[1].re, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[1].im, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[2].re, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[2].im, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[3].re, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[3].im, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[0].re, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[0].im, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[1].re, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[1].im, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[2].re, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[2].im, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[3].re, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[3].im, 0.0000001);
     try std.testing.expectApproxEqRel(0.4, F[4].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.4, F[4].im, 0.0000001);
     try std.testing.expectApproxEqRel(5.996529786003471, F[5].re, 0.0000001);
@@ -2845,7 +2845,7 @@ test trsm {
     try std.testing.expectApproxEqRel(1.6, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.6, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-0.7541088785495345, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.7541088785495345, F[0].im, 0.0000001);
@@ -2888,7 +2888,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.128, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.128, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-747.8176216088552, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-7011.175320710461, F[0].im, 0.0000001);
@@ -2898,7 +2898,7 @@ test trsm {
     try std.testing.expectApproxEqRel(60.02215568730069, F[2].im, 0.0000001);
     try std.testing.expectApproxEqRel(6.3536480566099165, F[3].re, 0.0000001);
     try std.testing.expectApproxEqRel(-11.620825057259868, F[3].im, 0.0000001);
-    try std.testing.expectApproxEqRel(0, F[4].re, 0.0000001);
+    try std.testing.expectApproxEqAbs(0, F[4].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.3176824028304958, F[4].im, 0.0000001);
     try std.testing.expectApproxEqRel(904.8728199820631, F[5].re, 0.0000001);
     try std.testing.expectApproxEqRel(-5545.515421351351, F[5].im, 0.0000001);
@@ -2931,7 +2931,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.512, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(203327852.78360853, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-898978264.876339, F[0].im, 0.0000001);
@@ -2974,7 +2974,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-1.024, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.024, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1837865136.0926905, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(374622989.665483, F[0].im, 0.0000001);
@@ -3017,7 +3017,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.08192, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.08192, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-739664036.3145018, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(3688566247.5753145, F[0].im, 0.0000001);
@@ -3060,7 +3060,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.006553600000000001, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.006553600000000001, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Upper, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .upper, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-46591872861.871735, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(149397883807.02164, F[0].im, 0.0000001);
@@ -3103,7 +3103,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.026214400000000002, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Upper, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .upper, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-392130834808.8844, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(205655479840.47678, F[0].im, 0.0000001);
@@ -3169,7 +3169,7 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-2.0728744939271255, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-2.0728744939271255, F[0].im, 0.0000001);
@@ -3212,7 +3212,7 @@ test trsm {
     try std.testing.expectApproxEqRel(1.6, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.6, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-4.359647171494604, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-4.359647171494604, F[0].im, 0.0000001);
@@ -3255,7 +3255,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.128, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.128, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(7087.594060080124, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-55293.301016103025, F[0].im, 0.0000001);
@@ -3298,7 +3298,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0.512, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(71263327.97972684, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-295176039.1423535, F[0].im, 0.0000001);
@@ -3341,7 +3341,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-1.024, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(1.024, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(615791323.3216885, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(122398933.40730885, F[0].im, 0.0000001);
@@ -3384,7 +3384,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.08192, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.08192, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-241662815.8579167, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1235858093.7192059, F[0].im, 0.0000001);
@@ -3427,7 +3427,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.006553600000000001, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.006553600000000001, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-291830812555.1305, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1008044173619.4126, F[0].im, 0.0000001);
@@ -3470,7 +3470,7 @@ test trsm {
     try std.testing.expectApproxEqRel(0.026214400000000002, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-2599794008222.1753, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1432448261030.6196, F[0].im, 0.0000001);
@@ -3536,7 +3536,7 @@ test trsm {
         cf64.init(20, 20),
     });
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(2, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(2, F[0].im, 0.0000001);
@@ -3579,7 +3579,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-0.8187854251012143, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-0.8187854251012121, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(4, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(4, F[0].im, 0.0000001);
@@ -3622,7 +3622,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-2.7262464312224255, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-2.7262464312224255, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(0, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(16, F[0].im, 0.0000001);
@@ -3665,7 +3665,7 @@ test trsm {
     try std.testing.expectApproxEqRel(271415.67063305795, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-2260499.061274755, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-32, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(32, F[0].im, 0.0000001);
@@ -3708,7 +3708,7 @@ test trsm {
     try std.testing.expectApproxEqRel(533647431.10546046, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(-2304773591.948089, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(-64, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-64, F[0].im, 0.0000001);
@@ -3751,7 +3751,7 @@ test trsm {
     try std.testing.expectApproxEqRel(98983353.27480741, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(34450161.826169156, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(128, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(-128, F[0].im, 0.0000001);
@@ -3794,7 +3794,7 @@ test trsm {
     try std.testing.expectApproxEqRel(5238940.86267133, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(19940199.21056, F[19].im, 0.0000001);
 
-    trsm(cf64, .RowMajor, .Right, .Lower, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trsm(.row_major, .right, .lower, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(512, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(0, F[0].im, 0.0000001);
@@ -3837,7 +3837,7 @@ test trsm {
     try std.testing.expectApproxEqRel(-28842851713220.875, F[19].re, 0.0000001);
     try std.testing.expectApproxEqRel(2358782158950.716, F[19].im, 0.0000001);
 
-    trsm(cf64, .ColumnMajor, .Right, .Lower, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trsm(.col_major, .right, .lower, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectApproxEqRel(1024, F[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(1024, F[0].im, 0.0000001);

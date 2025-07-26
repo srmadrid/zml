@@ -85,7 +85,7 @@ test trmm {
         20,
     });
 
-    trmm(f64, .RowMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .upper, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(220, C[0]);
     try std.testing.expectEqual(240, C[1]);
@@ -108,7 +108,7 @@ test trmm {
     try std.testing.expectEqual(608, C[18]);
     try std.testing.expectEqual(640, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .upper, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(14800, C[0]);
     try std.testing.expectEqual(15920, C[1]);
@@ -131,7 +131,7 @@ test trmm {
     try std.testing.expectEqual(32576, C[18]);
     try std.testing.expectEqual(20480, C[19]);
 
-    trmm(f64, .RowMajor, .Left, .Upper, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .upper, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(492712, C[0]);
     try std.testing.expectEqual(550352, C[1]);
@@ -154,7 +154,7 @@ test trmm {
     try std.testing.expectEqual(65152, C[18]);
     try std.testing.expectEqual(40960, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Upper, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .upper, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(34847696, C[0]);
     try std.testing.expectEqual(32021472, C[1]);
@@ -177,7 +177,7 @@ test trmm {
     try std.testing.expectEqual(1359104, C[18]);
     try std.testing.expectEqual(81920, C[19]);
 
-    trmm(f64, .RowMajor, .Left, .Upper, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .upper, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(69695392, C[0]);
     try std.testing.expectEqual(64042944, C[1]);
@@ -200,7 +200,7 @@ test trmm {
     try std.testing.expectEqual(1055760640, C[18]);
     try std.testing.expectEqual(1060433152, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Upper, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .upper, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(139390784, C[0]);
     try std.testing.expectEqual(1465469248, C[1]);
@@ -223,7 +223,7 @@ test trmm {
     try std.testing.expectEqual(56865674240, C[18]);
     try std.testing.expectEqual(113482467328, C[19]);
 
-    trmm(f64, .RowMajor, .Left, .Upper, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .upper, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(278781568, C[0]);
     try std.testing.expectEqual(2930938496, C[1]);
@@ -246,7 +246,7 @@ test trmm {
     try std.testing.expectEqual(579584547840, C[18]);
     try std.testing.expectEqual(1597875849728, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Upper, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .upper, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(557563136, C[0]);
     try std.testing.expectEqual(8649692672, C[1]);
@@ -292,7 +292,7 @@ test trmm {
         20,
     });
 
-    trmm(f64, .RowMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .lower, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(2, C[0]);
     try std.testing.expectEqual(4, C[1]);
@@ -315,7 +315,7 @@ test trmm {
     try std.testing.expectEqual(1384, C[18]);
     try std.testing.expectEqual(1500, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .lower, .no_trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(4, C[0]);
     try std.testing.expectEqual(56, C[1]);
@@ -338,7 +338,7 @@ test trmm {
     try std.testing.expectEqual(55112, C[18]);
     try std.testing.expectEqual(110720, C[19]);
 
-    trmm(f64, .RowMajor, .Left, .Lower, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .lower, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(8, C[0]);
     try std.testing.expectEqual(112, C[1]);
@@ -361,7 +361,7 @@ test trmm {
     try std.testing.expectEqual(392592, C[18]);
     try std.testing.expectEqual(1030056, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Lower, .NoTrans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .lower, .no_trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(16, C[0]);
     try std.testing.expectEqual(256, C[1]);
@@ -384,7 +384,7 @@ test trmm {
     try std.testing.expectEqual(10440128, C[18]);
     try std.testing.expectEqual(23564624, C[19]);
 
-    trmm(f64, .RowMajor, .Left, .Lower, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .lower, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(140605984, C[0]);
     try std.testing.expectEqual(73914048, C[1]);
@@ -407,7 +407,7 @@ test trmm {
     try std.testing.expectEqual(334084096, C[18]);
     try std.testing.expectEqual(754067968, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Lower, .Trans, .NonUnit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .lower, .trans, .non_unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(3568458496, C[0]);
     try std.testing.expectEqual(7108578240, C[1]);
@@ -430,7 +430,7 @@ test trmm {
     try std.testing.expectEqual(25447481344, C[18]);
     try std.testing.expectEqual(24130174976, C[19]);
 
-    trmm(f64, .RowMajor, .Left, .Lower, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, n);
+    trmm(.row_major, .left, .lower, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(299239316096, C[0]);
     try std.testing.expectEqual(338909254016, C[1]);
@@ -453,7 +453,7 @@ test trmm {
     try std.testing.expectEqual(50894962688, C[18]);
     try std.testing.expectEqual(48260349952, C[19]);
 
-    trmm(f64, .ColumnMajor, .Left, .Lower, .Trans, .Unit, m, n, alpha, A.ptr, m, C.ptr, m);
+    trmm(.col_major, .left, .lower, .trans, .unit, m, n, alpha, A.ptr, m, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(14278362022400, C[0]);
     try std.testing.expectEqual(26668448745984, C[1]);
@@ -499,7 +499,7 @@ test trmm {
         20,
     });
 
-    trmm(f64, .RowMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .upper, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(2, C[0]);
     try std.testing.expectEqual(32, C[1]);
@@ -522,7 +522,7 @@ test trmm {
     try std.testing.expectEqual(1660, C[18]);
     try std.testing.expectEqual(2800, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .upper, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(4, C[0]);
     try std.testing.expectEqual(64, C[1]);
@@ -545,7 +545,7 @@ test trmm {
     try std.testing.expectEqual(192652, C[18]);
     try std.testing.expectEqual(178712, C[19]);
 
-    trmm(f64, .RowMajor, .Right, .Upper, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .upper, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(8, C[0]);
     try std.testing.expectEqual(144, C[1]);
@@ -568,7 +568,7 @@ test trmm {
     try std.testing.expectEqual(6971192, C[18]);
     try std.testing.expectEqual(15235424, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Upper, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .upper, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(16, C[0]);
     try std.testing.expectEqual(288, C[1]);
@@ -591,7 +591,7 @@ test trmm {
     try std.testing.expectEqual(323706256, C[18]);
     try std.testing.expectEqual(39747840, C[19]);
 
-    trmm(f64, .RowMajor, .Right, .Upper, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .upper, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1083648, C[0]);
     try std.testing.expectEqual(2216256, C[1]);
@@ -614,7 +614,7 @@ test trmm {
     try std.testing.expectEqual(13890751328, C[18]);
     try std.testing.expectEqual(1987392000, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Upper, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .upper, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(528728989888, C[0]);
     try std.testing.expectEqual(753325842560, C[1]);
@@ -637,7 +637,7 @@ test trmm {
     try std.testing.expectEqual(694537566400, C[18]);
     try std.testing.expectEqual(99369600000, C[19]);
 
-    trmm(f64, .RowMajor, .Right, .Upper, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .upper, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(15474192736640, C[0]);
     try std.testing.expectEqual(27334210892544, C[1]);
@@ -660,7 +660,7 @@ test trmm {
     try std.testing.expectEqual(5363859132800, C[18]);
     try std.testing.expectEqual(198739200000, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Upper, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .upper, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(3446276951570688, C[0]);
     try std.testing.expectEqual(2265631369100800, C[1]);
@@ -706,7 +706,7 @@ test trmm {
         20,
     });
 
-    trmm(f64, .RowMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .lower, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(430, C[0]);
     try std.testing.expectEqual(456, C[1]);
@@ -729,7 +729,7 @@ test trmm {
     try std.testing.expectEqual(1682, C[18]);
     try std.testing.expectEqual(1000, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .lower, .no_trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(41008, C[0]);
     try std.testing.expectEqual(38568, C[1]);
@@ -752,7 +752,7 @@ test trmm {
     try std.testing.expectEqual(84100, C[18]);
     try std.testing.expectEqual(50000, C[19]);
 
-    trmm(f64, .RowMajor, .Right, .Lower, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .lower, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(6376920, C[0]);
     try std.testing.expectEqual(6241792, C[1]);
@@ -775,7 +775,7 @@ test trmm {
     try std.testing.expectEqual(2568200, C[18]);
     try std.testing.expectEqual(100000, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Lower, .NoTrans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .lower, .no_trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(199572272, C[0]);
     try std.testing.expectEqual(156567936, C[1]);
@@ -798,7 +798,7 @@ test trmm {
     try std.testing.expectEqual(5136400, C[18]);
     try std.testing.expectEqual(200000, C[19]);
 
-    trmm(f64, .RowMajor, .Right, .Lower, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .lower, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(399144544, C[0]);
     try std.testing.expectEqual(4586818368, C[1]);
@@ -821,7 +821,7 @@ test trmm {
     try std.testing.expectEqual(1801805120, C[18]);
     try std.testing.expectEqual(2341694720, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Lower, .Trans, .NonUnit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .lower, .trans, .non_unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(798289088, C[0]);
     try std.testing.expectEqual(9173636736, C[1]);
@@ -844,7 +844,7 @@ test trmm {
     try std.testing.expectEqual(2269138024960, C[18]);
     try std.testing.expectEqual(954601897600, C[19]);
 
-    trmm(f64, .RowMajor, .Right, .Lower, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, n);
+    trmm(.row_major, .right, .lower, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(1596578176, C[0]);
     try std.testing.expectEqual(27926742528, C[1]);
@@ -867,7 +867,7 @@ test trmm {
     try std.testing.expectEqual(276657758737024, C[18]);
     try std.testing.expectEqual(461171825269504, C[19]);
 
-    trmm(f64, .ColumnMajor, .Right, .Lower, .Trans, .Unit, m, n, alpha, B.ptr, n, C.ptr, m);
+    trmm(.col_major, .right, .lower, .trans, .unit, m, n, alpha, B.ptr, n, C.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(3193156352, C[0]);
     try std.testing.expectEqual(55853485056, C[1]);
@@ -967,7 +967,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-440, F[0].re);
     try std.testing.expectEqual(440, F[0].im);
@@ -1010,7 +1010,7 @@ test trmm {
     try std.testing.expectEqual(-1280, F[19].re);
     try std.testing.expectEqual(1280, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-59200, F[0].re);
     try std.testing.expectEqual(-59200, F[0].im);
@@ -1053,7 +1053,7 @@ test trmm {
     try std.testing.expectEqual(-81920, F[19].re);
     try std.testing.expectEqual(-81920, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(3704896, F[0].re);
     try std.testing.expectEqual(-3941696, F[0].im);
@@ -1096,7 +1096,7 @@ test trmm {
     try std.testing.expectEqual(0, F[19].re);
     try std.testing.expectEqual(-327680, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(557089536, F[0].re);
     try std.testing.expectEqual(520640512, F[0].im);
@@ -1139,7 +1139,7 @@ test trmm {
     try std.testing.expectEqual(655360, F[19].re);
     try std.testing.expectEqual(-655360, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(14038320640, F[0].re);
     try std.testing.expectEqual(12970016256, F[0].im);
@@ -1182,7 +1182,7 @@ test trmm {
     try std.testing.expectEqual(41943040, F[19].re);
     try std.testing.expectEqual(-41943040, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(878538467328, F[0].re);
     try std.testing.expectEqual(671708002304, F[0].im);
@@ -1225,7 +1225,7 @@ test trmm {
     try std.testing.expectEqual(2684354560, F[19].re);
     try std.testing.expectEqual(-2684354560, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(29591584735232, F[0].re);
     try std.testing.expectEqual(25220193067008, F[0].im);
@@ -1268,7 +1268,7 @@ test trmm {
     try std.testing.expectEqual(10737418240, F[19].re);
     try std.testing.expectEqual(0, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(1557610461052928, F[0].re);
     try std.testing.expectEqual(1219383999873024, F[0].im);
@@ -1334,7 +1334,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-4, F[0].re);
     try std.testing.expectEqual(4, F[0].im);
@@ -1377,7 +1377,7 @@ test trmm {
     try std.testing.expectEqual(-2400, F[19].re);
     try std.testing.expectEqual(2400, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-16, F[0].re);
     try std.testing.expectEqual(-16, F[0].im);
@@ -1420,7 +1420,7 @@ test trmm {
     try std.testing.expectEqual(-504320, F[19].re);
     try std.testing.expectEqual(-504320, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, F[0].re);
     try std.testing.expectEqual(-64, F[0].im);
@@ -1463,7 +1463,7 @@ test trmm {
     try std.testing.expectEqual(5683456, F[19].re);
     try std.testing.expectEqual(-7700736, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(128, F[0].re);
     try std.testing.expectEqual(-128, F[0].im);
@@ -1506,7 +1506,7 @@ test trmm {
     try std.testing.expectEqual(610582528, F[19].re);
     try std.testing.expectEqual(498187264, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(512, F[0].re);
     try std.testing.expectEqual(-512, F[0].im);
@@ -1549,7 +1549,7 @@ test trmm {
     try std.testing.expectEqual(41314650112, F[19].re);
     try std.testing.expectEqual(33645185024, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(2048, F[0].re);
     try std.testing.expectEqual(-2048, F[0].im);
@@ -1592,7 +1592,7 @@ test trmm {
     try std.testing.expectEqual(4455179591680, F[19].re);
     try std.testing.expectEqual(3683711180800, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Upper, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .upper, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(8192, F[0].re);
     try std.testing.expectEqual(0, F[0].im);
@@ -1635,7 +1635,7 @@ test trmm {
     try std.testing.expectEqual(8153140232192, F[19].re);
     try std.testing.expectEqual(21304255217664, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Upper, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .upper, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(16384, F[0].re);
     try std.testing.expectEqual(16384, F[0].im);
@@ -1701,7 +1701,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-4, F[0].re);
     try std.testing.expectEqual(4, F[0].im);
@@ -1744,7 +1744,7 @@ test trmm {
     try std.testing.expectEqual(-3000, F[19].re);
     try std.testing.expectEqual(3000, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .NoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-16, F[0].re);
     try std.testing.expectEqual(-16, F[0].im);
@@ -1787,7 +1787,7 @@ test trmm {
     try std.testing.expectEqual(-442880, F[19].re);
     try std.testing.expectEqual(-442880, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, F[0].re);
     try std.testing.expectEqual(-64, F[0].im);
@@ -1830,7 +1830,7 @@ test trmm {
     try std.testing.expectEqual(6468928, F[19].re);
     try std.testing.expectEqual(-8240448, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .NoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(128, F[0].re);
     try std.testing.expectEqual(-128, F[0].im);
@@ -1873,7 +1873,7 @@ test trmm {
     try std.testing.expectEqual(373490944, F[19].re);
     try std.testing.expectEqual(287463424, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(512, F[0].re);
     try std.testing.expectEqual(-512, F[0].im);
@@ -1916,7 +1916,7 @@ test trmm {
     try std.testing.expectEqual(25451335168, F[19].re);
     try std.testing.expectEqual(19491917312, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .conj_no_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(2048, F[0].re);
     try std.testing.expectEqual(-2048, F[0].im);
@@ -1959,7 +1959,7 @@ test trmm {
     try std.testing.expectEqual(2376754020352, F[19].re);
     try std.testing.expectEqual(1842365513728, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(8192, F[0].re);
     try std.testing.expectEqual(0, F[0].im);
@@ -2002,7 +2002,7 @@ test trmm {
     try std.testing.expectEqual(5210101858304, F[19].re);
     try std.testing.expectEqual(11305253486592, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .ConjNoTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .conj_no_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(16384, F[0].re);
     try std.testing.expectEqual(16384, F[0].im);
@@ -2068,7 +2068,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-1352, F[0].re);
     try std.testing.expectEqual(1352, F[0].im);
@@ -2111,7 +2111,7 @@ test trmm {
     try std.testing.expectEqual(-1280, F[19].re);
     try std.testing.expectEqual(1280, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .Trans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-63040, F[0].re);
     try std.testing.expectEqual(-63040, F[0].im);
@@ -2154,7 +2154,7 @@ test trmm {
     try std.testing.expectEqual(-81920, F[19].re);
     try std.testing.expectEqual(-81920, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(11077312, F[0].re);
     try std.testing.expectEqual(-11329472, F[0].im);
@@ -2197,7 +2197,7 @@ test trmm {
     try std.testing.expectEqual(0, F[19].re);
     try std.testing.expectEqual(-327680, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .Trans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(442195200, F[0].re);
     try std.testing.expectEqual(378480640, F[0].im);
@@ -2240,7 +2240,7 @@ test trmm {
     try std.testing.expectEqual(655360, F[19].re);
     try std.testing.expectEqual(-655360, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(18453905920, F[0].re);
     try std.testing.expectEqual(15411669504, F[0].im);
@@ -2283,7 +2283,7 @@ test trmm {
     try std.testing.expectEqual(41943040, F[19].re);
     try std.testing.expectEqual(-41943040, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .ConjTrans, .NonUnit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .conj_trans, .non_unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(498036602880, F[0].re);
     try std.testing.expectEqual(352752330752, F[0].im);
@@ -2326,7 +2326,7 @@ test trmm {
     try std.testing.expectEqual(2684354560, F[19].re);
     try std.testing.expectEqual(-2684354560, F[19].im);
 
-    trmm(cf64, .RowMajor, .Left, .Lower, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, n);
+    trmm(.row_major, .left, .lower, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(36446446911488, F[0].re);
     try std.testing.expectEqual(26980356612096, F[0].im);
@@ -2369,7 +2369,7 @@ test trmm {
     try std.testing.expectEqual(10737418240, F[19].re);
     try std.testing.expectEqual(0, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Left, .Lower, .ConjTrans, .Unit, m, n, beta, D.ptr, m, F.ptr, m);
+    trmm(.col_major, .left, .lower, .conj_trans, .unit, m, n, beta, D.ptr, m, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(721576117354496, F[0].re);
     try std.testing.expectEqual(554334914396160, F[0].im);
@@ -2435,7 +2435,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-4, F[0].re);
     try std.testing.expectEqual(4, F[0].im);
@@ -2478,7 +2478,7 @@ test trmm {
     try std.testing.expectEqual(-5600, F[19].re);
     try std.testing.expectEqual(5600, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-16, F[0].re);
     try std.testing.expectEqual(-16, F[0].im);
@@ -2521,7 +2521,7 @@ test trmm {
     try std.testing.expectEqual(-714848, F[19].re);
     try std.testing.expectEqual(-714848, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, F[0].re);
     try std.testing.expectEqual(-64, F[0].im);
@@ -2564,7 +2564,7 @@ test trmm {
     try std.testing.expectEqual(119024000, F[19].re);
     try std.testing.expectEqual(-121883392, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(128, F[0].re);
     try std.testing.expectEqual(-128, F[0].im);
@@ -2607,7 +2607,7 @@ test trmm {
     try std.testing.expectEqual(630246656, F[19].re);
     try std.testing.expectEqual(54509312, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(512, F[0].re);
     try std.testing.expectEqual(-512, F[0].im);
@@ -2650,7 +2650,7 @@ test trmm {
     try std.testing.expectEqual(699645327360, F[19].re);
     try std.testing.expectEqual(588992860160, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(2048, F[0].re);
     try std.testing.expectEqual(-2048, F[0].im);
@@ -2693,7 +2693,7 @@ test trmm {
     try std.testing.expectEqual(70098795110400, F[19].re);
     try std.testing.expectEqual(58980867989504, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(8192, F[0].re);
     try std.testing.expectEqual(0, F[0].im);
@@ -2736,7 +2736,7 @@ test trmm {
     try std.testing.expectEqual(7632646195249152, F[19].re);
     try std.testing.expectEqual(6925696887062528, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(16384, F[0].re);
     try std.testing.expectEqual(16384, F[0].im);
@@ -2802,7 +2802,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-220, F[0].re);
     try std.testing.expectEqual(220, F[0].im);
@@ -2845,7 +2845,7 @@ test trmm {
     try std.testing.expectEqual(-2000, F[19].re);
     try std.testing.expectEqual(2000, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-442240, F[0].re);
     try std.testing.expectEqual(-442240, F[0].im);
@@ -2888,7 +2888,7 @@ test trmm {
     try std.testing.expectEqual(-200000, F[19].re);
     try std.testing.expectEqual(-200000, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(23949760, F[0].re);
     try std.testing.expectEqual(-25718720, F[0].im);
@@ -2931,7 +2931,7 @@ test trmm {
     try std.testing.expectEqual(0, F[19].re);
     try std.testing.expectEqual(-800000, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(7945714432, F[0].re);
     try std.testing.expectEqual(7519826176, F[0].im);
@@ -2974,7 +2974,7 @@ test trmm {
     try std.testing.expectEqual(1600000, F[19].re);
     try std.testing.expectEqual(-1600000, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(369364376064, F[0].re);
     try std.testing.expectEqual(344530046464, F[0].im);
@@ -3017,7 +3017,7 @@ test trmm {
     try std.testing.expectEqual(160000000, F[19].re);
     try std.testing.expectEqual(-160000000, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(90989021460480, F[0].re);
     try std.testing.expectEqual(84675643611136, F[0].im);
@@ -3060,7 +3060,7 @@ test trmm {
     try std.testing.expectEqual(16000000000, F[19].re);
     try std.testing.expectEqual(-16000000000, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Upper, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .upper, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(3515861167300608, F[0].re);
     try std.testing.expectEqual(3585699968057344, F[0].im);
@@ -3103,7 +3103,7 @@ test trmm {
     try std.testing.expectEqual(64000000000, F[19].re);
     try std.testing.expectEqual(0, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Upper, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .upper, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(350469929612984300, F[0].re);
     try std.testing.expectEqual(356797663793856500, F[0].im);
@@ -3169,7 +3169,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-860, F[0].re);
     try std.testing.expectEqual(860, F[0].im);
@@ -3212,7 +3212,7 @@ test trmm {
     try std.testing.expectEqual(-2000, F[19].re);
     try std.testing.expectEqual(2000, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .NoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-164032, F[0].re);
     try std.testing.expectEqual(-164032, F[0].im);
@@ -3255,7 +3255,7 @@ test trmm {
     try std.testing.expectEqual(-200000, F[19].re);
     try std.testing.expectEqual(-200000, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(50359232, F[0].re);
     try std.testing.expectEqual(-51015360, F[0].im);
@@ -3298,7 +3298,7 @@ test trmm {
     try std.testing.expectEqual(0, F[19].re);
     try std.testing.expectEqual(-800000, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .NoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(3191844096, F[0].re);
     try std.testing.expectEqual(2878984960, F[0].im);
@@ -3341,7 +3341,7 @@ test trmm {
     try std.testing.expectEqual(1600000, F[19].re);
     try std.testing.expectEqual(-1600000, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(941849362944, F[0].re);
     try std.testing.expectEqual(888606385664, F[0].im);
@@ -3384,7 +3384,7 @@ test trmm {
     try std.testing.expectEqual(160000000, F[19].re);
     try std.testing.expectEqual(-160000000, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .ConjNoTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .conj_no_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(33501764704256, F[0].re);
     try std.testing.expectEqual(31179644991488, F[0].im);
@@ -3427,7 +3427,7 @@ test trmm {
     try std.testing.expectEqual(16000000000, F[19].re);
     try std.testing.expectEqual(-16000000000, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(9969837648011264, F[0].re);
     try std.testing.expectEqual(9408728405835776, F[0].im);
@@ -3470,7 +3470,7 @@ test trmm {
     try std.testing.expectEqual(64000000000, F[19].re);
     try std.testing.expectEqual(0, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .ConjNoTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .conj_no_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(121202450121539580, F[0].re);
     try std.testing.expectEqual(155274567611596800, F[0].im);
@@ -3536,7 +3536,7 @@ test trmm {
         cf64.init(20, 20),
     });
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(-4, F[0].re);
     try std.testing.expectEqual(4, F[0].im);
@@ -3579,7 +3579,7 @@ test trmm {
     try std.testing.expectEqual(-8320, F[19].re);
     try std.testing.expectEqual(8320, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .Trans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(-16, F[0].re);
     try std.testing.expectEqual(-16, F[0].im);
@@ -3622,7 +3622,7 @@ test trmm {
     try std.testing.expectEqual(-928160, F[19].re);
     try std.testing.expectEqual(-928160, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(0, F[0].re);
     try std.testing.expectEqual(-64, F[0].im);
@@ -3665,7 +3665,7 @@ test trmm {
     try std.testing.expectEqual(208124800, F[19].re);
     try std.testing.expectEqual(-211837440, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .Trans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(128, F[0].re);
     try std.testing.expectEqual(-128, F[0].im);
@@ -3708,7 +3708,7 @@ test trmm {
     try std.testing.expectEqual(942063360, F[19].re);
     try std.testing.expectEqual(43946240, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(512, F[0].re);
     try std.testing.expectEqual(-512, F[0].im);
@@ -3751,7 +3751,7 @@ test trmm {
     try std.testing.expectEqual(1175191228416, F[19].re);
     try std.testing.expectEqual(991297140736, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .ConjTrans, .NonUnit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .conj_trans, .non_unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(2048, F[0].re);
     try std.testing.expectEqual(-2048, F[0].im);
@@ -3794,7 +3794,7 @@ test trmm {
     try std.testing.expectEqual(117601934295040, F[19].re);
     try std.testing.expectEqual(99182224015360, F[19].im);
 
-    trmm(cf64, .RowMajor, .Right, .Lower, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, n);
+    trmm(.row_major, .right, .lower, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, n, .{}) catch unreachable;
 
     try std.testing.expectEqual(8192, F[0].re);
     try std.testing.expectEqual(0, F[0].im);
@@ -3837,7 +3837,7 @@ test trmm {
     try std.testing.expectEqual(12910765823426560, F[19].re);
     try std.testing.expectEqual(11676038594953216, F[19].im);
 
-    trmm(cf64, .ColumnMajor, .Right, .Lower, .ConjTrans, .Unit, m, n, beta, E.ptr, n, F.ptr, m);
+    trmm(.col_major, .right, .lower, .conj_trans, .unit, m, n, beta, E.ptr, n, F.ptr, m, .{}) catch unreachable;
 
     try std.testing.expectEqual(16384, F[0].re);
     try std.testing.expectEqual(16384, F[0].im);
