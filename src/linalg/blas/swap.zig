@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 
 const blas = @import("../blas.zig");
@@ -24,7 +23,8 @@ pub fn swap(
     if (comptime types.isArbitraryPrecision(C)) {
         @compileError("zml.linalg.blas.scal not implemented for arbitrary precision types yet");
     } else {
-        var temp: C = try ops.init(C, .{});
+        var temp: C = ops.init(C, .{}) catch unreachable;
+
         var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
         var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
         for (0..scast(usize, n)) |_| {

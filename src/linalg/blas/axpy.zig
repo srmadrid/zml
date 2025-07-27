@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 
 const blas = @import("../blas.zig");
@@ -51,13 +50,13 @@ pub fn axpy(
                 iy += incy;
             }
 
-            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet, got " ++ @typeName(Al) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet");
         } else {
-            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet, got " ++ @typeName(Al) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet");
         }
     } else {
         if (comptime types.isArbitraryPrecision(Y)) {
-            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet, got " ++ @typeName(Al) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+            @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet");
         } else {
             for (0..scast(usize, n)) |_| {
                 ops.add_( // y[iy] += alpha * x[ix]

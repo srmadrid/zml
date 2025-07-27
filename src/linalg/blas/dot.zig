@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const types = @import("../../types.zig");
-const Scalar = types.Scalar;
 const Child = types.Child;
 const Coerce = types.Coerce;
 const ops = @import("../../ops.zig");

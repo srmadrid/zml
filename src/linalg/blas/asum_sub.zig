@@ -4,7 +4,6 @@ const types = @import("../../types.zig");
 const scast = types.scast;
 const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
-const float = @import("../../float.zig");
 
 const blas = @import("../blas.zig");
 
@@ -20,7 +19,8 @@ pub fn asum_sub(
 
     try ops.set(ret, 0, ctx);
 
-    if (n <= 0 or incx <= 0) return blas.Error.InvalidArgument;
+    if (n <= 0 or incx <= 0)
+        return blas.Error.InvalidArgument;
 
     var ix: isize = 0;
     if (comptime types.isArbitraryPrecision(R)) {

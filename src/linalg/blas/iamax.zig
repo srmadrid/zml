@@ -28,6 +28,7 @@ pub fn iamax(
             var ix: isize = if (incx < 0) (-n + 2) * incx else incx;
             for (1..scast(usize, n)) |i| {
                 const absx: X = ops.abs(x[scast(usize, ix)], ctx) catch unreachable;
+
                 if (ops.gt(absx, max, ctx) catch unreachable) {
                     max = absx;
                     imax = i;
@@ -41,6 +42,7 @@ pub fn iamax(
                 ops.abs(x[0].im, ctx) catch unreachable,
                 ctx,
             ) catch unreachable;
+
             var ix: isize = if (incx < 0) (-n + 2) * incx else incx;
             for (1..scast(usize, n)) |i| {
                 const absx: Scalar(X) = ops.add(
@@ -48,6 +50,7 @@ pub fn iamax(
                     ops.abs(x[scast(usize, ix)].im, ctx) catch unreachable,
                     ctx,
                 ) catch unreachable;
+
                 if (ops.gt(absx, max, ctx) catch unreachable) {
                     max = absx;
                     imax = i;
