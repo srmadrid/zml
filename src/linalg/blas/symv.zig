@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -11,7 +10,6 @@ const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const Order = linalg.Order;
 const Uplo = linalg.Uplo;
-const Transpose = linalg.Transpose;
 
 pub inline fn symv(
     order: Order,
@@ -367,7 +365,7 @@ fn k_symv(
         }
     } else {
         // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.hemv not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.symv not implemented for arbitrary precision types yet");
     }
 
     return;

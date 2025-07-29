@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -30,7 +29,7 @@ pub inline fn syr(
     }
 }
 
-pub fn k_syr(
+fn k_syr(
     uplo: Uplo,
     n: isize,
     alpha: anytype,
@@ -219,7 +218,7 @@ pub fn k_syr(
         }
     } else {
         // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.her not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.syr not implemented for arbitrary precision types yet");
     }
 
     return;

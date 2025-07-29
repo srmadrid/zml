@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -83,7 +82,7 @@ fn k_gemv(
     const ky: isize = if (incy < 0) (-leny + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
-        // First form y = beta * y.
+        // First form  y = beta * y.
         if (ops.ne(beta, 1, ctx) catch unreachable) {
             if (incy == 1) {
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
@@ -224,7 +223,7 @@ fn k_gemv(
                 }
             }
         } else {
-            // Form  y = alpha * A**T * x + y  or  y = alpha * A**H * x + y.
+            // Form  y = alpha * A^T * x + y  or  y = alpha * A^H * x + y.
             var jy: isize = ky;
             if (incx == 1) {
                 var j: isize = 0;

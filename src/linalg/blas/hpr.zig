@@ -2,10 +2,8 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
@@ -29,7 +27,7 @@ pub inline fn hpr(
     }
 }
 
-pub fn k_hpr(
+fn k_hpr(
     uplo: Uplo,
     n: isize,
     alpha: anytype,
@@ -167,7 +165,6 @@ pub fn k_hpr(
                             ) catch unreachable;
 
                             var k: isize = kk;
-                            std.debug.print("incx: {}\n", .{incx});
                             var i: isize = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // ap[k] += conj(x[i]) * temp
@@ -456,7 +453,7 @@ pub fn k_hpr(
         }
     } else {
         // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.her not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.hpr not implemented for arbitrary precision types yet");
     }
 
     return;

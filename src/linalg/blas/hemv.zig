@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -11,7 +10,6 @@ const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const Order = linalg.Order;
 const Uplo = linalg.Uplo;
-const Transpose = linalg.Transpose;
 
 pub inline fn hemv(
     order: Order,
@@ -141,7 +139,32 @@ fn k_hemv(
             }
         }
 
-        if (ops.eq(alpha, 0, ctx) catch unreachable) return;
+        if (ops.eq(alpha, 0, ctx) catch unreachable) {
+            if (!noconj) {
+                if (incy == 1) {
+                    for (0..scast(usize, n)) |i| {
+                        ops.conjugate_( // y[i] = conj(y[i])
+                            &y[i],
+                            y[i],
+                            ctx,
+                        ) catch unreachable;
+                    }
+                } else {
+                    var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+                    for (0..scast(usize, n)) |_| {
+                        ops.conjugate_( // y[iy] = conj(y[iy])
+                            &y[scast(usize, iy)],
+                            y[scast(usize, iy)],
+                            ctx,
+                        ) catch unreachable;
+
+                        iy += incy;
+                    }
+                }
+            }
+
+            return;
+        }
 
         if (uplo == .upper) {
             if (noconj) {

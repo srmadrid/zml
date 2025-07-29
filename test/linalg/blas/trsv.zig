@@ -1377,6 +1377,4 @@ test trsv {
     try std.testing.expectApproxEqRel(4, x48[2].im, 0.0000001);
     try std.testing.expectApproxEqRel(5, x48[0].re, 0.0000001);
     try std.testing.expectApproxEqRel(5, x48[0].im, 0.0000001);
-
-    std.debug.print("x48: {any}\n", .{x48});
 }

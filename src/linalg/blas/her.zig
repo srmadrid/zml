@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -30,7 +29,7 @@ pub inline fn her(
     }
 }
 
-pub fn k_her(
+fn k_her(
     uplo: Uplo,
     n: isize,
     alpha: anytype,

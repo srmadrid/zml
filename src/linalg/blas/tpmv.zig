@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -586,7 +585,7 @@ fn k_tpmv(
         }
     } else {
         // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.gbmv not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.tpmv not implemented for arbitrary precision types yet");
     }
 
     return;

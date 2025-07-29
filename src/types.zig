@@ -214,7 +214,8 @@ pub fn isNumeric(comptime T: type) bool {
 pub fn isPointer(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .pointer => |info| {
-            if (info.size != .one) return false;
+            if (info.size != .one and
+                info.size != .c) return false;
 
             return true;
         },
@@ -234,7 +235,8 @@ pub fn isPointer(comptime T: type) bool {
 pub fn isManyPointer(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .pointer => |info| {
-            if (info.size != .many) return false;
+            if (info.size != .many and
+                info.size != .c) return false;
 
             return true;
         },
@@ -256,8 +258,6 @@ pub fn isManyPointer(comptime T: type) bool {
 pub fn isConstPointer(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .pointer => |info| {
-            if (info.size != .c) return false;
-
             if (info.is_const) {
                 return true;
             } else {

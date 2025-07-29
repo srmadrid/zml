@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -10,7 +9,6 @@ const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const Order = linalg.Order;
-const Transpose = linalg.Transpose;
 
 pub inline fn geru(
     order: Order,
@@ -32,7 +30,7 @@ pub inline fn geru(
     }
 }
 
-pub fn k_geru(
+fn k_geru(
     m: isize,
     n: isize,
     alpha: anytype,

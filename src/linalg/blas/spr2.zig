@@ -2,10 +2,8 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
@@ -337,7 +335,7 @@ fn k_spr2(
         }
     } else {
         // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.ger not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.spr2 not implemented for arbitrary precision types yet");
     }
 
     return;

@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -138,7 +137,7 @@ fn k_gbmv(
         if (ops.eq(alpha, 0, ctx) catch unreachable) return;
 
         if (transa == .no_trans or transa == .conj_no_trans) {
-            // Form  y = alpha * A * x + y  or  y = alpha * A*** * x + y.
+            // Form  y = alpha * A * x + y  or  y = alpha * conj(A) * x + y.
             var jx: isize = kx;
             if (incy == 1) {
                 var j: isize = 0;
@@ -234,7 +233,7 @@ fn k_gbmv(
                 }
             }
         } else {
-            // Form  y = alpha * A**T * x + y  or  y = alpha * A**H * x + y.
+            // Form  y = alpha * A^T * x + y  or  y = alpha * A^H * x + y.
             var jy: isize = ky;
             if (incx == 1) {
                 var j: isize = 0;
@@ -244,7 +243,7 @@ fn k_gbmv(
                     const k: isize = ku - j;
                     if (noconj) {
                         var i: isize = int.max(0, j - ku);
-                        while (i < int.min(m, j + kl)) : (i += 1) {
+                        while (i < int.min(m, j + kl + 1)) : (i += 1) {
                             ops.add_( // temp += a[k + i + j * lda] * x[i]
                                 &temp,
                                 temp,

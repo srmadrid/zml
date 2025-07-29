@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -11,7 +10,6 @@ const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const Order = linalg.Order;
 const Uplo = linalg.Uplo;
-const Transpose = linalg.Transpose;
 
 pub inline fn hbmv(
     order: Order,
@@ -143,7 +141,32 @@ fn k_hbmv(
             }
         }
 
-        if (ops.eq(alpha, 0, ctx) catch unreachable) return;
+        if (ops.eq(alpha, 0, ctx) catch unreachable) {
+            if (!noconj) {
+                if (incy == 1) {
+                    for (0..scast(usize, n)) |i| {
+                        ops.conjugate_( // y[i] = conj(y[i])
+                            &y[i],
+                            y[i],
+                            ctx,
+                        ) catch unreachable;
+                    }
+                } else {
+                    var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+                    for (0..scast(usize, n)) |_| {
+                        ops.conjugate_( // y[iy] = conj(y[iy])
+                            &y[scast(usize, iy)],
+                            y[scast(usize, iy)],
+                            ctx,
+                        ) catch unreachable;
+
+                        iy += incy;
+                    }
+                }
+            }
+
+            return;
+        }
 
         if (uplo == .upper) {
             // Form  y  when upper triangle of A is stored.
@@ -278,7 +301,7 @@ fn k_hbmv(
                 if (incx == 1 and incy == 1) {
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
+                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[j])
                             ops.conjugate(alpha, ctx) catch unreachable,
                             ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
                             ctx,
@@ -311,7 +334,7 @@ fn k_hbmv(
                             ) catch unreachable;
                         }
 
-                        ops.add_( // y[j] += temp1 * re(a[k + j * lda]) + alpha * temp2
+                        ops.add_( // y[j] += temp1 * re(a[k + j * lda]) + conj(alpha) * temp2
                             &y[scast(usize, j)],
                             y[scast(usize, j)],
                             ops.add(
@@ -335,7 +358,7 @@ fn k_hbmv(
                     var jy: isize = ky;
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
+                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[jx])
                             ops.conjugate(alpha, ctx) catch unreachable,
                             ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
                             ctx,
@@ -358,7 +381,7 @@ fn k_hbmv(
                                 ctx,
                             ) catch unreachable;
 
-                            ops.add_( // temp2 += conj(a[l + i + j * lda]) * x[ix]
+                            ops.add_( // temp2 += conj(a[l + i + j * lda]) * conj(x[ix])
                                 &temp2,
                                 temp2,
                                 ops.mul(
@@ -373,7 +396,7 @@ fn k_hbmv(
                             iy += incy;
                         }
 
-                        ops.add_( // y[jy] += temp1 * re(a[k + j * lda]) + alpha * temp2
+                        ops.add_( // y[jy] += temp1 * re(a[k + j * lda]) + conj(alpha) * temp2
                             &y[scast(usize, jy)],
                             y[scast(usize, jy)],
                             ops.add(
@@ -536,7 +559,7 @@ fn k_hbmv(
                 if (incx == 1 and incy == 1) {
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
+                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[j])
                             ops.conjugate(alpha, ctx) catch unreachable,
                             ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
                             ctx,
@@ -580,7 +603,7 @@ fn k_hbmv(
                             ) catch unreachable;
                         }
 
-                        ops.add_( // y[j] += alpha * temp2
+                        ops.add_( // y[j] += conj(alpha) * temp2
                             &y[scast(usize, j)],
                             y[scast(usize, j)],
                             ops.mul(
@@ -596,7 +619,7 @@ fn k_hbmv(
                     var jy: isize = ky;
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
+                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[jx])
                             ops.conjugate(alpha, ctx) catch unreachable,
                             ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
                             ctx,
@@ -645,7 +668,7 @@ fn k_hbmv(
                             ) catch unreachable;
                         }
 
-                        ops.add_( // y[jy] += alpha * temp2
+                        ops.add_( // y[jy] += conj(alpha) * temp2
                             &y[scast(usize, jy)],
                             y[scast(usize, jy)],
                             ops.mul(

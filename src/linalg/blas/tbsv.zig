@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const scast = types.scast;
-const Scalar = types.Scalar;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -570,7 +569,7 @@ fn k_tbsv(
 
                         jx -= incx;
 
-                        if ((n - 1 - j) >= k) {
+                        if (n - 1 - j >= k) {
                             kx -= incx;
                         }
                     }
@@ -579,7 +578,7 @@ fn k_tbsv(
         }
     } else {
         // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.gbmv not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.tbsv not implemented for arbitrary precision types yet");
     }
 
     return;

@@ -7,7 +7,7 @@ test her {
     const a = std.testing.allocator;
 
     const n = 5;
-    const alpha: f64 = 2;
+    const alpha = 2;
 
     const A = try a.alloc(cf64, n * n);
     defer a.free(A);

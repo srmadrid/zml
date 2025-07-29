@@ -2515,14 +2515,6 @@ pub inline fn dznrm2(
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `x` is not a many-item pointer, if the child
-/// type of `x` is not a numeric type, if the type of `y` is not a many-item
-/// pointer, if the child type of `y` is not a numeric type, if `c` is not a
-/// numeric type, if `c` is complex, if `s` is not a numeric type, if `s` is
-/// complex, or if `x`, `y`, `c` and `s` are all `bool`.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -2805,12 +2797,6 @@ pub inline fn zdrot(n: isize, x: [*]cf64, incx: isize, y: [*]cf64, incy: isize, 
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `a`, `b`, `c` or `s` is not a one-item
-/// pointer, if the child type of `a`, `b`, `c` or `s` is not a numeric type,
-/// if `c` is complex, or if `a`, `b`, `c` and `s` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -3143,15 +3129,6 @@ pub inline fn zrotg(a: *cf64, b: *cf64, c: *f64, s: *cf64) void {
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `x` is not a many-item pointer, if the child
-/// type of `x` is not a numeric type, if the type of `y` is not a many-item
-/// pointer, if the child type of `y` is not a numeric type, if the type of
-/// `param` is not a many-item pointer, if the child type of `param` is not a
-/// numeric type, if `param` is complex, if `x`, `y`, and `param` are all
-/// `bool`, or if `x`, `y`, or `param` are complex types.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -3479,14 +3456,6 @@ pub inline fn drotm(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, pa
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `d1`, `d2` or `x1` is not a mutable one-item
-/// pointer, if the type of `y1` is not numeric, if the type of `param` is not a
-/// mutable many-item pointer, if the child type of `d1`, `d2`, `x1` or `param`
-/// is not a numeric type, if `d1`, `d2`, `x1`, `y1` or `param` are complex,
-/// or if `d1`, `d2`, `x1`, `y1` and `param` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -4784,29 +4753,29 @@ pub inline fn izamin(
 /// The `gbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
-/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+/// `m`-by-`n` band matrix with `kl` sub-diagonals and `ku` super-diagonals.
 ///
 /// Parameters
 /// ----------
@@ -4819,17 +4788,17 @@ pub inline fn izamin(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
-///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
 /// `complex` or `expression`): Specifies the scalar `alpha`.
@@ -4843,7 +4812,7 @@ pub inline fn izamin(
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)` when `transa` is `no_transpose` or
-/// `conj_no_transpose`, or `(1 + (m - 1) * abs(incx))` otherwise.
+/// `conj_no_transpose`, or `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -4854,7 +4823,7 @@ pub inline fn izamin(
 ///
 /// `y` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `(1 + (m - 1) * abs(incy))` when `transa` is `no_transpose` or
+/// `1 + (m - 1) * abs(incy)` when `transa` is `no_transpose` or
 /// `conj_no_transpose`, or `1 + (n - 1) * abs(incy)` otherwise. On return,
 /// contains the result of the operation.
 ///
@@ -4869,13 +4838,6 @@ pub inline fn izamin(
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `m`, `n`, `kl` or `ku` are less than
 /// 0, if `lda` is less than `kl + ku + 1`, or if `incx` or `incy` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -4950,20 +4912,24 @@ pub inline fn gbmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                if (comptime A == f32) {
+                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -4978,29 +4944,29 @@ pub inline fn gbmv(
 /// The `sgbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
-/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+/// `m`-by-`n` band matrix with `kl` sub-diagonals and `ku` super-diagonals.
 ///
 /// Parameters
 /// ----------
@@ -5013,17 +4979,17 @@ pub inline fn gbmv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
-///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
@@ -5034,15 +5000,15 @@ pub inline fn gbmv(
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is
-/// 0, then `y` need not be set on input.
+/// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
 ///
-/// `y` (`[*]f32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]f32`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5058,7 +5024,22 @@ pub inline fn gbmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn sgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+pub inline fn sgbmv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    kl: isize,
+    ku: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]const f32,
+    incx: isize,
+    beta: f32,
+    y: [*]f32,
+    incy: isize,
+) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5067,29 +5048,29 @@ pub inline fn sgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// The `dgbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
-/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+/// `m`-by-`n` band matrix with `kl` sub-diagonals and `ku` super-diagonals.
 ///
 /// Parameters
 /// ----------
@@ -5102,17 +5083,17 @@ pub inline fn sgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
-///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
@@ -5123,15 +5104,15 @@ pub inline fn sgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is
-/// 0, then `y` need not be set on input.
+/// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
+/// not be set on input.
 ///
-/// `y` (`[*]f64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]f64`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5147,7 +5128,22 @@ pub inline fn sgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+pub inline fn dgbmv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    kl: isize,
+    ku: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]const f64,
+    incx: isize,
+    beta: f64,
+    y: [*]f64,
+    incy: isize,
+) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5156,29 +5152,29 @@ pub inline fn dgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// The `cgbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
-/// `m`-by-`n` band matrix, with `kl` sub-diagonals and `ku` super-diagonals.
+/// `m`-by-`n` band matrix with `kl` sub-diagonals and `ku` super-diagonals.
 ///
 /// Parameters
 /// ----------
@@ -5191,17 +5187,17 @@ pub inline fn dgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
-///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
@@ -5212,15 +5208,15 @@ pub inline fn dgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is
-/// 0, then `y` need not be set on input.
+/// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
 ///
-/// `y` (`[*]cf32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]cf32`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5236,7 +5232,22 @@ pub inline fn dgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+pub inline fn cgbmv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    kl: isize,
+    ku: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]const cf32,
+    incx: isize,
+    beta: cf32,
+    y: [*]cf32,
+    incy: isize,
+) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5245,25 +5256,25 @@ pub inline fn cgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// The `zgbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
@@ -5280,17 +5291,17 @@ pub inline fn cgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
-///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of matrix `A`. Must
-/// be greater than or equal to 0.
+/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
+///
+/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
@@ -5301,15 +5312,15 @@ pub inline fn cgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is
-/// 0, then `y` need not be set on input.
+/// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
+/// need not be set on input.
 ///
-/// `y` (`[*]cf64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]cf64`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5325,7 +5336,22 @@ pub inline fn cgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isize, ku: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+pub inline fn zgbmv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    kl: isize,
+    ku: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]const cf64,
+    incx: isize,
+    beta: cf64,
+    y: [*]cf64,
+    incy: isize,
+) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5334,25 +5360,25 @@ pub inline fn zgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// The `gemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
@@ -5369,10 +5395,10 @@ pub inline fn zgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -5389,7 +5415,7 @@ pub inline fn zgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)` when `transa` is `no_transpose` or
-/// `conj_no_transpose`, or `(1 + (m - 1) * abs(incx))` otherwise.
+/// `conj_no_transpose`, or `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -5400,7 +5426,7 @@ pub inline fn zgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 ///
 /// `y` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `(1 + (m - 1) * abs(incy))` when `transa` is `no_transpose` or
+/// `1 + (m - 1) * abs(incy)` when `transa` is `no_transpose` or
 /// `conj_no_transpose`, or `1 + (n - 1) * abs(incy)` otherwise. On return,
 /// contains the result of the operation.
 ///
@@ -5415,13 +5441,6 @@ pub inline fn zgbmv(order: Order, transa: Transpose, m: isize, n: isize, kl: isi
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
 /// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -5494,20 +5513,24 @@ pub inline fn gemv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_sgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                if (comptime A == f32) {
+                    return ci.cblas_sgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_cgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_cgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -5522,25 +5545,25 @@ pub inline fn gemv(
 /// The `sgemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
@@ -5557,10 +5580,10 @@ pub inline fn gemv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -5574,7 +5597,7 @@ pub inline fn gemv(
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -5582,7 +5605,7 @@ pub inline fn gemv(
 /// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
 /// not be set on input.
 ///
-/// `y` (`[*]f32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]f32`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5598,7 +5621,20 @@ pub inline fn gemv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn sgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+pub inline fn sgemv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]const f32,
+    incx: isize,
+    beta: f32,
+    y: [*]f32,
+    incy: isize,
+) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5607,25 +5643,25 @@ pub inline fn sgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// The `dgemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
@@ -5642,10 +5678,10 @@ pub inline fn sgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -5659,7 +5695,7 @@ pub inline fn sgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -5667,7 +5703,7 @@ pub inline fn sgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
 /// not be set on input.
 ///
-/// `y` (`[*]f64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]f64`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5683,7 +5719,20 @@ pub inline fn sgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+pub inline fn dgemv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]const f64,
+    incx: isize,
+    beta: f64,
+    y: [*]f64,
+    incy: isize,
+) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5692,25 +5741,25 @@ pub inline fn dgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// The `cgemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
@@ -5727,10 +5776,10 @@ pub inline fn dgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -5744,7 +5793,7 @@ pub inline fn dgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -5752,7 +5801,7 @@ pub inline fn dgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
 /// not be set on input.
 ///
-/// `y` (`[*]cf32`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]cf32`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5768,7 +5817,20 @@ pub inline fn dgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+pub inline fn cgemv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]const cf32,
+    incx: isize,
+    beta: cf32,
+    y: [*]cf32,
+    incy: isize,
+) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5777,25 +5839,25 @@ pub inline fn cgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// The `zgemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^T * x + beta * y
+///     y = alpha * A^T * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * conj(A) * x + beta * y
+///     y = alpha * conj(A) * x + beta * y,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     y = alpha * A^H * x + beta * y
+///     y = alpha * A^H * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
@@ -5812,10 +5874,10 @@ pub inline fn cgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -5829,7 +5891,7 @@ pub inline fn cgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
-/// `(1 + (m - 1) * abs(incx))` otherwise.
+/// `1 + (m - 1) * abs(incx)` otherwise.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -5837,7 +5899,7 @@ pub inline fn cgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
 /// not be set on input.
 ///
-/// `y` (`[*]cf64`): Array, size at least `(1 + (m - 1) * abs(incy))` when
+/// `y` (`[*]cf64`): Array, size at least `1 + (m - 1) * abs(incy)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
@@ -5853,7 +5915,20 @@ pub inline fn cgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+pub inline fn zgemv(
+    order: Order,
+    transa: Transpose,
+    m: isize,
+    n: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]const cf64,
+    incx: isize,
+    beta: cf64,
+    y: [*]cf64,
+    incy: isize,
+) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -5873,10 +5948,10 @@ pub inline fn zgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -5884,7 +5959,7 @@ pub inline fn zgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
-/// `(1 + (m - 1) * abs(incx))`.
+/// `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -5913,13 +5988,6 @@ pub inline fn zgemv(order: Order, transa: Transpose, m: isize, n: isize, alpha: 
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
 /// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
-/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -5985,13 +6053,13 @@ pub inline fn ger(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_sger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                if (comptime A == f32) {
+                    return ci.cblas_sger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -6017,15 +6085,15 @@ pub inline fn ger(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
-/// `x` (`[*]const f32`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+/// `x` (`[*]const f32`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6051,7 +6119,18 @@ pub inline fn ger(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn sger(order: Order, m: isize, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, a: [*]f32, lda: isize) void {
+pub inline fn sger(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: f32,
+    x: [*]const f32,
+    incx: isize,
+    y: [*]const f32,
+    incy: isize,
+    a: [*]f32,
+    lda: isize,
+) void {
     return ger(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -6071,15 +6150,15 @@ pub inline fn sger(order: Order, m: isize, n: isize, alpha: f32, x: [*]const f32
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
-/// `x` (`[*]const f64`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+/// `x` (`[*]const f64`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6105,7 +6184,18 @@ pub inline fn sger(order: Order, m: isize, n: isize, alpha: f32, x: [*]const f32
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, a: [*]f64, lda: isize) void {
+pub inline fn dger(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: f64,
+    x: [*]const f64,
+    incx: isize,
+    y: [*]const f64,
+    incy: isize,
+    a: [*]f64,
+    lda: isize,
+) void {
     return ger(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -6125,10 +6215,10 @@ pub inline fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -6136,7 +6226,7 @@ pub inline fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
-/// `(1 + (m - 1) * abs(incx))`.
+/// `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6165,13 +6255,6 @@ pub inline fn dger(order: Order, m: isize, n: isize, alpha: f64, x: [*]const f64
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
 /// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
-/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -6237,13 +6320,15 @@ pub inline fn gerc(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_cgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_cgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_zgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -6269,15 +6354,15 @@ pub inline fn gerc(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
-/// `x` (`[*]const cf32`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+/// `x` (`[*]const cf32`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6303,7 +6388,18 @@ pub inline fn gerc(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, a: [*]cf32, lda: isize) void {
+pub inline fn cgerc(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: cf32,
+    x: [*]const cf32,
+    incx: isize,
+    y: [*]const cf32,
+    incy: isize,
+    a: [*]cf32,
+    lda: isize,
+) void {
     return gerc(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -6323,15 +6419,15 @@ pub inline fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const c
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
-/// `x` (`[*]const cf64`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+/// `x` (`[*]const cf64`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6357,7 +6453,18 @@ pub inline fn cgerc(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const c
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, a: [*]cf64, lda: isize) void {
+pub inline fn zgerc(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: cf64,
+    x: [*]const cf64,
+    incx: isize,
+    y: [*]const cf64,
+    incy: isize,
+    a: [*]cf64,
+    lda: isize,
+) void {
     return gerc(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -6377,10 +6484,10 @@ pub inline fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const c
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -6388,7 +6495,7 @@ pub inline fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const c
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
-/// `(1 + (m - 1) * abs(incx))`.
+/// `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6417,13 +6524,6 @@ pub inline fn zgerc(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const c
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `m` or `n` are less than 0, if `lda`
 /// is less than `max(1, m)` or `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
-/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -6489,13 +6589,15 @@ pub inline fn geru(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_cgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_cgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_zgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -6521,15 +6623,15 @@ pub inline fn geru(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
-/// `x` (`[*]const cf32`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+/// `x` (`[*]const cf32`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6555,7 +6657,18 @@ pub inline fn geru(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cgeru(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, a: [*]cf32, lda: isize) void {
+pub inline fn cgeru(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: cf32,
+    x: [*]const cf32,
+    incx: isize,
+    y: [*]const cf32,
+    incy: isize,
+    a: [*]cf32,
+    lda: isize,
+) void {
     return geru(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -6575,15 +6688,15 @@ pub inline fn cgeru(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const c
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows in matrix `A`. Must be greater
-/// than or equal to 0.
+/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns in matrix `A`. Must be
+/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
-/// `x` (`[*]const cf64`): Array, size at least `(1 + (m - 1) * abs(incx))`.
+/// `x` (`[*]const cf64`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -6609,7 +6722,18 @@ pub inline fn cgeru(order: Order, m: isize, n: isize, alpha: cf32, x: [*]const c
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zgeru(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, a: [*]cf64, lda: isize) void {
+pub inline fn zgeru(
+    order: Order,
+    m: isize,
+    n: isize,
+    alpha: cf64,
+    x: [*]const cf64,
+    incx: isize,
+    y: [*]const cf64,
+    incy: isize,
+    a: [*]cf64,
+    lda: isize,
+) void {
     return geru(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -6618,11 +6742,11 @@ pub inline fn zgeru(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const c
 /// The `hbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
-/// `A` is an `n`-by-`n` Hermitian band matrix, with `k` super-diagonals.
+/// `A` is an `n`-by-`n` Hermitian band matrix with `k` super-diagonals.
 ///
 /// Parameters
 /// ----------
@@ -6678,13 +6802,6 @@ pub inline fn zgeru(order: Order, m: isize, n: isize, alpha: cf64, x: [*]const c
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
 /// is less than `k + 1`, or if `incx` or `incy` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -6757,13 +6874,17 @@ pub inline fn hbmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -6778,7 +6899,7 @@ pub inline fn hbmv(
 /// The `chbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -6831,7 +6952,20 @@ pub inline fn hbmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+pub inline fn chbmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    k: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]const cf32,
+    incx: isize,
+    beta: cf32,
+    y: [*]cf32,
+    incy: isize,
+) void {
     return hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -6840,7 +6974,7 @@ pub inline fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf32, a
 /// The `zhbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -6893,7 +7027,20 @@ pub inline fn chbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf32, a
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+pub inline fn zhbmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    k: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]const cf64,
+    incx: isize,
+    beta: cf64,
+    y: [*]cf64,
+    incy: isize,
+) void {
     return hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -6902,7 +7049,7 @@ pub inline fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a
 /// The `hemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -6914,7 +7061,7 @@ pub inline fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -6930,7 +7077,7 @@ pub inline fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `k + 1`.
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
@@ -6959,13 +7106,6 @@ pub inline fn zhbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: cf64, a
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` or `incy` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -7037,13 +7177,17 @@ pub inline fn hemv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (Scalar(Al) == f32) {
-                    return ci.cblas_chemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (Scalar(Al) == f64) {
-                    return ci.cblas_zhemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, a, scast(c_int, lda), x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_chemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zhemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -7058,7 +7202,7 @@ pub inline fn hemv(
 /// The `chemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -7070,7 +7214,7 @@ pub inline fn hemv(
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7084,7 +7228,7 @@ pub inline fn hemv(
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `k + 1`.
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
@@ -7108,7 +7252,19 @@ pub inline fn hemv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+pub inline fn chemv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]const cf32,
+    incx: isize,
+    beta: cf32,
+    y: [*]cf32,
+    incy: isize,
+) void {
     return hemv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -7117,7 +7273,7 @@ pub inline fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const
 /// The `zhemv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -7129,7 +7285,7 @@ pub inline fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7143,7 +7299,7 @@ pub inline fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `k + 1`.
+/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
@@ -7167,7 +7323,19 @@ pub inline fn chemv(order: Order, uplo: Uplo, n: isize, alpha: cf32, a: [*]const
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+pub inline fn zhemv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]const cf64,
+    incx: isize,
+    beta: cf64,
+    y: [*]cf64,
+    incy: isize,
+) void {
     return hemv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -7188,7 +7356,7 @@ pub inline fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7209,7 +7377,7 @@ pub inline fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `lda * n`.
+/// `lda * n`. On return, contains the result of the operation.
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
@@ -7222,13 +7390,6 @@ pub inline fn zhemv(order: Order, uplo: Uplo, n: isize, alpha: cf64, a: [*]const
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is complex or not a numeric type, if
-/// the type of `x` or `y` is not a many-item pointer, if the type of `a` is not
-/// a mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -7285,13 +7446,13 @@ pub inline fn her(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == A and Scalar(X) == Al and opts.link_cblas != null) {
-        switch (comptime types.numericType(X)) {
+    if (comptime A == X and types.canCoerce(Al, Scalar(A)) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(X) == f32) {
-                    return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
-                } else if (comptime Scalar(X) == f64) {
-                    return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
+                if (comptime Scalar(A) == f32) {
+                    return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
+                } else if (comptime Scalar(A) == f64) {
+                    return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -7318,7 +7479,7 @@ pub inline fn her(
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7334,7 +7495,8 @@ pub inline fn her(
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `a` (`[*]cf32`): Array, size at least `lda * n`.
+/// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
+/// result of the operation.
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
@@ -7347,7 +7509,16 @@ pub inline fn her(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, a: [*]cf32, lda: isize) void {
+pub inline fn cher(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    x: [*]const cf32,
+    incx: isize,
+    a: [*]cf32,
+    lda: isize,
+) void {
     return her(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
 
@@ -7368,7 +7539,7 @@ pub inline fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const c
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7384,7 +7555,8 @@ pub inline fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const c
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
-/// `a` (`[*]cf64`): Array, size at least `lda * n`.
+/// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
+/// result of the operation.
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
@@ -7397,7 +7569,16 @@ pub inline fn cher(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const c
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, a: [*]cf64, lda: isize) void {
+pub inline fn zher(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    x: [*]const cf64,
+    incx: isize,
+    a: [*]cf64,
+    lda: isize,
+) void {
     return her(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
 
@@ -7418,7 +7599,7 @@ pub inline fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const c
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7459,13 +7640,6 @@ pub inline fn zher(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const c
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
-/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -7531,13 +7705,15 @@ pub inline fn her2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
         switch (comptime types.numericType(Al)) {
             .cfloat => {
                 if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -7564,7 +7740,7 @@ pub inline fn her2(
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7599,7 +7775,18 @@ pub inline fn her2(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, a: [*]cf32, lda: isize) void {
+pub inline fn cher2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf32,
+    x: [*]const cf32,
+    incx: isize,
+    y: [*]const cf32,
+    incy: isize,
+    a: [*]cf32,
+    lda: isize,
+) void {
     return her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -7620,7 +7807,7 @@ pub inline fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian band matrix `A` is used:
+/// Hermitian matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
 /// used.
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
@@ -7655,7 +7842,18 @@ pub inline fn cher2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, a: [*]cf64, lda: isize) void {
+pub inline fn zher2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf64,
+    x: [*]const cf64,
+    incx: isize,
+    y: [*]const cf64,
+    incy: isize,
+    a: [*]cf64,
+    lda: isize,
+) void {
     return her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -7664,7 +7862,7 @@ pub inline fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const
 /// The `hpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -7719,13 +7917,6 @@ pub inline fn zher2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
 /// `incy` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -7796,13 +7987,17 @@ pub inline fn hpmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, ap, x, scast(c_int, incx), &beta, y, scast(c_int, incy));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, ap, x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, ap, x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -7817,7 +8012,7 @@ pub inline fn hpmv(
 /// The `chpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -7865,7 +8060,18 @@ pub inline fn hpmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: cf32, ap: [*]const cf32, x: [*]const cf32, incx: isize, beta: cf32, y: [*]cf32, incy: isize) void {
+pub inline fn chpmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf32,
+    ap: [*]const cf32,
+    x: [*]const cf32,
+    incx: isize,
+    beta: cf32,
+    y: [*]cf32,
+    incy: isize,
+) void {
     return hpmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -7874,7 +8080,7 @@ pub inline fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: cf32, ap: [*]cons
 /// The `zhpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -7922,7 +8128,18 @@ pub inline fn chpmv(order: Order, uplo: Uplo, n: isize, alpha: cf32, ap: [*]cons
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: cf64, ap: [*]const cf64, x: [*]const cf64, incx: isize, beta: cf64, y: [*]cf64, incy: isize) void {
+pub inline fn zhpmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf64,
+    ap: [*]const cf64,
+    x: [*]const cf64,
+    incx: isize,
+    beta: cf64,
+    y: [*]cf64,
+    incy: isize,
+) void {
     return hpmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -7974,13 +8191,6 @@ pub inline fn zhpmv(order: Order, uplo: Uplo, n: isize, alpha: cf64, ap: [*]cons
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
 /// `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is complex or not a numeric type, if
-/// the type of `x` is not a many-item pointer, if the type of `ap` is not a
-/// mutable many-item pointer, if the child type of `ap` or `x` is not a numeric
-/// type, or if `alpha`, `x` and `ap` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -8036,13 +8246,13 @@ pub inline fn hpr(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == A and Scalar(X) == Al and opts.link_cblas != null) {
-        switch (comptime types.numericType(X)) {
+    if (comptime A == X and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(X) == f32) {
-                    return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
-                } else if (comptime Scalar(X) == f64) {
-                    return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
+                if (comptime Scalar(A) == f32) {
+                    return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), ap);
+                } else if (comptime Scalar(A) == f64) {
+                    return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), ap);
                 }
             },
             else => {},
@@ -8095,7 +8305,15 @@ pub inline fn hpr(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const cf32, incx: isize, ap: [*]cf32) void {
+pub inline fn chpr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    x: [*]const cf32,
+    incx: isize,
+    ap: [*]cf32,
+) void {
     return hpr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
 
@@ -8142,7 +8360,15 @@ pub inline fn chpr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const c
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const cf64, incx: isize, ap: [*]cf64) void {
+pub inline fn zhpr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    x: [*]const cf64,
+    incx: isize,
+    ap: [*]cf64,
+) void {
     return hpr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
 
@@ -8201,13 +8427,6 @@ pub inline fn zhpr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const c
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
 /// `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
-/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -8272,13 +8491,15 @@ pub inline fn hpr2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 }
             },
             else => {},
@@ -8337,7 +8558,17 @@ pub inline fn hpr2(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const cf32, incx: isize, y: [*]const cf32, incy: isize, ap: [*]cf32) void {
+pub inline fn chpr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf32,
+    x: [*]const cf32,
+    incx: isize,
+    y: [*]const cf32,
+    incy: isize,
+    ap: [*]cf32,
+) void {
     return hpr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
 
@@ -8390,7 +8621,17 @@ pub inline fn chpr2(order: Order, uplo: Uplo, n: isize, alpha: cf32, x: [*]const
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const cf64, incx: isize, y: [*]const cf64, incy: isize, ap: [*]cf64) void {
+pub inline fn zhpr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: cf64,
+    x: [*]const cf64,
+    incx: isize,
+    y: [*]const cf64,
+    incy: isize,
+    ap: [*]cf64,
+) void {
     return hpr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
 
@@ -8399,7 +8640,7 @@ pub inline fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const
 /// The `sbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -8459,13 +8700,6 @@ pub inline fn zhpr2(order: Order, uplo: Uplo, n: isize, alpha: cf64, x: [*]const
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
 /// is less than `k + 1`, or if `incx` or `incy` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -8538,13 +8772,13 @@ pub inline fn sbmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_ssbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dsbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                if (comptime A == f32) {
+                    return ci.cblas_ssbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dsbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -8559,7 +8793,7 @@ pub inline fn sbmv(
 /// The `ssbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -8612,7 +8846,20 @@ pub inline fn sbmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ssbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+pub inline fn ssbmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    k: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]const f32,
+    incx: isize,
+    beta: f32,
+    y: [*]f32,
+    incy: isize,
+) void {
     return sbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -8621,7 +8868,7 @@ pub inline fn ssbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f32, a:
 /// The `dsbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -8674,7 +8921,20 @@ pub inline fn ssbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f32, a:
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+pub inline fn dsbmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    k: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]const f64,
+    incx: isize,
+    beta: f64,
+    y: [*]f64,
+    incy: isize,
+) void {
     return sbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -8687,7 +8947,7 @@ pub inline fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, a:
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
-/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+/// `A` is an `n`-by-`n` symmetric matrix, supplied in packed form.
 ///
 /// Parameters
 /// ----------
@@ -8738,13 +8998,6 @@ pub inline fn dsbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: f64, a:
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
 /// `incy` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -8815,13 +9068,13 @@ pub inline fn spmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_sspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                if (comptime A == f32) {
+                    return ci.cblas_sspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -8831,16 +9084,16 @@ pub inline fn spmv(
     return @import("blas/spmv.zig").spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, ctx);
 }
 
-/// Computes a matrix-vector product using a Hermitian packed matrix.
+/// Computes a matrix-vector product using a symmetric packed matrix.
 ///
 /// The `sspmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
-/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+/// `A` is an `n`-by-`n` symmetric matrix, supplied in packed form.
 ///
 /// Parameters
 /// ----------
@@ -8884,11 +9137,22 @@ pub inline fn spmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn sspmv(order: Order, uplo: Uplo, n: isize, alpha: f32, ap: [*]const f32, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+pub inline fn sspmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    ap: [*]const f32,
+    x: [*]const f32,
+    incx: isize,
+    beta: f32,
+    y: [*]f32,
+    incy: isize,
+) void {
     return spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
 
-/// Computes a matrix-vector product using a Hermitian packed matrix.
+/// Computes a matrix-vector product using a symmetric packed matrix.
 ///
 /// The `dspmv` routine performs a matrix-vector operation defined as:
 ///
@@ -8897,7 +9161,7 @@ pub inline fn sspmv(order: Order, uplo: Uplo, n: isize, alpha: f32, ap: [*]const
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
-/// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+/// `A` is an `n`-by-`n` symmetric matrix, supplied in packed form.
 ///
 /// Parameters
 /// ----------
@@ -8941,7 +9205,18 @@ pub inline fn sspmv(order: Order, uplo: Uplo, n: isize, alpha: f32, ap: [*]const
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, ap: [*]const f64, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+pub inline fn dspmv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    ap: [*]const f64,
+    x: [*]const f64,
+    incx: isize,
+    beta: f64,
+    y: [*]f64,
+    incy: isize,
+) void {
     return spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -8994,13 +9269,6 @@ pub inline fn dspmv(order: Order, uplo: Uplo, n: isize, alpha: f64, ap: [*]const
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
 /// `incy` are 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` is not a many-item pointer, if the type of `ap` is not a mutable
-/// many-item pointer, if the child type of `ap` or `x` is not a numeric type,
-/// or if `alpha`, `x` and `ap` are all `bool`.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -9052,13 +9320,13 @@ pub inline fn spr(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_sspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), ap);
+                if (comptime A == f32) {
+                    return ci.cblas_sspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), ap);
+                } else if (comptime A == f64) {
+                    return ci.cblas_dspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), ap);
                 }
             },
             else => {},
@@ -9068,7 +9336,7 @@ pub inline fn spr(
     return @import("blas/spr.zig").spr(order, uplo, n, alpha, x, incx, ap, ctx);
 }
 
-/// Performs a rank-1 update of a Hermitian packed matrix.
+/// Performs a rank-1 update of a symmetric packed matrix.
 ///
 /// The `sspr` routine performs a matrix-vector operation defined as:
 ///
@@ -9111,11 +9379,19 @@ pub inline fn spr(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn sspr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, ap: [*]f32) void {
+pub inline fn sspr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    x: [*]const f32,
+    incx: isize,
+    ap: [*]f32,
+) void {
     return spr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
 
-/// Performs a rank-1 update of a Hermitian packed matrix.
+/// Performs a rank-1 update of a symmetric packed matrix.
 ///
 /// The `dspr` routine performs a matrix-vector operation defined as:
 ///
@@ -9158,7 +9434,15 @@ pub inline fn sspr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dspr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, ap: [*]f64) void {
+pub inline fn dspr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    x: [*]const f64,
+    incx: isize,
+    ap: [*]f64,
+) void {
     return spr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
 }
 
@@ -9217,13 +9501,6 @@ pub inline fn dspr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
 /// `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
-/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -9288,13 +9565,13 @@ pub inline fn spr2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_sspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                if (comptime A == f32) {
+                    return ci.cblas_sspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                } else if (comptime A == f64) {
+                    return ci.cblas_dspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 }
             },
             else => {},
@@ -9353,7 +9630,17 @@ pub inline fn spr2(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn sspr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, ap: [*]f32) void {
+pub inline fn sspr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    x: [*]const f32,
+    incx: isize,
+    y: [*]const f32,
+    incy: isize,
+    ap: [*]f32,
+) void {
     return spr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
 
@@ -9406,7 +9693,17 @@ pub inline fn sspr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, ap: [*]f64) void {
+pub inline fn dspr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    x: [*]const f64,
+    incx: isize,
+    y: [*]const f64,
+    incy: isize,
+    ap: [*]f64,
+) void {
     return spr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
 }
 
@@ -9415,7 +9712,7 @@ pub inline fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const 
 /// The `symv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -9473,13 +9770,6 @@ pub inline fn dspr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const 
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` or `incy` is 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` or `beta` is not a numeric type,
-/// if the type of `a` or `x` is not a many-item pointer, if the type of `y` is
-/// not a mutable many-item pointer, if the child type of `a`, `x` or `y` is not
-/// a numeric type, or if `alpha`, `a`, `x`, `beta` and `y` are all `bool`.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -9506,37 +9796,37 @@ pub inline fn symv(
     comptime var Y: type = @TypeOf(y);
 
     comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.hemv requires alpha to be numeric, got " ++ @typeName(Al));
+        @compileError("zml.linalg.blas.symv requires alpha to be numeric, got " ++ @typeName(Al));
 
     comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.hemv requires a to be a many-item pointer, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.symv requires a to be a many-item pointer, got " ++ @typeName(A));
 
     A = types.Child(A);
 
     comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.hemv requires a's child type to numeric, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.symv requires a's child type to numeric, got " ++ @typeName(A));
 
     comptime if (!types.isManyPointer(X))
-        @compileError("zml.linalg.blas.hemv requires x to be a many-item pointer, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.symv requires x to be a many-item pointer, got " ++ @typeName(X));
 
     X = types.Child(X);
 
     comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.hemv requires x's child type to be numeric, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.symv requires x's child type to be numeric, got " ++ @typeName(X));
 
     comptime if (!types.isNumeric(Be))
-        @compileError("zml.linalg.blas.hemv requires beta to be numeric, got " ++ @typeName(Be));
+        @compileError("zml.linalg.blas.symv requires beta to be numeric, got " ++ @typeName(Be));
 
     comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
-        @compileError("zml.linalg.blas.hemv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
+        @compileError("zml.linalg.blas.symv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
 
     Y = types.Child(Y);
 
     comptime if (!types.isNumeric(Y))
-        @compileError("zml.linalg.blas.hemv requires y's child type to be numeric, got " ++ @typeName(Y));
+        @compileError("zml.linalg.blas.symv requires y's child type to be numeric, got " ++ @typeName(Y));
 
     comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
-        @compileError("zml.linalg.blas.hemv does not support alpha, a, x, beta and y all being bool");
+        @compileError("zml.linalg.blas.symv does not support alpha, a, x, beta and y all being bool");
 
     comptime if (types.isArbitraryPrecision(Al) or
         types.isArbitraryPrecision(A) or
@@ -9545,18 +9835,18 @@ pub inline fn symv(
         types.isArbitraryPrecision(Y))
     {
         // When implemented, expand if
-        @compileError("zml.linalg.blas.hemv not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.symv not implemented for arbitrary precision types yet");
     } else {
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == X and Al == Be and Al == Y and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_ssymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dsymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, a, scast(c_int, lda), x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                if (comptime A == f32) {
+                    return ci.cblas_ssymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dsymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -9571,7 +9861,7 @@ pub inline fn symv(
 /// The `ssymv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -9621,7 +9911,19 @@ pub inline fn symv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ssymv(order: Order, uplo: Uplo, n: isize, alpha: f32, a: [*]const f32, lda: isize, x: [*]const f32, incx: isize, beta: f32, y: [*]f32, incy: isize) void {
+pub inline fn ssymv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]const f32,
+    incx: isize,
+    beta: f32,
+    y: [*]f32,
+    incy: isize,
+) void {
     return symv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -9630,7 +9932,7 @@ pub inline fn ssymv(order: Order, uplo: Uplo, n: isize, alpha: f32, a: [*]const 
 /// The `dsymv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+///     y = alpha * A * x + beta * y,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
@@ -9680,7 +9982,19 @@ pub inline fn ssymv(order: Order, uplo: Uplo, n: isize, alpha: f32, a: [*]const 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dsymv(order: Order, uplo: Uplo, n: isize, alpha: f64, a: [*]const f64, lda: isize, x: [*]const f64, incx: isize, beta: f64, y: [*]f64, incy: isize) void {
+pub inline fn dsymv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]const f64,
+    incx: isize,
+    beta: f64,
+    y: [*]f64,
+    incy: isize,
+) void {
     return symv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
 
@@ -9736,13 +10050,6 @@ pub inline fn dsymv(order: Order, uplo: Uplo, n: isize, alpha: f64, a: [*]const 
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` or `incy` are 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is complex or not a numeric type, if
-/// the type of `x` or `y` is not a many-item pointer, if the type of `a` is not
-/// a mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -9795,13 +10102,13 @@ pub inline fn syr(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(X)) {
+    if (comptime A == X and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_ssyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dsyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), a, scast(c_int, lda));
+                if (comptime A == f32) {
+                    return ci.cblas_ssyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), a, scast(c_int, lda));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dsyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -9857,7 +10164,16 @@ pub inline fn syr(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ssyr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, a: [*]f32, lda: isize) void {
+pub inline fn ssyr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    x: [*]const f32,
+    incx: isize,
+    a: [*]f32,
+    lda: isize,
+) void {
     return syr(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
 
@@ -9907,7 +10223,16 @@ pub inline fn ssyr(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dsyr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, a: [*]f64, lda: isize) void {
+pub inline fn dsyr(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    x: [*]const f64,
+    incx: isize,
+    a: [*]f64,
+    lda: isize,
+) void {
     return syr(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
 
@@ -9969,13 +10294,6 @@ pub inline fn dsyr(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type of `alpha` is not a numeric type, if the type
-/// of `x` or `y` is not a many-item pointer, if the type of `a` is not a
-/// mutable many-item pointer, if the child type of `a`, `x` or `y` is not a
-/// numeric type, or if `alpha`, `x`, `y` and `a` are all `bool`.
 ///
 /// Notes
 /// -----
@@ -10041,13 +10359,13 @@ pub inline fn syr2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == X and Al == Y and Al == A and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (Al == f32) {
-                    return ci.cblas_ssyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (Al == f64) {
-                    return ci.cblas_dsyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), alpha, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                if (comptime A == f32) {
+                    return ci.cblas_ssyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dsyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -10062,7 +10380,7 @@ pub inline fn syr2(
 /// The `ssyr2` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+///     A = alpha * x * y^T + alpha * y * x^T + A,
 /// ```
 ///
 /// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
@@ -10109,7 +10427,18 @@ pub inline fn syr2(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ssyr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const f32, incx: isize, y: [*]const f32, incy: isize, a: [*]f32, lda: isize) void {
+pub inline fn ssyr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f32,
+    x: [*]const f32,
+    incx: isize,
+    y: [*]const f32,
+    incy: isize,
+    a: [*]f32,
+    lda: isize,
+) void {
     return syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -10118,7 +10447,7 @@ pub inline fn ssyr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const 
 /// The `dsyr2` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+///     A = alpha * x * y^T + alpha * y * x^T + A,
 /// ```
 ///
 /// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
@@ -10165,7 +10494,18 @@ pub inline fn ssyr2(order: Order, uplo: Uplo, n: isize, alpha: f32, x: [*]const 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const f64, incx: isize, y: [*]const f64, incy: isize, a: [*]f64, lda: isize) void {
+pub inline fn dsyr2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    alpha: f64,
+    x: [*]const f64,
+    incx: isize,
+    y: [*]const f64,
+    incy: isize,
+    a: [*]f64,
+    lda: isize,
+) void {
     return syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
 
@@ -10174,25 +10514,25 @@ pub inline fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const 
 /// The `tbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -10212,7 +10552,7 @@ pub inline fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10245,12 +10585,6 @@ pub inline fn dsyr2(order: Order, uplo: Uplo, n: isize, alpha: f64, x: [*]const 
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
 /// is less than `k + 1`, or if `incx` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
 ///
 /// Notes
 /// -----
@@ -10329,25 +10663,25 @@ pub inline fn tbmv(
 /// The `stbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -10367,7 +10701,7 @@ pub inline fn tbmv(
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10397,7 +10731,18 @@ pub inline fn tbmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn stbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+pub inline fn stbmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]f32,
+    incx: isize,
+) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -10406,25 +10751,25 @@ pub inline fn stbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `dtbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -10444,7 +10789,7 @@ pub inline fn stbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10474,7 +10819,18 @@ pub inline fn stbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+pub inline fn dtbmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]f64,
+    incx: isize,
+) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -10483,25 +10839,25 @@ pub inline fn dtbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ctbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -10521,7 +10877,7 @@ pub inline fn dtbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10551,7 +10907,18 @@ pub inline fn dtbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+pub inline fn ctbmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]cf32,
+    incx: isize,
+) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -10560,25 +10927,25 @@ pub inline fn ctbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ztbmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -10598,7 +10965,7 @@ pub inline fn ctbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10628,7 +10995,18 @@ pub inline fn ctbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+pub inline fn ztbmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]cf64,
+    incx: isize,
+) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -10638,25 +11016,25 @@ pub inline fn ztbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `tbsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -10678,7 +11056,7 @@ pub inline fn ztbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10713,12 +11091,6 @@ pub inline fn ztbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` or `k` are less than 0, if `lda`
 /// is less than `k + 1`, or if `incx` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
 ///
 /// Notes
 /// -----
@@ -10798,25 +11170,25 @@ pub inline fn tbsv(
 /// The `stbsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -10838,7 +11210,7 @@ pub inline fn tbsv(
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10856,8 +11228,8 @@ pub inline fn tbsv(
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`. Before
-/// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
-/// solution vector `x`.
+/// entry, the incremented array `x` must contain the n-element right-hand side
+/// vector `b`. On return, it contains the solution vector `x`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -10870,7 +11242,18 @@ pub inline fn tbsv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn stbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+pub inline fn stbsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]f32,
+    incx: isize,
+) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -10880,25 +11263,25 @@ pub inline fn stbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `dtbsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -10920,7 +11303,7 @@ pub inline fn stbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -10938,8 +11321,8 @@ pub inline fn stbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`. Before
-/// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
-/// solution vector `x`.
+/// entry, the incremented array `x` must contain the n-element right-hand side
+/// vector `b`. On return, it contains the solution vector `x`.
 ///
 /// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
@@ -10952,7 +11335,18 @@ pub inline fn stbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+pub inline fn dtbsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]f64,
+    incx: isize,
+) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -10962,25 +11356,25 @@ pub inline fn dtbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ctbsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -11002,7 +11396,7 @@ pub inline fn dtbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11034,7 +11428,18 @@ pub inline fn dtbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+pub inline fn ctbsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]cf32,
+    incx: isize,
+) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -11044,25 +11449,25 @@ pub inline fn ctbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ztbsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -11084,7 +11489,7 @@ pub inline fn ctbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11116,7 +11521,18 @@ pub inline fn ctbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, k: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+pub inline fn ztbsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    k: isize,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]cf64,
+    incx: isize,
+) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
 
@@ -11125,25 +11541,25 @@ pub inline fn ztbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `tpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -11163,7 +11579,7 @@ pub inline fn ztbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11191,12 +11607,6 @@ pub inline fn ztbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` is
 /// 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
 ///
 /// Notes
 /// -----
@@ -11273,25 +11683,25 @@ pub inline fn tpmv(
 /// The `stpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -11311,7 +11721,7 @@ pub inline fn tpmv(
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11335,7 +11745,16 @@ pub inline fn tpmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn stpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f32, x: [*]f32, incx: isize) void {
+pub inline fn stpmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const f32,
+    x: [*]f32,
+    incx: isize,
+) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -11344,25 +11763,25 @@ pub inline fn stpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `dtpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -11382,7 +11801,7 @@ pub inline fn stpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11406,7 +11825,16 @@ pub inline fn stpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f64, x: [*]f64, incx: isize) void {
+pub inline fn dtpmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const f64,
+    x: [*]f64,
+    incx: isize,
+) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -11415,25 +11843,25 @@ pub inline fn dtpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ctpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -11453,7 +11881,7 @@ pub inline fn dtpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11477,7 +11905,16 @@ pub inline fn dtpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf32, x: [*]cf32, incx: isize) void {
+pub inline fn ctpmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const cf32,
+    x: [*]cf32,
+    incx: isize,
+) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -11486,25 +11923,25 @@ pub inline fn ctpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ztpmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -11524,7 +11961,7 @@ pub inline fn ctpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11548,7 +11985,16 @@ pub inline fn ctpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf64, x: [*]cf64, incx: isize) void {
+pub inline fn ztpmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const cf64,
+    x: [*]cf64,
+    incx: isize,
+) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -11558,25 +12004,25 @@ pub inline fn ztpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `tpsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
@@ -11596,7 +12042,7 @@ pub inline fn ztpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11627,12 +12073,6 @@ pub inline fn ztpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` is
 /// 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -11653,29 +12093,29 @@ pub inline fn tpsv(
     comptime var X: type = @TypeOf(x);
 
     comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.tpmv requires ap to be a many-item pointer, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.tpsv requires ap to be a many-item pointer, got " ++ @typeName(A));
 
     A = types.Child(A);
 
     comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.tpmv requires ap's child type to numeric, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.tpsv requires ap's child type to numeric, got " ++ @typeName(A));
 
     comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
-        @compileError("zml.linalg.blas.tpmv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.tpsv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
 
     X = types.Child(X);
 
     comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.tpmv requires x's child type to be numeric, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.tpsv requires x's child type to be numeric, got " ++ @typeName(X));
 
     comptime if (A == bool and X == bool)
-        @compileError("zml.linalg.blas.tpmv does not support a and x both being bool");
+        @compileError("zml.linalg.blas.tpsv does not support a and x both being bool");
 
     comptime if (types.isArbitraryPrecision(A) or
         types.isArbitraryPrecision(X))
     {
         // When implemented, expand if
-        @compileError("zml.linalg.blas.tpmv not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.tpsv not implemented for arbitrary precision types yet");
     } else {
         validateContext(@TypeOf(ctx), .{});
     };
@@ -11709,25 +12149,25 @@ pub inline fn tpsv(
 /// The `stpsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
@@ -11747,7 +12187,7 @@ pub inline fn tpsv(
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11773,7 +12213,16 @@ pub inline fn tpsv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn stpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f32, x: [*]f32, incx: isize) void {
+pub inline fn stpsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const f32,
+    x: [*]f32,
+    incx: isize,
+) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -11783,25 +12232,25 @@ pub inline fn stpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `dtpsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
@@ -11821,7 +12270,7 @@ pub inline fn stpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11847,7 +12296,16 @@ pub inline fn stpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const f64, x: [*]f64, incx: isize) void {
+pub inline fn dtpsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const f64,
+    x: [*]f64,
+    incx: isize,
+) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -11857,25 +12315,25 @@ pub inline fn dtpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ctpsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
@@ -11895,7 +12353,7 @@ pub inline fn dtpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11921,7 +12379,16 @@ pub inline fn dtpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf32, x: [*]cf32, incx: isize) void {
+pub inline fn ctpsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const cf32,
+    x: [*]cf32,
+    incx: isize,
+) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -11931,25 +12398,25 @@ pub inline fn ctpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ztpsv` routine solves one of the following systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
@@ -11969,7 +12436,7 @@ pub inline fn ctpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -11995,7 +12462,16 @@ pub inline fn ctpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, ap: [*]const cf64, x: [*]cf64, incx: isize) void {
+pub inline fn ztpsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    ap: [*]const cf64,
+    x: [*]cf64,
+    incx: isize,
+) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
 
@@ -12004,25 +12480,25 @@ pub inline fn ztpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `trmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -12042,7 +12518,7 @@ pub inline fn ztpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12073,12 +12549,6 @@ pub inline fn ztpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` is 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -12100,29 +12570,29 @@ pub inline fn trmv(
     comptime var X: type = @TypeOf(x);
 
     comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.tbmv requires a to be a many-item pointer, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.trmv requires a to be a many-item pointer, got " ++ @typeName(A));
 
     A = types.Child(A);
 
     comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.tbmv requires a's child type to numeric, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.trmv requires a's child type to numeric, got " ++ @typeName(A));
 
     comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
-        @compileError("zml.linalg.blas.tbmv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.trmv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
 
     X = types.Child(X);
 
     comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.tbmv requires x's child type to be numeric, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.trmv requires x's child type to be numeric, got " ++ @typeName(X));
 
     comptime if (A == bool and X == bool)
-        @compileError("zml.linalg.blas.tbmv does not support a and x both being bool");
+        @compileError("zml.linalg.blas.trmv does not support a and x both being bool");
 
     comptime if (types.isArbitraryPrecision(A) or
         types.isArbitraryPrecision(X))
     {
         // When implemented, expand if
-        @compileError("zml.linalg.blas.tbmv not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.trmv not implemented for arbitrary precision types yet");
     } else {
         validateContext(@TypeOf(ctx), .{});
     };
@@ -12155,25 +12625,25 @@ pub inline fn trmv(
 /// The `strmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -12193,7 +12663,7 @@ pub inline fn trmv(
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12220,7 +12690,17 @@ pub inline fn trmv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn strmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+pub inline fn strmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]f32,
+    incx: isize,
+) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12229,25 +12709,25 @@ pub inline fn strmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `dtrmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -12267,7 +12747,7 @@ pub inline fn strmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12294,7 +12774,17 @@ pub inline fn strmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+pub inline fn dtrmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]f64,
+    incx: isize,
+) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12303,25 +12793,25 @@ pub inline fn dtrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ctrmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -12341,7 +12831,7 @@ pub inline fn dtrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12368,7 +12858,17 @@ pub inline fn dtrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+pub inline fn ctrmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]cf32,
+    incx: isize,
+) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12377,25 +12877,25 @@ pub inline fn ctrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ztrmv` routine performs a matrix-vector operation defined as:
 ///
 /// ```zig
-///     x = A * x
+///     x = A * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A) * x
+///     x = conj(A) * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = A^T * x
+///     x = A^T * x,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     x = conj(A^T) * x
+///     x = A^H * x,
 /// ```
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
@@ -12415,7 +12915,7 @@ pub inline fn ctrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the operation is `x = A * x`.
 /// - If `transa = trans`, then the operation is `x = A^T * x`.
 /// - If `transa = conj_no_trans`, then the operation is `x = conj(A) * x`.
-/// - If `transa = conj_trans`, then the operation is `x = conj(A^T) * x`.
+/// - If `transa = conj_trans`, then the operation is `x = A^H * x`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12442,7 +12942,17 @@ pub inline fn ctrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+pub inline fn ztrmv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]cf64,
+    incx: isize,
+) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12452,25 +12962,25 @@ pub inline fn ztrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `trsv` routine solves one of the systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -12492,7 +13002,7 @@ pub inline fn ztrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12525,12 +13035,6 @@ pub inline fn ztrmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
 /// than `max(1, n)`, or if `incx` is 0.
 ///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
-///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -12552,29 +13056,29 @@ pub inline fn trsv(
     comptime var X: type = @TypeOf(x);
 
     comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.tbmv requires a to be a many-item pointer, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.trsv requires a to be a many-item pointer, got " ++ @typeName(A));
 
     A = types.Child(A);
 
     comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.tbmv requires a's child type to numeric, got " ++ @typeName(A));
+        @compileError("zml.linalg.blas.trsv requires a's child type to numeric, got " ++ @typeName(A));
 
     comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
-        @compileError("zml.linalg.blas.tbmv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.trsv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
 
     X = types.Child(X);
 
     comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.tbmv requires x's child type to be numeric, got " ++ @typeName(X));
+        @compileError("zml.linalg.blas.trsv requires x's child type to be numeric, got " ++ @typeName(X));
 
     comptime if (A == bool and X == bool)
-        @compileError("zml.linalg.blas.tbmv does not support a and x both being bool");
+        @compileError("zml.linalg.blas.trsv does not support a and x both being bool");
 
     comptime if (types.isArbitraryPrecision(A) or
         types.isArbitraryPrecision(X))
     {
         // When implemented, expand if
-        @compileError("zml.linalg.blas.tbmv not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.blas.trsv not implemented for arbitrary precision types yet");
     } else {
         validateContext(@TypeOf(ctx), .{});
     };
@@ -12608,25 +13112,25 @@ pub inline fn trsv(
 /// The `strsv` routine solves one of the systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -12648,7 +13152,7 @@ pub inline fn trsv(
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12677,7 +13181,17 @@ pub inline fn trsv(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn strsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f32, lda: isize, x: [*]f32, incx: isize) void {
+pub inline fn strsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const f32,
+    lda: isize,
+    x: [*]f32,
+    incx: isize,
+) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12687,25 +13201,25 @@ pub inline fn strsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `dtrsv` routine solves one of the systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -12727,7 +13241,7 @@ pub inline fn strsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12756,7 +13270,17 @@ pub inline fn strsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const f64, lda: isize, x: [*]f64, incx: isize) void {
+pub inline fn dtrsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const f64,
+    lda: isize,
+    x: [*]f64,
+    incx: isize,
+) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12766,25 +13290,25 @@ pub inline fn dtrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ctrsv` routine solves one of the systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -12806,7 +13330,7 @@ pub inline fn dtrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12835,7 +13359,17 @@ pub inline fn dtrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf32, lda: isize, x: [*]cf32, incx: isize) void {
+pub inline fn ctrsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const cf32,
+    lda: isize,
+    x: [*]cf32,
+    incx: isize,
+) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12845,25 +13379,25 @@ pub inline fn ctrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// The `ztrsv` routine solves one of the systems of equations:
 ///
 /// ```zig
-///     A * x = b
+///     A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b
+///     conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b
+///     A^T * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A^T) * x = b
+///     A^H * x = b,
 /// ```
 ///
 /// `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or non-unit,
@@ -12885,7 +13419,7 @@ pub inline fn ctrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then the system is `A * x = b`.
 /// - If `transa = trans`, then the system is `A^T * x = b`.
 /// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `conj(A^T) * x = b`.
+/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then the matrix is unit triangular.
@@ -12914,7 +13448,17 @@ pub inline fn ctrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: isize, a: [*]const cf64, lda: isize, x: [*]cf64, incx: isize) void {
+pub inline fn ztrsv(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    n: isize,
+    a: [*]const cf64,
+    lda: isize,
+    x: [*]cf64,
+    incx: isize,
+) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
 
@@ -12943,13 +13487,13 @@ pub inline fn ztrsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: 
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `transb` (`Transpose`): Specifies the form of `op(B)`:
 /// - If `transb = no_trans`, then `op(B) = B`.
 /// - If `transb = trans`, then `op(B) = B^T`.
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
-/// - If `transb = conj_trans`, then `op(B) = conj(B^T)`.
+/// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
 /// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
@@ -13138,13 +13682,13 @@ pub inline fn gemm(
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `transb` (`Transpose`): Specifies the form of `op(B)`:
 /// - If `transb = no_trans`, then `op(B) = B`.
 /// - If `transb = trans`, then `op(B) = B^T`.
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
-/// - If `transb = conj_trans`, then `op(B) = conj(B^T)`.
+/// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
 /// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
@@ -13229,13 +13773,13 @@ pub inline fn sgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `transb` (`Transpose`): Specifies the form of `op(B)`:
 /// - If `transb = no_trans`, then `op(B) = B`.
 /// - If `transb = trans`, then `op(B) = B^T`.
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
-/// - If `transb = conj_trans`, then `op(B) = conj(B^T)`.
+/// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
 /// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
@@ -13320,13 +13864,13 @@ pub inline fn dgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `transb` (`Transpose`): Specifies the form of `op(B)`:
 /// - If `transb = no_trans`, then `op(B) = B`.
 /// - If `transb = trans`, then `op(B) = B^T`.
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
-/// - If `transb = conj_trans`, then `op(B) = conj(B^T)`.
+/// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
 /// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
@@ -13411,13 +13955,13 @@ pub inline fn cgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `transb` (`Transpose`): Specifies the form of `op(B)`:
 /// - If `transb = no_trans`, then `op(B) = B`.
 /// - If `transb = trans`, then `op(B) = B^T`.
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
-/// - If `transb = conj_trans`, then `op(B) = conj(B^T)`.
+/// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
 /// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
@@ -15972,7 +16516,7 @@ pub inline fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16134,7 +16678,7 @@ pub inline fn trmm(
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16212,7 +16756,7 @@ pub inline fn strmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16290,7 +16834,7 @@ pub inline fn dtrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16368,7 +16912,7 @@ pub inline fn ctrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16445,7 +16989,7 @@ pub inline fn ztrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16606,7 +17150,7 @@ pub inline fn trsm(
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16683,7 +17227,7 @@ pub inline fn strsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16760,7 +17304,7 @@ pub inline fn dtrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
@@ -16837,7 +17381,7 @@ pub inline fn ctrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// - If `transa = no_trans`, then `op(A) = A`.
 /// - If `transa = trans`, then `op(A) = A^T`.
 /// - If `transa = conj_no_trans`, then `op(A) = conj(A)`.
-/// - If `transa = conj_trans`, then `op(A) = conj(A^T)`.
+/// - If `transa = conj_trans`, then `op(A) = A^H`.
 ///
 /// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
