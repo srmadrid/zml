@@ -1,7 +1,7 @@
 test {
-    const test_level_1 = false;
+    const test_level_1 = true;
     const test_level_2 = true;
-    const test_level_3 = false;
+    const test_level_3 = true;
 
     if (test_level_1) {
         _ = @import("blas/asum.zig");

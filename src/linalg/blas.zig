@@ -13471,12 +13471,12 @@ pub inline fn ztrsv(
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * op(A) * op(B) + beta * C
+///     C = alpha * op(A) * op(B) + beta * C,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` and `beta`
-/// are scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and
-/// `C` is an `m`-by-`n` matrix.
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` and `beta` are
+/// scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and `C`
+/// is an `m`-by-`n` matrix.
 ///
 /// Parameters
 /// ----------
@@ -13515,7 +13515,7 @@ pub inline fn ztrsv(
 /// | `order = row_major` | `lda * m`                                       | `lda * k`                                 |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program:
+/// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` or `transa = conj_no_trans` | `transa = trans` or `transa = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
 /// | `order = col_major` | `max(1, m)`                                     | `max(1, k)`                               |
@@ -13529,7 +13529,7 @@ pub inline fn ztrsv(
 /// | `order = row_major` | `ldb * k`                                       | `ldb * n`                                 |
 ///
 /// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
-/// calling (sub)program:
+/// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transb = no_trans` or `transb = conj_no_trans` | `transb = trans` or `transb = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
 /// | `order = col_major` | `max(1, k)`                                     | `max(1, n)`                               |
@@ -13539,14 +13539,12 @@ pub inline fn ztrsv(
 /// `complex` or `expression`): Specifies the scalar `beta`.
 ///
 /// `c` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least:
-/// | `order = col_major` | `ldc * n` |
-/// | `order = row_major` | `ldc * m` |
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `ldc * n` if `order = col_major` or `ldc * m` if `order = row_major`.
 ///
 /// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
-/// calling (sub)program:
-/// | `order = col_major` | `max(1, m)` |
-/// | `order = row_major` | `max(1, n)` |
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
 /// Returns
 /// -------
@@ -13555,13 +13553,8 @@ pub inline fn ztrsv(
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
+/// than `max(1, n)` or `max(1, k)`, if `ldb` is less than `max(1, k)` or
+/// `max(1, n)`, or if `ldc` is less than `max(1, m)` or `max(1, n)`.
 ///
 /// Notes
 /// -----
@@ -13636,20 +13629,24 @@ pub inline fn gemm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == B and Al == Be and Al == C and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .float => {
-                if (comptime Al == f32) {
-                    return ci.cblas_sgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
-                } else if (comptime Al == f64) {
-                    return ci.cblas_dgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
+                if (comptime A == f32) {
+                    return ci.cblas_sgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                } else if (comptime A == f64) {
+                    return ci.cblas_dgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_cgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_cgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -13666,12 +13663,12 @@ pub inline fn gemm(
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * op(A) * op(B) + beta * C
+///     C = alpha * op(A) * op(B) + beta * C,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` and `beta`
-/// are scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and
-/// `C` is an `m`-by-`n` matrix.
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` and `beta` are
+/// scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and `C`
+/// is an `m`-by-`n` matrix.
 ///
 /// Parameters
 /// ----------
@@ -13708,7 +13705,7 @@ pub inline fn gemm(
 /// | `order = row_major` | `lda * m`                                       | `lda * k`                                 |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program:
+/// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` or `transa = conj_no_trans` | `transa = trans` or `transa = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
 /// | `order = col_major` | `max(1, m)`                                     | `max(1, k)`                               |
@@ -13721,7 +13718,7 @@ pub inline fn gemm(
 /// | `order = row_major` | `ldb * k`                                       | `ldb * n`                                 |
 ///
 /// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
-/// calling (sub)program:
+/// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transb = no_trans` or `transb = conj_no_trans` | `transb = trans` or `transb = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
 /// | `order = col_major` | `max(1, k)`                                     | `max(1, n)`                               |
@@ -13729,14 +13726,12 @@ pub inline fn gemm(
 ///
 /// `beta` (`f32`): Specifies the scalar `beta`.
 ///
-/// `c` (`[*]f32`): Array, size at least:
-/// | `order = col_major` | `ldc * n` |
-/// | `order = row_major` | `ldc * m` |
+/// `c` (`[*]f32`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
 ///
 /// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
-/// calling (sub)program:
-/// | `order = col_major` | `max(1, m)` |
-/// | `order = row_major` | `max(1, n)` |
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
 /// Returns
 /// -------
@@ -13746,7 +13741,22 @@ pub inline fn gemm(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn sgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
+pub inline fn sgemm(
+    order: Order,
+    transa: Transpose,
+    transb: Transpose,
+    m: isize,
+    n: isize,
+    k: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    b: [*]const f32,
+    ldb: isize,
+    beta: f32,
+    c: [*]f32,
+    ldc: isize,
+) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -13757,12 +13767,12 @@ pub inline fn sgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * op(A) * op(B) + beta * C
+///     C = alpha * op(A) * op(B) + beta * C,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` and `beta`
-/// are scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and
-/// `C` is an `m`-by-`n` matrix.
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` and `beta` are
+/// scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and `C`
+/// is an `m`-by-`n` matrix.
 ///
 /// Parameters
 /// ----------
@@ -13820,14 +13830,12 @@ pub inline fn sgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 ///
 /// `beta` (`f64`): Specifies the scalar `beta`.
 ///
-/// `c` (`[*]f64`): Array, size at least:
-/// | `order = col_major` | `ldc * n` |
-/// | `order = row_major` | `ldc * m` |
+/// `c` (`[*]f64`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
 ///
 /// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
-/// calling (sub)program:
-/// | `order = col_major` | `max(1, m)` |
-/// | `order = row_major` | `max(1, n)` |
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
 /// Returns
 /// -------
@@ -13837,7 +13845,22 @@ pub inline fn sgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
+pub inline fn dgemm(
+    order: Order,
+    transa: Transpose,
+    transb: Transpose,
+    m: isize,
+    n: isize,
+    k: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    b: [*]const f64,
+    ldb: isize,
+    beta: f64,
+    c: [*]f64,
+    ldc: isize,
+) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -13848,12 +13871,12 @@ pub inline fn dgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * op(A) * op(B) + beta * C
+///     C = alpha * op(A) * op(B) + beta * C,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` and `beta`
-/// are scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and
-/// `C` is an `m`-by-`n` matrix.
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` and `beta` are
+/// scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and `C`
+/// is an `m`-by-`n` matrix.
 ///
 /// Parameters
 /// ----------
@@ -13911,14 +13934,12 @@ pub inline fn dgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 ///
 /// `beta` (`cf32`): Specifies the scalar `beta`.
 ///
-/// `c` (`[*]cf32`): Array, size at least:
-/// | `order = col_major` | `ldc * n` |
-/// | `order = row_major` | `ldc * m` |
+/// `c` (`[*]cf32`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
 ///
 /// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
-/// calling (sub)program:
-/// | `order = col_major` | `max(1, m)` |
-/// | `order = row_major` | `max(1, n)` |
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
 /// Returns
 /// -------
@@ -13928,7 +13949,22 @@ pub inline fn dgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+pub inline fn cgemm(
+    order: Order,
+    transa: Transpose,
+    transb: Transpose,
+    m: isize,
+    n: isize,
+    k: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]const cf32,
+    ldb: isize,
+    beta: cf32,
+    c: [*]cf32,
+    ldc: isize,
+) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -13939,12 +13975,12 @@ pub inline fn cgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * op(A) * op(B) + beta * C
+///     C = alpha * op(A) * op(B) + beta * C,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` and `beta`
-/// are scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and
-/// `C` is an `m`-by-`n` matrix.
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` and `beta` are
+/// scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and `C`
+/// is an `m`-by-`n` matrix.
 ///
 /// Parameters
 /// ----------
@@ -14002,14 +14038,12 @@ pub inline fn cgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 ///
 /// `beta` (`cf64`): Specifies the scalar `beta`.
 ///
-/// `c` (`[*]cf64`): Array, size at least:
-/// | `order = col_major` | `ldc * n` |
-/// | `order = row_major` | `ldc * m` |
+/// `c` (`[*]cf64`): Array, size at least `ldc * n` if `order = col_major` or
+/// `ldc * m` if `order = row_major`.
 ///
 /// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
-/// calling (sub)program:
-/// | `order = col_major` | `max(1, m)` |
-/// | `order = row_major` | `max(1, n)` |
+/// calling (sub)program. Must be greater than or equal to `max(1, m)` if
+/// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
 /// Returns
 /// -------
@@ -14019,7 +14053,22 @@ pub inline fn cgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zgemm(order: Order, transa: Transpose, transb: Transpose, m: isize, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+pub inline fn zgemm(
+    order: Order,
+    transa: Transpose,
+    transb: Transpose,
+    m: isize,
+    n: isize,
+    k: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]const cf64,
+    ldb: isize,
+    beta: cf64,
+    c: [*]cf64,
+    ldc: isize,
+) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -14030,13 +14079,13 @@ pub inline fn zgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// product using a general matrix `C`. The operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a Hermitian matrix, `B` and `C`
@@ -14075,8 +14124,8 @@ pub inline fn zgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
 /// `b` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least `ldb * kb`, where
-/// `kb` is `n` if `order = col_major` and `m` if `order = row_major`.
+/// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
+/// `order = col_major` and `ldb * m` if `order = row_major`.
 ///
 /// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
@@ -14100,7 +14149,8 @@ pub inline fn zgemm(order: Order, transa: Transpose, transb: Transpose, m: isize
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
+/// than `max(1, m)` or `max(1, n)`, if `ldb` is less than `max(1, m)` or
+/// `max(1, n)`, or if `ldc` is less than `max(1, m)` or `max(1, n)`.
 ///
 /// Notes
 /// -----
@@ -14174,13 +14224,17 @@ pub inline fn hemm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == B and Al == Be and Al == C and opts.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+        switch (comptime types.numericType(A)) {
             .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
-                } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), &beta, c, scast(c_int, ldc));
+                if (comptime Scalar(A) == f32) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                } else if (comptime Scalar(A) == f64) {
+                    const alpha_casted: A = scast(A, alpha);
+                    const beta_casted: A = scast(A, beta);
+                    return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -14197,13 +14251,13 @@ pub inline fn hemm(
 /// product using a general matrix `C`. The operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a Hermitian matrix, `B` and `C`
@@ -14240,8 +14294,8 @@ pub inline fn hemm(
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
-/// `b` (`[*]const cf32`): Array, size at least `ldb * kb`, where `kb` is `n` if
-/// `order = col_major` and `m` if `order = row_major`.
+/// `b` (`[*]const cf32`): Array, size at least `ldb * n` if `order = col_major`
+/// and `ldb * m` if `order = row_major`.
 ///
 /// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
@@ -14264,7 +14318,21 @@ pub inline fn hemm(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+pub inline fn chemm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]const cf32,
+    ldb: isize,
+    beta: cf32,
+    c: [*]cf32,
+    ldc: isize,
+) void {
     return hemm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -14275,13 +14343,13 @@ pub inline fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// product using a general matrix `C`. The operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a Hermitian matrix, `B` and `C`
@@ -14318,8 +14386,8 @@ pub inline fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
-/// `b` (`[*]const cf64`): Array, size at least `ldb * kb`, where `kb` is `n` if
-/// `order = col_major` and `m` if `order = row_major`.
+/// `b` (`[*]const cf64`): Array, size at least `ldb * n` if `order = col_major`
+/// and `ldb * m` if `order = row_major`.
 ///
 /// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
@@ -14342,7 +14410,21 @@ pub inline fn chemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+pub inline fn zhemm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]const cf64,
+    ldb: isize,
+    beta: cf64,
+    c: [*]cf64,
+    ldc: isize,
+) void {
     return hemm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -14389,8 +14471,8 @@ pub inline fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// `real`, `complex` or `expression`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`             |
-/// | `order = row_major` | `lda * m`           | `lda * k`             |
+/// | `order = col_major` | `lda * k`           | `lda * n`             |
+/// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -14416,7 +14498,7 @@ pub inline fn zhemm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
+/// than `max(1, n)` or `max(1, k)`, or if `ldc` is less than `max(1, n)`.
 ///
 /// Notes
 /// -----
@@ -14506,7 +14588,7 @@ pub inline fn herk(
 /// general matrix `A` and a Hermitian matrix `C`. The operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * A^H + beta * C
+///     C = alpha * A * A^H + beta * C,
 /// ```
 ///
 /// or
@@ -14541,8 +14623,8 @@ pub inline fn herk(
 /// `a` (`[*]const cf32`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`             |
-/// | `order = row_major` | `lda * m`           | `lda * k`             |
+/// | `order = col_major` | `lda * k`           | `lda * n`             |
+/// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -14567,7 +14649,19 @@ pub inline fn herk(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const cf32, lda: isize, beta: f32, c: [*]cf32, ldc: isize) void {
+pub inline fn cherk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: f32,
+    a: [*]const cf32,
+    lda: isize,
+    beta: f32,
+    c: [*]cf32,
+    ldc: isize,
+) void {
     return herk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
@@ -14577,7 +14671,7 @@ pub inline fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// general matrix `A` and a Hermitian matrix `C`. The operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * A^H + beta * C
+///     C = alpha * A * A^H + beta * C,
 /// ```
 ///
 /// or
@@ -14612,8 +14706,8 @@ pub inline fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// `a` (`[*]const cf64`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`             |
-/// | `order = row_major` | `lda * m`           | `lda * k`             |
+/// | `order = col_major` | `lda * k`           | `lda * n`             |
+/// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -14638,24 +14732,36 @@ pub inline fn cherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const cf64, lda: isize, beta: f64, c: [*]cf64, ldc: isize) void {
+pub inline fn zherk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: f64,
+    a: [*]const cf64,
+    lda: isize,
+    beta: f64,
+    c: [*]cf64,
+    ldc: isize,
+) void {
     return herk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
-/// Performs a Hermitian rank-2k update.
+/// Performs a Hermitian rank-`2k` update.
 ///
 /// The `her2k` routine performs a rank-`2k` matrix-matrix operation using
 /// general matrices `A` and `B` and a Hermitian matrix `C`. The operation is
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C
+///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C
+///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
@@ -14731,7 +14837,8 @@ pub inline fn zherk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
+/// than `max(1, n)` or `max(1, k)`, if `ldb` is less than `max(1, n)` or
+/// `max(1, k)`, or if `ldc` is less than `max(1, n)`.
 ///
 /// Notes
 /// -----
@@ -14808,13 +14915,15 @@ pub inline fn her2k(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime Al == A and Al == B and Scalar(Al) == Be and Al == C and opts.link_cblas != null) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, Scalar(A)) and opts.link_cblas != null) {
         switch (comptime types.numericType(Al)) {
             .cfloat => {
                 if (comptime Scalar(Al) == f32) {
-                    return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 } else if (comptime Scalar(Al) == f64) {
-                    return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha, a, scast(c_int, lda), b, scast(c_int, ldb), beta, c, scast(c_int, ldc));
+                    const alpha_casted: A = scast(A, alpha);
+                    return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -14824,20 +14933,20 @@ pub inline fn her2k(
     return @import("blas/her2k.zig").her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
 }
 
-/// Performs a Hermitian rank-2k update.
+/// Performs a Hermitian rank-`2k` update.
 ///
 /// The `cher2k` routine performs a rank-`2k` matrix-matrix operation using
 /// general matrices `A` and `B` and a Hermitian matrix `C`. The operation is
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C
+///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C
+///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
@@ -14908,24 +15017,38 @@ pub inline fn her2k(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: f32, c: [*]cf32, ldc: isize) void {
+pub inline fn cher2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]const cf32,
+    ldb: isize,
+    beta: f32,
+    c: [*]cf32,
+    ldc: isize,
+) void {
     return her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
-/// Performs a Hermitian rank-2k update.
+/// Performs a Hermitian rank-`2k` update.
 ///
 /// The `zher2k` routine performs a rank-`2k` matrix-matrix operation using
 /// general matrices `A` and `B` and a Hermitian matrix `C`. The operation is
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C
+///     C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C
+///     C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
@@ -14996,7 +15119,21 @@ pub inline fn cher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: f64, c: [*]cf64, ldc: isize) void {
+pub inline fn zher2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]const cf64,
+    ldb: isize,
+    beta: f64,
+    c: [*]cf64,
+    ldc: isize,
+) void {
     return her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -15007,13 +15144,13 @@ pub inline fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
@@ -15077,13 +15214,8 @@ pub inline fn zher2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
+/// than `max(1, n)` or `max(1, m)`, if `ldb` is less than `max(1, m)` or
+/// `max(1, n)`, or if `ldc` is less than `max(1, n)` or `max(1, m)`.
 ///
 /// Notes
 /// -----
@@ -15191,13 +15323,13 @@ pub inline fn symm(
 /// operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
@@ -15257,7 +15389,21 @@ pub inline fn symm(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
+pub inline fn ssymm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    b: [*]const f32,
+    ldb: isize,
+    beta: f32,
+    c: [*]f32,
+    ldc: isize,
+) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -15268,13 +15414,13 @@ pub inline fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
@@ -15334,7 +15480,21 @@ pub inline fn ssymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
+pub inline fn dsymm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    b: [*]const f64,
+    ldb: isize,
+    beta: f64,
+    c: [*]f64,
+    ldc: isize,
+) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -15345,13 +15505,13 @@ pub inline fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
@@ -15411,7 +15571,21 @@ pub inline fn dsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+pub inline fn csymm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]const cf32,
+    ldb: isize,
+    beta: cf32,
+    c: [*]cf32,
+    ldc: isize,
+) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -15422,13 +15596,13 @@ pub inline fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// operation is defined as:
 ///
 /// ```zig
-///     C = alpha * A * B + beta * C
+///     C = alpha * A * B + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * B * A + beta * C
+///     C = alpha * B * A + beta * C,
 /// ```
 ///
 /// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
@@ -15488,7 +15662,21 @@ pub inline fn csymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+pub inline fn zsymm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    m: isize,
+    n: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]const cf64,
+    ldb: isize,
+    beta: cf64,
+    c: [*]cf64,
+    ldc: isize,
+) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -15499,7 +15687,7 @@ pub inline fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// as:
 ///
 /// ```zig
-///     C = alpha * A * A^T + beta * C
+///     C = alpha * A * A^T + beta * C,
 /// ```
 ///
 /// or
@@ -15518,7 +15706,7 @@ pub inline fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian matrix `A` is used:
+/// symmetric matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
@@ -15536,8 +15724,8 @@ pub inline fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// `real`, `complex` or `expression`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`        |
-/// | `order = row_major` | `lda * m`           | `lda * k`        |
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -15563,7 +15751,7 @@ pub inline fn zsymm(order: Order, side: Side, uplo: Uplo, m: isize, n: isize, al
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
+/// than `max(1, k)` or `max(1, n)`, or if `ldc` is less than `max(1, n)`.
 ///
 /// Notes
 /// -----
@@ -15659,7 +15847,7 @@ pub inline fn syrk(
 /// as:
 ///
 /// ```zig
-///     C = alpha * A * A^T + beta * C
+///     C = alpha * A * A^T + beta * C,
 /// ```
 ///
 /// or
@@ -15678,7 +15866,7 @@ pub inline fn syrk(
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian matrix `A` is used:
+/// symmetric matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
@@ -15694,8 +15882,8 @@ pub inline fn syrk(
 /// `a` (`[*]const f32`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`        |
-/// | `order = row_major` | `lda * m`           | `lda * k`        |
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -15719,7 +15907,19 @@ pub inline fn syrk(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, beta: f32, c: [*]f32, ldc: isize) void {
+pub inline fn ssyrk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    beta: f32,
+    c: [*]f32,
+    ldc: isize,
+) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
@@ -15730,7 +15930,7 @@ pub inline fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// as:
 ///
 /// ```zig
-///     C = alpha * A * A^T + beta * C
+///     C = alpha * A * A^T + beta * C,
 /// ```
 ///
 /// or
@@ -15749,7 +15949,7 @@ pub inline fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian matrix `A` is used:
+/// symmetric matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
@@ -15765,8 +15965,8 @@ pub inline fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// `a` (`[*]const f64`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`        |
-/// | `order = row_major` | `lda * m`           | `lda * k`        |
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -15790,7 +15990,19 @@ pub inline fn ssyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, beta: f64, c: [*]f64, ldc: isize) void {
+pub inline fn dsyrk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    beta: f64,
+    c: [*]f64,
+    ldc: isize,
+) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
@@ -15801,7 +16013,7 @@ pub inline fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// as:
 ///
 /// ```zig
-///     C = alpha * A * A^T + beta * C
+///     C = alpha * A * A^T + beta * C,
 /// ```
 ///
 /// or
@@ -15820,7 +16032,7 @@ pub inline fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian matrix `A` is used:
+/// symmetric matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
@@ -15836,8 +16048,8 @@ pub inline fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// `a` (`[*]const cf32`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`        |
-/// | `order = row_major` | `lda * m`           | `lda * k`        |
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -15861,7 +16073,19 @@ pub inline fn dsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+pub inline fn csyrk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    beta: cf32,
+    c: [*]cf32,
+    ldc: isize,
+) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
@@ -15872,7 +16096,7 @@ pub inline fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// as:
 ///
 /// ```zig
-///     C = alpha * A * A^T + beta * C
+///     C = alpha * A * A^T + beta * C,
 /// ```
 ///
 /// or
@@ -15891,7 +16115,7 @@ pub inline fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// row-major or column-major.
 ///
 /// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian matrix `A` is used:
+/// symmetric matrix `A` is used:
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
@@ -15907,8 +16131,8 @@ pub inline fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// `a` (`[*]const cf64`): Array, size at least:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
-/// | `order = col_major` | `lda * k`           | `lda * m`        |
-/// | `order = row_major` | `lda * m`           | `lda * k`        |
+/// | `order = col_major` | `lda * k`           | `lda * n`        |
+/// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
 /// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
@@ -15932,7 +16156,19 @@ pub inline fn csyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+pub inline fn zsyrk(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    beta: cf64,
+    c: [*]cf64,
+    ldc: isize,
+) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
 
@@ -15943,16 +16179,16 @@ pub inline fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+///     C = alpha * A * B^T + alpha * B * A^T + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+///     C = alpha * A^T * B + alpha * B^T * A + beta * C,
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric
 /// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
 /// matrices in the second case.
 ///
@@ -15967,8 +16203,8 @@ pub inline fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// - If `uplo = lower`, then the lower triangular part of `C` is used.
 ///
 /// `trans` (`Transpose`): Specifies the operation:
-/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
-/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
@@ -16025,7 +16261,8 @@ pub inline fn zsyrk(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isi
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
+/// than `max(1, n)` or `max(1, k)`, if `ldb` is less than `max(1, n)` or
+/// `max(1, k)`, or if `ldc` is less than `max(1, n)`.
 ///
 /// Notes
 /// -----
@@ -16133,16 +16370,16 @@ pub inline fn syr2k(
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+///     C = alpha * A * B^T + alpha * B * A^T + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+///     C = alpha * A^T * B + alpha * B^T * A + beta * C,
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric
 /// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
 /// matrices in the second case.
 ///
@@ -16157,8 +16394,8 @@ pub inline fn syr2k(
 /// - If `uplo = lower`, then the lower triangular part of `C` is used.
 ///
 /// `trans` (`Transpose`): Specifies the operation:
-/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
-/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
@@ -16210,7 +16447,21 @@ pub inline fn syr2k(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]const f32, ldb: isize, beta: f32, c: [*]f32, ldc: isize) void {
+pub inline fn ssyr2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    b: [*]const f32,
+    ldb: isize,
+    beta: f32,
+    c: [*]f32,
+    ldc: isize,
+) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -16221,16 +16472,16 @@ pub inline fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+///     C = alpha * A * B^T + alpha * B * A^T + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+///     C = alpha * A^T * B + alpha * B^T * A + beta * C,
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric
 /// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
 /// matrices in the second case.
 ///
@@ -16245,8 +16496,8 @@ pub inline fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// - If `uplo = lower`, then the lower triangular part of `C` is used.
 ///
 /// `trans` (`Transpose`): Specifies the operation:
-/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
-/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
@@ -16298,7 +16549,21 @@ pub inline fn ssyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]const f64, ldb: isize, beta: f64, c: [*]f64, ldc: isize) void {
+pub inline fn dsyr2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    b: [*]const f64,
+    ldb: isize,
+    beta: f64,
+    c: [*]f64,
+    ldc: isize,
+) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -16309,16 +16574,16 @@ pub inline fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C,
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric
 /// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
 /// matrices in the second case.
 ///
@@ -16333,8 +16598,8 @@ pub inline fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// - If `uplo = lower`, then the lower triangular part of `C` is used.
 ///
 /// `trans` (`Transpose`): Specifies the operation:
-/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
-/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
@@ -16386,7 +16651,21 @@ pub inline fn dsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]const cf32, ldb: isize, beta: cf32, c: [*]cf32, ldc: isize) void {
+pub inline fn csyr2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]const cf32,
+    ldb: isize,
+    beta: cf32,
+    c: [*]cf32,
+    ldc: isize,
+) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -16397,16 +16676,16 @@ pub inline fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// defined as:
 ///
 /// ```zig
-///     C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C
+///     C = alpha * A * B^T + alpha * B * A^T + beta * C,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C
+///     C = alpha * A^T * B + alpha * B^T * A + beta * C,
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
+/// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric
 /// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
 /// matrices in the second case.
 ///
@@ -16421,8 +16700,8 @@ pub inline fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// - If `uplo = lower`, then the lower triangular part of `C` is used.
 ///
 /// `trans` (`Transpose`): Specifies the operation:
-/// - If `trans = no_trans`, then `C = alpha * A * B^T + conj(alpha) * B * A^T + beta * C`.
-/// - If `trans = trans`, then `C = alpha * A^T * B + conj(alpha) * B^T * A + beta * C`.
+/// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
+/// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
 /// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
@@ -16474,7 +16753,21 @@ pub inline fn csyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]const cf64, ldb: isize, beta: cf64, c: [*]cf64, ldc: isize) void {
+pub inline fn zsyr2k(
+    order: Order,
+    uplo: Uplo,
+    trans: Transpose,
+    n: isize,
+    k: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]const cf64,
+    ldb: isize,
+    beta: cf64,
+    c: [*]cf64,
+    ldc: isize,
+) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
@@ -16484,16 +16777,16 @@ pub inline fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// triangular matrix . The operation is defined as:
 ///
 /// ```zig
-///     B = alpha * op(A) * B
+///     B = alpha * op(A) * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     B = alpha * B * op(A)
+///     B = alpha * B * op(A),
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
 /// `m`-by-`n` matrix.
 ///
@@ -16554,13 +16847,8 @@ pub inline fn zsyr2k(order: Order, uplo: Uplo, trans: Transpose, n: isize, k: is
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
+/// than `max(1, m)` or `max(1, n)`, or if `ldb` is less than `max(1, m)` or
+/// `max(1, n)`.
 ///
 /// Notes
 /// -----
@@ -16646,16 +16934,16 @@ pub inline fn trmm(
 /// triangular matrix . The operation is defined as:
 ///
 /// ```zig
-///     B = alpha * op(A) * B
+///     B = alpha * op(A) * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     B = alpha * B * op(A)
+///     B = alpha * B * op(A),
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
 /// `m`-by-`n` matrix.
 ///
@@ -16714,7 +17002,20 @@ pub inline fn trmm(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn strmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) void {
+pub inline fn strmm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    b: [*]f32,
+    ldb: isize,
+) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
@@ -16724,16 +17025,16 @@ pub inline fn strmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// triangular matrix . The operation is defined as:
 ///
 /// ```zig
-///     B = alpha * op(A) * B
+///     B = alpha * op(A) * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     B = alpha * B * op(A)
+///     B = alpha * B * op(A),
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
 /// `m`-by-`n` matrix.
 ///
@@ -16792,7 +17093,20 @@ pub inline fn strmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) void {
+pub inline fn dtrmm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    b: [*]f64,
+    ldb: isize,
+) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
@@ -16802,16 +17116,16 @@ pub inline fn dtrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// triangular matrix . The operation is defined as:
 ///
 /// ```zig
-///     B = alpha * op(A) * B
+///     B = alpha * op(A) * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     B = alpha * B * op(A)
+///     B = alpha * B * op(A),
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
 /// `m`-by-`n` matrix.
 ///
@@ -16870,7 +17184,20 @@ pub inline fn dtrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) void {
+pub inline fn ctrmm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]cf32,
+    ldb: isize,
+) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
@@ -16880,16 +17207,16 @@ pub inline fn ctrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// triangular matrix . The operation is defined as:
 ///
 /// ```zig
-///     B = alpha * op(A) * B
+///     B = alpha * op(A) * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     B = alpha * B * op(A)
+///     B = alpha * B * op(A),
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
 /// `m`-by-`n` matrix.
 ///
@@ -16948,7 +17275,20 @@ pub inline fn ctrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) void {
+pub inline fn ztrmm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]cf64,
+    ldb: isize,
+) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
@@ -16957,16 +17297,16 @@ pub inline fn ztrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// The `trsm` routine solves one of the following matrix equations:
 ///
 /// ```zig
-///     op(A) * X = alpha * B
+///     op(A) * X = alpha * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     X * op(A) = alpha * B
+///     X * op(A) = alpha * B,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
 /// `X` are `m`-by-`n` matrices.
 ///
@@ -17027,13 +17367,8 @@ pub inline fn ztrmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// Errors
 /// ------
 /// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` is 0.
-///
-/// Raises
-/// ------
-/// `@compileError`: `a` is not a many-item pointer, if the type of `x` is not a
-/// mutable many-item pointer, if the child type of `a` or `x` is not a numeric
-/// type, or if `a` and `x` are both `bool`.
+/// than `max(1, n)` or `max(1, m)`, or if `ldb` is less than `max(1, n)` or
+/// `max(1, m)`.
 ///
 /// Notes
 /// -----
@@ -17118,16 +17453,16 @@ pub inline fn trsm(
 /// The `strsm` routine solves one of the following matrix equations:
 ///
 /// ```zig
-///     op(A) * X = alpha * B
+///     op(A) * X = alpha * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     X * op(A) = alpha * B
+///     X * op(A) = alpha * B,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
 /// `X` are `m`-by-`n` matrices.
 ///
@@ -17186,7 +17521,20 @@ pub inline fn trsm(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn strsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f32, a: [*]const f32, lda: isize, b: [*]f32, ldb: isize) void {
+pub inline fn strsm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: f32,
+    a: [*]const f32,
+    lda: isize,
+    b: [*]f32,
+    ldb: isize,
+) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
@@ -17195,16 +17543,16 @@ pub inline fn strsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// The `dtrsm` routine solves one of the following matrix equations:
 ///
 /// ```zig
-///     op(A) * X = alpha * B
+///     op(A) * X = alpha * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     X * op(A) = alpha * B
+///     X * op(A) = alpha * B,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
 /// `X` are `m`-by-`n` matrices.
 ///
@@ -17263,7 +17611,20 @@ pub inline fn strsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn dtrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: f64, a: [*]const f64, lda: isize, b: [*]f64, ldb: isize) void {
+pub inline fn dtrsm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: f64,
+    a: [*]const f64,
+    lda: isize,
+    b: [*]f64,
+    ldb: isize,
+) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
@@ -17272,16 +17633,16 @@ pub inline fn dtrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// The `ctrsm` routine solves one of the following matrix equations:
 ///
 /// ```zig
-///     op(A) * X = alpha * B
+///     op(A) * X = alpha * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     X * op(A) = alpha * B
+///     X * op(A) = alpha * B,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
 /// `X` are `m`-by-`n` matrices.
 ///
@@ -17340,7 +17701,20 @@ pub inline fn dtrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ctrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf32, a: [*]const cf32, lda: isize, b: [*]cf32, ldb: isize) void {
+pub inline fn ctrsm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: cf32,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]cf32,
+    ldb: isize,
+) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
@@ -17349,16 +17723,16 @@ pub inline fn ctrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// The `ztrsm` routine solves one of the following matrix equations:
 ///
 /// ```zig
-///     op(A) * X = alpha * B
+///     op(A) * X = alpha * B,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     X * op(A) = alpha * B
+///     X * op(A) = alpha * B,
 /// ```
 ///
-/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `conj(X^T)`, `alpha` is a scalar,
+/// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
 /// `X` are `m`-by-`n` matrices.
 ///
@@ -17417,7 +17791,20 @@ pub inline fn ctrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, dia
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn ztrsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: isize, n: isize, alpha: cf64, a: [*]const cf64, lda: isize, b: [*]cf64, ldb: isize) void {
+pub inline fn ztrsm(
+    order: Order,
+    side: Side,
+    uplo: Uplo,
+    transa: Transpose,
+    diag: Diag,
+    m: isize,
+    n: isize,
+    alpha: cf64,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]cf64,
+    ldb: isize,
+) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
 
