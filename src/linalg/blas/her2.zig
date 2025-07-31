@@ -25,9 +25,33 @@ pub inline fn her2(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_her2(uplo, n, alpha, x, incx, y, incy, a, lda, true, ctx);
+        return k_her2(
+            uplo,
+            n,
+            alpha,
+            x,
+            incx,
+            y,
+            incy,
+            a,
+            lda,
+            true,
+            ctx,
+        );
     } else {
-        return k_her2(uplo.invert(), n, alpha, y, incy, x, incx, a, lda, false, ctx);
+        return k_her2(
+            uplo.invert(),
+            n,
+            alpha,
+            y,
+            incy,
+            x,
+            incx,
+            a,
+            lda,
+            false,
+            ctx,
+        );
     }
 }
 

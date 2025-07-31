@@ -28,9 +28,33 @@ pub inline fn herk(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_herk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc, ctx);
+        return k_herk(
+            uplo,
+            trans,
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     } else {
-        return k_herk(uplo.invert(), trans.reverse(), n, k, alpha, a, lda, beta, c, ldc, ctx);
+        return k_herk(
+            uplo.invert(),
+            trans.reverse(),
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     }
 }
 

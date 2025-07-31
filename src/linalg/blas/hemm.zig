@@ -29,9 +29,37 @@ pub inline fn hemm(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_hemm(side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
+        return k_hemm(
+            side,
+            uplo,
+            m,
+            n,
+            alpha,
+            a,
+            lda,
+            b,
+            ldb,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     } else {
-        return k_hemm(side.invert(), uplo.invert(), n, m, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
+        return k_hemm(
+            side.invert(),
+            uplo.invert(),
+            n,
+            m,
+            alpha,
+            a,
+            lda,
+            b,
+            ldb,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     }
 }
 

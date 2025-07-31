@@ -12,17 +12,16 @@ pub fn main() !void {
     const alpha: f64 = 2;
     const beta: f64 = 3;
 
-    const A: []f64 = try a.alloc(f64, 1000 * 1500);
-    defer a.free(A);
-    const B: []f64 = try a.alloc(f64, 1500 * 2000);
-    defer a.free(B);
-    const C: []f64 = try a.alloc(f64, 1000 * 2000);
-    defer a.free(C);
+    const m = 1000;
+    const n = 1500;
+    const k = 2000;
 
-    const x: []f64 = try a.alloc(f64, 1500);
-    defer a.free(x);
-    const y: []f64 = try a.alloc(f64, 1000);
-    defer a.free(y);
+    const A: []f64 = try a.alloc(f64, m * k);
+    defer a.free(A);
+    const B: []f64 = try a.alloc(f64, k * n);
+    defer a.free(B);
+    const C: []f64 = try a.alloc(f64, m * n);
+    defer a.free(C);
 
     for (0..A.len) |i| {
         A[i] = @floatFromInt(i + 1);
@@ -37,12 +36,12 @@ pub fn main() !void {
     }
 
     const start_time: i128 = std.time.nanoTimestamp();
-    for (0..100) |_| {
-        zml.linalg.blas.dgemv(.col_major, .no_trans, 1000, 1500, alpha, A.ptr, 1000, x.ptr, 1, beta, y.ptr, 1);
+    for (0..1) |_| {
+        zml.linalg.blas.dgemm(.row_major, .no_trans, .no_trans, m, n, k, alpha, A.ptr, k, B.ptr, n, beta, C.ptr, n);
     }
     const end_time: i128 = std.time.nanoTimestamp();
 
-    std.debug.print("zml.linalg.blas.gemm took: {d} nanoseconds\n", .{end_time - start_time});
+    std.debug.print("zml.linalg.blas.gemm took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9)});
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;

@@ -27,9 +27,35 @@ pub inline fn sbmv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_sbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_sbmv(
+            uplo,
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     } else {
-        return k_sbmv(uplo.invert(), n, k, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_sbmv(
+            uplo.invert(),
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     }
 }
 

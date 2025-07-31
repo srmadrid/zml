@@ -30,9 +30,35 @@ pub inline fn trmm(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_trmm(side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, ctx);
+        return k_trmm(
+            side,
+            uplo,
+            transa,
+            diag,
+            m,
+            n,
+            alpha,
+            a,
+            lda,
+            b,
+            ldb,
+            ctx,
+        );
     } else {
-        return k_trmm(side.invert(), uplo.invert(), transa, diag, n, m, alpha, a, lda, b, ldb, ctx);
+        return k_trmm(
+            side.invert(),
+            uplo.invert(),
+            transa,
+            diag,
+            n,
+            m,
+            alpha,
+            a,
+            lda,
+            b,
+            ldb,
+            ctx,
+        );
     }
 }
 

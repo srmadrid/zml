@@ -25,9 +25,27 @@ pub inline fn tpmv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_tpmv(uplo, transa, diag, n, ap, x, incx, ctx);
+        return k_tpmv(
+            uplo,
+            transa,
+            diag,
+            n,
+            ap,
+            x,
+            incx,
+            ctx,
+        );
     } else {
-        return k_tpmv(uplo.invert(), transa.invert(), diag, n, ap, x, incx, ctx);
+        return k_tpmv(
+            uplo.invert(),
+            transa.invert(),
+            diag,
+            n,
+            ap,
+            x,
+            incx,
+            ctx,
+        );
     }
 }
 

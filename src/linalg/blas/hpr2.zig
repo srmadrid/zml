@@ -24,9 +24,31 @@ pub inline fn hpr2(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_hpr2(uplo, n, alpha, x, incx, y, incy, ap, true, ctx);
+        return k_hpr2(
+            uplo,
+            n,
+            alpha,
+            x,
+            incx,
+            y,
+            incy,
+            ap,
+            true,
+            ctx,
+        );
     } else {
-        return k_hpr2(uplo.invert(), n, alpha, y, incy, x, incx, ap, false, ctx);
+        return k_hpr2(
+            uplo.invert(),
+            n,
+            alpha,
+            y,
+            incy,
+            x,
+            incx,
+            ap,
+            false,
+            ctx,
+        );
     }
 }
 

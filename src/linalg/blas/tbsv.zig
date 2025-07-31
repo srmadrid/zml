@@ -27,9 +27,31 @@ pub inline fn tbsv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_tbsv(uplo, transa, diag, n, k, a, lda, x, incx, ctx);
+        return k_tbsv(
+            uplo,
+            transa,
+            diag,
+            n,
+            k,
+            a,
+            lda,
+            x,
+            incx,
+            ctx,
+        );
     } else {
-        return k_tbsv(uplo.invert(), transa.invert(), diag, n, k, a, lda, x, incx, ctx);
+        return k_tbsv(
+            uplo.invert(),
+            transa.invert(),
+            diag,
+            n,
+            k,
+            a,
+            lda,
+            x,
+            incx,
+            ctx,
+        );
     }
 }
 

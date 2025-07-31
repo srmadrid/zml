@@ -24,9 +24,33 @@ pub inline fn hpmv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_hpmv(uplo, n, alpha, ap, x, incx, beta, y, incy, true, ctx);
+        return k_hpmv(
+            uplo,
+            n,
+            alpha,
+            ap,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            true,
+            ctx,
+        );
     } else {
-        return k_hpmv(uplo.invert(), n, alpha, ap, x, incx, beta, y, incy, false, ctx);
+        return k_hpmv(
+            uplo.invert(),
+            n,
+            ops.conjugate(alpha, ctx) catch unreachable,
+            ap,
+            x,
+            incx,
+            ops.conjugate(beta, ctx) catch unreachable,
+            y,
+            incy,
+            false,
+            ctx,
+        );
     }
 }
 
@@ -87,10 +111,10 @@ fn k_hpmv(
                         }
                     } else {
                         for (0..scast(usize, n)) |i| {
-                            ops.mul_( // y[i] = conj(y[i]) * conj(beta)
+                            ops.mul_( // y[i] = conj(y[i]) * beta
                                 &y[i],
                                 ops.conjugate(y[i], ctx) catch unreachable,
-                                ops.conjugate(beta, ctx) catch unreachable,
+                                beta,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -122,10 +146,10 @@ fn k_hpmv(
                         }
                     } else {
                         for (0..scast(usize, n)) |_| {
-                            ops.mul_( // y[iy] = conj(y[iy]) * conj(beta)
+                            ops.mul_( // y[iy] = conj(y[iy]) * beta
                                 &y[scast(usize, iy)],
                                 ops.conjugate(y[scast(usize, iy)], ctx) catch unreachable,
-                                ops.conjugate(beta, ctx) catch unreachable,
+                                beta,
                                 ctx,
                             ) catch unreachable;
 
@@ -295,9 +319,9 @@ fn k_hpmv(
                 if (incx == 1 and incy == 1) {
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[j])
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
                             ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                            alpha,
                             ctx,
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
@@ -330,7 +354,7 @@ fn k_hpmv(
                             k += 1;
                         }
 
-                        ops.add_( // y[j] += temp1 * re(ap[kk + j]) + conj(alpha) * temp2
+                        ops.add_( // y[j] += temp1 * re(ap[kk + j]) + alpha * temp2
                             &y[scast(usize, j)],
                             y[scast(usize, j)],
                             ops.add(
@@ -340,7 +364,7 @@ fn k_hpmv(
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    ops.conjugate(alpha, ctx) catch unreachable,
+                                    alpha,
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -356,9 +380,9 @@ fn k_hpmv(
                     var jy: isize = ky;
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[jx])
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
                             ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                            alpha,
                             ctx,
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
@@ -393,7 +417,7 @@ fn k_hpmv(
                             iy += incy;
                         }
 
-                        ops.add_( // y[jy] += temp1 * re(ap[kk + j]) + conj(alpha) * temp2
+                        ops.add_( // y[jy] += temp1 * re(ap[kk + j]) + alpha * temp2
                             &y[scast(usize, jy)],
                             y[scast(usize, jy)],
                             ops.add(
@@ -403,7 +427,7 @@ fn k_hpmv(
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    ops.conjugate(alpha, ctx) catch unreachable,
+                                    alpha,
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -555,9 +579,9 @@ fn k_hpmv(
                 if (incx == 1 and incy == 1) {
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[j])
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
                             ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                            alpha,
                             ctx,
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
@@ -601,11 +625,11 @@ fn k_hpmv(
                             k += 1;
                         }
 
-                        ops.add_( // y[j] += conj(alpha) * temp2
+                        ops.add_( // y[j] += alpha * temp2
                             &y[scast(usize, j)],
                             y[scast(usize, j)],
                             ops.mul(
-                                ops.conjugate(alpha, ctx) catch unreachable,
+                                alpha,
                                 temp2,
                                 ctx,
                             ) catch unreachable,
@@ -619,9 +643,9 @@ fn k_hpmv(
                     var jy: isize = ky;
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[jx])
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
                             ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                            alpha,
                             ctx,
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
@@ -667,11 +691,11 @@ fn k_hpmv(
                             ) catch unreachable;
                         }
 
-                        ops.add_( // y[jy] += conj(alpha) * temp2
+                        ops.add_( // y[jy] += alpha * temp2
                             &y[scast(usize, jy)],
                             y[scast(usize, jy)],
                             ops.mul(
-                                ops.conjugate(alpha, ctx) catch unreachable,
+                                alpha,
                                 temp2,
                                 ctx,
                             ) catch unreachable,

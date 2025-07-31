@@ -26,9 +26,29 @@ pub inline fn trmv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_trmv(uplo, transa, diag, n, a, lda, x, incx, ctx);
+        return k_trmv(
+            uplo,
+            transa,
+            diag,
+            n,
+            a,
+            lda,
+            x,
+            incx,
+            ctx,
+        );
     } else {
-        return k_trmv(uplo.invert(), transa.invert(), diag, n, a, lda, x, incx, ctx);
+        return k_trmv(
+            uplo.invert(),
+            transa.invert(),
+            diag,
+            n,
+            a,
+            lda,
+            x,
+            incx,
+            ctx,
+        );
     }
 }
 

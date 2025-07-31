@@ -48,8 +48,8 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 
     // Compile only CBLAS
-    const cblas_lib = b.addStaticLibrary(.{
-        .name = "cblas",
+    const cblas_lib = b.addSharedLibrary(.{
+        .name = "blas",
         .root_source_file = b.path("src/cblas.zig"),
         .target = target,
         .optimize = optimize,
@@ -57,10 +57,10 @@ pub fn build(b: *std.Build) void {
 
     cblas_lib.root_module.addImport("zml", module);
 
-    b.installArtifact(cblas_lib);
+    const cblas_install = b.addInstallArtifact(cblas_lib, .{});
 
     const cblas_step = b.step("cblas", "Compile CBLAS library");
-    cblas_step.dependOn(&cblas_lib.step);
+    cblas_step.dependOn(&cblas_install.step);
 
     // Tests
     const lib_unit_tests = b.addTest(.{

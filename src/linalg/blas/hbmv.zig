@@ -27,9 +27,37 @@ pub inline fn hbmv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_hbmv(uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, true, ctx);
+        return k_hbmv(
+            uplo,
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            true,
+            ctx,
+        );
     } else {
-        return k_hbmv(uplo.invert(), n, k, alpha, a, lda, x, incx, beta, y, incy, false, ctx);
+        return k_hbmv(
+            uplo.invert(),
+            n,
+            k,
+            ops.conjugate(alpha, ctx) catch unreachable,
+            a,
+            lda,
+            x,
+            incx,
+            ops.conjugate(beta, ctx) catch unreachable,
+            y,
+            incy,
+            false,
+            ctx,
+        );
     }
 }
 
@@ -92,10 +120,10 @@ fn k_hbmv(
                         }
                     } else {
                         for (0..scast(usize, n)) |i| {
-                            ops.mul_( // y[i] = conj(y[i]) * conj(beta)
+                            ops.mul_( // y[i] = conj(y[i]) * beta
                                 &y[i],
                                 ops.conjugate(y[i], ctx) catch unreachable,
-                                ops.conjugate(beta, ctx) catch unreachable,
+                                beta,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -127,10 +155,10 @@ fn k_hbmv(
                         }
                     } else {
                         for (0..scast(usize, n)) |_| {
-                            ops.mul_( // y[iy] = conj(y[iy]) * conj(beta)
+                            ops.mul_( // y[iy] = conj(y[iy]) * beta
                                 &y[scast(usize, iy)],
                                 ops.conjugate(y[scast(usize, iy)], ctx) catch unreachable,
-                                ops.conjugate(beta, ctx) catch unreachable,
+                                beta,
                                 ctx,
                             ) catch unreachable;
 
@@ -301,8 +329,8 @@ fn k_hbmv(
                 if (incx == 1 and incy == 1) {
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[j])
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
+                            alpha,
                             ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
@@ -334,7 +362,7 @@ fn k_hbmv(
                             ) catch unreachable;
                         }
 
-                        ops.add_( // y[j] += temp1 * re(a[k + j * lda]) + conj(alpha) * temp2
+                        ops.add_( // y[j] += temp1 * re(a[k + j * lda]) + alpha * temp2
                             &y[scast(usize, j)],
                             y[scast(usize, j)],
                             ops.add(
@@ -344,7 +372,7 @@ fn k_hbmv(
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    ops.conjugate(alpha, ctx) catch unreachable,
+                                    alpha,
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -358,8 +386,8 @@ fn k_hbmv(
                     var jy: isize = ky;
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[jx])
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
+                            alpha,
                             ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
@@ -396,7 +424,7 @@ fn k_hbmv(
                             iy += incy;
                         }
 
-                        ops.add_( // y[jy] += temp1 * re(a[k + j * lda]) + conj(alpha) * temp2
+                        ops.add_( // y[jy] += temp1 * re(a[k + j * lda]) + alpha * temp2
                             &y[scast(usize, jy)],
                             y[scast(usize, jy)],
                             ops.add(
@@ -406,7 +434,7 @@ fn k_hbmv(
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    ops.conjugate(alpha, ctx) catch unreachable,
+                                    alpha,
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -559,8 +587,8 @@ fn k_hbmv(
                 if (incx == 1 and incy == 1) {
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[j])
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
+                            alpha,
                             ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
@@ -603,11 +631,11 @@ fn k_hbmv(
                             ) catch unreachable;
                         }
 
-                        ops.add_( // y[j] += conj(alpha) * temp2
+                        ops.add_( // y[j] += alpha * temp2
                             &y[scast(usize, j)],
                             y[scast(usize, j)],
                             ops.mul(
-                                ops.conjugate(alpha, ctx) catch unreachable,
+                                alpha,
                                 temp2,
                                 ctx,
                             ) catch unreachable,
@@ -619,8 +647,8 @@ fn k_hbmv(
                     var jy: isize = ky;
                     var j: isize = 0;
                     while (j < n) : (j += 1) {
-                        const temp1: C1 = ops.mul( // temp1 = conj(alpha) * conj(x[jx])
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                        const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
+                            alpha,
                             ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
@@ -668,11 +696,11 @@ fn k_hbmv(
                             ) catch unreachable;
                         }
 
-                        ops.add_( // y[jy] += conj(alpha) * temp2
+                        ops.add_( // y[jy] += alpha * temp2
                             &y[scast(usize, jy)],
                             y[scast(usize, jy)],
                             ops.mul(
-                                ops.conjugate(alpha, ctx) catch unreachable,
+                                alpha,
                                 temp2,
                                 ctx,
                             ) catch unreachable,

@@ -27,9 +27,31 @@ pub inline fn tbmv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_tbmv(uplo, transa, diag, n, k, a, lda, x, incx, ctx);
+        return k_tbmv(
+            uplo,
+            transa,
+            diag,
+            n,
+            k,
+            a,
+            lda,
+            x,
+            incx,
+            ctx,
+        );
     } else {
-        return k_tbmv(uplo.invert(), transa.invert(), diag, n, k, a, lda, x, incx, ctx);
+        return k_tbmv(
+            uplo.invert(),
+            transa.invert(),
+            diag,
+            n,
+            k,
+            a,
+            lda,
+            x,
+            incx,
+            ctx,
+        );
     }
 }
 

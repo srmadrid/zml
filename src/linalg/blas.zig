@@ -3287,7 +3287,14 @@ pub inline fn rotm(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn srotm(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize, param: [*]const f32) void {
+pub inline fn srotm(
+    n: isize,
+    x: [*]f32,
+    incx: isize,
+    y: [*]f32,
+    incy: isize,
+    param: [*]const f32,
+) void {
     return rotm(n, x, incx, y, incy, param, .{}) catch {};
 }
 
@@ -3369,7 +3376,14 @@ pub inline fn srotm(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize, pa
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn drotm(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, param: [*]const f64) void {
+pub inline fn drotm(
+    n: isize,
+    x: [*]f64,
+    incx: isize,
+    y: [*]f64,
+    incy: isize,
+    param: [*]const f64,
+) void {
     return rotm(n, x, incx, y, incy, param, .{}) catch {};
 }
 
@@ -3538,13 +3552,13 @@ pub inline fn rotmg(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime D1 == D2 and D1 == X1 and D1 == Y1 and D1 == P and opts.link_cblas != null) {
+    if (comptime D1 == D2 and D1 == X1 and D1 == P and types.canCoerce(Y1, D1) and opts.link_cblas != null) {
         switch (comptime types.numericType(D1)) {
             .float => {
                 if (comptime D1 == f32) {
-                    return ci.cblas_srotmg(d1, d2, x1, y1, param);
+                    return ci.cblas_srotmg(d1, d2, x1, scast(D1, y1), param);
                 } else if (comptime D1 == f64) {
-                    return ci.cblas_drotmg(d1, d2, x1, y1, param);
+                    return ci.cblas_drotmg(d1, d2, x1, scast(D1, y1), param);
                 }
             },
             else => {},
@@ -3632,7 +3646,13 @@ pub inline fn rotmg(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn srotmg(d1: *f32, d2: *f32, x1: *f32, y1: f32, param: [*]f32) void {
+pub inline fn srotmg(
+    d1: *f32,
+    d2: *f32,
+    x1: *f32,
+    y1: f32,
+    param: [*]f32,
+) void {
     return rotmg(d1, d2, x1, y1, param, .{}) catch {};
 }
 
@@ -3714,7 +3734,13 @@ pub inline fn srotmg(d1: *f32, d2: *f32, x1: *f32, y1: f32, param: [*]f32) void 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn drotmg(d1: *f64, d2: *f64, x1: *f64, y1: f64, param: [*]f64) void {
+pub inline fn drotmg(
+    d1: *f64,
+    d2: *f64,
+    x1: *f64,
+    y1: f64,
+    param: [*]f64,
+) void {
     return rotmg(d1, d2, x1, y1, param, .{}) catch {};
 }
 

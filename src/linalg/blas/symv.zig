@@ -26,9 +26,33 @@ pub inline fn symv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_symv(uplo, n, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_symv(
+            uplo,
+            n,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     } else {
-        return k_symv(uplo.invert(), n, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_symv(
+            uplo.invert(),
+            n,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     }
 }
 

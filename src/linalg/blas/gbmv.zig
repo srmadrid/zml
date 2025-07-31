@@ -29,9 +29,39 @@ pub inline fn gbmv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_gbmv(transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_gbmv(
+            transa,
+            m,
+            n,
+            kl,
+            ku,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     } else {
-        return k_gbmv(transa.invert(), n, m, ku, kl, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_gbmv(
+            transa.invert(),
+            n,
+            m,
+            ku,
+            kl,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     }
 }
 

@@ -25,9 +25,27 @@ pub inline fn tpsv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_tpsv(uplo, transa, diag, n, ap, x, incx, ctx);
+        return k_tpsv(
+            uplo,
+            transa,
+            diag,
+            n,
+            ap,
+            x,
+            incx,
+            ctx,
+        );
     } else {
-        return k_tpsv(uplo.invert(), transa.invert(), diag, n, ap, x, incx, ctx);
+        return k_tpsv(
+            uplo.invert(),
+            transa.invert(),
+            diag,
+            n,
+            ap,
+            x,
+            incx,
+            ctx,
+        );
     }
 }
 

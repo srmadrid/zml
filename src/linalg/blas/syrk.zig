@@ -27,9 +27,33 @@ pub inline fn syrk(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_syrk(uplo, trans, n, k, alpha, a, lda, beta, c, ldc, ctx);
+        return k_syrk(
+            uplo,
+            trans,
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     } else {
-        return k_syrk(uplo.invert(), trans.invert(), n, k, alpha, a, lda, beta, c, ldc, ctx);
+        return k_syrk(
+            uplo.invert(),
+            trans.invert(),
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     }
 }
 

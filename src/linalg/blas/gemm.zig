@@ -29,9 +29,39 @@ pub inline fn gemm(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_gemm(transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
+        return k_gemm(
+            transa,
+            transb,
+            m,
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            b,
+            ldb,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     } else {
-        return k_gemm(transb, transa, n, m, k, alpha, b, ldb, a, lda, beta, c, ldc, ctx);
+        return k_gemm(
+            transb,
+            transa,
+            n,
+            m,
+            k,
+            alpha,
+            b,
+            ldb,
+            a,
+            lda,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     }
 }
 

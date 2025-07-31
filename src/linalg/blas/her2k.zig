@@ -29,9 +29,37 @@ pub inline fn her2k(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_her2k(uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
+        return k_her2k(
+            uplo,
+            trans,
+            n,
+            k,
+            alpha,
+            a,
+            lda,
+            b,
+            ldb,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     } else {
-        return k_her2k(uplo.invert(), trans.reverse(), n, k, ops.conjugate(alpha, ctx) catch unreachable, b, ldb, a, lda, beta, c, ldc, ctx);
+        return k_her2k(
+            uplo.invert(),
+            trans.reverse(),
+            n,
+            k,
+            ops.conjugate(alpha, ctx) catch unreachable,
+            b,
+            ldb,
+            a,
+            lda,
+            beta,
+            c,
+            ldc,
+            ctx,
+        );
     }
 }
 

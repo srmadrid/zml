@@ -27,9 +27,35 @@ pub inline fn gemv(
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
-        return k_gemv(transa, m, n, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_gemv(
+            transa,
+            m,
+            n,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     } else {
-        return k_gemv(transa.invert(), n, m, alpha, a, lda, x, incx, beta, y, incy, ctx);
+        return k_gemv(
+            transa.invert(),
+            n,
+            m,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            beta,
+            y,
+            incy,
+            ctx,
+        );
     }
 }
 
