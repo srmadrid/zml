@@ -55,14 +55,39 @@ pub inline fn one(
     };
 
     switch (types.numericType(T)) {
-        .bool => return false,
+        .bool => return true,
         .int => return 1,
         .float => return 1,
         .cfloat => return .{
             .re = 1,
             .im = 0,
         },
-        else => @compileError("zml.zero not implemented for " ++ @typeName(T) ++ " yet"),
+        else => @compileError("zml.one not implemented for " ++ @typeName(T) ++ " yet"),
+    }
+}
+
+pub inline fn two(
+    comptime T: type,
+    ctx: anytype,
+) !T {
+    comptime if (types.isArbitraryPrecision(T)) {
+        validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    switch (types.numericType(T)) {
+        .bool => return true,
+        .int => return 2,
+        .float => return 2,
+        .cfloat => return .{
+            .re = 2,
+            .im = 0,
+        },
+        else => @compileError("zml.two not implemented for " ++ @typeName(T) ++ " yet"),
     }
 }
 

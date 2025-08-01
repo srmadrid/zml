@@ -2,46 +2,35 @@ const std = @import("std");
 const zml = @import("zml");
 //const ci = @import("c.zig");
 
+fn print_matrix(desc: []const u8, m: usize, n: usize, a: []f64, lda: usize, order: zml.linalg.Order) void {
+    std.debug.print("\n{s}\n", .{desc});
+    if (order == .row_major) {
+        var i: usize = 0;
+        while (i < m) : (i += 1) {
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                std.debug.print("{d:.4}  ", .{a[i * lda + j]});
+            }
+            std.debug.print("\n", .{});
+        }
+    } else {
+        var i: usize = 0;
+        while (i < m) : (i += 1) {
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                std.debug.print("{d:.4}  ", .{a[i + j * lda]});
+            }
+            std.debug.print("\n", .{});
+        }
+    }
+}
+
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const a = gpa.allocator();
     //_ = a;
-
-    const alpha: f64 = 2;
-    const beta: f64 = 3;
-
-    const m = 1000;
-    const n = 1500;
-    const k = 2000;
-
-    const A: []f64 = try a.alloc(f64, m * k);
-    defer a.free(A);
-    const B: []f64 = try a.alloc(f64, k * n);
-    defer a.free(B);
-    const C: []f64 = try a.alloc(f64, m * n);
-    defer a.free(C);
-
-    for (0..A.len) |i| {
-        A[i] = @floatFromInt(i + 1);
-    }
-
-    for (0..B.len) |i| {
-        B[i] = @floatFromInt(i + 1);
-    }
-
-    for (0..C.len) |i| {
-        C[i] = 0;
-    }
-
-    const start_time: i128 = std.time.nanoTimestamp();
-    for (0..1) |_| {
-        zml.linalg.blas.dgemm(.row_major, .no_trans, .no_trans, m, n, k, alpha, A.ptr, k, B.ptr, n, beta, C.ptr, n);
-    }
-    const end_time: i128 = std.time.nanoTimestamp();
-
-    std.debug.print("zml.linalg.blas.gemm took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9)});
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;
@@ -86,6 +75,10 @@ pub fn main() !void {
 
     // try blasPerfTesting(a);
 
+    try lapackTesting(a);
+
+    // try lapackPerfTesting(a);
+
     // coreTesting();
 }
 
@@ -104,82 +97,206 @@ fn ask_user(default: usize) !usize {
     }
 }
 
+fn lapackTesting(a: std.mem.Allocator) !void {
+    // const m = 3;
+    // const n = 5;
+    // const lda_row = n;
+    // const lda_col = m;
+
+    // // Row-major storage
+    // const a_row: []f64 = try a.alloc(f64, m * n);
+    // defer a.free(a_row);
+
+    // @memcpy(a_row, &[_]f64{ // Initialize with some values
+    //     2, 6, 8, 5, 4, 3, 1,
+    //     1, 4, 7, 2, 5, 6, 2,
+    //     3, 5, 9, 6, 1, 7, 3,
+    //     4, 8, 6, 3, 2, 8, 4,
+    //     5, 2, 1, 4, 3, 9, 5,
+    // });
+
+    // // Column-major storage (transpose indexing layout)
+    // const a_col: []f64 = try a.alloc(f64, m * n);
+    // defer a.free(a_col);
+
+    // var r: usize = 0;
+    // while (r < m) : (r += 1) {
+    //     var c: usize = 0;
+    //     while (c < n) : (c += 1) {
+    //         a_col[r + c * lda_col] = a_row[r * lda_row + c];
+    //     }
+    // }
+
+    // // Pivot array (LAPACK style: 1-based indexing)
+    // const ipiv: []const i32 = &.{3}; // Swap row1<->row3, row2<->row4
+    // const k1 = 1;
+    // const k2 = 2;
+    // const incx = 1;
+
+    // print_matrix("Original Row-major", m, n, a_row, lda_row, .row_major);
+    // print_matrix("Original Col-major", m, n, a_col, lda_col, .col_major);
+
+    // // Apply laswp in row-major
+    // try zml.linalg.lapack.laswp(.row_major, n, a_row.ptr, lda_row, k1, k2, ipiv.ptr, incx);
+
+    // // Apply laswp in col-major
+    // try zml.linalg.lapack.laswp(.col_major, n, a_col.ptr, lda_col, k1, k2, ipiv.ptr, incx);
+
+    // print_matrix("After LASWP (Row-major)", m, n, a_row, lda_row, .row_major);
+    // print_matrix("After LASWP (Col-major)", m, n, a_col, lda_col, .col_major);
+
+    const m = 5;
+    const n = 7;
+
+    const lda_col = m;
+    const lda_row = n;
+    var ipiv_col_array: [m]i32 = undefined;
+    const ipiv_col: []i32 = &ipiv_col_array;
+    var ipiv_row_array: [m]i32 = undefined;
+    const ipiv_row: []i32 = &ipiv_row_array;
+
+    // Column-major input
+    const a_col: []f64 = try a.alloc(f64, m * n);
+    defer a.free(a_col);
+
+    @memcpy(a_col, &[_]f64{
+        2, 1, 3, 4, 5,
+        6, 4, 5, 8, 2,
+        8, 7, 9, 6, 1,
+        5, 2, 6, 3, 4,
+        4, 5, 1, 2, 3,
+        3, 6, 7, 8, 9,
+        1, 2, 3, 4, 5,
+    });
+
+    // Copy to row-major layout
+    const a_row: []f64 = try a.alloc(f64, m * n);
+    defer a.free(a_row);
+
+    var r: usize = 0;
+    while (r < m) : (r += 1) {
+        var c: usize = 0;
+        while (c < n) : (c += 1) {
+            a_row[r * lda_row + c] = a_col[r + c * lda_col];
+        }
+    }
+
+    // Print original
+    print_matrix("Original A (col-major)", m, n, a_col, lda_col, .col_major);
+    print_matrix("Original A (row-major)", m, n, a_row, lda_row, .row_major);
+
+    // Column-major dgetrf2
+    const info_col: isize = try zml.linalg.lapack.getrf2(.col_major, m, n, a_col.ptr, lda_col, ipiv_col.ptr, .{});
+    // Row-major wrapper
+    const info_row: isize = try zml.linalg.lapack.getrf2(.row_major, m, n, a_row.ptr, lda_row, ipiv_row.ptr, .{});
+
+    // Print ipiv (1-based)
+    std.debug.print("\nipiv col-major: ", .{});
+    for (0..m) |i|
+        std.debug.print("{d}, ", .{ipiv_col[i]});
+    std.debug.print("\nipiv row-major: ", .{});
+    for (0..m) |i|
+        std.debug.print("{d}, ", .{ipiv_row[i]});
+    std.debug.print("\n", .{});
+
+    // Print LU factors
+    print_matrix("LU in A (col-major)", m, n, a_col, lda_col, .col_major);
+    print_matrix("LU in A (row-major)", m, n, a_row, lda_row, .row_major);
+
+    std.debug.print("\ninfo_col = {d}, info_row = {d}\n", .{ info_col, info_row });
+}
+
+fn lapackPerfTesting(a: std.mem.Allocator) !void {
+    const iter = 10;
+    const m = 2000;
+    const n = 3000;
+    const lda_row = n;
+    const lda_col = m;
+
+    // Row-major storage
+    const a_row: []f64 = try a.alloc(f64, m * n);
+    defer a.free(a_row);
+
+    for (0..a_row.len) |i| {
+        a_row[i] = @floatFromInt(i + 1);
+    }
+
+    // Column-major storage (transpose indexing layout)
+    const a_col: []f64 = try a.alloc(f64, m * n);
+    defer a.free(a_col);
+
+    var r: usize = 0;
+    while (r < m) : (r += 1) {
+        var c: usize = 0;
+        while (c < n) : (c += 1) {
+            a_col[r + c * lda_col] = a_row[r * lda_row + c];
+        }
+    }
+
+    // Pivot array (LAPACK style: 1-based indexing)
+    const ipiv: []i32 = try a.alloc(i32, n);
+    defer a.free(ipiv);
+
+    for (0..ipiv.len) |i| {
+        ipiv[i] = zml.scast(i32, n - i); // Swap row1<->rowN, row2<->row(N-1), etc.
+    }
+    const k1 = 1;
+    const k2 = n;
+    const incx = 1;
+
+    // Apply laswp in row-major
+    var start_time: i128 = std.time.nanoTimestamp();
+    for (0..iter) |_| {
+        std.mem.doNotOptimizeAway(try zml.linalg.lapack.laswp(.row_major, n, a_row.ptr, lda_row, k1, k2, ipiv.ptr, incx));
+    }
+    var end_time: i128 = std.time.nanoTimestamp();
+
+    std.debug.print("Row major zml.linalg.blas.laswp took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+
+    // Apply laswp in col-major
+    start_time = std.time.nanoTimestamp();
+    for (0..iter) |_| {
+        std.mem.doNotOptimizeAway(try zml.linalg.lapack.laswp(.col_major, n, a_row.ptr, lda_row, k1, k2, ipiv.ptr, incx));
+    }
+    end_time = std.time.nanoTimestamp();
+
+    std.debug.print("Col major zml.linalg.blas.laswp took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+}
+
 fn blasPerfTesting(a: std.mem.Allocator) !void {
-    var A: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 10000, 10000 }, .{ .order = .ColumnMajor });
-    defer A.deinit();
+    const alpha: f64 = 2;
+    const beta: f64 = 3;
 
-    // Ask for the number of iterations.
-    const n = try ask_user(10);
-    //const n = 10;
-    std.debug.print("Number of iterations: {}\n", .{n});
+    const m = 1000;
+    const n = 1500;
+    const k = 2000;
 
-    // Profiling
-    var start_time: i128 = undefined;
-    var end_time: i128 = undefined;
-    var tot_time: i128 = 0;
+    const A: []f64 = try a.alloc(f64, m * k);
+    defer a.free(A);
+    const B: []f64 = try a.alloc(f64, k * n);
+    defer a.free(B);
+    const C: []f64 = try a.alloc(f64, m * n);
+    defer a.free(C);
 
-    // Zig implementation 1
-    std.debug.print("Zig implementation 1\n", .{});
-    for (0..n) |_| {
-        std.debug.print(".", .{});
-        start_time = std.time.nanoTimestamp();
-        std.mem.doNotOptimizeAway(zml.linalg.blas.asum(f64, @intCast(A.size), A.data.ptr, 1));
-        //std.mem.doNotOptimizeAway(zml.BLAS.asum(f64, @divTrunc(@as(isize, @intCast(A.size)), @as(isize, 2)), A.data.ptr, 2));
-        end_time = std.time.nanoTimestamp();
-
-        tot_time += end_time - start_time;
+    for (0..A.len) |i| {
+        A[i] = @floatFromInt(i + 1);
     }
-    std.debug.print("\n", .{});
 
-    // Convert nanoseconds to seconds as a floating-point number.
-    const duration_ns = tot_time;
-    tot_time = 0;
-    const duration_s: f128 = @as(f128, @floatFromInt(duration_ns)) / (1_000_000_000.0 * @as(f128, @floatFromInt(n)));
-
-    // Print the duration in seconds with high precision (e.g., 9 decimal places).
-    std.debug.print("Zig implementation 1 took: {d:.9} seconds\n", .{duration_s});
-
-    // Zig implementation 2
-    std.debug.print("Zig implementation 2\n", .{});
-    for (0..n) |_| {
-        std.debug.print(".", .{});
-        start_time = std.time.nanoTimestamp();
-        //std.mem.doNotOptimizeAway(zml.BLAS.asum2(f64, @intCast(A.size), A.data.ptr, 1));
-        //std.mem.doNotOptimizeAway(zml.BLAS.asum2(f64, @divTrunc(@as(isize, @intCast(A.size)), @as(isize, 2)), A.data.ptr, 2));
-        end_time = std.time.nanoTimestamp();
-
-        tot_time += end_time - start_time;
+    for (0..B.len) |i| {
+        B[i] = @floatFromInt(i + 1);
     }
-    std.debug.print("\n", .{});
 
-    // Convert nanoseconds to seconds as a floating-point number.
-    const duration_ns2 = tot_time;
-    tot_time = 0;
-    const duration_s2: f128 = @as(f128, @floatFromInt(duration_ns2)) / (1_000_000_000.0 * @as(f128, @floatFromInt(n)));
-
-    // Print the duration in seconds with high precision (e.g., 9 decimal places).
-    std.debug.print("Zig implementation 2 took: {d:.9} seconds\n", .{duration_s2});
-
-    // Cblas implementation
-    std.debug.print("Cblas implementation\n", .{});
-    for (0..n) |_| {
-        std.debug.print(".", .{});
-        start_time = std.time.nanoTimestamp();
-        //std.mem.doNotOptimizeAway(ci.cblas_dasum(@intCast(A.size), A.data.ptr, 1));
-        //std.mem.doNotOptimizeAway(ci.cblas_dasum(@divTrunc(@as(c_int, @intCast(A.size)), @as(c_int, 2)), A.data.ptr, 2));
-        end_time = std.time.nanoTimestamp();
-
-        tot_time += end_time - start_time;
+    for (0..C.len) |i| {
+        C[i] = 0;
     }
-    std.debug.print("\n", .{});
 
-    // Convert nanoseconds to seconds as a floating-point number.
-    const duration_ns3 = tot_time;
-    tot_time = 0;
-    const duration_s3: f128 = @as(f128, @floatFromInt(duration_ns3)) / (1_000_000_000.0 * @as(f128, @floatFromInt(n)));
+    const start_time: i128 = std.time.nanoTimestamp();
+    for (0..1) |_| {
+        zml.linalg.blas.dgemm(.col_major, .no_trans, .no_trans, m, n, k, alpha, A.ptr, m, B.ptr, k, beta, C.ptr, m);
+    }
+    const end_time: i128 = std.time.nanoTimestamp();
 
-    // Print the duration in seconds with high precision (e.g., 9 decimal places).
-    std.debug.print("Cblas implementation took: {d:.9} seconds\n", .{duration_s3});
+    std.debug.print("zml.linalg.blas.gemm took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9)});
 }
 
 fn transposeTesting(a: std.mem.Allocator) !void {

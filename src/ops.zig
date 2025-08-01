@@ -1024,7 +1024,7 @@ pub inline fn div(
             );
         };
 
-        return array.mul(
+        return array.div(
             ctx.array_allocator,
             x,
             y,
@@ -1034,23 +1034,23 @@ pub inline fn div(
     }
 
     switch (comptime types.numericType(C)) {
-        .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+        .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int => {
             comptime validateContext(@TypeOf(ctx), .{});
 
-            return int.mul(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
+            return int.div(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
         },
         .float => {
             comptime validateContext(@TypeOf(ctx), .{});
 
-            return float.mul(x, y);
+            return float.div(x, y);
         },
         .cfloat => {
             comptime validateContext(@TypeOf(ctx), .{});
 
-            return cfloat.mul(x, y);
+            return cfloat.div(x, y);
         },
-        else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
     }
 }
 
