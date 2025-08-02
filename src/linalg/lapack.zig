@@ -652,7 +652,7 @@ pub inline fn sgetrf2(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf2(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
 /// Computes LU factorization using partial pivoting with row interchanges.
@@ -721,7 +721,7 @@ pub inline fn dgetrf2(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf2(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
 /// Computes LU factorization using partial pivoting with row interchanges.
@@ -790,7 +790,7 @@ pub inline fn cgetrf2(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf2(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
 /// Computes LU factorization using partial pivoting with row interchanges.
@@ -859,7 +859,7 @@ pub inline fn zgetrf2(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf2(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
 /// Computes the LU factorization of a general `m`-by-`n` matrix.
@@ -1043,7 +1043,7 @@ pub inline fn sgetrf(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
 /// Computes the LU factorization of a general `m`-by-`n` matrix.
@@ -1098,7 +1098,7 @@ pub inline fn dgetrf(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
 /// Computes the LU factorization of a general `m`-by-`n` matrix.
@@ -1153,7 +1153,7 @@ pub inline fn cgetrf(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
 /// Computes the LU factorization of a general `m`-by-`n` matrix.
@@ -1208,7 +1208,997 @@ pub inline fn zgetrf(
     lda: isize,
     ipiv: [*]i32,
 ) !isize {
-    return getrf(order, m, n, a, lda, ipiv, null) catch {};
+    return getrf(order, m, n, a, lda, ipiv, null) catch -1;
+}
+
+/// Solves a system of linear equations with an LU-factored square coefficient
+/// matrix, with multiple right-hand sides.
+///
+/// The `getrs` routine solves for `X` the following systems of linear
+/// equations:
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^H * X = B,
+/// ```
+///
+/// where `A` is the LU factorization of a general `n`-by-`n` matrix `A`,
+/// computed by `getrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
+/// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the form of the system of equations to
+/// solve:
+/// - If `transa = .no_trans`, then `A * X = B`.
+/// - If `transa = .trans`, then `A^T * X = B`.
+/// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
+/// - If `transa = .conj_trans`, then `A^H * X = B`.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
+/// returned by `getrf`.
+///
+/// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `ldb * nrhs` if `order = .col_major` or `ldb * n` if
+/// `order = .row_major`. On return, contains the solution matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` or `nrhs` is less than 0, if
+/// `lda` is less than `max(1, n)`, or if `ldb` is less than `max(1, n)` or
+/// `max(1, nrhs)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
+pub inline fn getrs(
+    order: Order,
+    transa: Transpose,
+    n: isize,
+    nrhs: isize,
+    a: anytype,
+    lda: isize,
+    ipiv: [*]i32,
+    b: anytype,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.lapack.getrs requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.getrs requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B) or types.isConstPointer(B))
+        @compileError("zml.linalg.lapack.getrs requires b to be a mutable many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.lapack.getrs requires b's child type to be a numeric, got " ++ @typeName(B));
+
+    comptime if (types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.getrs not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (transa != .conj_no_trans and (comptime A == B and opts.link_lapacke != null)) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    _ = ci.LAPACKE_sgetrs(
+                        @intFromEnum(order),
+                        transa.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                } else if (comptime A == f64) {
+                    _ = ci.LAPACKE_dgetrs(
+                        @intFromEnum(order),
+                        transa.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                }
+
+                return;
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    _ = ci.LAPACKE_cgetrs(
+                        @intFromEnum(order),
+                        transa.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                } else if (comptime Scalar(A) == f64) {
+                    _ = ci.LAPACKE_zgetrs(
+                        @intFromEnum(order),
+                        transa.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                }
+
+                return;
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/getrs.zig").getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx);
+}
+
+/// Solves a system of linear equations with an LU-factored square coefficient
+/// matrix, with multiple right-hand sides.
+///
+/// The `sgetrs` routine solves for `X` the following systems of linear
+/// equations:
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^H * X = B,
+/// ```
+///
+/// where `A` is the LU factorization of a general `n`-by-`n` matrix `A`,
+/// computed by `sgetrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
+/// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the form of the system of equations to
+/// solve:
+/// - If `transa = .no_trans`, then `A * X = B`.
+/// - If `transa = .trans`, then `A^T * X = B`.
+/// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
+/// - If `transa = .conj_trans`, then `A^H * X = B`.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
+/// returned by `getrf`.
+///
+/// `b` (`[*]f32`): Array, size at least `ldb * nrhs` if `order = .col_major`
+/// or `ldb * n` if `order = .row_major`. On return, contains the solution
+/// matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn sgetrs(
+    order: Order,
+    transa: Transpose,
+    n: isize,
+    nrhs: isize,
+    a: [*]const f32,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]f32,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+}
+
+/// Solves a system of linear equations with an LU-factored square coefficient
+/// matrix, with multiple right-hand sides.
+///
+/// The `dgetrs` routine solves for `X` the following systems of linear
+/// equations:
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^H * X = B,
+/// ```
+///
+/// where `A` is the LU factorization of a general `n`-by-`n` matrix `A`,
+/// computed by `dgetrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
+/// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the form of the system of equations to
+/// solve:
+/// - If `transa = .no_trans`, then `A * X = B`.
+/// - If `transa = .trans`, then `A^T * X = B`.
+/// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
+/// - If `transa = .conj_trans`, then `A^H * X = B`.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
+/// returned by `getrf`.
+///
+/// `b` (`[*]f64`): Array, size at least `ldb * nrhs` if `order = .col_major`
+/// or `ldb * n` if `order = .row_major`. On return, contains the solution
+/// matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn dgetrs(
+    order: Order,
+    transa: Transpose,
+    n: isize,
+    nrhs: isize,
+    a: [*]const f64,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]f64,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+}
+
+/// Solves a system of linear equations with an LU-factored square coefficient
+/// matrix, with multiple right-hand sides.
+///
+/// The `cgetrs` routine solves for `X` the following systems of linear
+/// equations:
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^H * X = B,
+/// ```
+///
+/// where `A` is the LU factorization of a general `n`-by-`n` matrix `A`,
+/// computed by `cgetrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
+/// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the form of the system of equations to
+/// solve:
+/// - If `transa = .no_trans`, then `A * X = B`.
+/// - If `transa = .trans`, then `A^T * X = B`.
+/// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
+/// - If `transa = .conj_trans`, then `A^H * X = B`.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
+/// returned by `getrf`.
+///
+/// `b` (`[*]cf32`): Array, size at least `ldb * nrhs` if `order = .col_major`
+/// or `ldb * n` if `order = .row_major`. On return, contains the solution
+/// matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn cgetrs(
+    order: Order,
+    transa: Transpose,
+    n: isize,
+    nrhs: isize,
+    a: [*]const cf32,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]cf32,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+}
+
+/// Solves a system of linear equations with an LU-factored square coefficient
+/// matrix, with multiple right-hand sides.
+///
+/// The `zgetrs` routine solves for `X` the following systems of linear
+/// equations:
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^T * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     conj(A) * X = B,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A^H * X = B,
+/// ```
+///
+/// where `A` is the LU factorization of a general `n`-by-`n` matrix `A`,
+/// computed by `zgetrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
+/// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `transa` (`Transpose`): Specifies the form of the system of equations to
+/// solve:
+/// - If `transa = .no_trans`, then `A * X = B`.
+/// - If `transa = .trans`, then `A^T * X = B`.
+/// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
+/// - If `transa = .conj_trans`, then `A^H * X = B`.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
+/// returned by `getrf`.
+///
+/// `b` (`[*]cf64`): Array, size at least `ldb * nrhs` if `order = .col_major`
+/// or `ldb * n` if `order = .row_major`. On return, contains the solution
+/// matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn zgetrs(
+    order: Order,
+    transa: Transpose,
+    n: isize,
+    nrhs: isize,
+    a: [*]const cf64,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]cf64,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+}
+
+/// Computes the solution to the system of linear equations with a square
+/// coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `gesv` routine solves for `X` the system of linear equations
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// where `A` is an `n`-by-`n` matrix, the columns of matrix `B` are individual
+/// right-hand sides, and the columns of `X` are the corresponding solutions.
+///
+/// The LU decomposition with partial pivoting and row interchanges is used to
+/// factor `A` as `A = P * L * U`, where `P` is a permutation matrix, `L` is
+/// unit lower triangular, and `U` is upper triangular. The factored form of `A`
+/// is then used to solve the system of equations `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `lda * n`. On return, contains the LU factorization of the matrix `A`
+/// as computed by `getrf`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
+/// pivot indices as returned by `getrf`. For `1 <= i <= n`, row `i` of the
+/// matrix was interchanged with row `ipiv[i - 1]`.
+///
+/// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `ldb * nrhs` if `order = .col_major` or `ldb * n` if
+/// `order = .row_major`. On return, contains the solution matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`, `ipiv`, and `b`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` or `nrhs` is less than 0, if
+/// `lda` is less than `max(1, n)`, or if `ldb` is less than `max(1, n)` or
+/// `max(1, nrhs)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
+pub inline fn gesv(
+    order: Order,
+    n: isize,
+    nrhs: isize,
+    a: anytype,
+    lda: isize,
+    ipiv: [*]i32,
+    b: anytype,
+    ldb: isize,
+    ctx: anytype,
+) !isize {
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.gesv requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.gesv requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B) or types.isConstPointer(B))
+        @compileError("zml.linalg.lapack.gesv requires b to be a mutable many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.lapack.gesv requires b's child type to be a numeric, got " ++ @typeName(B));
+
+    comptime if (types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.gesv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == B and opts.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    _ = ci.LAPACKE_sgesv(
+                        @intFromEnum(order),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                } else if (comptime A == f64) {
+                    _ = ci.LAPACKE_dgesv(
+                        @intFromEnum(order),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                }
+
+                return;
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    _ = ci.LAPACKE_cgesv(
+                        @intFromEnum(order),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                } else if (comptime Scalar(A) == f64) {
+                    _ = ci.LAPACKE_zgesv(
+                        @intFromEnum(order),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                        b,
+                        scast(c_int, ldb),
+                    );
+                }
+
+                return;
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/gesv.zig").gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx);
+}
+
+/// Computes the solution to the system of linear equations with a square
+/// coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `sgesv` routine solves for `X` the system of linear equations
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// where `A` is an `n`-by-`n` matrix, the columns of matrix `B` are individual
+/// right-hand sides, and the columns of `X` are the corresponding solutions.
+///
+/// The LU decomposition with partial pivoting and row interchanges is used to
+/// factor `A` as `A = P * L * U`, where `P` is a permutation matrix, `L` is
+/// unit lower triangular, and `U` is upper triangular. The factored form of `A`
+/// is then used to solve the system of equations `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the LU
+/// factorization of the matrix `A` as computed by `sgetrf`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
+/// pivot indices as returned by `sgetrf`. For `1 <= i <= n`, row `i` of the
+/// matrix was interchanged with row `ipiv[i - 1]`.
+///
+/// `b` (`[*]f32`): Array, size at least `ldb * nrhs` if `order = .col_major` or
+/// `ldb * n` if `order = .row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`, `ipiv`, and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn sgesv(
+    order: Order,
+    n: isize,
+    nrhs: isize,
+    a: [*]f32,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]f32,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
+}
+
+/// Computes the solution to the system of linear equations with a square
+/// coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `dgesv` routine solves for `X` the system of linear equations
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// where `A` is an `n`-by-`n` matrix, the columns of matrix `B` are individual
+/// right-hand sides, and the columns of `X` are the corresponding solutions.
+///
+/// The LU decomposition with partial pivoting and row interchanges is used to
+/// factor `A` as `A = P * L * U`, where `P` is a permutation matrix, `L` is
+/// unit lower triangular, and `U` is upper triangular. The factored form of `A`
+/// is then used to solve the system of equations `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the LU
+/// factorization of the matrix `A` as computed by `dgetrf`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
+/// pivot indices as returned by `dgetrf`. For `1 <= i <= n`, row `i` of the
+/// matrix was interchanged with row `ipiv[i - 1]`.
+///
+/// `b` (`[*]f64`): Array, size at least `ldb * nrhs` if `order = .col_major` or
+/// `ldb * n` if `order = .row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`, `ipiv`, and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn dgesv(
+    order: Order,
+    n: isize,
+    nrhs: isize,
+    a: [*]f64,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]f64,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
+}
+
+/// Computes the solution to the system of linear equations with a square
+/// coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `cgesv` routine solves for `X` the system of linear equations
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// where `A` is an `n`-by-`n` matrix, the columns of matrix `B` are individual
+/// right-hand sides, and the columns of `X` are the corresponding solutions.
+///
+/// The LU decomposition with partial pivoting and row interchanges is used to
+/// factor `A` as `A = P * L * U`, where `P` is a permutation matrix, `L` is
+/// unit lower triangular, and `U` is upper triangular. The factored form of `A`
+/// is then used to solve the system of equations `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the LU
+/// factorization of the matrix `A` as computed by `cgetrf`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
+/// pivot indices as returned by `cgetrf`. For `1 <= i <= n`, row `i` of the
+/// matrix was interchanged with row `ipiv[i - 1]`.
+///
+/// `b` (`[*]cf32`): Array, size at least `ldb * nrhs` if `order = .col_major`
+/// or `ldb * n` if `order = .row_major`. On return, contains the solution
+/// matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`, `ipiv`, and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn cgesv(
+    order: Order,
+    n: isize,
+    nrhs: isize,
+    a: [*]cf32,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]cf32,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
+}
+
+/// Computes the solution to the system of linear equations with a square
+/// coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `zgesv` routine solves for `X` the system of linear equations
+///
+/// ```zig
+///     A * X = B,
+/// ```
+///
+/// where `A` is an `n`-by-`n` matrix, the columns of matrix `B` are individual
+/// right-hand sides, and the columns of `X` are the corresponding solutions.
+///
+/// The LU decomposition with partial pivoting and row interchanges is used to
+/// factor `A` as `A = P * L * U`, where `P` is a permutation matrix, `L` is
+/// unit lower triangular, and `U` is upper triangular. The factored form of `A`
+/// is then used to solve the system of equations `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// matrix `B`. Must be greater than or equal to 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the LU
+/// factorization of the matrix `A` as computed by `zgetrf`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
+/// pivot indices as returned by `zgetrf`. For `1 <= i <= n`, row `i` of the
+/// matrix was interchanged with row `ipiv[i - 1]`.
+///
+/// `b` (`[*]cf64`): Array, size at least `ldb * nrhs` if `order = .col_major`
+/// or `ldb * n` if `order = .row_major`. On return, contains the solution
+/// matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
+/// `order = .row_major`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`, `ipiv`, and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn zgesv(
+    order: Order,
+    n: isize,
+    nrhs: isize,
+    a: [*]cf64,
+    lda: isize,
+    ipiv: [*]i32,
+    b: [*]cf64,
+    ldb: isize,
+    ctx: anytype,
+) !void {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
 }
 
 pub const Error = error{

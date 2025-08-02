@@ -12,6 +12,15 @@ pub const Transpose = enum(c_uint) {
     conj_trans = 113,
     conj_no_trans = 114,
 
+    pub inline fn toChar(self: Transpose) u8 {
+        return switch (self) {
+            .no_trans => 'N',
+            .trans => 'T',
+            .conj_no_trans => 0,
+            .conj_trans => 'C',
+        };
+    }
+
     pub inline fn invert(self: Transpose) Transpose {
         return switch (self) {
             .no_trans => .trans,

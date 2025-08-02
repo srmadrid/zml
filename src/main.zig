@@ -233,86 +233,87 @@ fn lapackTesting(a: std.mem.Allocator) !void {
 
 fn lapackPerfTesting(a: std.mem.Allocator) !void {
     const iter = 1;
-    const m = 300;
-    const n = 1000;
-    const lda_row = n;
-    //const lda_col = m;
+    // const m = 300;
+    const n = 2000;
+    const nrhs = 3000;
 
-    // Row-major storage
-    const a_row: []f64 = try random_matrix(a, m, n);
-    defer a.free(a_row);
-    const a_mean: f64 = avg(a_row);
+    // A
+    const a_zml: []f64 = try random_matrix(a, n, n);
+    defer a.free(a_zml);
+    const a_mean: f64 = avg(a_zml);
 
-    // Column-major storage (transpose indexing layout)
-    const a_col: []f64 = try a.alloc(f64, m * n);
-    defer a.free(a_col);
+    const a_lapacke: []f64 = try a.alloc(f64, n * n);
+    defer a.free(a_lapacke);
+    @memcpy(a_lapacke, a_zml);
 
-    @memcpy(a_col, a_row);
-    // var r: usize = 0;
-    // while (r < m) : (r += 1) {
-    //     var c: usize = 0;
-    //     while (c < n) : (c += 1) {
-    //         a_col[r + c * lda_col] = a_row[r * lda_row + c];
-    //     }
-    // }
+    const lda_col = n;
+    // const lda_row = n;
+
+    // B
+    const b_zml: []f64 = try random_matrix(a, n, nrhs);
+    defer a.free(b_zml);
+    const b_mean: f64 = avg(b_zml);
+
+    const b_lapacke: []f64 = try a.alloc(f64, n * nrhs);
+    defer a.free(b_lapacke);
+    @memcpy(b_lapacke, b_zml);
+
+    const ldb_col = n;
+    // const ldb_row = nrhs;
 
     // Pivot array (LAPACK style: 1-based indexing)
-    const ipiv_1: []i32 = try a.alloc(i32, zml.int.min(m, n));
-    defer a.free(ipiv_1);
-    const ipiv_2: []i32 = try a.alloc(i32, zml.int.min(m, n));
-    defer a.free(ipiv_2);
-
-    // for (0..ipiv.len) |i| {
-    //     ipiv[i] = zml.scast(i32, n - i); // Swap row1<->rowN, row2<->row(N-1), etc.
-    // }
-    // const k1 = 1;
-    // const k2 = n;
-    // const incx = 1;
-
-    //print_matrix("A", m, n, a_row, lda_col, .col_major);
+    const ipiv_zml: []i32 = try a.alloc(i32, n);
+    defer a.free(ipiv_zml);
+    const ipiv_lapacke: []i32 = try a.alloc(i32, n);
+    defer a.free(ipiv_lapacke);
 
     var start_time: i128 = std.time.nanoTimestamp();
     for (0..iter) |_| {
-        std.mem.doNotOptimizeAway(try zml.linalg.lapack.getrf(
-            .row_major,
-            m,
+        std.mem.doNotOptimizeAway(try zml.linalg.lapack.gesv(
+            .col_major,
             n,
-            a_row.ptr,
-            lda_row,
-            ipiv_1.ptr,
+            nrhs,
+            a_zml.ptr,
+            lda_col,
+            ipiv_zml.ptr,
+            b_zml.ptr,
+            ldb_col,
             .{},
         ));
     }
     var end_time: i128 = std.time.nanoTimestamp();
 
-    std.debug.print("Zml zml.linalg.blas.getrf took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+    std.debug.print("Zml getrs took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
 
     start_time = std.time.nanoTimestamp();
     for (0..iter) |_| {
-        std.mem.doNotOptimizeAway(ci.LAPACKE_dgetrf(
-            @intFromEnum(zml.linalg.Order.row_major),
-            zml.scast(c_int, m),
+        std.mem.doNotOptimizeAway(ci.LAPACKE_dgesv(
+            @intFromEnum(zml.linalg.Order.col_major),
             zml.scast(c_int, n),
-            a_col.ptr,
-            zml.scast(c_int, lda_row),
-            ipiv_2.ptr,
+            zml.scast(c_int, nrhs),
+            a_lapacke.ptr,
+            zml.scast(c_int, lda_col),
+            ipiv_lapacke.ptr,
+            b_lapacke.ptr,
+            zml.scast(c_int, ldb_col),
         ));
     }
     end_time = std.time.nanoTimestamp();
 
-    std.debug.print("Lapacke zml.linalg.blas.getrf took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+    std.debug.print("Lapacke getrs took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
 
     // Frobenius norm of the difference
     var norm: f64 = 0;
-    for (0..a_row.len) |i| {
-        const diff = a_row[i] - a_col[i];
+    for (0..b_zml.len) |i| {
+        const diff = b_zml[i] - b_lapacke[i];
         norm += diff * diff;
     }
 
     norm = zml.float.sqrt(norm);
 
     std.debug.print("Frobenius norm of the difference: {d}\n", .{norm});
-    std.debug.print("Mean of the original matrix: {d}\n", .{a_mean});
+    std.debug.print("Mean of the original matrix A: {d}\n", .{a_mean});
+    std.debug.print("Mean of the original matrix B: {d}\n", .{b_mean});
 
     // print_matrix("A (zml)", m, n, a_row, lda_col, .col_major);
     // std.debug.print("ipiv (zml): ", .{});
