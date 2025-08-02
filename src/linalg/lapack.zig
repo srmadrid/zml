@@ -445,7 +445,7 @@ pub inline fn zlaswp(
 
 /// Computes LU factorization using partial pivoting with row interchanges.
 ///
-/// the `getrf2` routine computes an LU factorization of a general `m`-by-`n`
+/// The `getrf2` routine computes an LU factorization of a general `m`-by-`n`
 /// matrix `A` using partial pivoting with row interchanges. The factorization
 /// has the form:
 ///
@@ -496,7 +496,8 @@ pub inline fn zlaswp(
 ///
 /// Returns
 /// -------
-/// `void`: The result is stored in `a` and `ipiv`.
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
 ///
 /// Errors
 /// ------
@@ -526,6 +527,13 @@ pub inline fn getrf2(
 
     comptime if (!types.isNumeric(A))
         @compileError("zml.linalg.lapack.getrf2 requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (types.isArbitraryPrecision(A)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.getrf2 not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
 
     if (comptime opts.link_lapacke != null) {
         switch (comptime types.numericType(A)) {
@@ -580,7 +588,7 @@ pub inline fn getrf2(
 
 /// Computes LU factorization using partial pivoting with row interchanges.
 ///
-/// the `sgetrf2` routine computes an LU factorization of a general `m`-by-`n`
+/// The `sgetrf2` routine computes an LU factorization of a general `m`-by-`n`
 /// matrix `A` using partial pivoting with row interchanges. The factorization
 /// has the form:
 ///
@@ -629,7 +637,8 @@ pub inline fn getrf2(
 ///
 /// Returns
 /// -------
-/// `void`: The result is stored in `a` and `ipiv`.
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
 ///
 /// Notes
 /// -----
@@ -648,7 +657,7 @@ pub inline fn sgetrf2(
 
 /// Computes LU factorization using partial pivoting with row interchanges.
 ///
-/// the `dgetrf2` routine computes an LU factorization of a general `m`-by-`n`
+/// The `dgetrf2` routine computes an LU factorization of a general `m`-by-`n`
 /// matrix `A` using partial pivoting with row interchanges. The factorization
 /// has the form:
 ///
@@ -697,7 +706,8 @@ pub inline fn sgetrf2(
 ///
 /// Returns
 /// -------
-/// `void`: The result is stored in `a` and `ipiv`.
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
 ///
 /// Notes
 /// -----
@@ -716,7 +726,7 @@ pub inline fn dgetrf2(
 
 /// Computes LU factorization using partial pivoting with row interchanges.
 ///
-/// the `cgetrf2` routine computes an LU factorization of a general `m`-by-`n`
+/// The `cgetrf2` routine computes an LU factorization of a general `m`-by-`n`
 /// matrix `A` using partial pivoting with row interchanges. The factorization
 /// has the form:
 ///
@@ -765,7 +775,8 @@ pub inline fn dgetrf2(
 ///
 /// Returns
 /// -------
-/// `void`: The result is stored in `a` and `ipiv`.
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
 ///
 /// Notes
 /// -----
@@ -784,7 +795,7 @@ pub inline fn cgetrf2(
 
 /// Computes LU factorization using partial pivoting with row interchanges.
 ///
-/// the `zgetrf2` routine computes an LU factorization of a general `m`-by-`n`
+/// The `zgetrf2` routine computes an LU factorization of a general `m`-by-`n`
 /// matrix `A` using partial pivoting with row interchanges. The factorization
 /// has the form:
 ///
@@ -833,7 +844,8 @@ pub inline fn cgetrf2(
 ///
 /// Returns
 /// -------
-/// `void`: The result is stored in `a` and `ipiv`.
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
 ///
 /// Notes
 /// -----
@@ -848,6 +860,355 @@ pub inline fn zgetrf2(
     ipiv: [*]i32,
 ) !isize {
     return getrf2(order, m, n, a, lda, ipiv, null) catch {};
+}
+
+/// Computes the LU factorization of a general `m`-by-`n` matrix.
+///
+/// The `getrf` routine computes the LU factorization of a general `m`-by-`n`
+/// matrix `A` as:
+///
+/// ```zig
+///     A = P * L * U,
+/// ```
+///
+/// where `P` is a permutation matrix, `L` is lower triangular with unit
+/// diagonal elements (lower trapezoidal if `m > n`), and `U` is upper
+/// triangular (upper trapezoidal if `m < n`).
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// equal to 0.
+///
+/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size
+/// at least `lda * n` if `order = .col_major` or `lda * m` if
+/// `order = .row_major`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
+/// `order = .row_major`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, min(m, n))`. On return
+/// contains the pivot indices; for `1 <= i <= min(m, n)`, row `i` of the matrix
+/// was interchanged with row `ipiv[i - 1]`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `m` or `n` is less than 0, or if
+/// `lda` is less than `max(1, m)` or `max(1, n)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
+pub inline fn getrf(
+    order: Order,
+    m: isize,
+    n: isize,
+    a: anytype,
+    lda: isize,
+    ipiv: [*]i32,
+    ctx: anytype,
+) !isize {
+    comptime var A: type = @TypeOf(a);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.getrf requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.getrf requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (types.isArbitraryPrecision(A)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.getrf not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime opts.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    return scast(isize, ci.LAPACKE_sgetrf(
+                        @intFromEnum(order),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                    ));
+                } else if (comptime A == f64) {
+                    return scast(isize, ci.LAPACKE_dgetrf(
+                        @intFromEnum(order),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                    ));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(isize, ci.LAPACKE_cgetrf(
+                        @intFromEnum(order),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(isize, ci.LAPACKE_zgetrf(
+                        @intFromEnum(order),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/getrf.zig").getrf(order, m, n, a, lda, ipiv, ctx);
+}
+
+/// Computes the LU factorization of a general `m`-by-`n` matrix.
+///
+/// The `sgetrf` routine computes the LU factorization of a general `m`-by-`n`
+/// matrix `A` as:
+///
+/// ```zig
+///     A = P * L * U,
+/// ```
+///
+/// where `P` is a permutation matrix, `L` is lower triangular with unit
+/// diagonal elements (lower trapezoidal if `m > n`), and `U` is upper
+/// triangular (upper trapezoidal if `m < n`).
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// equal to 0.
+///
+/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `a` (`f32`): Array, size at least `lda * n` if `order = .col_major` or
+/// `lda * m` if `order = .row_major`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
+/// `order = .row_major`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, min(m, n))`. On return
+/// contains the pivot indices; for `1 <= i <= min(m, n)`, row `i` of the matrix
+/// was interchanged with row `ipiv[i - 1]`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn sgetrf(
+    order: Order,
+    m: isize,
+    n: isize,
+    a: [*]f32,
+    lda: isize,
+    ipiv: [*]i32,
+) !isize {
+    return getrf(order, m, n, a, lda, ipiv, null) catch {};
+}
+
+/// Computes the LU factorization of a general `m`-by-`n` matrix.
+///
+/// The `dgetrf` routine computes the LU factorization of a general `m`-by-`n`
+/// matrix `A` as:
+///
+/// ```zig
+///     A = P * L * U,
+/// ```
+///
+/// where `P` is a permutation matrix, `L` is lower triangular with unit
+/// diagonal elements (lower trapezoidal if `m > n`), and `U` is upper
+/// triangular (upper trapezoidal if `m < n`).
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// equal to 0.
+///
+/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `a` (`f64`): Array, size at least `lda * n` if `order = .col_major` or
+/// `lda * m` if `order = .row_major`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
+/// `order = .row_major`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, min(m, n))`. On return
+/// contains the pivot indices; for `1 <= i <= min(m, n)`, row `i` of the matrix
+/// was interchanged with row `ipiv[i - 1]`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn dgetrf(
+    order: Order,
+    m: isize,
+    n: isize,
+    a: [*]f64,
+    lda: isize,
+    ipiv: [*]i32,
+) !isize {
+    return getrf(order, m, n, a, lda, ipiv, null) catch {};
+}
+
+/// Computes the LU factorization of a general `m`-by-`n` matrix.
+///
+/// The `cgetrf` routine computes the LU factorization of a general `m`-by-`n`
+/// matrix `A` as:
+///
+/// ```zig
+///     A = P * L * U,
+/// ```
+///
+/// where `P` is a permutation matrix, `L` is lower triangular with unit
+/// diagonal elements (lower trapezoidal if `m > n`), and `U` is upper
+/// triangular (upper trapezoidal if `m < n`).
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// equal to 0.
+///
+/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `a` (`cf32`): Array, size at least `lda * n` if `order = .col_major` or
+/// `lda * m` if `order = .row_major`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
+/// `order = .row_major`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, min(m, n))`. On return
+/// contains the pivot indices; for `1 <= i <= min(m, n)`, row `i` of the matrix
+/// was interchanged with row `ipiv[i - 1]`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn cgetrf(
+    order: Order,
+    m: isize,
+    n: isize,
+    a: [*]cf32,
+    lda: isize,
+    ipiv: [*]i32,
+) !isize {
+    return getrf(order, m, n, a, lda, ipiv, null) catch {};
+}
+
+/// Computes the LU factorization of a general `m`-by-`n` matrix.
+///
+/// The `zgetrf` routine computes the LU factorization of a general `m`-by-`n`
+/// matrix `A` as:
+///
+/// ```zig
+///     A = P * L * U,
+/// ```
+///
+/// where `P` is a permutation matrix, `L` is lower triangular with unit
+/// diagonal elements (lower trapezoidal if `m > n`), and `U` is upper
+/// triangular (upper trapezoidal if `m < n`).
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// equal to 0.
+///
+/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// or equal to 0.
+///
+/// `a` (`cf64`): Array, size at least `lda * n` if `order = .col_major` or
+/// `lda * m` if `order = .row_major`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
+/// `order = .row_major`.
+///
+/// `ipiv` (`[*]i32`): Array, size at least `max(1, min(m, n))`. On return
+/// contains the pivot indices; for `1 <= i <= min(m, n)`, row `i` of the matrix
+/// was interchanged with row `ipiv[i - 1]`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a` and `ipiv`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn zgetrf(
+    order: Order,
+    m: isize,
+    n: isize,
+    a: [*]cf64,
+    lda: isize,
+    ipiv: [*]i32,
+) !isize {
+    return getrf(order, m, n, a, lda, ipiv, null) catch {};
 }
 
 pub const Error = error{

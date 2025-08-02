@@ -9,7 +9,7 @@ const lapack = @import("../lapack.zig");
 pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8, n1: isize, n2: isize, n3: isize, n4: isize) isize {
     // Handle computed GOTO equivalent
     if (ispec == 1 or ispec == 2 or ispec == 3) {
-        // Continue to label 10
+        // Continue
     } else if (ispec == 4) {
         // ispec = 4: number of shifts (used by xHSEQR)
         return 6;

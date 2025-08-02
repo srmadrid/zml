@@ -1,6 +1,31 @@
 const std = @import("std");
 const zml = @import("zml");
-//const ci = @import("c.zig");
+const ci = @cImport({
+    @cInclude("lapacke.h");
+});
+
+fn avg(values: []const f64) f64 {
+    var sum: f64 = 0;
+    for (values) |value| {
+        sum += value;
+    }
+    return zml.float.div(sum, values.len);
+}
+
+fn random_matrix(
+    allocator: std.mem.Allocator,
+    rows: usize,
+    cols: usize,
+) ![]f64 {
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
+
+    const matrix = try allocator.alloc(f64, rows * cols);
+    for (0..matrix.len) |i| {
+        matrix[i] = rand.float(f64) * 10;
+    }
+    return matrix;
+}
 
 fn print_matrix(desc: []const u8, m: usize, n: usize, a: []f64, lda: usize, order: zml.linalg.Order) void {
     std.debug.print("\n{s}\n", .{desc});
@@ -75,9 +100,9 @@ pub fn main() !void {
 
     // try blasPerfTesting(a);
 
-    try lapackTesting(a);
+    // try lapackTesting(a);
 
-    // try lapackPerfTesting(a);
+    try lapackPerfTesting(a);
 
     // coreTesting();
 }
@@ -207,60 +232,100 @@ fn lapackTesting(a: std.mem.Allocator) !void {
 }
 
 fn lapackPerfTesting(a: std.mem.Allocator) !void {
-    const iter = 10;
-    const m = 2000;
-    const n = 3000;
+    const iter = 1;
+    const m = 300;
+    const n = 1000;
     const lda_row = n;
-    const lda_col = m;
+    //const lda_col = m;
 
     // Row-major storage
-    const a_row: []f64 = try a.alloc(f64, m * n);
+    const a_row: []f64 = try random_matrix(a, m, n);
     defer a.free(a_row);
-
-    for (0..a_row.len) |i| {
-        a_row[i] = @floatFromInt(i + 1);
-    }
+    const a_mean: f64 = avg(a_row);
 
     // Column-major storage (transpose indexing layout)
     const a_col: []f64 = try a.alloc(f64, m * n);
     defer a.free(a_col);
 
-    var r: usize = 0;
-    while (r < m) : (r += 1) {
-        var c: usize = 0;
-        while (c < n) : (c += 1) {
-            a_col[r + c * lda_col] = a_row[r * lda_row + c];
-        }
-    }
+    @memcpy(a_col, a_row);
+    // var r: usize = 0;
+    // while (r < m) : (r += 1) {
+    //     var c: usize = 0;
+    //     while (c < n) : (c += 1) {
+    //         a_col[r + c * lda_col] = a_row[r * lda_row + c];
+    //     }
+    // }
 
     // Pivot array (LAPACK style: 1-based indexing)
-    const ipiv: []i32 = try a.alloc(i32, n);
-    defer a.free(ipiv);
+    const ipiv_1: []i32 = try a.alloc(i32, zml.int.min(m, n));
+    defer a.free(ipiv_1);
+    const ipiv_2: []i32 = try a.alloc(i32, zml.int.min(m, n));
+    defer a.free(ipiv_2);
 
-    for (0..ipiv.len) |i| {
-        ipiv[i] = zml.scast(i32, n - i); // Swap row1<->rowN, row2<->row(N-1), etc.
-    }
-    const k1 = 1;
-    const k2 = n;
-    const incx = 1;
+    // for (0..ipiv.len) |i| {
+    //     ipiv[i] = zml.scast(i32, n - i); // Swap row1<->rowN, row2<->row(N-1), etc.
+    // }
+    // const k1 = 1;
+    // const k2 = n;
+    // const incx = 1;
 
-    // Apply laswp in row-major
+    //print_matrix("A", m, n, a_row, lda_col, .col_major);
+
     var start_time: i128 = std.time.nanoTimestamp();
     for (0..iter) |_| {
-        std.mem.doNotOptimizeAway(try zml.linalg.lapack.laswp(.row_major, n, a_row.ptr, lda_row, k1, k2, ipiv.ptr, incx));
+        std.mem.doNotOptimizeAway(try zml.linalg.lapack.getrf(
+            .row_major,
+            m,
+            n,
+            a_row.ptr,
+            lda_row,
+            ipiv_1.ptr,
+            .{},
+        ));
     }
     var end_time: i128 = std.time.nanoTimestamp();
 
-    std.debug.print("Row major zml.linalg.blas.laswp took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+    std.debug.print("Zml zml.linalg.blas.getrf took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
 
-    // Apply laswp in col-major
     start_time = std.time.nanoTimestamp();
     for (0..iter) |_| {
-        std.mem.doNotOptimizeAway(try zml.linalg.lapack.laswp(.col_major, n, a_row.ptr, lda_row, k1, k2, ipiv.ptr, incx));
+        std.mem.doNotOptimizeAway(ci.LAPACKE_dgetrf(
+            @intFromEnum(zml.linalg.Order.row_major),
+            zml.scast(c_int, m),
+            zml.scast(c_int, n),
+            a_col.ptr,
+            zml.scast(c_int, lda_row),
+            ipiv_2.ptr,
+        ));
     }
     end_time = std.time.nanoTimestamp();
 
-    std.debug.print("Col major zml.linalg.blas.laswp took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+    std.debug.print("Lapacke zml.linalg.blas.getrf took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+
+    // Frobenius norm of the difference
+    var norm: f64 = 0;
+    for (0..a_row.len) |i| {
+        const diff = a_row[i] - a_col[i];
+        norm += diff * diff;
+    }
+
+    norm = zml.float.sqrt(norm);
+
+    std.debug.print("Frobenius norm of the difference: {d}\n", .{norm});
+    std.debug.print("Mean of the original matrix: {d}\n", .{a_mean});
+
+    // print_matrix("A (zml)", m, n, a_row, lda_col, .col_major);
+    // std.debug.print("ipiv (zml): ", .{});
+    // for (0..zml.int.min(m, n)) |i| {
+    //     std.debug.print("{d}, ", .{ipiv_1[i]});
+    // }
+    // std.debug.print("\n", .{});
+    // print_matrix("A (lapacke)", m, n, a_col, lda_col, .col_major);
+    // std.debug.print("ipiv (lapacke): ", .{});
+    // for (0..zml.int.min(m, n)) |i| {
+    //     std.debug.print("{d}, ", .{ipiv_2[i]});
+    // }
+    // std.debug.print("\n", .{});
 }
 
 fn blasPerfTesting(a: std.mem.Allocator) !void {

@@ -207,8 +207,8 @@ fn k_trsm(
                             while (i < m) : (i += 1) {
                                 ops.mul_( // b[i + j * ldb] *= alpha
                                     &b[scast(usize, i + j * ldb)],
-                                    b[scast(usize, i + j * ldb)],
                                     alpha,
+                                    b[scast(usize, i + j * ldb)],
                                     ctx,
                                 ) catch unreachable;
                             }

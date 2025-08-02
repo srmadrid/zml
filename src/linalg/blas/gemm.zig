@@ -169,8 +169,8 @@ fn k_gemm(
                             var l: isize = 0;
                             while (l < k) : (l += 1) {
                                 const temp: T1 = ops.mul( // temp = alpha * b[l + j * ldb]
-                                    b[scast(usize, l + j * ldb)],
                                     alpha,
+                                    b[scast(usize, l + j * ldb)],
                                     ctx,
                                 ) catch unreachable;
 
@@ -180,8 +180,8 @@ fn k_gemm(
                                         &c[scast(usize, i + j * ldc)],
                                         c[scast(usize, i + j * ldc)],
                                         ops.mul(
-                                            a[scast(usize, i + l * lda)],
                                             temp,
+                                            a[scast(usize, i + l * lda)],
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
