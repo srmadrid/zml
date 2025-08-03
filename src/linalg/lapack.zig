@@ -651,7 +651,7 @@ pub inline fn sgetrf2(
     a: [*]f32,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -720,7 +720,7 @@ pub inline fn dgetrf2(
     a: [*]f64,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -789,7 +789,7 @@ pub inline fn cgetrf2(
     a: [*]cf32,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -858,7 +858,7 @@ pub inline fn zgetrf2(
     a: [*]cf64,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1042,7 +1042,7 @@ pub inline fn sgetrf(
     a: [*]f32,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1097,7 +1097,7 @@ pub inline fn dgetrf(
     a: [*]f64,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1152,7 +1152,7 @@ pub inline fn cgetrf(
     a: [*]cf32,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1207,7 +1207,7 @@ pub inline fn zgetrf(
     a: [*]cf64,
     lda: isize,
     ipiv: [*]i32,
-) !isize {
+) isize {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1350,6 +1350,8 @@ pub inline fn getrs(
                         b,
                         scast(c_int, ldb),
                     );
+
+                    return;
                 } else if (comptime A == f64) {
                     _ = ci.LAPACKE_dgetrs(
                         @intFromEnum(order),
@@ -1362,9 +1364,9 @@ pub inline fn getrs(
                         b,
                         scast(c_int, ldb),
                     );
-                }
 
-                return;
+                    return;
+                }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
@@ -1379,6 +1381,8 @@ pub inline fn getrs(
                         b,
                         scast(c_int, ldb),
                     );
+
+                    return;
                 } else if (comptime Scalar(A) == f64) {
                     _ = ci.LAPACKE_zgetrs(
                         @intFromEnum(order),
@@ -1391,9 +1395,9 @@ pub inline fn getrs(
                         b,
                         scast(c_int, ldb),
                     );
-                }
 
-                return;
+                    return;
+                }
             },
             else => {},
         }
@@ -1486,9 +1490,8 @@ pub inline fn sgetrs(
     ipiv: [*]i32,
     b: [*]f32,
     ldb: isize,
-    ctx: anytype,
-) !void {
-    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+) void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
 
 /// Solves a system of linear equations with an LU-factored square coefficient
@@ -1575,9 +1578,8 @@ pub inline fn dgetrs(
     ipiv: [*]i32,
     b: [*]f64,
     ldb: isize,
-    ctx: anytype,
-) !void {
-    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+) void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
 
 /// Solves a system of linear equations with an LU-factored square coefficient
@@ -1664,9 +1666,8 @@ pub inline fn cgetrs(
     ipiv: [*]i32,
     b: [*]cf32,
     ldb: isize,
-    ctx: anytype,
-) !void {
-    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+) void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
 
 /// Solves a system of linear equations with an LU-factored square coefficient
@@ -1753,9 +1754,8 @@ pub inline fn zgetrs(
     ipiv: [*]i32,
     b: [*]cf64,
     ldb: isize,
-    ctx: anytype,
-) !void {
-    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch {};
+) void {
+    return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
 
 /// Computes the solution to the system of linear equations with a square
@@ -1866,7 +1866,7 @@ pub inline fn gesv(
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    _ = ci.LAPACKE_sgesv(
+                    return scast(isize, ci.LAPACKE_sgesv(
                         @intFromEnum(order),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1875,9 +1875,9 @@ pub inline fn gesv(
                         ipiv,
                         b,
                         scast(c_int, ldb),
-                    );
+                    ));
                 } else if (comptime A == f64) {
-                    _ = ci.LAPACKE_dgesv(
+                    return scast(isize, ci.LAPACKE_dgesv(
                         @intFromEnum(order),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1886,14 +1886,12 @@ pub inline fn gesv(
                         ipiv,
                         b,
                         scast(c_int, ldb),
-                    );
+                    ));
                 }
-
-                return;
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    _ = ci.LAPACKE_cgesv(
+                    return scast(isize, ci.LAPACKE_cgesv(
                         @intFromEnum(order),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1902,9 +1900,9 @@ pub inline fn gesv(
                         ipiv,
                         b,
                         scast(c_int, ldb),
-                    );
+                    ));
                 } else if (comptime Scalar(A) == f64) {
-                    _ = ci.LAPACKE_zgesv(
+                    return scast(isize, ci.LAPACKE_zgesv(
                         @intFromEnum(order),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1913,10 +1911,8 @@ pub inline fn gesv(
                         ipiv,
                         b,
                         scast(c_int, ldb),
-                    );
+                    ));
                 }
-
-                return;
             },
             else => {},
         }
@@ -1989,9 +1985,8 @@ pub inline fn sgesv(
     ipiv: [*]i32,
     b: [*]f32,
     ldb: isize,
-    ctx: anytype,
-) !void {
-    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
+) isize {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
 }
 
 /// Computes the solution to the system of linear equations with a square
@@ -2058,9 +2053,8 @@ pub inline fn dgesv(
     ipiv: [*]i32,
     b: [*]f64,
     ldb: isize,
-    ctx: anytype,
-) !void {
-    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
+) isize {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
 }
 
 /// Computes the solution to the system of linear equations with a square
@@ -2127,9 +2121,8 @@ pub inline fn cgesv(
     ipiv: [*]i32,
     b: [*]cf32,
     ldb: isize,
-    ctx: anytype,
-) !void {
-    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
+) isize {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
 }
 
 /// Computes the solution to the system of linear equations with a square
@@ -2196,9 +2189,1866 @@ pub inline fn zgesv(
     ipiv: [*]i32,
     b: [*]cf64,
     ldb: isize,
+) isize {
+    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
+}
+
+/// Computes Cholesky factorization using a recursive algorithm.
+///
+/// The `potrf2` routine computes the Cholesky factorization of a real symmetric
+/// or complex Hermitian positive definite matrix `A` using the recursive
+/// algorithm. The factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular. This
+/// is the recursive version of the algorithm. It divides the matrix into four
+/// submatrices:
+///
+/// ```zig
+///         [ A11  A12 ]
+///     A = [ A21  A22 ]
+/// ```
+///
+/// where `A11` is `n1`-by-`n1` and `A22` is `n2`-by-`n2`, with `n1 = n / 2` and
+/// `n2 = n - n1`. The subroutine calls itself to factor `A11`. Update and scale
+/// `A21` or `A12`, update `A22` then call itself to factor `A22`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `lda * n`. On return, contains the Cholesky factorization of the
+/// matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` is less than 0, or if `lda` is
+/// less than `max(1, n)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
+pub inline fn potrf2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !isize {
+    comptime var A: type = @TypeOf(a);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.potrf2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.potrf2 requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (types.isArbitraryPrecision(A)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.potrf2 not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime opts.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    return scast(isize, ci.LAPACKE_spotrf2(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime A == f64) {
+                    return scast(isize, ci.LAPACKE_dpotrf2(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(isize, ci.LAPACKE_cpotrf2(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(isize, ci.LAPACKE_zpotrf2(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/potrf2.zig").potrf2(order, uplo, n, a, lda, ctx);
+}
+
+/// Computes Cholesky factorization using a recursive algorithm.
+///
+/// The `spotrf2` routine computes the Cholesky factorization of a real
+/// symmetric positive definite matrix `A` using the recursive algorithm. The
+/// factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular. This
+/// is the recursive version of the algorithm. It divides the matrix into four
+/// submatrices:
+///
+/// ```zig
+///         [ A11  A12 ]
+///     A = [ A21  A22 ]
+/// ```
+///
+/// where `A11` is `n1`-by-`n1` and `A22` is `n2`-by-`n2`, with `n1 = n / 2` and
+/// `n2 = n - n1`. The subroutine calls itself to factor `A11`. Update and scale
+/// `A21` or `A12`, update `A22` then call itself to factor `A22`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn spotrf2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]f32,
+    lda: isize,
+) isize {
+    return potrf2(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Computes Cholesky factorization using a recursive algorithm.
+///
+/// The `dpotrf2` routine computes the Cholesky factorization of a real
+/// symmetric positive definite matrix `A` using the recursive algorithm. The
+/// factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular. This
+/// is the recursive version of the algorithm. It divides the matrix into four
+/// submatrices:
+///
+/// ```zig
+///         [ A11  A12 ]
+///     A = [ A21  A22 ]
+/// ```
+///
+/// where `A11` is `n1`-by-`n1` and `A22` is `n2`-by-`n2`, with `n1 = n / 2` and
+/// `n2 = n - n1`. The subroutine calls itself to factor `A11`. Update and scale
+/// `A21` or `A12`, update `A22` then call itself to factor `A22`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn dpotrf2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]f64,
+    lda: isize,
+) isize {
+    return potrf2(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Computes Cholesky factorization using a recursive algorithm.
+///
+/// The `cpotrf2` routine computes the Cholesky factorization of a complex
+/// hermitian positive definite matrix `A` using the recursive algorithm. The
+/// factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular. This
+/// is the recursive version of the algorithm. It divides the matrix into four
+/// submatrices:
+///
+/// ```zig
+///         [ A11  A12 ]
+///     A = [ A21  A22 ]
+/// ```
+///
+/// where `A11` is `n1`-by-`n1` and `A22` is `n2`-by-`n2`, with `n1 = n / 2` and
+/// `n2 = n - n1`. The subroutine calls itself to factor `A11`. Update and scale
+/// `A21` or `A12`, update `A22` then call itself to factor `A22`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn cpotrf2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]cf32,
+    lda: isize,
+) isize {
+    return potrf2(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Computes Cholesky factorization using a recursive algorithm.
+///
+/// The `zpotrf2` routine computes the Cholesky factorization of a complex
+/// hermitian positive definite matrix `A` using the recursive algorithm. The
+/// factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular. This
+/// is the recursive version of the algorithm. It divides the matrix into four
+/// submatrices:
+///
+/// ```zig
+///         [ A11  A12 ]
+///     A = [ A21  A22 ]
+/// ```
+///
+/// where `A11` is `n1`-by-`n1` and `A22` is `n2`-by-`n2`, with `n1 = n / 2` and
+/// `n2 = n - n1`. The subroutine calls itself to factor `A11`. Update and scale
+/// `A21` or `A12`, update `A22` then call itself to factor `A22`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn zpotrf2(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]cf64,
+    lda: isize,
+) isize {
+    return potrf2(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Computes the Cholesky factorization of a symmetric or Hermitian
+/// positive-definite matrix.
+///
+/// The `potrf` routine computes the Cholesky factorization of a real symmetric
+/// or complex hermitian positive definite matrix `A`. The factorization has the
+/// form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `lda * n`. On return, contains the Cholesky factorization of the
+/// matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` is less than 0, or if `lda` is
+/// less than `max(1, n)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
+pub inline fn potrf(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: anytype,
+    lda: isize,
+    ctx: anytype,
+) !isize {
+    comptime var A: type = @TypeOf(a);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.potrf requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.potrf requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (types.isArbitraryPrecision(A)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.potrf not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime opts.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    return scast(isize, ci.LAPACKE_spotrf(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime A == f64) {
+                    return scast(isize, ci.LAPACKE_dpotrf(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(isize, ci.LAPACKE_cpotrf(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(isize, ci.LAPACKE_zpotrf(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/potrf.zig").potrf(order, uplo, n, a, lda, ctx);
+}
+
+/// Computes the Cholesky factorization of a symmetric positive-definite matrix.
+///
+/// The `spotrf` routine computes the Cholesky factorization of a real symmetric
+/// positive definite matrix `A`. The factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn spotrf(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]f32,
+    lda: isize,
+) isize {
+    return potrf(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Computes the Cholesky factorization of a symmetric positive-definite matrix.
+///
+/// The `dpotrf` routine computes the Cholesky factorization of a real symmetric
+/// positive definite matrix `A`. The factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn dpotrf(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]f64,
+    lda: isize,
+) isize {
+    return potrf(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Computes the Cholesky factorization of a Hermitian positive-definite matrix.
+///
+/// The `cpotrf` routine computes the Cholesky factorization of a complex
+/// Hermitian positive definite matrix `A`. The factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn cpotrf(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]cf32,
+    lda: isize,
+) isize {
+    return potrf(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Computes the Cholesky factorization of a Hermitian positive-definite matrix.
+///
+/// The `zpotrf` routine computes the Cholesky factorization of a complex
+/// Hermitian positive definite matrix `A`. The factorization has the form:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+///  where `U` is an upper triangular matrix and `L` is lower triangular.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// Returns
+/// -------
+/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// stored in `a`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn zpotrf(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    a: [*]cf64,
+    lda: isize,
+) isize {
+    return potrf(order, uplo, n, a, lda, .{}) catch -1;
+}
+
+/// Solves a system of linear equations with a Cholesky-factored symmetric or
+/// Hermitian positive-definite coefficient matrix.
+///
+/// The `potrs` routine solves for `X` the system of linear equations
+/// `A * X = B` with a symmetric positive-definite or, for complex data,
+/// Hermitian positive-definite matrix `A`, given the Cholesky factorization of
+/// `A`:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// system is solved with multiple right-hand sides stored in the columns of the
+/// matrix `B`. Before calling this routine, you must call `potrf` to compute
+/// the Cholesky factorization of `A`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies how the matrix `A` has been factored:
+/// - If `uplo = upper`, then the factorization is `A = U^T * U` or
+/// `A = U^H * U`.
+/// - If `uplo = lower`, then the factorization is `A = L * L^T` or
+/// `A = L * L^H`.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
+/// `rational`, `real`, `complex` or `expression`): Array, size at least
+/// `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `ldb * nrhs` if `order = col_major`, or `ldb * n` if
+/// `order = row_major`. On return, contains the solution matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` or `nrhs` is less than 0, if
+/// `lda` is less than `max(1, n)`, or if `ldb` is less than `max(1, n)` or
+/// `max(1, nrhs)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
+pub inline fn potrs(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
     ctx: anytype,
 ) !void {
-    return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, ctx) catch -1;
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.lapack.potrs requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.potrs requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B) or types.isConstPointer(B))
+        @compileError("zml.linalg.lapack.potrs requires b to be a mutable many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.lapack.potrs requires b's child type to be a numeric, got " ++ @typeName(B));
+
+    comptime if (types.isArbitraryPrecision(A) or types.isArbitraryPrecision(B)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.potrs not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == B and opts.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    _ = ci.LAPACKE_spotrs(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
+
+                    return;
+                } else if (comptime A == f64) {
+                    std.debug.print("Calling LAPACKE_dpotrs with order: {}, uplo: {}, n: {}, nrhs: {}, lda: {}, ldb: {}\n", .{ @intFromEnum(order), uplo.toChar(), n, nrhs, lda, ldb });
+                    _ = ci.LAPACKE_dpotrs(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
+
+                    return;
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    _ = ci.LAPACKE_cpotrs(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
+
+                    return;
+                } else if (comptime Scalar(A) == f64) {
+                    _ = ci.LAPACKE_zpotrs(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
+
+                    return;
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/potrs.zig").potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx);
+}
+
+/// Solves a system of linear equations with a Cholesky-factored symmetric
+/// positive-definite coefficient matrix.
+///
+/// The `spotrs` routine solves for `X` the system of linear equations
+/// `A * X = B` with a symmetric positive-definite matrix `A`, given the
+/// Cholesky factorization of `A`:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// system is solved with multiple right-hand sides stored in the columns of the
+/// matrix `B`. Before calling this routine, you must call `spotrf` to compute
+/// the Cholesky factorization of `A`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies how the matrix `A` has been factored:
+/// - If `uplo = upper`, then the factorization is `A = U^T * U`.
+/// - If `uplo = lower`, then the factorization is `A = L * L^T`.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]f32`): Array, size at least `ldb * nrhs` if `order = col_major`, or
+/// `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn spotrs(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]const f32,
+    lda: isize,
+    b: [*]f32,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
+}
+
+/// Solves a system of linear equations with a Cholesky-factored symmetric
+/// positive-definite coefficient matrix.
+///
+/// The `dpotrs` routine solves for `X` the system of linear equations
+/// `A * X = B` with a symmetric positive-definite matrix `A`, given the
+/// Cholesky factorization of `A`:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// system is solved with multiple right-hand sides stored in the columns of the
+/// matrix `B`. Before calling this routine, you must call `dpotrf` to compute
+/// the Cholesky factorization of `A`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies how the matrix `A` has been factored:
+/// - If `uplo = upper`, then the factorization is `A = U^T * U`.
+/// - If `uplo = lower`, then the factorization is `A = L * L^T`.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const f64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]f64`): Array, size at least `ldb * nrhs` if `order = col_major`, or
+/// `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn dpotrs(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]const f64,
+    lda: isize,
+    b: [*]f64,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
+}
+
+/// Solves a system of linear equations with a Cholesky-factored Hermitian
+/// positive-definite coefficient matrix.
+///
+/// The `cpotrs` routine solves for `X` the system of linear equations
+/// `A * X = B` with a Hermitian positive-definite matrix `A`, given the
+/// Cholesky factorization of `A`:
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// system is solved with multiple right-hand sides stored in the columns of the
+/// matrix `B`. Before calling this routine, you must call `cpotrf` to compute
+/// the Cholesky factorization of `A`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies how the matrix `A` has been factored:
+/// - If `uplo = upper`, then the factorization is `A = U^H * U`.
+/// - If `uplo = lower`, then the factorization is `A = L * L^H`.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf32`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]cf32`): Array, size at least `ldb * nrhs` if `order = col_major`,
+/// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn cpotrs(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]const cf32,
+    lda: isize,
+    b: [*]cf32,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
+}
+
+/// Solves a system of linear equations with a Cholesky-factored Hermitian
+/// positive-definite coefficient matrix.
+///
+/// The `zpotrs` routine solves for `X` the system of linear equations
+/// `A * X = B` with a Hermitian positive-definite matrix `A`, given the
+/// Cholesky factorization of `A`:
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// system is solved with multiple right-hand sides stored in the columns of the
+/// matrix `B`. Before calling this routine, you must call `zpotrf` to compute
+/// the Cholesky factorization of `A`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies how the matrix `A` has been factored:
+/// - If `uplo = upper`, then the factorization is `A = U^H * U`.
+/// - If `uplo = lower`, then the factorization is `A = L * L^H`.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]const cf64`): Array, size at least `lda * n`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]cf64`): Array, size at least `ldb * nrhs` if `order = col_major`,
+/// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn zpotrs(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]const cf64,
+    lda: isize,
+    b: [*]cf64,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
+}
+
+/// Computes the solution to the system of linear equations with a symmetric or
+/// Hermitian positive-definite coefficient matrix `A` and multiple right-hand
+/// sides.
+///
+/// The `posv` routine solves for `X` the real or complex system of linear
+/// equations `A * X = B`, where `A` is an `n`-by-`n` symmetric or Hermitian
+/// positive-definite matrix, the columns of matrix `B` are individual
+/// right-hand sides, and the columns of `X` are the corresponding solutions.
+/// The Cholesky decomposition is used to factor `A` as:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// factored form of `A` is then used to solve the system of equations
+/// `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` or `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `lda * n`. On return, contains the Cholesky factorization of the
+/// matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
+/// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
+/// least `ldb * nrhs` if `order = col_major`, or `ldb * n` if
+/// `order = row_major`. On return, contains the solution matrix `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a` and `b`.
+///
+/// Errors
+/// ------
+/// `linalg.lapack.Error.InvalidArgument`: If `n` or `nrhs` is less than 0, if
+/// `lda` is less than `max(1, n)`, or if `ldb` is less than `max(1, n)` or
+/// `max(1, nrhs)`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding LAPACKE function, if available. In that case, no errors will
+/// be raised even if the arguments are invalid.
+pub inline fn posv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: anytype,
+    lda: isize,
+    b: anytype,
+    ldb: isize,
+    ctx: anytype,
+) !isize {
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.posv requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.posv requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B) or types.isConstPointer(B))
+        @compileError("zml.linalg.lapack.posv requires b to be a mutable many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.lapack.posv requires b's child type to be a numeric, got " ++ @typeName(B));
+
+    comptime if (types.isArbitraryPrecision(A) or types.isArbitraryPrecision(B)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.posv not implemented for arbitrary precision types yet");
+    } else {
+        validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime A == B and opts.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    return scast(isize, ci.LAPACKE_sposv(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                } else if (comptime A == f64) {
+                    return scast(isize, ci.LAPACKE_dposv(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(isize, ci.LAPACKE_cposv(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(isize, ci.LAPACKE_zposv(
+                        @intFromEnum(order),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/posv.zig").posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx);
+}
+
+/// Computes the solution to the system of linear equations with a symmetric
+/// positive-definite coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `sposv` routine solves for `X` the real system of linear equations
+/// `A * X = B`, where `A` is an `n`-by-`n` symmetric positive-definite matrix,
+/// the columns of matrix `B` are individual right-hand sides, and the columns
+/// of `X` are the corresponding solutions. The Cholesky decomposition is used
+/// to factor `A` as:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// factored form of `A` is then used to solve the system of equations
+/// `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]f32`): Array, size at least `ldb * nrhs` if `order = col_major`, or
+/// `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a` and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn sposv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]f32,
+    lda: isize,
+    b: [*]f32,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
+}
+
+/// Computes the solution to the system of linear equations with a symmetric
+/// positive-definite coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `dposv` routine solves for `X` the real system of linear equations
+/// `A * X = B`, where `A` is an `n`-by-`n` symmetric positive-definite matrix,
+/// the columns of matrix `B` are individual right-hand sides, and the columns
+/// of `X` are the corresponding solutions. The Cholesky decomposition is used
+/// to factor `A` as:
+///
+/// ```zig
+///     A = U^T * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^T,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// factored form of `A` is then used to solve the system of equations
+/// `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^T * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^T` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]f64`): Array, size at least `ldb * nrhs` if `order = col_major`, or
+/// `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a` and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn dposv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]f64,
+    lda: isize,
+    b: [*]f64,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
+}
+
+/// Computes the solution to the system of linear equations with a Hermitian
+/// positive-definite coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `cposv` routine solves for `X` the complex system of linear equations
+/// `A * X = B`, where `A` is an `n`-by-`n` Hermitian positive-definite matrix,
+/// the columns of matrix `B` are individual right-hand sides, and the columns
+/// of `X` are the corresponding solutions. The Cholesky decomposition is used
+/// to factor `A` as:
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// factored form of `A` is then used to solve the system of equations
+/// `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]cf32`): Array, size at least `ldb * nrhs` if `order = col_major`,
+/// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a` and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn cposv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]cf32,
+    lda: isize,
+    b: [*]cf32,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
+}
+
+/// Computes the solution to the system of linear equations with a Hermitian
+/// positive-definite coefficient matrix `A` and multiple right-hand sides.
+///
+/// The `zposv` routine solves for `X` the complex system of linear equations
+/// `A * X = B`, where `A` is an `n`-by-`n` Hermitian positive-definite matrix,
+/// the columns of matrix `B` are individual right-hand sides, and the columns
+/// of `X` are the corresponding solutions. The Cholesky decomposition is used
+/// to factor `A` as:
+///
+/// ```zig
+///     A = U^H * U,
+/// ```
+///
+/// or
+///
+/// ```zig
+///     A = L * L^H,
+/// ```
+///
+/// where `U` is an upper triangular matrix and `L` is lower triangular. The
+/// factored form of `A` is then used to solve the system of equations
+/// `A * X = B`.
+///
+/// Parameters
+/// ----------
+/// `order` (`Order`): Specifies whether two-dimensional array storage is
+/// row-major or column-major.
+///
+/// `uplo` (`Uplo`): Specifies which part of the matrix `A` is stored, and
+/// which factorization is computed:
+/// - If `uplo = upper`, then the upper triangular part of `A` is stored, and
+/// the factorization is `A = U^H * U` is computed.
+/// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
+/// the factorization is `A = L * L^H` is computed.
+///
+/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// 0.
+///
+/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// columns of the matrix `B`. Must be greater than or equal to 0.
+///
+/// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
+/// Cholesky factorization of the matrix `A`.
+///
+/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// or equal to `max(1, n)`.
+///
+/// `b` (`[*]cf64`): Array, size at least `ldb * nrhs` if `order = col_major`,
+/// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
+/// `X`.
+///
+/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
+/// `order = row_major`.
+///
+/// Returns
+/// -------
+/// `void`: The result is stored in `a` and `b`.
+///
+/// Notes
+/// -----
+/// If the `link_cblas` option is not `null`, the function will call the
+/// corresponding LAPACKE function.
+pub inline fn zposv(
+    order: Order,
+    uplo: Uplo,
+    n: isize,
+    nrhs: isize,
+    a: [*]cf64,
+    lda: isize,
+    b: [*]cf64,
+    ldb: isize,
+    ctx: anytype,
+) isize {
+    return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
 pub const Error = error{

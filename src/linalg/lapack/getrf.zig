@@ -46,10 +46,10 @@ fn k_getrf_c(
     if (m == 0 or n == 0)
         return info;
 
+    // Determine the block size for this environment. Always returns the
+    // same number for getrf regardless of 'S', 'D', 'C', or 'Z'.
+    const nb: isize = lapack.ilaenv(1, "DGETRF", " ", m, n, -1, -1);
     if (comptime !types.isArbitraryPrecision(A)) {
-        // Determine the block size for this environment. Always returns the
-        // same number for getrf regardless of 'S', 'D', 'C', or 'Z'.
-        const nb: isize = lapack.ilaenv(1, "DGETRF", " ", m, n, -1, -1);
         if (nb <= 1 or nb >= int.min(m, n)) {
             // Use unblocked code.
             info = lapack.getrf2(

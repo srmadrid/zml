@@ -226,12 +226,12 @@ fn k_herk(
                                 ) catch unreachable;
                             }
 
-                            ops.add_( // c[j + j * ldc] = re(c[j + j * ldc]) + re(temp * a[j + l * lda])
+                            ops.add_( // c[j + j * ldc] = re(c[j + j * ldc]) + re(temp * a[i + l * lda])
                                 &c[scast(usize, j + j * ldc)],
                                 ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
                                 ops.re(ops.mul(
                                     temp,
-                                    a[scast(usize, j + l * lda)],
+                                    a[scast(usize, i + l * lda)],
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
                                 ctx,
@@ -319,7 +319,7 @@ fn k_herk(
                 while (j < n) : (j += 1) {
                     var i: isize = 0;
                     while (i < j) : (i += 1) {
-                        var temp: Scalar(A) = constants.zero(Scalar(A), ctx) catch unreachable;
+                        var temp: A = constants.zero(A, ctx) catch unreachable;
 
                         var l: isize = 0;
                         while (l < k) : (l += 1) {
@@ -454,7 +454,7 @@ fn k_herk(
 
                     var i: isize = j + 1;
                     while (i < n) : (i += 1) {
-                        var temp: Scalar(A) = constants.zero(Scalar(A), ctx) catch unreachable;
+                        var temp: A = constants.zero(A, ctx) catch unreachable;
 
                         l = 0;
                         while (l < k) : (l += 1) {

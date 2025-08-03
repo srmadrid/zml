@@ -44,6 +44,13 @@ pub const Uplo = enum(c_uint) {
     upper = 121,
     lower = 122,
 
+    pub inline fn toChar(self: Uplo) u8 {
+        return switch (self) {
+            .upper => 'U',
+            .lower => 'L',
+        };
+    }
+
     pub inline fn invert(self: Uplo) Uplo {
         return switch (self) {
             .upper => .lower,

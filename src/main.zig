@@ -12,19 +12,238 @@ fn avg(values: []const f64) f64 {
     return zml.float.div(sum, values.len);
 }
 
+fn avg_complex(values: []const zml.cf64) f64 {
+    var sum: f64 = 0;
+    for (values) |value| {
+        sum += zml.cfloat.abs(value);
+    }
+    return zml.float.div(sum, values.len);
+}
+
 fn random_matrix(
     allocator: std.mem.Allocator,
     rows: usize,
     cols: usize,
+    factor: f64,
 ) ![]f64 {
     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
     const rand = prng.random();
 
     const matrix = try allocator.alloc(f64, rows * cols);
     for (0..matrix.len) |i| {
-        matrix[i] = rand.float(f64) * 10;
+        matrix[i] = rand.float(f64) * factor;
     }
     return matrix;
+}
+
+fn max_difference(a: []const f64, b: []const f64) struct {
+    index: usize,
+    value: f64,
+} {
+    std.debug.assert(a.len == b.len);
+
+    var max_diff: f64 = 0;
+    var max_index: usize = 0;
+
+    for (0..a.len) |i| {
+        const diff = zml.float.abs(a[i] - b[i]);
+        if (diff > max_diff) {
+            max_diff = diff;
+            max_index = i;
+        }
+    }
+
+    return .{ .index = max_index, .value = max_diff };
+}
+
+fn random_symmetric_matrix(
+    allocator: std.mem.Allocator,
+    size: usize,
+    factor: f64,
+) ![]f64 {
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
+
+    const matrix = try allocator.alloc(f64, size * size);
+
+    for (0..size) |i| {
+        for (i + 1..size) |j| {
+            const value = rand.float(f64) * factor;
+            matrix[i * size + j] = value;
+            matrix[j * size + i] = value;
+        }
+    }
+
+    return matrix;
+}
+
+/// Generates a random symmetric positive definite matrix with a specified condition number.
+fn random_symmetric_positive_definite_matrix(
+    allocator: std.mem.Allocator,
+    size: usize,
+    cond_target: f64,
+) ![]f64 {
+    // 1) compute λ_i geometrically between 1 and cond_target
+    var lambdas = try allocator.alloc(f64, size);
+    defer allocator.free(lambdas);
+    const l_min = 1;
+    const l_max = cond_target;
+    for (0..size) |i| {
+        lambdas[i] = l_min * zml.float.pow(l_max / l_min, zml.float.div(zml.scast(f64, i), size - 1));
+    }
+
+    // 2) random X, then QR -> get Q (n×n)
+    const X = try random_matrix(allocator, size, size, 1);
+    defer allocator.free(X);
+    const tau = try allocator.alloc(f64, size);
+    defer allocator.free(tau);
+    // QR factorization in-place: X = Q*R
+    _ = ci.LAPACKE_dgeqrf(
+        @intFromEnum(zml.linalg.Order.col_major),
+        zml.scast(c_int, size),
+        zml.scast(c_int, size),
+        X.ptr,
+        zml.scast(c_int, size),
+        tau.ptr,
+    );
+    _ = ci.LAPACKE_dorgqr(
+        @intFromEnum(zml.linalg.Order.col_major),
+        zml.scast(c_int, size),
+        zml.scast(c_int, size),
+        zml.scast(c_int, size),
+        X.ptr,
+        zml.scast(c_int, size),
+        tau.ptr,
+    );
+    // now X holds Q
+
+    // 3) form B = D * Q^T (we’ll reuse an alloc’d buffer)
+    var B = try allocator.alloc(f64, size * size);
+    defer allocator.free(B);
+    // copy Q^T into B
+    for (0..size) |i| {
+        for (0..size) |j|
+            B[i * size + j] = X[j * size + i];
+    }
+    // scale row i of B by λ_i
+    for (0..size) |i| {
+        zml.linalg.blas.dscal(zml.scast(isize, size), lambdas[i], B.ptr + i * size, 1);
+    }
+
+    // 4) A = Q * B
+    const A = try allocator.alloc(f64, size * size);
+    zml.linalg.blas.dgemm(
+        .col_major,
+        .no_trans,
+        .no_trans,
+        zml.scast(isize, size),
+        zml.scast(isize, size),
+        zml.scast(isize, size),
+        1,
+        X.ptr,
+        zml.scast(isize, size),
+        B.ptr,
+        zml.scast(isize, size),
+        0,
+        A.ptr,
+        zml.scast(isize, size),
+    );
+
+    return A;
+}
+
+fn frobernius_norm_difference(a: []const f64, b: []const f64) f64 {
+    std.debug.assert(a.len == b.len);
+
+    var norm: f64 = 0;
+    for (0..a.len) |i| {
+        const diff = a[i] - b[i];
+        norm += diff * diff;
+    }
+    return zml.float.sqrt(norm);
+}
+
+fn is_symmetric(a: []const f64, size: usize) bool {
+    for (0..size) |i| {
+        for (i + 1..size) |j| {
+            if (!std.math.approxEqRel(f64, a[i * size + j], a[j * size + i], 1e-9)) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+fn random_complex_matrix(
+    allocator: std.mem.Allocator,
+    rows: usize,
+    cols: usize,
+    factor: f64,
+) ![]zml.cf64 {
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
+
+    const matrix = try allocator.alloc(zml.cf64, rows * cols);
+    for (0..matrix.len) |i| {
+        matrix[i] = zml.cf64.init(rand.float(f64) * factor, rand.float(f64) * factor);
+    }
+    return matrix;
+}
+
+fn random_complex_hermitian_positive_definite_matrix(
+    allocator: std.mem.Allocator,
+    size: usize,
+    factor: f64,
+) ![]zml.cf64 {
+    // allocate M
+    const M = try random_complex_matrix(allocator, size, size, factor);
+    // allocate A = M M^H
+    const A = try allocator.alloc(zml.cf64, size * size);
+
+    // A = M × M^H
+    zml.linalg.blas.zgemm(
+        .row_major,
+        .no_trans,
+        .conj_trans,
+        zml.scast(isize, size),
+        zml.scast(isize, size),
+        zml.scast(isize, size),
+        zml.cf64.init(1, 0),
+        M.ptr,
+        zml.scast(isize, size),
+        M.ptr,
+        zml.scast(isize, size),
+        zml.cf64.init(0, 0),
+        A.ptr,
+        zml.scast(isize, size),
+    );
+
+    allocator.free(M);
+    return A;
+}
+
+fn frobenius_norm_complex_difference(a: []const zml.cf64, b: []const zml.cf64) f64 {
+    std.debug.assert(a.len == b.len);
+
+    var norm: f64 = 0;
+    for (0..a.len) |i| {
+        const diff = zml.cfloat.sub(a[i], b[i]);
+        norm += diff.re * diff.re + diff.im * diff.im;
+    }
+    return zml.float.sqrt(norm);
+}
+
+fn is_hermitian(a: []const zml.cf64, size: usize) bool {
+    for (0..size) |i| {
+        for (i + 1..size) |j| {
+            if (!std.math.approxEqRel(f64, a[i * size + j].re, a[j * size + i].re, 1e-9) or
+                !std.math.approxEqRel(f64, a[i * size + j].im, -a[j * size + i].im, 1e-9))
+            {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 fn print_matrix(desc: []const u8, m: usize, n: usize, a: []f64, lda: usize, order: zml.linalg.Order) void {
@@ -34,7 +253,7 @@ fn print_matrix(desc: []const u8, m: usize, n: usize, a: []f64, lda: usize, orde
         while (i < m) : (i += 1) {
             var j: usize = 0;
             while (j < n) : (j += 1) {
-                std.debug.print("{d:.4}  ", .{a[i * lda + j]});
+                std.debug.print("{d}  ", .{a[i * lda + j]});
             }
             std.debug.print("\n", .{});
         }
@@ -43,7 +262,30 @@ fn print_matrix(desc: []const u8, m: usize, n: usize, a: []f64, lda: usize, orde
         while (i < m) : (i += 1) {
             var j: usize = 0;
             while (j < n) : (j += 1) {
-                std.debug.print("{d:.4}  ", .{a[i + j * lda]});
+                std.debug.print("{d}  ", .{a[i + j * lda]});
+            }
+            std.debug.print("\n", .{});
+        }
+    }
+}
+
+fn print_complex_matrix(desc: []const u8, m: usize, n: usize, a: []zml.cf64, lda: usize, order: zml.linalg.Order) void {
+    std.debug.print("\n{s}\n", .{desc});
+    if (order == .row_major) {
+        var i: usize = 0;
+        while (i < m) : (i += 1) {
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                std.debug.print("{d:.4} + {d:.4}i  ", .{ a[i * lda + j].re, a[i * lda + j].im });
+            }
+            std.debug.print("\n", .{});
+        }
+    } else {
+        var i: usize = 0;
+        while (i < m) : (i += 1) {
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                std.debug.print("{d:.4} + {d:.4}i  ", .{ a[i + j * lda].re, a[i + j * lda].im });
             }
             std.debug.print("\n", .{});
         }
@@ -234,99 +476,185 @@ fn lapackTesting(a: std.mem.Allocator) !void {
 fn lapackPerfTesting(a: std.mem.Allocator) !void {
     const iter = 1;
     // const m = 300;
-    const n = 2000;
+    const n = 1000;
     const nrhs = 3000;
 
     // A
-    const a_zml: []f64 = try random_matrix(a, n, n);
+    const a_original: []f64 = try random_symmetric_positive_definite_matrix(a, n, 2);
+    //const a_original: []zml.cf64 = try random_complex_hermitian_positive_definite_matrix(a, n, 0.1);
+    defer a.free(a_original);
+    const a_mean: f64 = avg(a_original);
+    //const a_mean: f64 = avg_complex(a_zml);
+    const w: []f64 = try a.alloc(f64, n);
+    defer a.free(w);
+    _ = ci.LAPACKE_dsyev(
+        @intFromEnum(zml.linalg.Order.row_major),
+        'N',
+        'L',
+        zml.scast(c_int, n),
+        a_original.ptr,
+        zml.scast(c_int, n),
+        w.ptr,
+    );
+    const a_cond: f64 = w[n - 1] / w[0];
+
+    const a_zml: []f64 = try a.alloc(f64, n * n);
+    //const a_zml: []zml.cf64 = try a.alloc(zml.cf64, n * n);
     defer a.free(a_zml);
-    const a_mean: f64 = avg(a_zml);
+    @memcpy(a_zml, a_original);
 
     const a_lapacke: []f64 = try a.alloc(f64, n * n);
+    //const a_lapacke: []zml.cf64 = try a.alloc(zml.cf64, n * n);
     defer a.free(a_lapacke);
-    @memcpy(a_lapacke, a_zml);
+    @memcpy(a_lapacke, a_original);
 
-    const lda_col = n;
-    // const lda_row = n;
+    //const lda_col = n;
+    const lda_row = n;
 
     // B
-    const b_zml: []f64 = try random_matrix(a, n, nrhs);
+    const b_original: []f64 = try random_matrix(a, n, nrhs, 10);
+    //const b_original: []zml.cf64 = try random_complex_matrix(a, n, nrhs, 10);
+    defer a.free(b_original);
+    const b_mean: f64 = avg(b_original);
+    const S: []f64 = try a.alloc(f64, zml.int.min(n, nrhs));
+    defer a.free(S);
+    const work: []f64 = try a.alloc(f64, zml.int.min(n, nrhs));
+    defer a.free(work);
+    _ = ci.LAPACKE_dgesvd(
+        @intFromEnum(zml.linalg.Order.row_major),
+        'N',
+        'N',
+        zml.scast(c_int, n),
+        zml.scast(c_int, nrhs),
+        b_original.ptr,
+        zml.scast(c_int, nrhs),
+        S.ptr,
+        null,
+        zml.scast(c_int, n),
+        null,
+        zml.scast(c_int, nrhs),
+        work.ptr,
+    );
+    const b_cond: f64 = S[0] / S[zml.int.min(n, nrhs) - 1];
+
+    const b_zml: []f64 = try a.alloc(f64, n * nrhs);
     defer a.free(b_zml);
-    const b_mean: f64 = avg(b_zml);
+    @memcpy(b_zml, b_original);
 
     const b_lapacke: []f64 = try a.alloc(f64, n * nrhs);
     defer a.free(b_lapacke);
-    @memcpy(b_lapacke, b_zml);
+    @memcpy(b_lapacke, b_original);
 
-    const ldb_col = n;
-    // const ldb_row = nrhs;
+    //const ldb_col = n;
+    const ldb_row = nrhs;
 
     // Pivot array (LAPACK style: 1-based indexing)
-    const ipiv_zml: []i32 = try a.alloc(i32, n);
-    defer a.free(ipiv_zml);
-    const ipiv_lapacke: []i32 = try a.alloc(i32, n);
-    defer a.free(ipiv_lapacke);
+    // const ipiv_zml: []i32 = try a.alloc(i32, n);
+    // defer a.free(ipiv_zml);
+    // const ipiv_lapacke: []i32 = try a.alloc(i32, n);
+    // defer a.free(ipiv_lapacke);
 
+    var info_zml: isize = 0;
     var start_time: i128 = std.time.nanoTimestamp();
     for (0..iter) |_| {
-        std.mem.doNotOptimizeAway(try zml.linalg.lapack.gesv(
-            .col_major,
+        info_zml = try zml.linalg.lapack.posv(
+            .row_major,
+            .lower,
             n,
             nrhs,
             a_zml.ptr,
-            lda_col,
-            ipiv_zml.ptr,
+            lda_row,
             b_zml.ptr,
-            ldb_col,
+            ldb_row,
             .{},
-        ));
+        );
+        // info_zml = try zml.linalg.lapack.potrf(
+        //     .col_major,
+        //     .lower,
+        //     n,
+        //     a_zml.ptr,
+        //     lda_col,
+        //     .{},
+        // );
+
+        // try zml.linalg.lapack.potrs(
+        //     .col_major,
+        //     .lower,
+        //     n,
+        //     nrhs,
+        //     a_zml.ptr,
+        //     lda_col,
+        //     b_zml.ptr,
+        //     ldb_col,
+        //     .{},
+        // );
     }
     var end_time: i128 = std.time.nanoTimestamp();
 
-    std.debug.print("Zml getrs took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+    std.debug.print("Zml potrf took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
 
+    var info_lapacke: isize = 0;
     start_time = std.time.nanoTimestamp();
     for (0..iter) |_| {
-        std.mem.doNotOptimizeAway(ci.LAPACKE_dgesv(
-            @intFromEnum(zml.linalg.Order.col_major),
+        info_lapacke = zml.scast(isize, ci.LAPACKE_dposv(
+            @intFromEnum(zml.linalg.Order.row_major),
+            'L',
             zml.scast(c_int, n),
             zml.scast(c_int, nrhs),
             a_lapacke.ptr,
-            zml.scast(c_int, lda_col),
-            ipiv_lapacke.ptr,
+            zml.scast(c_int, lda_row),
             b_lapacke.ptr,
-            zml.scast(c_int, ldb_col),
+            zml.scast(c_int, ldb_row),
         ));
+        // info_lapacke = zml.scast(isize, ci.LAPACKE_dpotrf(
+        //     @intFromEnum(zml.linalg.Order.col_major),
+        //     'L',
+        //     zml.scast(c_int, n),
+        //     a_lapacke.ptr,
+        //     zml.scast(c_int, lda_col),
+        // ));
+
+        // _ = ci.LAPACKE_dpotrs(
+        //     @intFromEnum(zml.linalg.Order.col_major),
+        //     'L',
+        //     zml.scast(c_int, n),
+        //     zml.scast(c_int, nrhs),
+        //     a_lapacke.ptr,
+        //     zml.scast(c_int, lda_col),
+        //     b_lapacke.ptr,
+        //     zml.scast(c_int, ldb_col),
+        // );
     }
     end_time = std.time.nanoTimestamp();
 
-    std.debug.print("Lapacke getrs took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+    std.debug.print("Lapacke potrf took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
+
+    std.debug.print("info_zml = {d}, info_lapacke = {d}\n", .{ info_zml, info_lapacke });
 
     // Frobenius norm of the difference
-    var norm: f64 = 0;
-    for (0..b_zml.len) |i| {
-        const diff = b_zml[i] - b_lapacke[i];
-        norm += diff * diff;
-    }
+    const a_norm: f64 = frobernius_norm_difference(a_zml, a_lapacke);
+    const b_norm: f64 = frobernius_norm_difference(b_zml, b_lapacke);
+    //const norm: f64 = frobenius_norm_complex_difference(a_zml, a_lapacke);
 
-    norm = zml.float.sqrt(norm);
-
-    std.debug.print("Frobenius norm of the difference: {d}\n", .{norm});
+    std.debug.print("Frobenius norm of the difference of a: {d}\n", .{a_norm});
+    std.debug.print("Frobenius norm of the difference of b: {d}\n", .{b_norm});
     std.debug.print("Mean of the original matrix A: {d}\n", .{a_mean});
     std.debug.print("Mean of the original matrix B: {d}\n", .{b_mean});
 
-    // print_matrix("A (zml)", m, n, a_row, lda_col, .col_major);
-    // std.debug.print("ipiv (zml): ", .{});
-    // for (0..zml.int.min(m, n)) |i| {
-    //     std.debug.print("{d}, ", .{ipiv_1[i]});
-    // }
-    // std.debug.print("\n", .{});
-    // print_matrix("A (lapacke)", m, n, a_col, lda_col, .col_major);
-    // std.debug.print("ipiv (lapacke): ", .{});
-    // for (0..zml.int.min(m, n)) |i| {
-    //     std.debug.print("{d}, ", .{ipiv_2[i]});
-    // }
-    // std.debug.print("\n", .{});
+    //print_matrix("A (zml)", n, n, a_zml, lda_col, .col_major);
+    //print_matrix("A (lapacke)", n, n, a_lapacke, lda_col, .col_major);
+    //print_matrix("B (zml)", n, nrhs, b_zml, ldb_row, .row_major);
+    //print_matrix("B (lapacke)", n, nrhs, b_lapacke, ldb_row, .row_major);
+
+    const b_max_diff = max_difference(b_zml, b_lapacke);
+    std.debug.print("Max difference in B:\n B (zml): {d}\n B (lapacke): {d}\n", .{
+        b_zml[b_max_diff.index],
+        b_lapacke[b_max_diff.index],
+    });
+    std.debug.print("Max difference value: {d}\n", .{b_max_diff.value});
+
+    std.debug.print("Condition number of A: {}\n", .{a_cond});
+    std.debug.print("Condition number of B: {}\n", .{b_cond});
 }
 
 fn blasPerfTesting(a: std.mem.Allocator) !void {

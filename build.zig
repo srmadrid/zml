@@ -34,10 +34,10 @@ pub fn build(b: *std.Build) void {
         exe.linkLibC();
     }
     if (opt_link_cblas != null) {
-        exe.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
+        exe.root_module.linkSystemLibrary(opt_link_cblas.?, .{ .preferred_link_mode = .static });
     }
     if (opt_link_lapacke != null) {
-        exe.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
+        exe.root_module.linkSystemLibrary(opt_link_lapacke.?, .{ .preferred_link_mode = .static });
     }
 
     b.installArtifact(exe);
