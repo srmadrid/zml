@@ -1,0 +1,35 @@
+const std = @import("std");
+
+const types = @import("../types.zig");
+const Scalar = types.Scalar;
+const ReturnType1 = types.ReturnType1;
+const ReturnType2 = types.ReturnType2;
+const needsAllocator = types.needsAllocator;
+const scast = types.scast;
+const cast = types.cast;
+const validateContext = types.validateContext;
+
+const ops = @import("../ops.zig");
+const int = @import("../int.zig");
+
+const array = @import("../array.zig");
+const max_dimensions = array.max_dimensions;
+const Order = array.Order;
+const Flags = array.Flags;
+const Range = array.Range;
+
+const dense = @import("dense.zig");
+const Dense = dense.Dense;
+
+pub fn Sparse(comptime T: type) type {
+    if (!types.isNumeric(T))
+        @compileError("Strided requires a numeric type, got " ++ @typeName(T));
+
+    return struct {
+        nnz: usize,
+
+        pub const empty: Dense(T) = .{
+            .nnz = 0,
+        };
+    };
+}

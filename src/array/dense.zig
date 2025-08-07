@@ -8,604 +8,429 @@ const cast = types.cast;
 const needsAllocator = types.needsAllocator;
 const validateContext = types.validateContext;
 
-const int = @import("../int.zig");
 const ops = @import("../ops.zig");
+const int = @import("../int.zig");
 
 const array = @import("../array.zig");
-const Array = array.Array;
+const max_dimensions = array.max_dimensions;
+const Order = array.Order;
+const Flags = array.Flags;
 const Range = array.Range;
 
 const strided = @import("strided.zig");
+const Strided = strided.Strided;
 
-pub inline fn index(strides: [array.max_dimensions]usize, position: []const usize) usize {
-    var idx: usize = 0;
-    for (0..position.len) |i| {
-        idx += position[i] * strides[i];
-    }
+const general = @import("dense/general.zig");
+const symmetric = @import("dense/symmetric.zig");
+const hermitian = @import("dense/hermitian.zig");
+const triangular = @import("dense/triangular.zig");
+const diagonal = @import("dense/diagonal.zig");
+const banded = @import("dense/banded.zig");
+const tridiagonal = @import("dense/tridiagonal.zig");
 
-    return idx;
-}
+pub const Kind = union(enum) {
+    general: General,
+    symmetric: Symmetric,
+    hermitian: Hermitian,
+    triangular: Triangular,
+    diagonal: Diagonal,
+    banded: Banded,
+    tridiagonal: Tridiagonal,
 
-pub inline fn checkPosition(ndim: usize, shape: [array.max_dimensions]usize, position: []const usize) !void {
-    if (position.len > ndim) {
-        return array.Error.DimensionMismatch;
-    }
+    pub const General = struct {};
 
-    for (0..position.len) |i| {
-        if (position[i] >= shape[i]) {
-            return array.Error.PositionOutOfBounds;
-        }
-    }
-}
-
-pub inline fn cleanup(
-    comptime T: type,
-    data: []T,
-    ctx: anytype,
-) void {
-    comptime if (types.isArbitraryPrecision(T)) {
-        validateContext(
-            @TypeOf(ctx),
-            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-        );
-    } else {
-        validateContext(@TypeOf(ctx), .{});
+    pub const Symmetric = packed struct {
+        upper: bool = true,
     };
 
-    comptime if (!types.isArbitraryPrecision(T))
-        return;
+    pub const Hermitian = packed struct {
+        upper: bool = true,
+    };
 
-    for (data) |*value| {
-        ops.deinit(value, ctx);
-    }
-}
+    pub const Triangular = packed struct {
+        upper: bool = true,
+        unit: bool = false,
+    };
 
-pub inline fn init(
-    comptime T: type,
-    allocator: std.mem.Allocator,
-    shape: []const usize,
-    order: array.Order,
-) !Array(T) {
-    var size: usize = 1;
-    var shapes: [array.max_dimensions]usize = .{0} ** array.max_dimensions;
-    var strides: [array.max_dimensions]usize = .{0} ** array.max_dimensions;
-    if (shape.len > 0) {
-        for (0..shape.len) |i| {
-            const idx: usize = if (order == .row_major) shape.len - i - 1 else i;
+    pub const Diagonal = struct {};
 
-            if (shape[idx] == 1 and shape[idx] == 1) {
-                strides[idx] = 0; // No stride for the new dimensions.
+    pub const Banded = packed struct {
+        lower: u16 = 0,
+        upper: u16 = 0,
+    };
+
+    pub const Tridiagonal = struct {
+        superdiagonal_offset: u32 = 0,
+    };
+};
+
+pub fn Dense(comptime T: type) type {
+    if (!types.isNumeric(T))
+        @compileError("Dense requires a numeric type, got " ++ @typeName(T));
+
+    return struct {
+        data: []T, // Make [*]T?
+        ndim: u32,
+        shape: [max_dimensions]u32,
+        strides: [max_dimensions]u32,
+        size: u32,
+        base: ?*anyopaque,
+        flags: Flags = .{},
+        kind: Kind = .{ .general = .{} },
+
+        pub const empty: Dense(T) = .{
+            .data = &.{},
+            .ndim = 0,
+            .shape = .{0} ** max_dimensions,
+            .base = null,
+            .flags = .{},
+            .kind = .{},
+        };
+
+        pub fn init(
+            allocator: std.mem.Allocator,
+            shape: []const u32,
+            options: struct {
+                order: Order = .col_major,
+                kind: Kind = .{ .general = .{} },
+            },
+        ) !Dense(T) {
+            if (options.kind != .general) {
+                if (shape.len > 2)
+                    return array.Error.TooManyDimensions;
+            } else if (shape.len > max_dimensions) {
+                return array.Error.TooManyDimensions;
+            }
+
+            if (comptime !types.isComplex(T)) {
+                if (options.kind == .hermitian)
+                    return array.Error.InvalidFlags;
+            }
+
+            for (shape) |dim| {
+                if (dim == 0) {
+                    return array.Error.ZeroDimension;
+                }
+            }
+
+            return switch (options.kind) {
+                .general => general.init(T, allocator, shape, options.order),
+                .symmetric => symmetric.init(T, allocator, shape, options.order, options.kind.symmetric.upper),
+                .hermitian => hermitian.init(T, allocator, shape, options.order, options.kind.hermitian.upper),
+                .triangular => triangular.init(T, allocator, shape, options.order, options.kind.triangular.upper, options.kind.triangular.unit),
+                .diagonal => diagonal.init(T, allocator, shape),
+                .banded => banded.init(T, allocator, shape, options.order, options.kind.banded.lower, options.kind.banded.upper),
+                .tridiagonal => tridiagonal.init(T, allocator, shape),
+            };
+        }
+
+        pub fn full(
+            allocator: std.mem.Allocator,
+            shape: []const u32,
+            value: anytype,
+            options: struct {
+                order: Order = .col_major,
+                kind: Kind = .{ .general = .{} },
+            },
+            ctx: anytype,
+        ) !Dense(T) {
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
             } else {
-                strides[idx] = size;
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            if (options.kind != .general) {
+                if (shape.len > 2)
+                    return array.Error.TooManyDimensions;
+            } else if (shape.len > max_dimensions) {
+                return array.Error.TooManyDimensions;
             }
 
-            size *= shape[idx];
+            if (comptime !types.isComplex(T)) {
+                if (options.kind == .hermitian)
+                    return array.Error.InvalidFlags;
+            }
 
-            shapes[i] = shape[i];
+            for (shape) |dim| {
+                if (dim == 0) {
+                    return array.Error.ZeroDimension;
+                }
+            }
+
+            return switch (options.kind) {
+                .general => general.full(T, allocator, shape, value, options.order, ctx),
+                .symmetric => symmetric.full(T, allocator, shape, value, options.order, options.kind.symmetric.upper, ctx),
+                .hermitian => hermitian.full(T, allocator, shape, value, options.order, options.kind.hermitian.upper, ctx),
+                .triangular => triangular.full(T, allocator, shape, value, options.order, options.kind.triangular.upper, options.kind.triangular.unit, ctx),
+                .diagonal => diagonal.full(T, allocator, shape, value, ctx),
+                .banded => banded.full(T, allocator, shape, value, options.order, options.kind.banded.lower, options.kind.banded.upper, ctx),
+                .tridiagonal => tridiagonal.full(T, allocator, shape, value, options.order, ctx),
+            };
         }
-    }
 
-    return Array(T){
-        .data = try allocator.alloc(T, size),
-        .ndim = shape.len,
-        .shape = shapes,
-        .size = size,
-        .base = null,
-        .flags = .{
-            .order = order,
-            .storage = .dense,
-            .owns_data = true,
-        },
-        .metadata = .{ .dense = .{
-            .strides = strides,
-        } },
-    };
-}
+        pub fn arange(
+            allocator: std.mem.Allocator,
+            start: anytype,
+            stop: anytype,
+            step: anytype,
+            ctx: anytype,
+        ) !Dense(T) {
+            comptime if (types.isComplex(T))
+                @compileError("array.arange does not support " ++ @typeName(T));
 
-pub inline fn full(
-    comptime T: type,
-    allocator: std.mem.Allocator,
-    shape: []const usize,
-    value: anytype,
-    order: array.Order,
-    ctx: anytype,
-) !Array(T) {
-    var arr = try init(T, allocator, shape, order);
-    errdefer arr.deinit(allocator);
+            comptime if (!types.isNumeric(@TypeOf(start)))
+                @compileError("array.arange: start must be numeric, got " ++ @typeName(@TypeOf(start)));
 
-    arr.data[0] = try ops.init(T, ctx);
+            comptime if (types.isComplex(@TypeOf(start)))
+                @compileError("array.arange: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
 
-    var j: usize = 1;
-    errdefer cleanup(T, arr.data[0..j], ctx);
+            comptime if (!types.isNumeric(@TypeOf(stop)))
+                @compileError("array.arange: stop must be numeric, got " ++ @typeName(@TypeOf(stop)));
 
-    try ops.set(&arr.data[0], value, ctx);
+            comptime if (types.isComplex(@TypeOf(stop)))
+                @compileError("array.arange: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
 
-    for (1..arr.size) |i| {
-        arr.data[i] = ops.copy(arr.data[0], ctx);
+            comptime if (!types.isNumeric(@TypeOf(step)))
+                @compileError("array.arange: step must be numeric, got " ++ @typeName(@TypeOf(step)));
 
-        j += 1;
-    }
+            comptime if (types.isComplex(@TypeOf(step)))
+                @compileError("array.arange: step cannot be complex, got " ++ @typeName(@TypeOf(step)));
 
-    return arr;
-}
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
 
-pub inline fn arange(
-    comptime T: type,
-    allocator: std.mem.Allocator,
-    start: anytype,
-    stop: anytype,
-    step: anytype,
-    ctx: anytype,
-) !Array(T) {
-    // Refactor to avoid unnecessary casts, like in linspace.
-
-    const positive_step: bool = try ops.gt(step, 0, .{});
-    if (try ops.eq(step, 0, .{}) or
-        (try ops.lt(stop, start, .{}) and positive_step) or
-        (try ops.gt(stop, start, .{}) and !positive_step))
-    {
-        return array.Error.InvalidRange;
-    }
-
-    var start_casted: T = try ops.init(T, ctx);
-    errdefer ops.deinit(&start_casted, ctx);
-    try ops.set(&start_casted, start, ctx);
-
-    var stop_casted: T = try ops.init(T, ctx);
-    errdefer ops.deinit(&stop_casted, ctx);
-    try ops.set(&stop_casted, stop, ctx);
-
-    var step_casted: T = try ops.init(T, ctx);
-    errdefer ops.deinit(&step_casted, ctx);
-    try ops.set(&step_casted, step, ctx);
-
-    var diff: T = if (positive_step)
-        try ops.sub(stop_casted, start_casted, ctx)
-    else
-        try ops.sub(start_casted, stop_casted, ctx);
-    errdefer ops.deinit(&diff, ctx);
-
-    var len_T: T = try ops.div(diff, step_casted, ctx);
-    errdefer ops.deinit(&len_T, ctx);
-    try ops.abs_(&len_T, len_T, ctx);
-    try ops.ceil_(&len_T, len_T, ctx);
-    const len: usize = scast(usize, len_T);
-
-    if (len == 0) {
-        return array.Error.InvalidRange;
-    }
-
-    var arr: Array(T) = try init(T, allocator, &.{len}, .row_major);
-    errdefer arr.deinit(allocator);
-    switch (len) {
-        1 => {
-            arr.data[0] = start_casted;
-
-            ops.deinit(&stop_casted, ctx);
-            ops.deinit(&step_casted, ctx);
-            ops.deinit(&diff, ctx);
-            ops.deinit(&len_T, ctx);
-
-            return arr;
-        },
-        2 => {
-            arr.data[0] = start_casted;
-            try ops.add_(&step_casted, step_casted, arr.data[0], ctx);
-            arr.data[1] = step_casted;
-
-            ops.deinit(&stop_casted, ctx);
-            ops.deinit(&diff, ctx);
-            ops.deinit(&len_T, ctx);
-
-            return arr;
-        },
-        3 => {
-            arr.data[0] = start_casted;
-            try ops.add_(&stop_casted, arr.data[0], step_casted, ctx);
-            arr.data[1] = stop_casted;
-            try ops.add_(&step_casted, arr.data[1], step_casted, ctx);
-            arr.data[2] = step_casted;
-
-            ops.deinit(&diff, ctx);
-            ops.deinit(&len_T, ctx);
-
-            return arr;
-        },
-        4 => {
-            arr.data[0] = start_casted;
-            try ops.add_(&diff, arr.data[0], step_casted, ctx);
-            arr.data[1] = diff;
-            try ops.add_(&stop_casted, arr.data[1], step_casted, ctx);
-            arr.data[2] = stop_casted;
-            try ops.add_(&step_casted, arr.data[2], step_casted, ctx);
-            arr.data[3] = step_casted;
-
-            ops.deinit(&len_T, ctx);
-
-            return arr;
-        },
-        else => {
-            arr.data[0] = start_casted;
-            try ops.add_(&len_T, arr.data[0], step_casted, ctx);
-            arr.data[1] = len_T;
-            try ops.add_(&diff, arr.data[1], step_casted, ctx);
-            arr.data[2] = diff;
-            try ops.add_(&stop_casted, arr.data[2], step_casted, ctx);
-            arr.data[3] = stop_casted;
-        },
-    }
-
-    var j: usize = 4;
-    errdefer cleanup(T, arr.data[4..j], ctx);
-
-    for (4..len - 1) |i| {
-        arr.data[i] = try ops.add(arr.data[i - 1], step_casted, ctx);
-        j += 1;
-    }
-
-    try ops.add_(&step_casted, step_casted, arr.data[len - 2], ctx);
-    arr.data[len - 1] = step_casted;
-
-    return arr;
-}
-
-pub inline fn linspace(
-    comptime T: type,
-    allocator: std.mem.Allocator,
-    start: anytype,
-    stop: anytype,
-    num: usize,
-    endpoint: bool,
-    retstep: ?*T,
-    ctx: anytype,
-) !Array(T) {
-    var arr: Array(T) = try init(T, allocator, &.{num}, .row_major);
-    errdefer arr.deinit(allocator);
-
-    if (num == 1) {
-        arr.data[0] = try ops.init(T, ctx);
-        errdefer ops.deinit(&arr.data[0], ctx);
-        try ops.set(&arr.data[0], start, ctx);
-
-        return arr;
-    } else if (num == 2 and endpoint) {
-        arr.data[0] = try ops.init(T, ctx);
-        errdefer ops.deinit(&arr.data[0], ctx);
-        try ops.set(&arr.data[0], start, ctx);
-        arr.data[1] = try ops.init(T, ctx);
-        errdefer ops.deinit(&arr.data[1], ctx);
-        try ops.set(&arr.data[1], stop, ctx);
-
-        return arr;
-    } else if (num == 2 and !endpoint) {
-        arr.data[0] = try ops.init(T, ctx);
-        errdefer ops.deinit(&arr.data[0], ctx);
-        try ops.set(&arr.data[0], start, ctx);
-        arr.data[1] = try ops.init(T, ctx);
-        errdefer ops.deinit(&arr.data[1], ctx);
-        try ops.set(&arr.data[1], stop, ctx);
-        try ops.add_(&arr.data[1], arr.data[1], arr.data[0], ctx);
-        try ops.div_(&arr.data[1], arr.data[1], 2, ctx);
-
-        return arr;
-    }
-
-    var start_casted: T = try ops.init(T, ctx);
-    errdefer ops.deinit(&start_casted, ctx);
-    try ops.set(&start_casted, start, ctx);
-
-    var stop_casted: T = try ops.init(T, ctx);
-    errdefer ops.deinit(&stop_casted, ctx);
-    try ops.set(&stop_casted, stop, ctx);
-
-    var step: T = try ops.sub(stop_casted, start_casted, ctx);
-    errdefer ops.deinit(&step, ctx);
-    if (endpoint) {
-        try ops.div_(&step, step, num - 1, ctx);
-    } else {
-        try ops.div_(&step, step, num, ctx);
-    }
-
-    if (retstep) |*s| {
-        try ops.set(s, step, ctx);
-    }
-
-    if (num == 3 and endpoint) {
-        arr.data[0] = start_casted;
-        try ops.add_(&step, step, arr.data[0], ctx);
-        arr.data[1] = step;
-        arr.data[2] = stop_casted;
-
-        return arr;
-    } else if (num == 3 and !endpoint) {
-        arr.data[0] = start_casted;
-        try ops.sub_(&stop_casted, stop_casted, step, ctx);
-        arr.data[2] = stop_casted;
-        try ops.add_(&step, step, arr.data[0], ctx);
-        arr.data[1] = step;
-
-        return arr;
-    }
-
-    arr.data[0] = start_casted;
-
-    var j: usize = 1;
-    errdefer cleanup(T, allocator, arr.data[1..j]);
-    for (1..num - 2) |i| {
-        arr.data[i] = try ops.add(arr.data[i - 1], step, ctx);
-
-        j += 1;
-    }
-
-    if (endpoint) {
-        try ops.add_(&step, step, arr.data[num - 3], ctx);
-        arr.data[num - 2] = step;
-        arr.data[num - 1] = stop_casted;
-    } else {
-        try ops.sub_(&stop_casted, stop_casted, step, ctx);
-        try ops.add_(&step, step, arr.data[num - 3], ctx);
-        arr.data[num - 2] = step;
-        arr.data[num - 1] = stop_casted;
-    }
-
-    return arr;
-}
-
-pub inline fn logspace(
-    comptime T: type,
-    allocator: std.mem.Allocator,
-    start: anytype,
-    stop: anytype,
-    num: usize,
-    base: anytype,
-    endpoint: bool,
-    ctx: anytype,
-) !Array(T) {
-    var arr: Array(T) = try linspace(T, allocator, start, stop, num, endpoint, null, ctx);
-    errdefer arr.deinit(allocator);
-
-    try ops.pow_(&arr, base, arr, ctx);
-
-    return arr;
-}
-
-pub inline fn set(comptime T: type, arr: *Array(T), position: []const usize, value: T) !void {
-    try checkPosition(arr.ndim, arr.shape, position);
-
-    arr.data[index(arr.metadata.dense.strides, position)] = value;
-}
-
-pub inline fn get(comptime T: type, arr: Array(T), position: []const usize) !*T {
-    try checkPosition(arr.ndim, arr.shape, position);
-
-    return &arr.data[index(arr.metadata.dense.strides, position)];
-}
-
-pub inline fn reshape(comptime T: type, arr: *const Array(T), shape: []const usize) !Array(T) {
-    var new_size: usize = 1;
-    var new_shape: [array.max_dimensions]usize = .{0} ** array.max_dimensions;
-    var new_strides: [array.max_dimensions]isize = .{0} ** array.max_dimensions;
-    if (shape.len > 0) {
-        for (0..shape.len) |i| {
-            const idx: usize = if (arr.flags.order == .row_major) shape.len - i - 1 else i;
-
-            new_strides[idx] = scast(isize, new_size);
-            new_size *= shape[idx];
-
-            new_shape[i] = shape[i];
+            return general.arange(T, allocator, start, stop, step, ctx);
         }
-    }
 
-    if (new_size != arr.size) {
-        return error.DimensionMismatch;
-    }
-
-    return Array(T){
-        .data = arr.data,
-        .ndim = shape.len,
-        .shape = new_shape,
-        .size = new_size,
-        .base = if (arr.flags.owns_data) arr else arr.base,
-        .flags = .{
-            .order = arr.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
-            .storage = .strided, // Should be dense?
-            .owns_data = false,
-        },
-        .metadata = .{
-            .strided = .{
-                .strides = new_strides,
-                .offset = 0, // No offset in reshaping.
+        pub fn linspace(
+            allocator: std.mem.Allocator,
+            start: anytype,
+            stop: anytype,
+            options: struct {
+                num: u32 = 50,
+                endpoint: bool = true,
+                retstep: ?*T = null,
             },
-        },
-    };
-}
+            ctx: anytype,
+        ) !Dense(T) {
+            comptime if (types.isComplex(T))
+                @compileError("array.linspace does not support " ++ @typeName(T));
 
-pub fn ravel(comptime T: type, arr: *const Array(T)) !Array(T) {
-    return Array(T){
-        .data = arr.data,
-        .ndim = 1,
-        .shape = .{arr.size} ++ .{0} ** (array.max_dimensions - 1),
-        .size = arr.size,
-        .base = if (arr.flags.owns_data) arr else arr.base,
-        .flags = .{
-            .order = arr.flags.order,
-            .storage = .dense,
-            .owns_data = false,
-        },
-        .metadata = .{ .dense = .{
-            .strides = .{1} ++ .{0} ** (array.max_dimensions - 1),
-        } },
-    };
-}
+            comptime if (!types.isNumeric(@TypeOf(start)))
+                @compileError("array.arange: start must be numeric, got " ++ @typeName(@TypeOf(start)));
 
-pub fn transpose(
-    comptime T: type,
-    self: *const Array(T),
-    axes: []const usize,
-) !Array(T) {
-    var new_shape: [array.max_dimensions]usize = .{0} ** array.max_dimensions;
-    var new_strides: [array.max_dimensions]isize = .{0} ** array.max_dimensions;
-    var size: usize = 1;
+            comptime if (types.isComplex(@TypeOf(start)))
+                @compileError("array.linspace: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
 
-    for (0..self.ndim) |i| {
-        const idx: usize = axes[i];
+            comptime if (!types.isNumeric(@TypeOf(stop)))
+                @compileError("array.linspace: stop must be numeric, got " ++ @typeName(@TypeOf(stop)));
 
-        new_shape[i] = self.shape[idx];
-        new_strides[i] = scast(isize, self.metadata.dense.strides[idx]);
-        size *= new_shape[i];
-    }
+            comptime if (types.isComplex(@TypeOf(stop)))
+                @compileError("array.linspace: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
 
-    return Array(T){
-        .data = self.data,
-        .ndim = self.ndim,
-        .shape = new_shape,
-        .size = size,
-        .base = if (self.flags.owns_data) self else self.base,
-        .flags = .{
-            .order = self.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
-            .storage = .strided,
-            .owns_data = false,
-        },
-        .metadata = .{
-            .strided = .{
-                .strides = new_strides,
-                .offset = 0, // No offset in transposing.
+            if (options.num == 0)
+                return array.Error.ZeroDimension;
+
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            return general.linspace(T, allocator, start, stop, options.num, options.endpoint, options.retstep, ctx);
+        }
+
+        pub fn logspace(
+            allocator: std.mem.Allocator,
+            start: anytype,
+            stop: anytype,
+            base: anytype,
+            options: struct {
+                num: u32 = 50,
+                endpoint: bool = true,
             },
-        },
-    };
-}
+            ctx: anytype,
+        ) !Dense(T) {
+            comptime if (types.isComplex(T))
+                @compileError("array.logspace does not support " ++ @typeName(T));
 
-pub inline fn slice(comptime T: type, arr: *const Array(T), ranges: []const Range) !Array(T) {
-    var ndim: usize = arr.ndim;
-    var size: usize = 1;
-    var shape: [array.max_dimensions]usize = .{0} ** array.max_dimensions;
-    var strides: [array.max_dimensions]isize = .{0} ** array.max_dimensions;
-    var offset: usize = 0;
+            comptime if (!types.isNumeric(@TypeOf(start)))
+                @compileError("array.arange: start must be numeric, got " ++ @typeName(@TypeOf(start)));
 
-    var i: usize = 0;
-    var j: usize = 0;
-    while (i < arr.ndim) {
-        const stride: isize = scast(isize, arr.metadata.dense.strides[i]);
+            comptime if (types.isComplex(@TypeOf(start)))
+                @compileError("array.logspace: start cannot be complex, got " ++ @typeName(@TypeOf(start)));
 
-        if (i >= ranges.len) {
-            shape[j] = arr.shape[i];
-            strides[j] = stride;
-            size *= arr.shape[i];
-            j += 1;
-            i += 1;
-            continue;
+            comptime if (!types.isNumeric(@TypeOf(stop)))
+                @compileError("array.logspace: stop must be numeric, got " ++ @typeName(@TypeOf(stop)));
+
+            comptime if (types.isComplex(@TypeOf(stop)))
+                @compileError("array.logspace: stop cannot be complex, got " ++ @typeName(@TypeOf(stop)));
+
+            if (options.num == 0)
+                return array.Error.ZeroDimension;
+
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
+
+            return general.logspace(T, allocator, start, stop, base, options.num, options.endpoint, ctx);
         }
 
-        var range: Range = ranges[i];
-        if (range.start != int.maxVal(usize) and range.start == range.stop) {
-            return array.Error.InvalidRange;
-        } else if (range.step > 0) {
-            if (range.start != int.maxVal(usize) and range.start >= arr.shape[i] or
-                (range.stop != int.maxVal(usize) and range.stop > arr.shape[i]))
-                return array.Error.RangeOutOfBounds;
-        } else if (range.step < 0) {
-            if ((range.stop != int.maxVal(usize) and range.stop >= arr.shape[i]) or
-                (range.start != int.maxVal(usize) and range.start > arr.shape[i]))
-                return array.Error.RangeOutOfBounds;
-        }
+        /// Cleans up the array by deinitializing its elements. If the array holds
+        /// a fixed precision type this is does not do anything.
+        pub fn cleanup(self: *Dense(T), ctx: anytype) void {
+            _ = self;
+            comptime if (types.isArbitraryPrecision(T)) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                validateContext(@TypeOf(ctx), .{});
+            };
 
-        var len_adjustment: usize = 0;
-        if (range.step > 0) {
-            if (range.start == int.maxVal(usize)) {
-                range.start = 0;
-            }
-
-            if (range.stop == int.maxVal(usize)) {
-                range.stop = arr.shape[i];
-            }
-        } else if (range.step < 0) {
-            if (range.start == int.maxVal(usize)) {
-                range.start = arr.shape[i] - 1;
-            }
-
-            if (range.stop == int.maxVal(usize)) {
-                range.stop = 0;
-                len_adjustment = 1;
+            if (comptime types.isArbitraryPrecision(T)) {
+                @compileError("Cleanup not implemented yet");
             }
         }
 
-        const len: usize = range.len() + len_adjustment;
-        if (len == 1) {
-            ndim -= 1;
-        } else {
-            shape[j] = len;
-            strides[j] = stride * range.step;
-            size *= len;
-            j += 1;
+        /// Deinitializes the array, freeing its data if it owns it.
+        ///
+        /// If the array holds an arbitrary precision type, it will not free the
+        /// elements; call `cleanup` first to do that.
+        pub fn deinit(self: *Dense(T), allocator: ?std.mem.Allocator) void {
+            if (self.flags.owns_data) {
+                allocator.?.free(self.data);
+            }
+
+            self.* = undefined;
         }
 
-        if (stride < 0) {
-            offset -= range.start * scast(usize, int.abs(stride));
-        } else {
-            offset += range.start * scast(usize, stride);
+        pub fn set(self: *const Dense(T), position: []const u32, value: T) !void {
+            switch (self.kind) {
+                .general => try general.set(T, self, position, value),
+                .symmetric => try symmetric.set(T, self, position, value),
+                .hermitian => try hermitian.set(T, self, position, value),
+                .triangular => try triangular.set(T, self, position, value),
+                .diagonal => try diagonal.set(T, self, position, value),
+                .banded => try banded.set(T, self, position, value),
+                .tridiagonal => try tridiagonal.set(T, self, position, value),
+            }
         }
 
-        i += 1;
-    }
-
-    return Array(T){
-        .data = arr.data,
-        .ndim = ndim,
-        .shape = shape,
-        .size = size,
-        .base = if (arr.flags.owns_data) arr else arr.base,
-        .flags = .{
-            .order = arr.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
-            .storage = .strided,
-            .owns_data = false,
-        },
-        .metadata = .{ .strided = .{
-            .strides = strides,
-            .offset = offset,
-        } },
-    };
-}
-
-pub inline fn broadcast(
-    comptime T: type,
-    arr: *const Array(T),
-    shape: []const usize,
-) !Array(T) {
-    var new_shape: [array.max_dimensions]usize = .{0} ** array.max_dimensions;
-    var strides: [array.max_dimensions]isize = .{0} ** array.max_dimensions;
-    var size: usize = 1;
-
-    var i: isize = scast(isize, shape.len - 1);
-    const diff: isize = scast(isize, shape.len - arr.ndim);
-    while (i >= 0) : (i -= 1) {
-        if (i - diff >= 0) {
-            new_shape[scast(usize, i)] = try ops.max(arr.shape[scast(usize, i - diff)], shape[scast(usize, i)], .{});
-            strides[scast(usize, i)] = scast(isize, arr.metadata.dense.strides[scast(usize, i - diff)]);
-        } else {
-            new_shape[scast(usize, i)] = shape[scast(usize, i)];
-            strides[scast(usize, i)] = 0; // No stride for the new dimensions.
+        pub fn get(self: *const Dense(T), position: []const u32) !T {
+            return switch (self.kind) {
+                .general => general.get(T, self, position),
+                .symmetric => symmetric.get(T, self, position),
+                .hermitian => hermitian.get(T, self, position),
+                .triangular => triangular.get(T, self, position),
+                .diagonal => diagonal.get(T, self, position),
+                .banded => banded.get(T, self, position),
+                .tridiagonal => tridiagonal.get(T, self, position),
+            };
         }
 
-        size *= new_shape[scast(usize, i)];
-    }
+        pub fn reshape(self: *Dense(T), shape: []const u32) !Strided(T) {
+            if (shape.len > max_dimensions) {
+                return array.Error.TooManyDimensions;
+            }
 
-    return Array(T){
-        .data = arr.data,
-        .ndim = shape.len,
-        .shape = new_shape,
-        .size = size,
-        .base = if (arr.flags.owns_data) arr else arr.base,
-        .flags = .{
-            .order = arr.flags.order, // Although it is strided, knowing the underlying order is useful for efficient iteration.
-            .storage = .strided,
-            .owns_data = false,
-        },
-        .metadata = .{
-            .strided = .{
-                .strides = strides,
-                .offset = 0, // No offset in broadcasting.
-            },
-        },
+            if (shape.len == 0) {
+                return array.Error.ZeroDimension;
+            }
+
+            return switch (self.kind) {
+                .general => general.reshape(T, self, shape),
+                else => array.Error.InvalidKind, // Reshape is only supported for general arrays.
+            };
+        }
+
+        pub fn ravel(self: *Dense(T)) !Strided(T) {
+            if (self.ndim == 0) {
+                return array.Error.ZeroDimension;
+            }
+
+            return switch (self.kind) {
+                .general => general.ravel(T, self),
+                else => array.Error.InvalidKind, // Ravel is only supported for general arrays.
+            };
+        }
+
+        pub fn transpose(self: *Dense(T), axes: ?[]const u32) !Dense(T) {
+            const axes_: []const u32 =
+                axes orelse
+                array.trivialReversePermutation(self.ndim)[0..self.ndim];
+
+            if (axes_.len == 0) {
+                return array.Error.ZeroDimension;
+            }
+
+            if (axes_.len != self.ndim) {
+                return array.Error.DimensionMismatch;
+            }
+
+            if (!array.isPermutation(self.ndim, axes_)) {
+                return array.Error.InvalidAxes; // axes must be a valid permutation of [0, ..., ndim - 1]
+            }
+
+            switch (self.kind) {
+                .general => return general.transpose(T, self, axes_),
+                .symmetric => return symmetric.transpose(T, self, axes_),
+                .hermitian => return hermitian.transpose(T, self, axes_),
+                .triangular => return triangular.transpose(T, self, axes_),
+                .diagonal => return diagonal.transpose(T, self, axes_),
+                .banded => return banded.transpose(T, self, axes_),
+                .tridiagonal => return tridiagonal.transpose(T, self, axes_),
+            }
+        }
+
+        pub fn slice(self: *const Dense(T), ranges: []const Range) !Strided(T) {
+            if (ranges.len == 0 or ranges.len > self.ndim) {
+                return error.DimensionMismatch;
+            }
+
+            switch (self.kind) {
+                .general => return general.slice(T, self, ranges),
+                .symmetric => return symmetric.slice(T, self, ranges),
+                .hermitian => return hermitian.slice(T, self, ranges),
+                .triangular => return triangular.slice(T, self, ranges),
+                .diagonal => return diagonal.slice(T, self, ranges),
+                .banded => return banded.slice(T, self, ranges),
+                .tridiagonal => return tridiagonal.slice(T, self, ranges),
+            }
+        }
+
+        pub fn broadcast(self: *const Dense(T), shape: []const u32) !Strided(T) {
+            if (shape.len > max_dimensions)
+                return array.Error.TooManyDimensions;
+
+            if (shape.len < self.ndim) {
+                return array.Error.TooLittleDimensions;
+            }
+
+            switch (self.kind) {
+                .general => return general.broadcast(T, self, shape),
+                else => return array.Error.InvalidKind, // Broadcasting is not supported for symmetric, hermitian, triangular, diagonal, banded, or tridiagonal arrays.
+            }
+        }
     };
 }
 
@@ -616,14 +441,14 @@ pub inline fn apply1(
     comptime op: anytype,
     order: array.Order,
     ctx: anytype,
-) !Array(ReturnType1(op, T)) {
-    var result: Array(ReturnType1(op, T)) = try init(ReturnType1(op, T), allocator, x.shape[0..x.ndim], order);
+) !Dense(ReturnType1(op, T)) {
+    var result: Dense(ReturnType1(op, T)) = try .init(ReturnType1(op, T), allocator, x.shape[0..x.ndim], order);
     errdefer result.deinit(allocator);
 
-    var j: usize = 0;
+    var j: u32 = 0;
     if (result.flags.order == x.flags.order) {
         // Trivial loop
-        errdefer cleanup(ReturnType1(op, T), allocator, result.data[0..j]);
+        //errdefer cleanup(ReturnType1(op, T), allocator, result.data[0..j]);
 
         const opinfo = @typeInfo(@TypeOf(op));
         for (0..result.size) |i| {
@@ -639,7 +464,7 @@ pub inline fn apply1(
         // Different order, but same shape
         const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
         errdefer strided.cleanup(ReturnType1(op, T), &result, j, iteration_order, ctx);
-        const axis: usize = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
+        const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
         var iterr: array.Iterator(ReturnType1(op, T)) = .init(&result);
         var iterx: array.Iterator(T) = .init(&x);
         const opinfo = @typeInfo(@TypeOf(op));
@@ -666,7 +491,7 @@ pub fn apply1_(
     comptime op_: anytype,
     ctx: anytype,
 ) !void {
-    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+    if (comptime !types.isDense(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
         // Only run the function once if x is a scalar
         const opinfo = @typeInfo(@TypeOf(op_));
         if (comptime opinfo.@"fn".params.len == 2) {
@@ -682,8 +507,8 @@ pub fn apply1_(
         return;
     }
 
-    var xx: Array(X) = undefined;
-    if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
+    var xx: Dense(X) = undefined;
+    if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
         if (o.flags.order == x.flags.order) {
             // Trivial loop
             const opinfo = @typeInfo(@TypeOf(op_));
@@ -702,15 +527,15 @@ pub fn apply1_(
         }
     } else {
         const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
-        if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+        if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
             return array.Error.NotBroadcastable;
         }
 
-        xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        //xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
     }
 
     const iteration_order: array.IterationOrder = o.flags.order.toIterationOrder();
-    const axis: usize = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
+    const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
     var itero: array.Iterator(O) = .init(o);
     var iterx: array.Iterator(X) = .init(&xx);
     const opinfo = @typeInfo(@TypeOf(op_));
@@ -743,15 +568,15 @@ pub fn apply2(
     comptime op: anytype,
     order: array.Order,
     ctx: anytype,
-) !Array(ReturnType2(op, X, Y)) {
-    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
-        var result: Array(ReturnType2(op, X, Y)) = try init(ReturnType2(op, X, Y), allocator, y.shape[0..y.ndim], order);
+) !Dense(ReturnType2(op, X, Y)) {
+    if (comptime !types.isDense(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, y.shape[0..y.ndim], order);
         errdefer result.deinit(allocator);
 
-        var j: usize = 0;
+        var j: u32 = 0;
         if (result.flags.order == y.flags.order) {
             // Trivial loop
-            errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
+            //errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
 
             const opinfo = @typeInfo(@TypeOf(op));
             for (0..result.size) |i| {
@@ -765,7 +590,7 @@ pub fn apply2(
             }
         } else {
             const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
-            const axis: usize = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
+            const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
             errdefer strided.cleanup(ReturnType2(op, X, Y), &result, j, iteration_order, ctx);
             var iterr: array.Iterator(ReturnType2(op, X, Y)) = .init(&result);
             var itery: array.Iterator(Y) = .init(&y);
@@ -784,13 +609,13 @@ pub fn apply2(
         }
 
         return result;
-    } else if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
-        var result: Array(ReturnType2(op, X, Y)) = try init(ReturnType2(op, X, Y), allocator, x.shape[0..x.ndim], order);
+    } else if (comptime !types.isDense(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, x.shape[0..x.ndim], order);
         errdefer result.deinit(allocator);
 
-        var j: usize = 0;
+        var j: u32 = 0;
         if (result.flags.order == x.flags.order) {
-            errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
+            //errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
 
             const opinfo = @typeInfo(@TypeOf(op));
             for (0..result.size) |i| {
@@ -804,7 +629,7 @@ pub fn apply2(
             }
         } else {
             const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
-            const axis: usize = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
+            const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
             errdefer strided.cleanup(ReturnType2(op, X, Y), &result, j, iteration_order, ctx);
             var iterr: array.Iterator(ReturnType2(op, X, Y)) = .init(&result);
             var iterx: array.Iterator(X) = .init(&x);
@@ -825,16 +650,16 @@ pub fn apply2(
         return result;
     }
 
-    var xx: Array(X) = undefined;
-    var yy: Array(Y) = undefined;
-    if (std.mem.eql(usize, x.shape[0..x.ndim], y.shape[0..y.ndim])) {
+    var xx: Dense(X) = undefined;
+    var yy: Dense(Y) = undefined;
+    if (std.mem.eql(u32, x.shape[0..x.ndim], y.shape[0..y.ndim])) {
         if (order == x.flags.order and order == y.flags.order) {
             // Trivial loop
-            var result: Array(ReturnType2(op, X, Y)) = try init(ReturnType2(op, X, Y), allocator, x.shape[0..x.ndim], order);
+            var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, x.shape[0..x.ndim], order);
             errdefer result.deinit(allocator);
 
-            var j: usize = 0;
-            errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
+            var j: u32 = 0;
+            //errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
             const opinfo = @typeInfo(@TypeOf(op));
             for (0..result.size) |i| {
                 if (comptime opinfo.@"fn".params.len == 2) {
@@ -853,17 +678,17 @@ pub fn apply2(
             yy = y;
         }
     } else {
-        const bct = try array.broadcastShapes(&.{ x.shape[0..x.ndim], y.shape[0..y.ndim] });
-        xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
-        yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+        //const bct = try array.broadcastShapes(&.{ x.shape[0..x.ndim], y.shape[0..y.ndim] });
+        //xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        //yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
     }
 
-    var result: Array(ReturnType2(op, X, Y)) = try init(ReturnType2(op, X, Y), allocator, xx.shape[0..xx.ndim], order);
+    var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, xx.shape[0..xx.ndim], order);
     errdefer result.deinit(allocator);
 
-    var j: usize = 0;
+    var j: u32 = 0;
     const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
-    const axis: usize = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
+    const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
     errdefer strided.cleanup(ReturnType2(op, X, Y), &result, j, iteration_order, ctx);
     var iterr: array.Iterator(ReturnType2(op, X, Y)) = .init(&result);
     var iterx: array.Iterator(X) = .init(&xx);
@@ -895,8 +720,8 @@ pub fn apply2_(
     comptime op_: anytype,
     ctx: anytype,
 ) !void {
-    if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x)) and
-        !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y)))
+    if (comptime !types.isDense(@TypeOf(x)) and !types.isSlice(@TypeOf(x)) and
+        !types.isDense(@TypeOf(y)) and !types.isSlice(@TypeOf(y)))
     {
         const opinfo = @typeInfo(@TypeOf(op_));
         if (comptime opinfo.@"fn".params.len == 3) {
@@ -910,8 +735,8 @@ pub fn apply2_(
         }
 
         return;
-    } else if (comptime !types.isArray(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
-        if (std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim]) and
+    } else if (comptime !types.isDense(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+        if (std.mem.eql(u32, o.shape[0..o.ndim], y.shape[0..y.ndim]) and
             o.flags.order == y.flags.order)
         {
             // Trivial loop
@@ -928,20 +753,20 @@ pub fn apply2_(
         }
 
         // Different order, but same shape
-        var yy: Array(Y) = undefined;
-        if (std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim])) {
+        var yy: Dense(Y) = undefined;
+        if (std.mem.eql(u32, o.shape[0..o.ndim], y.shape[0..y.ndim])) {
             yy = y;
         } else {
             const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], y.shape[0..y.ndim] });
-            if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+            if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
                 return array.Error.NotBroadcastable;
             }
 
-            yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+            //yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
         }
 
         const iteration_order: array.IterationOrder = o.flags.order.toIterationOrder();
-        const axis: usize = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
+        const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
         var itero: array.Iterator(O) = .init(o);
         var itery: array.Iterator(Y) = .init(&yy);
         const opinfo = @typeInfo(@TypeOf(op_));
@@ -957,8 +782,8 @@ pub fn apply2_(
         }
 
         return;
-    } else if (comptime !types.isArray(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
-        if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim]) and
+    } else if (comptime !types.isDense(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
+        if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim]) and
             o.flags.order == x.flags.order)
         {
             // Trivial loop
@@ -975,20 +800,20 @@ pub fn apply2_(
         }
 
         // Different order, but same shape
-        var xx: Array(X) = undefined;
-        if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
+        var xx: Dense(X) = undefined;
+        if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
             xx = x;
         } else {
             const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
-            if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+            if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
                 return array.Error.NotBroadcastable;
             }
 
-            xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+            //xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
         }
 
         const iteration_order: array.IterationOrder = o.flags.order.toIterationOrder();
-        const axis: usize = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
+        const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
         var itero: array.Iterator(O) = .init(o);
         var iterx: array.Iterator(X) = .init(&xx);
         const opinfo = @typeInfo(@TypeOf(op_));
@@ -1006,10 +831,10 @@ pub fn apply2_(
         return;
     }
 
-    var xx: Array(X) = undefined;
-    var yy: Array(Y) = undefined;
-    if (std.mem.eql(usize, o.shape[0..o.ndim], x.shape[0..x.ndim]) and
-        std.mem.eql(usize, o.shape[0..o.ndim], y.shape[0..y.ndim]))
+    var xx: Dense(X) = undefined;
+    var yy: Dense(Y) = undefined;
+    if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim]) and
+        std.mem.eql(u32, o.shape[0..o.ndim], y.shape[0..y.ndim]))
     {
         if (o.flags.order == x.flags.order and o.flags.order == y.flags.order) {
             // Trivial loop
@@ -1030,16 +855,16 @@ pub fn apply2_(
         }
     } else {
         const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim], y.shape[0..y.ndim] });
-        if (!std.mem.eql(usize, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+        if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
             return array.Error.NotBroadcastable;
         }
 
-        xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
-        yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+        //xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        //yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
     }
 
     const iteration_order: array.IterationOrder = o.flags.order.resolve3(xx.flags.order, yy.flags.order).toIterationOrder();
-    const axis: usize = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
+    const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
     var itero: array.Iterator(O) = .init(o);
     var iterx: array.Iterator(X) = .init(&xx);
     var itery: array.Iterator(Y) = .init(&yy);

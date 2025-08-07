@@ -20,20 +20,135 @@ fn avg_complex(values: []const zml.cf64) f64 {
     return zml.float.div(sum, values.len);
 }
 
-fn random_matrix(
+fn random_buffer(
     allocator: std.mem.Allocator,
-    rows: usize,
-    cols: usize,
-    factor: f64,
+    size: usize,
 ) ![]f64 {
     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
     const rand = prng.random();
 
-    const matrix = try allocator.alloc(f64, rows * cols);
-    for (0..matrix.len) |i| {
-        matrix[i] = rand.float(f64) * factor;
+    const buffer = try allocator.alloc(f64, size);
+    for (0..buffer.len) |i| {
+        buffer[i] = rand.float(f64);
     }
-    return matrix;
+    return buffer;
+}
+
+/// Generate a random m×n matrix A with specified 2-norm condition number `kappa`.
+pub fn random_matrix(
+    allocator: std.mem.Allocator,
+    m: usize,
+    n: usize,
+    kappa: f64,
+    order: zml.linalg.Order,
+) ![]f64 {
+    // - `allocator`: memory allocator
+    // - `m`, `n`: dimensions
+    // - `kappa`: desired condition number κ₂(A)
+    // - `order`: either .RowMajor or .ColMajor
+    //
+    // Method:
+    // 1. Construct singular values σᵢ geometrically spaced between 1 and κ^(1/min(m,n)).
+    // 2. Generate random m×min(m,n) matrix X, QR factor → Q₁ (m×r).
+    // 3. Generate random n×min(m,n) matrix Y, QR factor → Q₂ (n×r).
+    // 4. Form A = Q₁ * diag(σ) * Q₂ᵀ.
+    //     - Compute B = diag(σ) * Q₂ᵀ.
+    //     - Then A = Q₁ × B.
+    const r = zml.int.min(m, n);
+
+    // 1) geometric singular values σ[i]
+    var sig = try allocator.alloc(f64, r);
+    defer allocator.free(sig);
+    for (0..r) |i| {
+        sig[i] = zml.float.pow(kappa, zml.float.div(zml.scast(f64, i), r - 1));
+    }
+
+    // 2) random X: m×r → QR → Q₁
+    const X = try random_buffer(allocator, m * r);
+    defer allocator.free(X);
+    const tauX = try allocator.alloc(f64, r);
+    defer allocator.free(tauX);
+    _ = ci.LAPACKE_dgeqrf(
+        zml.scast(c_int, @intFromEnum(order)),
+        zml.scast(c_int, m),
+        zml.scast(c_int, r),
+        X.ptr,
+        zml.scast(c_int, if (order == .col_major) m else r),
+        tauX.ptr,
+    );
+    _ = ci.LAPACKE_dorgqr(
+        zml.scast(c_int, @intFromEnum(order)),
+        zml.scast(c_int, m),
+        zml.scast(c_int, r),
+        zml.scast(c_int, r),
+        X.ptr,
+        zml.scast(c_int, if (order == .col_major) m else r),
+        tauX.ptr,
+    );
+    // X now holds Q₁
+
+    // 3) random Y: n×r → QR → Q₂
+    const Y = try random_buffer(allocator, n * r);
+    defer allocator.free(Y);
+    const tauY = try allocator.alloc(f64, r);
+    defer allocator.free(tauY);
+    _ = ci.LAPACKE_dgeqrf(
+        zml.scast(c_int, @intFromEnum(order)),
+        zml.scast(c_int, n),
+        zml.scast(c_int, r),
+        Y.ptr,
+        zml.scast(c_int, if (order == .col_major) n else r),
+        tauY.ptr,
+    );
+    _ = ci.LAPACKE_dorgqr(
+        zml.scast(c_int, @intFromEnum(order)),
+        zml.scast(c_int, n),
+        zml.scast(c_int, r),
+        zml.scast(c_int, r),
+        Y.ptr,
+        zml.scast(c_int, if (order == .col_major) n else r),
+        tauY.ptr,
+    );
+    // Y now holds Q₂
+
+    // 4a) form B = diag(sig) * Q2ᵀ (B is r×n in same layout)
+    const B = try allocator.alloc(f64, r * n);
+    defer allocator.free(B);
+    for (0..r) |i| {
+        const row_start = if (order == .col_major)
+            B.ptr + i
+        else
+            B.ptr + i * n;
+
+        const stride = if (order == .col_major) r else 1;
+
+        for (0..n) |j| {
+            // Q2[j,i] is at Y.ptr + j*ldY + i
+            const q2ji = (Y.ptr + j * if (order == .col_major) n else r)[i];
+            row_start[j * stride] = sig[i] * q2ji;
+        }
+    }
+
+    // 4b) A = Q1 (m×r) × B (r×n) → A (m×n)
+    const A = try allocator.alloc(f64, m * n);
+    zml.linalg.blas.dgemm(
+        order,
+        .no_trans,
+        .no_trans,
+        zml.scast(isize, m),
+        zml.scast(isize, n),
+        zml.scast(isize, r),
+        1,
+        X.ptr,
+        zml.scast(isize, if (order == .col_major) m else r),
+        B.ptr,
+        zml.scast(isize, if (order == .col_major) r else n),
+        0,
+        A.ptr,
+        zml.scast(isize, if (order == .col_major) m else n),
+    );
+
+    return A;
 }
 
 fn max_difference(a: []const f64, b: []const f64) struct {
@@ -93,7 +208,7 @@ fn random_symmetric_positive_definite_matrix(
     }
 
     // 2) random X, then QR -> get Q (n×n)
-    const X = try random_matrix(allocator, size, size, 1);
+    const X = try random_buffer(allocator, size * size);
     defer allocator.free(X);
     const tau = try allocator.alloc(f64, size);
     defer allocator.free(tau);
@@ -117,7 +232,7 @@ fn random_symmetric_positive_definite_matrix(
     );
     // now X holds Q
 
-    // 3) form B = D * Q^T (we’ll reuse an alloc’d buffer)
+    // 3) form B = D * Q^T, where D = diag(λ_1, λ_2, ..., λ_n)
     var B = try allocator.alloc(f64, size * size);
     defer allocator.free(B);
     // copy Q^T into B
@@ -130,7 +245,7 @@ fn random_symmetric_positive_definite_matrix(
         zml.linalg.blas.dscal(zml.scast(isize, size), lambdas[i], B.ptr + i * size, 1);
     }
 
-    // 4) A = Q * B
+    // 4) Assemble A = Q * D * Q^T as A = Q * B
     const A = try allocator.alloc(f64, size * size);
     zml.linalg.blas.dgemm(
         .col_major,
@@ -299,6 +414,10 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
+    std.debug.print("Size of zml.array.Dense: {d}\n", .{@sizeOf(zml.array.Dense(f64))});
+    std.debug.print("Size of zml.array.dense.Kind: {d}\n", .{@sizeOf(zml.array.Kind)});
+    std.debug.print("Size of zml.array.Strided: {d}\n", .{@sizeOf(zml.array.Strided(f64))});
+
     // const a: u64 = 1000;
     // const b: f64 = 1000;
     // const c = zml.add(a, b, .{}) catch unreachable;
@@ -344,7 +463,9 @@ pub fn main() !void {
 
     // try lapackTesting(a);
 
-    try lapackPerfTesting(a);
+    // try lapackPerfTesting(a);
+
+    try arrayKindTesting(a);
 
     // coreTesting();
 }
@@ -361,6 +482,42 @@ fn ask_user(default: usize) !usize {
         return std.fmt.parseInt(usize, user_input, 10);
     } else {
         return default;
+    }
+}
+
+fn arrayKindTesting(a: std.mem.Allocator) !void {
+    var arr: zml.array.Dense(f64) = try .init(a, &.{ 8, 8 }, .{ .order = .col_major, .kind = .{ .tridiagonal = .{} } });
+    defer arr.deinit(a);
+
+    var i: u32 = 1;
+    for (arr.data) |*val| {
+        val.* = zml.scast(f64, i);
+
+        i += 1;
+    }
+
+    std.debug.print("Array kind: {}\n", .{arr.kind});
+    i = 0;
+    while (i < arr.shape[0]) : (i += 1) {
+        var j: u32 = 0;
+        while (j < arr.shape[1]) : (j += 1) {
+            std.debug.print("{d:2}  ", .{arr.get(&.{ i, j }) catch unreachable});
+        }
+
+        std.debug.print("\n", .{});
+    }
+
+    const arr_T: zml.array.Dense(f64) = try arr.transpose(null);
+
+    std.debug.print("Transposed array kind: {}\n", .{arr_T.kind});
+    i = 0;
+    while (i < arr_T.shape[0]) : (i += 1) {
+        var j: u32 = 0;
+        while (j < arr_T.shape[1]) : (j += 1) {
+            std.debug.print("{d:2}  ", .{arr_T.get(&.{ i, j }) catch unreachable});
+        }
+
+        std.debug.print("\n", .{});
     }
 }
 
@@ -512,7 +669,7 @@ fn lapackPerfTesting(a: std.mem.Allocator) !void {
     const lda_row = n;
 
     // B
-    const b_original: []f64 = try random_matrix(a, n, nrhs, 10);
+    const b_original: []f64 = try random_matrix(a, n, nrhs, 2, .row_major);
     //const b_original: []zml.cf64 = try random_complex_matrix(a, n, nrhs, 10);
     defer a.free(b_original);
     const b_mean: f64 = avg(b_original);
@@ -1512,50 +1669,4 @@ fn formatValueWithCustomPadding(value: i32, padding: u8) []const u8 {
     const fmt = "{02d}";
     const len = std.fmt.bufPrint(buffer[0..], fmt, .{value}) catch return "";
     return buffer[0..len];
-}
-
-fn perfTesting(a: std.mem.Allocator) !void {
-    // Perf testing
-    var big1: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 10000, 10000 }, .{ .order = .ColumnMajor });
-    defer big1.deinit();
-    var big2: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 1, 1 }, .{ .order = .ColumnMajor });
-    defer big2.deinit();
-    var big3: zml.Array(f64) = try zml.Array(f64).init(a, &.{ 10000, 10000 }, .{ .order = .ColumnMajor });
-    defer big3.deinit();
-
-    std.debug.print("big3 dimentions = {}\n", .{big3.ndim});
-
-    std.debug.print("big3.shape = [  ", .{});
-    for (big3.shape[0..big3.ndim]) |dim| {
-        std.debug.print("{}  ", .{dim});
-    }
-    std.debug.print("]\n", .{});
-
-    std.debug.print("big3.strides = [  ", .{});
-    for (big3.strides[0..big3.ndim]) |stride| {
-        std.debug.print("{}  ", .{stride});
-    }
-    std.debug.print("]\n", .{});
-
-    std.debug.print("big3.size = {}\n", .{big3.size});
-
-    // Profiling
-    const n: usize = 10;
-    const start_time = std.time.nanoTimestamp();
-
-    for (0..n) |_| {
-        std.debug.print(".", .{});
-        try @call(.auto, zml.Array(f64).add, .{ &big3, big1, big2 });
-        //try big3.add(big1, big2);
-    }
-    std.debug.print("\n", .{});
-
-    const end_time = std.time.nanoTimestamp();
-    const duration_ns = end_time - start_time;
-
-    // Convert nanoseconds to seconds as a floating-point number.
-    const duration_s: f128 = @as(f128, @floatFromInt(duration_ns)) / (1_000_000_000.0 * @as(f128, @floatFromInt(n)));
-
-    // Print the duration in seconds with high precision (e.g., 9 decimal places).
-    std.debug.print("add took: {d:.9} seconds\n", .{duration_s});
 }

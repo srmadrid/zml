@@ -2297,49 +2297,49 @@ pub inline fn potrf2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime opts.link_lapacke != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    return scast(isize, ci.LAPACKE_spotrf2(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                } else if (comptime A == f64) {
-                    return scast(isize, ci.LAPACKE_dpotrf2(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                }
-            },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    return scast(isize, ci.LAPACKE_cpotrf2(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                } else if (comptime Scalar(A) == f64) {
-                    return scast(isize, ci.LAPACKE_zpotrf2(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                }
-            },
-            else => {},
-        }
-    }
+    // if (comptime opts.link_lapacke != null) {
+    //     switch (comptime types.numericType(A)) {
+    //         .float => {
+    //             if (comptime A == f32) {
+    //                 return scast(isize, ci.LAPACKE_spotrf2(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             } else if (comptime A == f64) {
+    //                 return scast(isize, ci.LAPACKE_dpotrf2(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             }
+    //         },
+    //         .cfloat => {
+    //             if (comptime Scalar(A) == f32) {
+    //                 return scast(isize, ci.LAPACKE_cpotrf2(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             } else if (comptime Scalar(A) == f64) {
+    //                 return scast(isize, ci.LAPACKE_zpotrf2(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             }
+    //         },
+    //         else => {},
+    //     }
+    // }
 
     return @import("lapack/potrf2.zig").potrf2(order, uplo, n, a, lda, ctx);
 }
@@ -2762,49 +2762,49 @@ pub inline fn potrf(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime opts.link_lapacke != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    return scast(isize, ci.LAPACKE_spotrf(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                } else if (comptime A == f64) {
-                    return scast(isize, ci.LAPACKE_dpotrf(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                }
-            },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    return scast(isize, ci.LAPACKE_cpotrf(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                } else if (comptime Scalar(A) == f64) {
-                    return scast(isize, ci.LAPACKE_zpotrf(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        a,
-                        scast(c_int, lda),
-                    ));
-                }
-            },
-            else => {},
-        }
-    }
+    // if (comptime opts.link_lapacke != null) {
+    //     switch (comptime types.numericType(A)) {
+    //         .float => {
+    //             if (comptime A == f32) {
+    //                 return scast(isize, ci.LAPACKE_spotrf(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             } else if (comptime A == f64) {
+    //                 return scast(isize, ci.LAPACKE_dpotrf(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             }
+    //         },
+    //         .cfloat => {
+    //             if (comptime Scalar(A) == f32) {
+    //                 return scast(isize, ci.LAPACKE_cpotrf(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             } else if (comptime Scalar(A) == f64) {
+    //                 return scast(isize, ci.LAPACKE_zpotrf(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                 ));
+    //             }
+    //         },
+    //         else => {},
+    //     }
+    // }
 
     return @import("lapack/potrf.zig").potrf(order, uplo, n, a, lda, ctx);
 }
@@ -3205,70 +3205,70 @@ pub inline fn potrs(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and opts.link_lapacke != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    _ = ci.LAPACKE_spotrs(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    );
+    // if (comptime A == B and opts.link_lapacke != null) {
+    //     switch (comptime types.numericType(A)) {
+    //         .float => {
+    //             if (comptime A == f32) {
+    //                 _ = ci.LAPACKE_spotrs(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 );
 
-                    return;
-                } else if (comptime A == f64) {
-                    std.debug.print("Calling LAPACKE_dpotrs with order: {}, uplo: {}, n: {}, nrhs: {}, lda: {}, ldb: {}\n", .{ @intFromEnum(order), uplo.toChar(), n, nrhs, lda, ldb });
-                    _ = ci.LAPACKE_dpotrs(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    );
+    //                 return;
+    //             } else if (comptime A == f64) {
+    //                 std.debug.print("Calling LAPACKE_dpotrs with order: {}, uplo: {}, n: {}, nrhs: {}, lda: {}, ldb: {}\n", .{ @intFromEnum(order), uplo.toChar(), n, nrhs, lda, ldb });
+    //                 _ = ci.LAPACKE_dpotrs(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 );
 
-                    return;
-                }
-            },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    _ = ci.LAPACKE_cpotrs(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    );
+    //                 return;
+    //             }
+    //         },
+    //         .cfloat => {
+    //             if (comptime Scalar(A) == f32) {
+    //                 _ = ci.LAPACKE_cpotrs(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 );
 
-                    return;
-                } else if (comptime Scalar(A) == f64) {
-                    _ = ci.LAPACKE_zpotrs(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    );
+    //                 return;
+    //             } else if (comptime Scalar(A) == f64) {
+    //                 _ = ci.LAPACKE_zpotrs(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 );
 
-                    return;
-                }
-            },
-            else => {},
-        }
-    }
+    //                 return;
+    //             }
+    //         },
+    //         else => {},
+    //     }
+    // }
 
     return @import("lapack/potrs.zig").potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx);
 }
@@ -3684,61 +3684,61 @@ pub inline fn posv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and opts.link_lapacke != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    return scast(isize, ci.LAPACKE_sposv(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    ));
-                } else if (comptime A == f64) {
-                    return scast(isize, ci.LAPACKE_dposv(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    ));
-                }
-            },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    return scast(isize, ci.LAPACKE_cposv(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    ));
-                } else if (comptime Scalar(A) == f64) {
-                    return scast(isize, ci.LAPACKE_zposv(
-                        @intFromEnum(order),
-                        uplo.toChar(),
-                        scast(c_int, n),
-                        scast(c_int, nrhs),
-                        a,
-                        scast(c_int, lda),
-                        b,
-                        scast(c_int, ldb),
-                    ));
-                }
-            },
-            else => {},
-        }
-    }
+    // if (comptime A == B and opts.link_lapacke != null) {
+    //     switch (comptime types.numericType(A)) {
+    //         .float => {
+    //             if (comptime A == f32) {
+    //                 return scast(isize, ci.LAPACKE_sposv(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 ));
+    //             } else if (comptime A == f64) {
+    //                 return scast(isize, ci.LAPACKE_dposv(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 ));
+    //             }
+    //         },
+    //         .cfloat => {
+    //             if (comptime Scalar(A) == f32) {
+    //                 return scast(isize, ci.LAPACKE_cposv(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 ));
+    //             } else if (comptime Scalar(A) == f64) {
+    //                 return scast(isize, ci.LAPACKE_zposv(
+    //                     @intFromEnum(order),
+    //                     uplo.toChar(),
+    //                     scast(c_int, n),
+    //                     scast(c_int, nrhs),
+    //                     a,
+    //                     scast(c_int, lda),
+    //                     b,
+    //                     scast(c_int, ldb),
+    //                 ));
+    //             }
+    //         },
+    //         else => {},
+    //     }
+    // }
 
     return @import("lapack/posv.zig").posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx);
 }

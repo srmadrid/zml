@@ -23,7 +23,6 @@ pub const Real = real.Real;
 pub const complex = @import("complex.zig");
 pub const Complex = complex.Complex;
 pub const array = @import("array.zig");
-pub const Array = array.Array;
 
 const constants = @import("constants.zig");
 pub const pi = constants.pi;

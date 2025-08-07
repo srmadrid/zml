@@ -1,5 +1,8 @@
 const std = @import("std");
-const Array = @import("array.zig").Array;
+
+const Dense = @import("array.zig").Dense;
+const Strided = @import("array.zig").Strided;
+const Sparse = @import("array.zig").Sparse;
 
 pub const default_uint = usize;
 pub const default_int = isize;
@@ -288,7 +291,8 @@ pub fn isSlice(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of an `Array`.
+/// Checks if the input type is an instance of an array, i.e., an instance of a
+/// `Dense`, `Strided`, or `Sparse` array.
 ///
 /// Parameters
 /// ----------
@@ -296,7 +300,7 @@ pub fn isSlice(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is an `Array`, `false` otherwise.
+/// `bool`: `true` if the type is an array, `false` otherwise.
 pub fn isArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
@@ -306,10 +310,189 @@ pub fn isArray(comptime T: type) bool {
 
             if (!@hasDecl(T, "empty")) return false;
 
-            const N = Array(f64);
-            const ninfo = @typeInfo(N).@"struct";
+            const array_types: []type = &.{ Dense(f64), Strided(f64), Sparse(f64) };
+            inline for (array_types) |array_type| {
+                const ninfo = @typeInfo(array_type).@"struct";
+                const t: T = .empty;
+                const n: array_type = .empty;
+
+                if (tinfo.fields.len != ninfo.fields.len) return false;
+                if (tinfo.decls.len != ninfo.decls.len) return false;
+
+                inline for (tinfo.fields, ninfo.fields) |field_tinfo, field_ninfo| {
+                    comptime if (std.mem.eql(u8, field_ninfo.name, "data")) {
+                        if (!std.mem.eql(u8, field_tinfo.name, "data")) return false;
+
+                        switch (@typeInfo(@TypeOf(@field(t, "data")))) {
+                            .pointer => |p| {
+                                if (p.size != .slice) return false;
+                            },
+                            else => return false,
+                        }
+                    } else if (std.mem.eql(u8, field_ninfo.name, "base")) {
+                        if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
+
+                        switch (@typeInfo(@TypeOf(@field(t, "base")))) {
+                            .optional => continue, // Checking if child type is an Array would lead to infinite recursion
+                            else => return false,
+                        }
+                    } else {
+                        if (!std.meta.eql(@field(t, field_tinfo.name), @field(n, field_ninfo.name))) return false;
+                    };
+                }
+
+                inline for (tinfo.decls, ninfo.decls) |decl_tinfo, decl_ninfo| {
+                    if (!std.meta.eql(decl_tinfo, decl_ninfo)) return false;
+                }
+
+                if (tinfo.is_tuple != ninfo.is_tuple) return false;
+            }
+
+            return true;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `Dense`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `Dense`, `false` otherwise.
+pub fn isDense(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            if (!@hasDecl(T, "empty")) return false;
+
+            const ninfo = @typeInfo(Dense(f64)).@"struct";
             const t: T = .empty;
-            const n: N = .empty;
+            const n: Dense(f64) = .empty;
+
+            if (tinfo.fields.len != ninfo.fields.len) return false;
+            if (tinfo.decls.len != ninfo.decls.len) return false;
+
+            inline for (tinfo.fields, ninfo.fields) |field_tinfo, field_ninfo| {
+                comptime if (std.mem.eql(u8, field_ninfo.name, "data")) {
+                    if (!std.mem.eql(u8, field_tinfo.name, "data")) return false;
+
+                    switch (@typeInfo(@TypeOf(@field(t, "data")))) {
+                        .pointer => |p| {
+                            if (p.size != .slice) return false;
+                        },
+                        else => return false,
+                    }
+                } else if (std.mem.eql(u8, field_ninfo.name, "base")) {
+                    if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
+
+                    switch (@typeInfo(@TypeOf(@field(t, "base")))) {
+                        .optional => continue, // Checking if child type is an Array would lead to infinite recursion
+                        else => return false,
+                    }
+                } else {
+                    if (!std.meta.eql(@field(t, field_tinfo.name), @field(n, field_ninfo.name))) return false;
+                };
+            }
+
+            inline for (tinfo.decls, ninfo.decls) |decl_tinfo, decl_ninfo| {
+                if (!std.meta.eql(decl_tinfo, decl_ninfo)) return false;
+            }
+
+            if (tinfo.is_tuple != ninfo.is_tuple) return false;
+
+            return true;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `Strided`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `Strided`, `false` otherwise.
+pub fn isStrided(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            if (!@hasDecl(T, "empty")) return false;
+
+            const ninfo = @typeInfo(Strided(f64)).@"struct";
+            const t: T = .empty;
+            const n: Strided(f64) = .empty;
+
+            if (tinfo.fields.len != ninfo.fields.len) return false;
+            if (tinfo.decls.len != ninfo.decls.len) return false;
+
+            inline for (tinfo.fields, ninfo.fields) |field_tinfo, field_ninfo| {
+                comptime if (std.mem.eql(u8, field_ninfo.name, "data")) {
+                    if (!std.mem.eql(u8, field_tinfo.name, "data")) return false;
+
+                    switch (@typeInfo(@TypeOf(@field(t, "data")))) {
+                        .pointer => |p| {
+                            if (p.size != .slice) return false;
+                        },
+                        else => return false,
+                    }
+                } else if (std.mem.eql(u8, field_ninfo.name, "base")) {
+                    if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
+
+                    switch (@typeInfo(@TypeOf(@field(t, "base")))) {
+                        .optional => continue, // Checking if child type is an Array would lead to infinite recursion
+                        else => return false,
+                    }
+                } else {
+                    if (!std.meta.eql(@field(t, field_tinfo.name), @field(n, field_ninfo.name))) return false;
+                };
+            }
+
+            inline for (tinfo.decls, ninfo.decls) |decl_tinfo, decl_ninfo| {
+                if (!std.meta.eql(decl_tinfo, decl_ninfo)) return false;
+            }
+
+            if (tinfo.is_tuple != ninfo.is_tuple) return false;
+
+            return true;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `Sparse`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `Sparse`, `false` otherwise.
+pub fn isSparse(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            if (!@hasDecl(T, "empty")) return false;
+
+            const ninfo = @typeInfo(Sparse(f64)).@"struct";
+            const t: T = .empty;
+            const n: Sparse(f64) = .empty;
 
             if (tinfo.fields.len != ninfo.fields.len) return false;
             if (tinfo.decls.len != ninfo.decls.len) return false;
@@ -476,27 +659,45 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
         return X;
     }
 
-    comptime if (isArray(X)) {
-        if (isArray(Y)) {
-            return Array(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isSlice(Y)) {
-            return Array(Coerce(Numeric(X), Numeric(Y)));
+    comptime if (isDense(X)) {
+        if (isDense(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isStrided(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isSparse(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
         } else {
-            return Array(Coerce(Numeric(X), Y));
+            return Dense(Coerce(Numeric(X), Y));
         }
-    } else if (isSlice(X)) {
-        if (isArray(Y)) {
-            return Array(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isSlice(Y)) { // Should two slices return another slice?
-            return Array(Coerce(Numeric(X), Numeric(Y)));
+    } else if (isStrided(X)) {
+        if (isDense(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isStrided(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isSparse(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
         } else {
-            return Array(Coerce(Numeric(X), Y));
+            return Dense(Coerce(Numeric(X), Y));
+        }
+    } else if (isSparse(X)) {
+        if (isDense(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isStrided(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isSparse(Y)) {
+            return Sparse(Coerce(Numeric(X), Numeric(Y)));
+        } else {
+            return Sparse(Coerce(Numeric(X), Y));
         }
     } else {
-        if (isArray(Y)) {
-            return Array(Coerce(X, Numeric(Y)));
-        } else if (isSlice(Y)) {
-            return Array(Coerce(X, Numeric(Y)));
+        if (isDense(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isStrided(Y)) {
+            return Dense(Coerce(Numeric(X), Numeric(Y)));
+        } else if (isSparse(Y)) {
+            return Sparse(Coerce(Numeric(X), Numeric(Y)));
+        } else {
+            // Two scalar types
         }
     };
 
@@ -732,29 +933,46 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
 ///
 /// Unused right now, kept for possible future use.
 pub fn canCoerce(comptime K: type, comptime V: type) bool {
-    comptime if (isArray(K)) {
-        if (isArray(V)) {
+    comptime if (isDense(K)) {
+        if (isDense(V)) {
             return canCoerce(Numeric(K), Numeric(V));
-        } else if (isSlice(V)) {
-            return false; // Should casting Array return a slice?
+        } else if (isStrided(V)) {
+            return false; // Dense cannot be coerced to Strided
+        } else if (isSparse(V)) {
+            return false; // Dense cannot be coerced to Sparse
         } else {
-            return false; // Only 1 element Arrays can be coerced to scalar types
+            return false; // Dense cannot be coerced to a scalar
         }
-    } else if (isSlice(K)) {
-        if (isArray(V)) {
+    } else if (isStrided(K)) {
+        if (isDense(V)) {
             return canCoerce(Numeric(K), Numeric(V));
-        } else if (isSlice(V)) {
+        } else if (isStrided(V)) {
+            return false; // Strided cannot be coerced to Strided
+        } else if (isSparse(V)) {
+            return false; // Strided cannot be coerced to Sparse
+        } else {
+            return false; // Strided cannot be coerced to a scalar
+        }
+    } else if (isSparse(K)) {
+        if (isDense(V)) {
+            return canCoerce(Numeric(K), Numeric(V));
+        } else if (isStrided(V)) {
+            return false; // Sparse cannot be coerced to Strided
+        } else if (isSparse(V)) {
             return canCoerce(Numeric(K), Numeric(V));
         } else {
-            return false; // Only 1 element slices can be coerced to scalar types
+            return false; // Sparse cannot be coerced to a scalar
         }
     } else {
-        if (isArray(V)) {
+        if (isDense(V)) {
             return canCoerce(K, Numeric(V));
-        } else if (isSlice(V)) {
-            return canCoerce(K, Numeric(V));
+        } else if (isStrided(V)) {
+            return false; // Scalar cannot be coerced to Strided
+        } else if (isSparse(V)) {
+            return false; // Scalar cannot be coerced to Sparse
+        } else {
+            // Two scalar types
         }
-        // Else two numeric types
     };
 
     const T1: type = K;
@@ -999,8 +1217,10 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
 pub fn CoerceToArray(comptime X: type, comptime Y: type) type {
     _ = numericType(Y);
 
-    if (isArray(X) or isSlice(X)) {
-        return Array(Y);
+    if (isDense(X) or isStrided(X) or isSlice(X)) {
+        return Dense(Y);
+    } else if (isSparse(X)) {
+        return Sparse(Y);
     } else {
         return Y;
     }
@@ -1225,8 +1445,13 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
 /// Coerces the input type to a floating point type if it is not already a
 /// higher range type.
 pub fn EnsureFloat(comptime T: type) type {
-    if (isArray(T) or isSlice(T))
-        return Array(EnsureFloat(Numeric(T)));
+    if (isDense(T)) {
+        return Dense(EnsureFloat(Numeric(T)));
+    } else if (isStrided(T)) {
+        return Strided(EnsureFloat(Numeric(T)));
+    } else if (isSparse(T)) {
+        return Sparse(EnsureFloat(Numeric(T)));
+    }
 
     switch (numericType(T)) {
         .bool => return default_float,

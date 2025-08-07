@@ -6,8 +6,8 @@ pub fn build(b: *std.Build) void {
 
     const options = b.addOptions();
 
-    const opt_max_dimensions = b.option(usize, "max_dimensions", "Maximum number of dimensions for `Array`s") orelse 8;
-    options.addOption(usize, "max_dimensions", opt_max_dimensions);
+    const opt_max_dimensions = b.option(u32, "max_dimensions", "Maximum number of dimensions for `Array`s") orelse 4;
+    options.addOption(u32, "max_dimensions", opt_max_dimensions);
 
     // Option to provide BLAS and LAPACK implementations
     const opt_link_cblas = b.option([]const u8, "link_cblas", "Link CBLAS implementation");
@@ -34,10 +34,10 @@ pub fn build(b: *std.Build) void {
         exe.linkLibC();
     }
     if (opt_link_cblas != null) {
-        exe.root_module.linkSystemLibrary(opt_link_cblas.?, .{ .preferred_link_mode = .static });
+        exe.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
     }
     if (opt_link_lapacke != null) {
-        exe.root_module.linkSystemLibrary(opt_link_lapacke.?, .{ .preferred_link_mode = .static });
+        exe.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
     }
 
     b.installArtifact(exe);
