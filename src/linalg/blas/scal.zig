@@ -7,10 +7,10 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn scal(
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -24,11 +24,11 @@ pub fn scal(
     if (comptime types.isArbitraryPrecision(C)) {
         @compileError("zml.linalg.blas.scal not implemented for arbitrary precision types yet");
     } else {
-        var ix: isize = 0;
-        for (0..scast(usize, n)) |_| {
+        var ix: i32 = 0;
+        for (0..scast(u32, n)) |_| {
             ops.mul_( // x[ix] *= alpha
-                &x[scast(usize, ix)],
-                x[scast(usize, ix)],
+                &x[scast(u32, ix)],
+                x[scast(u32, ix)],
                 alpha,
                 ctx,
             ) catch unreachable;

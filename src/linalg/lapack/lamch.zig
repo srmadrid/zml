@@ -11,7 +11,6 @@ const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
 const Mach = lapack.Mach;
-const Order = linalg.Order;
 
 pub fn lamch(
     comptime T: type,

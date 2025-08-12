@@ -6,7 +6,7 @@ const float = @import("../../float.zig");
 
 const lapack = @import("../lapack.zig");
 
-pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8, n1: isize, n2: isize, n3: isize, n4: isize) isize {
+pub fn ilaenv(ispec: i32, comptime name: []const u8, comptime opts: []const u8, n1: i32, n2: i32, n3: i32, n4: i32) i32 {
     // Handle computed GOTO equivalent
     if (ispec == 1 or ispec == 2 or ispec == 3) {
         // Continue
@@ -18,7 +18,7 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
         return 2;
     } else if (ispec == 6) {
         // ispec = 6: crossover point for SVD (used by xGELSS and xGESVD)
-        return types.scast(isize, types.scast(f32, if (n1 < n2) n1 else n2) * 1.6);
+        return types.scast(i32, types.scast(f32, if (n1 < n2) n1 else n2) * 1.6);
     } else if (ispec == 7) {
         // ispec = 7: number of processors (not used)
         return 1;
@@ -32,14 +32,14 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
         return 25;
     } else if (ispec == 10) {
         // ispec = 10: ieee and infinity NaN arithmetic can be trusted not to trap
-        var ILAENV: isize = 1;
+        var ILAENV: i32 = 1;
         if (ILAENV == 1) {
             ILAENV = ieeeck(1, 0, 1);
         }
         return ILAENV;
     } else if (ispec == 11) {
         // ispec = 11: ieee infinity arithmetic can be trusted not to trap
-        var ILAENV: isize = 1;
+        var ILAENV: i32 = 1;
         if (ILAENV == 1) {
             ILAENV = ieeeck(0, 0.0, 1.0);
         }
@@ -56,16 +56,16 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
     var SUBNAM: [16]u8 = .{0} ** 16;
     @memcpy(SUBNAM[0..name.len], name);
 
-    var IC: isize = types.scast(isize, SUBNAM[0]);
-    const IZ: isize = types.scast(isize, 'Z');
+    var IC: i32 = types.scast(i32, SUBNAM[0]);
+    const IZ: i32 = types.scast(i32, 'Z');
 
     if (IZ == 90 or IZ == 122) {
         // ASCII character set
         if (IC >= 97 and IC <= 122) {
             SUBNAM[0] = types.scast(u8, IC - 32);
-            var I: usize = 1;
+            var I: u32 = 1;
             while (I < 6 and I < name.len) {
-                IC = types.scast(isize, SUBNAM[I]);
+                IC = types.scast(i32, SUBNAM[I]);
                 if (IC >= 97 and IC <= 122) {
                     SUBNAM[I] = types.scast(u8, IC - 32);
                 }
@@ -76,9 +76,9 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
         // EBCDIC character set
         if ((IC >= 129 and IC <= 137) or (IC >= 145 and IC <= 153) or (IC >= 162 and IC <= 169)) {
             SUBNAM[0] = types.scast(u8, IC + 64);
-            var I: usize = 1;
+            var I: u32 = 1;
             while (I < 6 and I < name.len) {
-                IC = types.scast(isize, SUBNAM[I]);
+                IC = types.scast(i32, SUBNAM[I]);
                 if ((IC >= 129 and IC <= 137) or (IC >= 145 and IC <= 153) or (IC >= 162 and IC <= 169)) {
                     SUBNAM[I] = types.scast(u8, IC + 64);
                 }
@@ -89,9 +89,9 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
         // Prime machines: ASCII+128
         if (IC >= 225 and IC <= 250) {
             SUBNAM[0] = types.scast(u8, IC - 32);
-            var I: usize = 1;
+            var I: u32 = 1;
             while (I < 6 and I < name.len) {
-                IC = types.scast(isize, SUBNAM[I]);
+                IC = types.scast(i32, SUBNAM[I]);
                 if (IC >= 225 and IC <= 250) {
                     SUBNAM[I] = types.scast(u8, IC - 32);
                 }
@@ -131,7 +131,7 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
         // In these examples, separate code is provided for setting NB for
         // real and complex. We assume that NB will take the same value in
         // single or double precision.
-        var NB: isize = 1;
+        var NB: i32 = 1;
 
         if (std.mem.eql(u8, SUBNAM[1..6], "LAORH")) {
             // This is for *LAORHR_GETRFNP routine
@@ -332,10 +332,10 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
             } else if (std.mem.eql(u8, &C3, "SYL")) {
                 // The upper bound is to prevent overly aggressive scaling.
                 if (Sname) {
-                    const temp: isize = types.scast(isize, types.scast(f32, if (n1 < n2) n1 else n2) * 16 / 100);
+                    const temp: i32 = types.scast(i32, types.scast(f32, if (n1 < n2) n1 else n2) * 16 / 100);
                     NB = if ((if (temp > 48) temp else 48) < 240) (if (temp > 48) temp else 48) else 240;
                 } else {
-                    const temp: isize = types.scast(isize, types.scast(f32, if (n1 < n2) n1 else n2) * 8 / 100);
+                    const temp: i32 = types.scast(i32, types.scast(f32, if (n1 < n2) n1 else n2) * 8 / 100);
                     NB = if ((if (temp > 24) temp else 24) < 80) (if (temp > 24) temp else 24) else 80;
                 }
             }
@@ -370,7 +370,7 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
         return NB;
     } else if (ispec == 2) {
         // ispec = 2: minimum block size
-        var NBMIN: isize = 2;
+        var NBMIN: i32 = 2;
         if (std.mem.eql(u8, &C2, "GE")) {
             if (std.mem.eql(u8, &C3, "QRF") or std.mem.eql(u8, &C3, "RQF") or std.mem.eql(u8, &C3, "LQF") or std.mem.eql(u8, &C3, "QLF")) {
                 if (Sname) {
@@ -446,7 +446,7 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
         return NBMIN;
     } else if (ispec == 3) {
         // ispec = 3: crossover point
-        var NX: isize = 0;
+        var NX: i32 = 0;
         if (std.mem.eql(u8, &C2, "GE")) {
             if (std.mem.eql(u8, &C3, "QRF") or std.mem.eql(u8, &C3, "RQF") or std.mem.eql(u8, &C3, "LQF") or std.mem.eql(u8, &C3, "QLF")) {
                 if (Sname) {
@@ -506,7 +506,7 @@ pub fn ilaenv(ispec: isize, comptime name: []const u8, comptime opts: []const u8
     return 1;
 }
 
-fn ieeeck(ispec: isize, zero: f32, one: f32) isize {
+fn ieeeck(ispec: i32, zero: f32, one: f32) i32 {
     var posinf: f32 = one / zero;
     if (posinf <= one) {
         return 0;
@@ -588,30 +588,30 @@ fn ieeeck(ispec: isize, zero: f32, one: f32) isize {
     return 1;
 }
 
-fn iparmq(ispec: isize, comptime name: []const u8, comptime opts: []const u8, n: isize, ilo: isize, ihi: isize, lwork: isize) isize {
+fn iparmq(ispec: i32, comptime name: []const u8, comptime opts: []const u8, n: i32, ilo: i32, ihi: i32, lwork: i32) i32 {
     _ = opts; // opts is not used
     _ = n; // n is not used
     _ = lwork; // lwork is not used
 
     // Parameters
-    const INMIN: isize = 12;
-    const INWIN: isize = 13;
-    const INIBL: isize = 14;
-    const ISHFTS: isize = 15;
-    const IACC22: isize = 16;
-    const ICOST: isize = 17;
-    const NMIN: isize = 75;
-    const K22MIN: isize = 14;
-    const KACMIN: isize = 14;
-    const NIBBLE: isize = 14;
-    const KNWSWP: isize = 500;
-    const RCOST: isize = 10;
+    const INMIN: i32 = 12;
+    const INWIN: i32 = 13;
+    const INIBL: i32 = 14;
+    const ISHFTS: i32 = 15;
+    const IACC22: i32 = 16;
+    const ICOST: i32 = 17;
+    const NMIN: i32 = 75;
+    const K22MIN: i32 = 14;
+    const KACMIN: i32 = 14;
+    const NIBBLE: i32 = 14;
+    const KNWSWP: i32 = 500;
+    const RCOST: i32 = 10;
 
     // Initialize
-    var iparmq_result: isize = -1;
+    var iparmq_result: i32 = -1;
 
-    var nh: isize = undefined;
-    var ns: isize = undefined;
+    var nh: i32 = undefined;
+    var ns: i32 = undefined;
     if ((ispec == ISHFTS) or (ispec == INWIN) or (ispec == IACC22)) {
         // Set the number simultaneous shifts
         nh = ihi - ilo + 1;
@@ -621,7 +621,7 @@ fn iparmq(ispec: isize, comptime name: []const u8, comptime opts: []const u8, n:
         if (nh >= 60)
             ns = 10;
         if (nh >= 150)
-            ns = int.max(10, int.div(nh, types.scast(isize, (float.log(nh) / float.log(2)) + 0.5)));
+            ns = int.max(10, int.div(nh, types.scast(i32, (float.log(nh) / float.log(2)) + 0.5)));
         if (nh >= 590)
             ns = 64;
         if (nh >= 3000)
@@ -664,16 +664,16 @@ fn iparmq(ispec: isize, comptime name: []const u8, comptime opts: []const u8, n:
         var subnam: [6]u8 = .{0} ** 6;
         @memcpy(subnam[0..name.len], name);
 
-        var ic: isize = types.scast(isize, subnam[0]);
-        const iz: isize = types.scast(isize, 'Z');
+        var ic: i32 = types.scast(i32, subnam[0]);
+        const iz: i32 = types.scast(i32, 'Z');
 
         if (iz == 90 or iz == 122) {
             // ASCII character set
             if (ic >= 97 and ic <= 122) {
                 subnam[0] = types.scast(u8, ic - 32);
-                var i: usize = 1;
+                var i: u32 = 1;
                 while (i < 6) {
-                    ic = types.scast(isize, subnam[i]);
+                    ic = types.scast(i32, subnam[i]);
                     if (ic >= 97 and ic <= 122)
                         subnam[i] = types.scast(u8, ic - 32);
 
@@ -687,9 +687,9 @@ fn iparmq(ispec: isize, comptime name: []const u8, comptime opts: []const u8, n:
                 (ic >= 162 and ic <= 169))
             {
                 subnam[0] = types.scast(u8, ic + 64);
-                var i: usize = 1;
+                var i: u32 = 1;
                 while (i < 6) {
-                    ic = types.scast(isize, subnam[i]);
+                    ic = types.scast(i32, subnam[i]);
                     if ((ic >= 129 and ic <= 137) or
                         (ic >= 145 and ic <= 153) or
                         (ic >= 162 and ic <= 169))
@@ -702,9 +702,9 @@ fn iparmq(ispec: isize, comptime name: []const u8, comptime opts: []const u8, n:
             // Prime machines: ASCII+128
             if (ic >= 225 and ic <= 250) {
                 subnam[0] = types.scast(u8, ic - 32);
-                var i: usize = 1;
+                var i: u32 = 1;
                 while (i < 6) {
-                    ic = types.scast(isize, subnam[i]);
+                    ic = types.scast(i32, subnam[i]);
                     if (ic >= 225 and ic <= 250)
                         subnam[i] = types.scast(u8, ic - 32);
 

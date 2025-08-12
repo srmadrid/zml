@@ -7,21 +7,21 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn copy(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     if (n <= 0) return blas.Error.InvalidArgument;
 
-    var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-    var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-    for (0..scast(usize, n)) |_| {
+    var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
+    for (0..scast(u32, n)) |_| {
         try ops.set( // y[iy] = x[ix]
-            &y[scast(usize, iy)],
-            x[scast(usize, ix)],
+            &y[scast(u32, iy)],
+            x[scast(u32, ix)],
             ctx,
         );
 

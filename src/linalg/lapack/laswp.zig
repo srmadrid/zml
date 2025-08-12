@@ -6,17 +6,17 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const lapack = @import("../lapack.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 
 pub inline fn laswp(
     order: Order,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) !void {
     if (order == .col_major) {
         try k_laswp_c(n, a, lda, k1, k2, ipiv, incx);
@@ -26,13 +26,13 @@ pub inline fn laswp(
 }
 
 fn k_laswp_c(
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) !void {
     const A: type = types.Child(@TypeOf(a));
 
@@ -41,10 +41,10 @@ fn k_laswp_c(
 
     // Interchange row i with row ipiv(k1 + (i - k1) * abs(incx)) for each of
     // rows k1 through k2.
-    var ix0: isize = undefined;
-    var I1: isize = undefined;
-    var I2: isize = undefined;
-    var inc: isize = undefined;
+    var ix0: i32 = undefined;
+    var I1: i32 = undefined;
+    var I2: i32 = undefined;
+    var inc: i32 = undefined;
     if (incx > 0) {
         ix0 = k1 - 1;
         I1 = k1 - 1;
@@ -60,20 +60,20 @@ fn k_laswp_c(
     }
 
     var temp: A = undefined;
-    const n32: isize = (n >> 5) << 5; // n32 = n - (n % 32)
+    const n32: i32 = (n >> 5) << 5; // n32 = n - (n % 32)
     if (n32 != 0) {
-        var j: isize = 0;
+        var j: i32 = 0;
         while (j < n32) {
-            var ix: isize = ix0;
-            var i: isize = I1;
+            var ix: i32 = ix0;
+            var i: i32 = I1;
             while (i != I2 + inc) {
-                const ip: isize = scast(isize, ipiv[scast(usize, ix)]) - 1; // Convert to 0-based index
+                const ip: i32 = scast(i32, ipiv[scast(u32, ix)]) - 1; // Convert to 0-based index
                 if (ip != i) {
-                    var k: isize = j;
+                    var k: i32 = j;
                     while (k < j + 32) {
-                        temp = a[scast(usize, i + k * lda)];
-                        a[scast(usize, i + k * lda)] = a[scast(usize, ip + k * lda)];
-                        a[scast(usize, ip + k * lda)] = temp;
+                        temp = a[scast(u32, i + k * lda)];
+                        a[scast(u32, i + k * lda)] = a[scast(u32, ip + k * lda)];
+                        a[scast(u32, ip + k * lda)] = temp;
 
                         k += 1;
                     }
@@ -88,16 +88,16 @@ fn k_laswp_c(
     }
 
     if (n32 != n) {
-        var ix: isize = ix0;
-        var i: isize = I1;
+        var ix: i32 = ix0;
+        var i: i32 = I1;
         while (i != I2 + inc) {
-            const ip: isize = scast(isize, ipiv[scast(usize, ix)]) - 1; // Convert to 0-based index
+            const ip: i32 = scast(i32, ipiv[scast(u32, ix)]) - 1; // Convert to 0-based index
             if (ip != i) {
-                var k: isize = n32;
+                var k: i32 = n32;
                 while (k < n) {
-                    temp = a[scast(usize, i + k * lda)];
-                    a[scast(usize, i + k * lda)] = a[scast(usize, ip + k * lda)];
-                    a[scast(usize, ip + k * lda)] = temp;
+                    temp = a[scast(u32, i + k * lda)];
+                    a[scast(u32, i + k * lda)] = a[scast(u32, ip + k * lda)];
+                    a[scast(u32, ip + k * lda)] = temp;
 
                     k += 1;
                 }
@@ -110,13 +110,13 @@ fn k_laswp_c(
 }
 
 fn k_laswp_r(
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) !void {
     const A: type = types.Child(@TypeOf(a));
 
@@ -125,10 +125,10 @@ fn k_laswp_r(
 
     // Interchange row i with row ipiv(k1 + (i - k1) * abs(incx)) for each of
     // rows k1 through k2.
-    var ix0: isize = undefined;
-    var I1: isize = undefined;
-    var I2: isize = undefined;
-    var inc: isize = undefined;
+    var ix0: i32 = undefined;
+    var I1: i32 = undefined;
+    var I2: i32 = undefined;
+    var inc: i32 = undefined;
     if (incx > 0) {
         ix0 = k1 - 1;
         I1 = k1 - 1;
@@ -142,20 +142,20 @@ fn k_laswp_r(
     }
 
     var temp: A = undefined;
-    const n32: isize = (n >> 5) << 5; // n32 = n - (n % 32)
+    const n32: i32 = (n >> 5) << 5; // n32 = n - (n % 32)
     if (n32 != 0) {
-        var j: isize = 0;
+        var j: i32 = 0;
         while (j < n32) {
-            var ix: isize = ix0;
-            var i: isize = I1;
+            var ix: i32 = ix0;
+            var i: i32 = I1;
             while (i != I2 + inc) {
-                const ip: isize = scast(isize, ipiv[scast(usize, ix)]) - 1; // Convert to 0-based index
+                const ip: i32 = scast(i32, ipiv[scast(u32, ix)]) - 1; // Convert to 0-based index
                 if (ip != i) {
-                    var k: isize = j;
+                    var k: i32 = j;
                     while (k < j + 32) {
-                        temp = a[scast(usize, i * lda + k)];
-                        a[scast(usize, i * lda + k)] = a[scast(usize, ip * lda + k)];
-                        a[scast(usize, ip * lda + k)] = temp;
+                        temp = a[scast(u32, i * lda + k)];
+                        a[scast(u32, i * lda + k)] = a[scast(u32, ip * lda + k)];
+                        a[scast(u32, ip * lda + k)] = temp;
 
                         k += 1;
                     }
@@ -170,16 +170,16 @@ fn k_laswp_r(
     }
 
     if (n32 != n) {
-        var ix: isize = ix0;
-        var i: isize = I1;
+        var ix: i32 = ix0;
+        var i: i32 = I1;
         while (i != I2 + inc) {
-            const ip: isize = scast(isize, ipiv[scast(usize, ix)]) - 1; // Convert to 0-based index
+            const ip: i32 = scast(i32, ipiv[scast(u32, ix)]) - 1; // Convert to 0-based index
             if (ip != i) {
-                var k: isize = n32;
+                var k: i32 = n32;
                 while (k < n) {
-                    temp = a[scast(usize, i * lda + k)];
-                    a[scast(usize, i * lda + k)] = a[scast(usize, ip * lda + k)];
-                    a[scast(usize, ip * lda + k)] = temp;
+                    temp = a[scast(u32, i * lda + k)];
+                    a[scast(u32, i * lda + k)] = a[scast(u32, ip * lda + k)];
+                    a[scast(u32, ip * lda + k)] = temp;
 
                     k += 1;
                 }

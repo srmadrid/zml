@@ -8,11 +8,11 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn dot(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !Coerce(Child(@TypeOf(x)), Child(@TypeOf(y))) {
     const X: type = types.Child(@TypeOf(x));

@@ -9,17 +9,17 @@ const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn potrf2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     if (order == .col_major) {
         return k_potrf2_c(uplo, n, a, lda, ctx);
     } else {
@@ -29,17 +29,17 @@ pub inline fn potrf2(
 
 fn k_potrf2_c(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (n < 0 or lda < int.max(1, n))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (n == 0)
@@ -65,11 +65,11 @@ fn k_potrf2_c(
             ) catch unreachable;
         } else {
             // Use recursive code.
-            const n1: isize = int.div(n, 2);
-            const n2: isize = n - n1;
+            const n1: i32 = int.div(n, 2);
+            const n2: i32 = n - n1;
 
             // Factor A11.
-            var iinfo: isize = k_potrf2_c(
+            var iinfo: i32 = k_potrf2_c(
                 uplo,
                 n1,
                 a,
@@ -98,7 +98,7 @@ fn k_potrf2_c(
                     1,
                     a,
                     lda,
-                    a + scast(usize, n1 * lda),
+                    a + scast(u32, n1 * lda),
                     lda,
                     ctx,
                 ) catch unreachable;
@@ -112,10 +112,10 @@ fn k_potrf2_c(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1 * lda),
+                        a + scast(u32, n1 * lda),
                         lda,
                         1,
-                        a + scast(usize, n1 + n1 * lda),
+                        a + scast(u32, n1 + n1 * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -127,10 +127,10 @@ fn k_potrf2_c(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1 * lda),
+                        a + scast(u32, n1 * lda),
                         lda,
                         1,
-                        a + scast(usize, n1 + n1 * lda),
+                        a + scast(u32, n1 + n1 * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -139,7 +139,7 @@ fn k_potrf2_c(
                 iinfo = k_potrf2_c(
                     uplo,
                     n2,
-                    a + scast(usize, n1 + n1 * lda),
+                    a + scast(u32, n1 + n1 * lda),
                     lda,
                     ctx,
                 ) catch unreachable;
@@ -164,7 +164,7 @@ fn k_potrf2_c(
                     1,
                     a,
                     lda,
-                    a + scast(usize, n1),
+                    a + scast(u32, n1),
                     lda,
                     ctx,
                 ) catch unreachable;
@@ -178,10 +178,10 @@ fn k_potrf2_c(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1),
+                        a + scast(u32, n1),
                         lda,
                         1,
-                        a + scast(usize, n1 + n1 * lda),
+                        a + scast(u32, n1 + n1 * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -193,10 +193,10 @@ fn k_potrf2_c(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1),
+                        a + scast(u32, n1),
                         lda,
                         1,
-                        a + scast(usize, n1 + n1 * lda),
+                        a + scast(u32, n1 + n1 * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -205,7 +205,7 @@ fn k_potrf2_c(
                 iinfo = k_potrf2_c(
                     uplo,
                     n2,
-                    a + scast(usize, n1 + n1 * lda),
+                    a + scast(u32, n1 + n1 * lda),
                     lda,
                     ctx,
                 ) catch unreachable;
@@ -227,17 +227,17 @@ fn k_potrf2_c(
 
 fn k_potrf2_r(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (n < 0 or lda < int.max(1, n))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (n == 0)
@@ -263,11 +263,11 @@ fn k_potrf2_r(
             ) catch unreachable;
         } else {
             // Use recursive code.
-            const n1: isize = int.div(n, 2);
-            const n2: isize = n - n1;
+            const n1: i32 = int.div(n, 2);
+            const n2: i32 = n - n1;
 
             // Factor A11.
-            var iinfo: isize = k_potrf2_r(
+            var iinfo: i32 = k_potrf2_r(
                 uplo,
                 n1,
                 a,
@@ -296,7 +296,7 @@ fn k_potrf2_r(
                     1,
                     a,
                     lda,
-                    a + scast(usize, n1),
+                    a + scast(u32, n1),
                     lda,
                     ctx,
                 ) catch unreachable;
@@ -310,10 +310,10 @@ fn k_potrf2_r(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1),
+                        a + scast(u32, n1),
                         lda,
                         1,
-                        a + scast(usize, n1 * lda + n1),
+                        a + scast(u32, n1 * lda + n1),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -325,10 +325,10 @@ fn k_potrf2_r(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1),
+                        a + scast(u32, n1),
                         lda,
                         1,
-                        a + scast(usize, n1 * lda + n1),
+                        a + scast(u32, n1 * lda + n1),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -337,7 +337,7 @@ fn k_potrf2_r(
                 iinfo = k_potrf2_r(
                     uplo,
                     n2,
-                    a + scast(usize, n1 * lda + n1),
+                    a + scast(u32, n1 * lda + n1),
                     lda,
                     ctx,
                 ) catch unreachable;
@@ -362,7 +362,7 @@ fn k_potrf2_r(
                     1,
                     a,
                     lda,
-                    a + scast(usize, n1 * lda),
+                    a + scast(u32, n1 * lda),
                     lda,
                     ctx,
                 ) catch unreachable;
@@ -376,10 +376,10 @@ fn k_potrf2_r(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1 * lda),
+                        a + scast(u32, n1 * lda),
                         lda,
                         1,
-                        a + scast(usize, n1 * lda + n1),
+                        a + scast(u32, n1 * lda + n1),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -391,10 +391,10 @@ fn k_potrf2_r(
                         n2,
                         n1,
                         -1,
-                        a + scast(usize, n1 * lda),
+                        a + scast(u32, n1 * lda),
                         lda,
                         1,
-                        a + scast(usize, n1 * lda + n1),
+                        a + scast(u32, n1 * lda + n1),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -403,7 +403,7 @@ fn k_potrf2_r(
                 iinfo = k_potrf2_r(
                     uplo,
                     n2,
-                    a + scast(usize, n1 * lda + n1),
+                    a + scast(u32, n1 * lda + n1),
                     lda,
                     ctx,
                 ) catch unreachable;

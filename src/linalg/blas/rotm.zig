@@ -7,11 +7,11 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn rotm(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     param: anytype,
     ctx: anytype,
 ) !void {
@@ -35,27 +35,27 @@ pub fn rotm(
             const h21: P = param[2];
             const h12: P = param[3];
             const h22: P = param[4];
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-            for (0..scast(usize, n)) |_| {
-                const x0: X = x[scast(usize, ix)];
+            var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+            var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
+            for (0..scast(u32, n)) |_| {
+                const x0: X = x[scast(u32, ix)];
                 ops.add_( // x[ix] = h11 * x[ix] + h12 * y[iy]
-                    &x[scast(usize, ix)],
+                    &x[scast(u32, ix)],
                     ops.mul(
                         h11,
-                        x[scast(usize, ix)],
+                        x[scast(u32, ix)],
                         ctx,
                     ) catch unreachable,
                     ops.mul(
                         h12,
-                        y[scast(usize, iy)],
+                        y[scast(u32, iy)],
                         ctx,
                     ) catch unreachable,
                     ctx,
                 ) catch unreachable;
 
                 ops.add_( // y[iy] = h21 * x[ix] + h22 * y[iy]
-                    &y[scast(usize, iy)],
+                    &y[scast(u32, iy)],
                     ops.mul(
                         h21,
                         x0,
@@ -63,7 +63,7 @@ pub fn rotm(
                     ) catch unreachable,
                     ops.mul(
                         h22,
-                        y[scast(usize, iy)],
+                        y[scast(u32, iy)],
                         ctx,
                     ) catch unreachable,
                     ctx,
@@ -75,24 +75,24 @@ pub fn rotm(
         } else if (flag == 0) {
             const h21: P = param[2];
             const h12: P = param[3];
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-            for (0..scast(usize, n)) |_| {
-                const x0 = x[scast(usize, ix)];
+            var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+            var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
+            for (0..scast(u32, n)) |_| {
+                const x0 = x[scast(u32, ix)];
                 ops.add_( // x[ix] = h12 * y[iy] + x[ix]
-                    &x[scast(usize, ix)],
-                    x[scast(usize, ix)],
+                    &x[scast(u32, ix)],
+                    x[scast(u32, ix)],
                     ops.mul(
                         h12,
-                        y[scast(usize, iy)],
+                        y[scast(u32, iy)],
                         ctx,
                     ) catch unreachable,
                     ctx,
                 ) catch unreachable;
 
                 ops.add_( // y[iy] = h21 * x[ix] + y[iy]
-                    &y[scast(usize, iy)],
-                    y[scast(usize, iy)],
+                    &y[scast(u32, iy)],
+                    y[scast(u32, iy)],
                     ops.mul(
                         h21,
                         x0,
@@ -107,26 +107,26 @@ pub fn rotm(
         } else if (flag == 1) {
             const h11 = param[1];
             const h22 = param[4];
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-            for (0..scast(usize, n)) |_| {
-                const x0 = x[scast(usize, ix)];
+            var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+            var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
+            for (0..scast(u32, n)) |_| {
+                const x0 = x[scast(u32, ix)];
                 ops.add_( // x[ix] = h11 * x[ix] - h22 * y[iy]
-                    &x[scast(usize, ix)],
+                    &x[scast(u32, ix)],
                     ops.mul(
                         h11,
-                        x[scast(usize, ix)],
+                        x[scast(u32, ix)],
                         ctx,
                     ) catch unreachable,
-                    y[scast(usize, iy)],
+                    y[scast(u32, iy)],
                     ctx,
                 ) catch unreachable;
 
                 ops.sub_( // y[iy] = h22 * y[iy] - h11 * x[ix]
-                    &y[scast(usize, iy)],
+                    &y[scast(u32, iy)],
                     ops.mul(
                         h22,
-                        y[scast(usize, iy)],
+                        y[scast(u32, iy)],
                         ctx,
                     ) catch unreachable,
                     x0,

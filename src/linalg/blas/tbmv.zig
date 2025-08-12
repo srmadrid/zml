@@ -8,9 +8,9 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Uplo = linalg.Uplo;
-const Diag = linalg.Diag;
-const Order = linalg.Order;
+const Uplo = types.Uplo;
+const Diag = types.Diag;
+const Order = types.Order;
 const Transpose = linalg.Transpose;
 
 pub inline fn tbmv(
@@ -18,12 +18,12 @@ pub inline fn tbmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -59,12 +59,12 @@ fn k_tbmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     const A: type = types.Child(@TypeOf(a));
@@ -82,27 +82,27 @@ fn k_tbmv(
     const noconj: bool = transa == .no_trans or transa == .trans;
     const nounit: bool = diag == .non_unit;
 
-    var kx: isize = if (incx < 0) (-n + 1) * incx else 0;
+    var kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         if (transa == .no_trans or transa == .conj_no_trans) {
             if (uplo == .upper) {
                 if (incx == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
-                            const temp: X = x[scast(usize, j)];
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(u32, j)];
 
-                            const l: isize = k - j;
+                            const l: i32 = k - j;
                             if (noconj) {
-                                var i: isize = int.max(0, j - k);
+                                var i: i32 = int.max(0, j - k);
                                 while (i < j) : (i += 1) {
                                     ops.add_( // x[i] += temp * a[l + i + j * lda]
-                                        &x[scast(usize, i)],
-                                        x[scast(usize, i)],
+                                        &x[scast(u32, i)],
+                                        x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            a[scast(usize, l + i + j * lda)],
+                                            a[scast(u32, l + i + j * lda)],
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -111,21 +111,21 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[j] *= a[k + j * lda]
-                                        &x[scast(usize, j)],
-                                        x[scast(usize, j)],
-                                        a[scast(usize, k + j * lda)],
+                                        &x[scast(u32, j)],
+                                        x[scast(u32, j)],
+                                        a[scast(u32, k + j * lda)],
                                         ctx,
                                     ) catch unreachable;
                                 }
                             } else {
-                                var i: isize = int.max(0, j - k);
+                                var i: i32 = int.max(0, j - k);
                                 while (i < j) : (i += 1) {
                                     ops.add_( // x[i] += temp * conj(a[l + i + j * lda])
-                                        &x[scast(usize, i)],
-                                        x[scast(usize, i)],
+                                        &x[scast(u32, i)],
+                                        x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -134,9 +134,9 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[j] *= conj(a[k + j * lda])
-                                        &x[scast(usize, j)],
-                                        x[scast(usize, j)],
-                                        ops.conjugate(a[scast(usize, k + j * lda)], ctx) catch unreachable,
+                                        &x[scast(u32, j)],
+                                        x[scast(u32, j)],
+                                        ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -144,23 +144,23 @@ fn k_tbmv(
                         }
                     }
                 } else {
-                    var jx: isize = kx;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
-                            const temp: X = x[scast(usize, jx)];
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(u32, jx)];
 
-                            var ix: isize = kx;
-                            const l: isize = k - j;
+                            var ix: i32 = kx;
+                            const l: i32 = k - j;
                             if (noconj) {
-                                var i: isize = int.max(0, j - k);
+                                var i: i32 = int.max(0, j - k);
                                 while (i < j) : (i += 1) {
                                     ops.add_( // x[ix] += temp * a[l + i + j * lda]
-                                        &x[scast(usize, ix)],
-                                        x[scast(usize, ix)],
+                                        &x[scast(u32, ix)],
+                                        x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            a[scast(usize, l + i + j * lda)],
+                                            a[scast(u32, l + i + j * lda)],
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -171,21 +171,21 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[jx] *= a[k + j * lda]
-                                        &x[scast(usize, jx)],
-                                        x[scast(usize, jx)],
-                                        a[scast(usize, k + j * lda)],
+                                        &x[scast(u32, jx)],
+                                        x[scast(u32, jx)],
+                                        a[scast(u32, k + j * lda)],
                                         ctx,
                                     ) catch unreachable;
                                 }
                             } else {
-                                var i: isize = int.max(0, j - k);
+                                var i: i32 = int.max(0, j - k);
                                 while (i < j) : (i += 1) {
                                     ops.add_( // x[ix] += temp * conj(a[l + i + j * lda])
-                                        &x[scast(usize, ix)],
-                                        x[scast(usize, ix)],
+                                        &x[scast(u32, ix)],
+                                        x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -196,9 +196,9 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[jx] *= conj(a[k + j * lda])
-                                        &x[scast(usize, jx)],
-                                        x[scast(usize, jx)],
-                                        ops.conjugate(a[scast(usize, k + j * lda)], ctx) catch unreachable,
+                                        &x[scast(u32, jx)],
+                                        x[scast(u32, jx)],
+                                        ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -214,21 +214,21 @@ fn k_tbmv(
                 }
             } else {
                 if (incx == 1) {
-                    var j: isize = n - 1;
+                    var j: i32 = n - 1;
                     while (j >= 0) : (j -= 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
-                            const temp: X = x[scast(usize, j)];
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(u32, j)];
 
-                            const l: isize = -j;
+                            const l: i32 = -j;
                             if (noconj) {
-                                var i: isize = int.min(n - 1, j + k);
+                                var i: i32 = int.min(n - 1, j + k);
                                 while (i > j) : (i -= 1) {
                                     ops.add_( // x[i] += temp * a[l + i + j * lda]
-                                        &x[scast(usize, i)],
-                                        x[scast(usize, i)],
+                                        &x[scast(u32, i)],
+                                        x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            a[scast(usize, l + i + j * lda)],
+                                            a[scast(u32, l + i + j * lda)],
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -237,21 +237,21 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[j] *= a[0 + j * lda]
-                                        &x[scast(usize, j)],
-                                        x[scast(usize, j)],
-                                        a[scast(usize, 0 + j * lda)],
+                                        &x[scast(u32, j)],
+                                        x[scast(u32, j)],
+                                        a[scast(u32, 0 + j * lda)],
                                         ctx,
                                     ) catch unreachable;
                                 }
                             } else {
-                                var i: isize = int.min(n - 1, j + k);
+                                var i: i32 = int.min(n - 1, j + k);
                                 while (i > j) : (i -= 1) {
                                     ops.add_( // x[i] += temp * conj(a[l + i + j * lda])
-                                        &x[scast(usize, i)],
-                                        x[scast(usize, i)],
+                                        &x[scast(u32, i)],
+                                        x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -260,9 +260,9 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[j] *= conj(a[0 + j * lda])
-                                        &x[scast(usize, j)],
-                                        x[scast(usize, j)],
-                                        ops.conjugate(a[scast(usize, 0 + j * lda)], ctx) catch unreachable,
+                                        &x[scast(u32, j)],
+                                        x[scast(u32, j)],
+                                        ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -271,23 +271,23 @@ fn k_tbmv(
                     }
                 } else {
                     kx += (n - 1) * incx;
-                    var jx: isize = kx;
-                    var j: isize = n - 1;
+                    var jx: i32 = kx;
+                    var j: i32 = n - 1;
                     while (j >= 0) : (j -= 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
-                            const temp: X = x[scast(usize, jx)];
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
+                            const temp: X = x[scast(u32, jx)];
 
-                            var ix: isize = kx;
-                            const l: isize = -j;
+                            var ix: i32 = kx;
+                            const l: i32 = -j;
                             if (noconj) {
-                                var i: isize = int.min(n - 1, j + k);
+                                var i: i32 = int.min(n - 1, j + k);
                                 while (i > j) : (i -= 1) {
                                     ops.add_( // x[ix] += temp * a[l + i + j * lda]
-                                        &x[scast(usize, ix)],
-                                        x[scast(usize, ix)],
+                                        &x[scast(u32, ix)],
+                                        x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            a[scast(usize, l + i + j * lda)],
+                                            a[scast(u32, l + i + j * lda)],
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -298,21 +298,21 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[jx] *= a[0 + j * lda]
-                                        &x[scast(usize, jx)],
-                                        x[scast(usize, jx)],
-                                        a[scast(usize, 0 + j * lda)],
+                                        &x[scast(u32, jx)],
+                                        x[scast(u32, jx)],
+                                        a[scast(u32, 0 + j * lda)],
                                         ctx,
                                     ) catch unreachable;
                                 }
                             } else {
-                                var i: isize = int.min(n - 1, j + k);
+                                var i: i32 = int.min(n - 1, j + k);
                                 while (i > j) : (i -= 1) {
                                     ops.add_( // x[ix] += temp * conj(a[l + i + j * lda])
-                                        &x[scast(usize, ix)],
-                                        x[scast(usize, ix)],
+                                        &x[scast(u32, ix)],
+                                        x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -323,9 +323,9 @@ fn k_tbmv(
 
                                 if (nounit) {
                                     ops.mul_( // x[jx] *= conj(a[0 + j * lda])
-                                        &x[scast(usize, jx)],
-                                        x[scast(usize, jx)],
-                                        ops.conjugate(a[scast(usize, 0 + j * lda)], ctx) catch unreachable,
+                                        &x[scast(u32, jx)],
+                                        x[scast(u32, jx)],
+                                        ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -343,29 +343,29 @@ fn k_tbmv(
         } else {
             if (uplo == .upper) {
                 if (incx == 1) {
-                    var j: isize = n - 1;
+                    var j: i32 = n - 1;
                     while (j >= 0) : (j -= 1) {
-                        var temp: C1 = scast(C1, x[scast(usize, j)]);
+                        var temp: C1 = scast(C1, x[scast(u32, j)]);
 
-                        const l: isize = k - j;
+                        const l: i32 = k - j;
                         if (noconj) {
                             if (nounit) {
                                 ops.mul_( // temp *= a[k + j * lda]
                                     &temp,
                                     temp,
-                                    a[scast(usize, k + j * lda)],
+                                    a[scast(u32, k + j * lda)],
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j - 1;
+                            var i: i32 = j - 1;
                             while (i >= int.max(0, j - k)) : (i -= 1) {
                                 ops.add_( // temp += a[l + i + j * lda] * x[i]
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        a[scast(usize, l + i + j * lda)],
-                                        x[scast(usize, i)],
+                                        a[scast(u32, l + i + j * lda)],
+                                        x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -376,19 +376,19 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[k + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(usize, k + j * lda)], ctx) catch unreachable,
+                                    ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j - 1;
+                            var i: i32 = j - 1;
                             while (i >= int.max(0, j - k)) : (i -= 1) {
                                 ops.add_( // temp += conj(a[l + i + j * lda]) * x[i]
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
-                                        x[scast(usize, i)],
+                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -396,36 +396,36 @@ fn k_tbmv(
                             }
                         }
 
-                        x[scast(usize, j)] = scast(X, temp);
+                        x[scast(u32, j)] = scast(X, temp);
                     }
                 } else {
                     kx += (n - 1) * incx;
-                    var jx: isize = kx;
-                    var j: isize = n - 1;
+                    var jx: i32 = kx;
+                    var j: i32 = n - 1;
                     while (j >= 0) : (j -= 1) {
-                        var temp: C1 = scast(C1, x[scast(usize, jx)]);
+                        var temp: C1 = scast(C1, x[scast(u32, jx)]);
 
                         kx -= incx;
-                        var ix: isize = kx;
-                        const l: isize = k - j;
+                        var ix: i32 = kx;
+                        const l: i32 = k - j;
                         if (noconj) {
                             if (nounit) {
                                 ops.mul_( // temp *= a[k + j * lda]
                                     &temp,
                                     temp,
-                                    a[scast(usize, k + j * lda)],
+                                    a[scast(u32, k + j * lda)],
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j - 1;
+                            var i: i32 = j - 1;
                             while (i >= int.max(0, j - k)) : (i -= 1) {
                                 ops.add_( // temp += a[l + i + j * lda] * x[ix]
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        a[scast(usize, l + i + j * lda)],
-                                        x[scast(usize, ix)],
+                                        a[scast(u32, l + i + j * lda)],
+                                        x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -438,19 +438,19 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[k + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(usize, k + j * lda)], ctx) catch unreachable,
+                                    ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j - 1;
+                            var i: i32 = j - 1;
                             while (i >= int.max(0, j - k)) : (i -= 1) {
                                 ops.add_( // temp += conj(a[l + i + j * lda] * x[ix])
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
-                                        x[scast(usize, ix)],
+                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -460,35 +460,35 @@ fn k_tbmv(
                             }
                         }
 
-                        x[scast(usize, jx)] = scast(X, temp);
+                        x[scast(u32, jx)] = scast(X, temp);
                         jx -= incx;
                     }
                 }
             } else {
                 if (incx == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        var temp: C1 = scast(C1, x[scast(usize, j)]);
+                        var temp: C1 = scast(C1, x[scast(u32, j)]);
 
-                        const l: isize = -j;
+                        const l: i32 = -j;
                         if (noconj) {
                             if (nounit) {
                                 ops.mul_( // temp *= a[0 + j * lda]
                                     &temp,
                                     temp,
-                                    a[scast(usize, 0 + j * lda)],
+                                    a[scast(u32, 0 + j * lda)],
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j + 1;
+                            var i: i32 = j + 1;
                             while (i < int.min(n, j + k + 1)) : (i += 1) {
                                 ops.add_( // temp += a[l + i + j * lda] * x[i]
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        a[scast(usize, l + i + j * lda)],
-                                        x[scast(usize, i)],
+                                        a[scast(u32, l + i + j * lda)],
+                                        x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -499,19 +499,19 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[0 + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(usize, 0 + j * lda)], ctx) catch unreachable,
+                                    ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j + 1;
+                            var i: i32 = j + 1;
                             while (i < int.min(n, j + k + 1)) : (i += 1) {
                                 ops.add_( // temp += conj(a[l + i + j * lda]) * x[i]
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
-                                        x[scast(usize, i)],
+                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -519,35 +519,35 @@ fn k_tbmv(
                             }
                         }
 
-                        x[scast(usize, j)] = scast(X, temp);
+                        x[scast(u32, j)] = scast(X, temp);
                     }
                 } else {
-                    var jx: isize = kx;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        var temp: C1 = scast(C1, x[scast(usize, jx)]);
+                        var temp: C1 = scast(C1, x[scast(u32, jx)]);
 
                         kx += incx;
-                        var ix: isize = kx;
-                        const l: isize = -j;
+                        var ix: i32 = kx;
+                        const l: i32 = -j;
                         if (noconj) {
                             if (nounit) {
                                 ops.mul_( // temp *= a[0 + j * lda]
                                     &temp,
                                     temp,
-                                    a[scast(usize, 0 + j * lda)],
+                                    a[scast(u32, 0 + j * lda)],
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j + 1;
+                            var i: i32 = j + 1;
                             while (i < int.min(n, j + k + 1)) : (i += 1) {
                                 ops.add_( // temp += a[l + i + j * lda] * x[ix]
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        a[scast(usize, l + i + j * lda)],
-                                        x[scast(usize, ix)],
+                                        a[scast(u32, l + i + j * lda)],
+                                        x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -560,19 +560,19 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[0 + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(usize, 0 + j * lda)], ctx) catch unreachable,
+                                    ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
 
-                            var i: isize = j + 1;
+                            var i: i32 = j + 1;
                             while (i < int.min(n, j + k + 1)) : (i += 1) {
                                 ops.add_( // temp += conj(a[l + i + j * lda]) * x[ix]
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(usize, l + i + j * lda)], ctx) catch unreachable,
-                                        x[scast(usize, ix)],
+                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -582,7 +582,7 @@ fn k_tbmv(
                             }
                         }
 
-                        x[scast(usize, jx)] = scast(X, temp);
+                        x[scast(u32, jx)] = scast(X, temp);
 
                         jx += incx;
                     }

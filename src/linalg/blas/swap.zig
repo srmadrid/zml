@@ -7,11 +7,11 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn swap(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const X: type = types.Child(@TypeOf(x));
@@ -25,23 +25,23 @@ pub fn swap(
     } else {
         var temp: C = ops.init(C, .{}) catch unreachable;
 
-        var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-        var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
-        for (0..scast(usize, n)) |_| {
+        var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+        var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
+        for (0..scast(u32, n)) |_| {
             ops.set( // temp = x[ix]
                 &temp,
-                x[scast(usize, ix)],
+                x[scast(u32, ix)],
                 ctx,
             ) catch unreachable;
 
             ops.set( // x[ix] = y[iy]
-                &x[scast(usize, ix)],
-                y[scast(usize, iy)],
+                &x[scast(u32, ix)],
+                y[scast(u32, iy)],
                 ctx,
             ) catch unreachable;
 
             ops.set( // y[iy] = temp
-                &y[scast(usize, iy)],
+                &y[scast(u32, iy)],
                 temp,
                 ctx,
             ) catch unreachable;

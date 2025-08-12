@@ -33,6 +33,12 @@ const array = @import("array.zig");
 ///     x + y
 /// ```
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn add(x: X, y: Y, ctx: anytype) !Coerce(X, Y)
+/// ```
+///
 /// Parameters
 /// ----------
 /// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -52,13 +58,6 @@ const array = @import("array.zig");
 /// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
 /// memory for the output value. Only occurs if the output type is of arbitrary
 /// precision or an `Array`.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the addition operation is not defined for the types of
-/// the inputs, if the types of the inputs cannot be coerced to a common type,
-/// or if the types of the inputs are not supported numeric types, or `Array`s
-/// or slices of unsupported types.
 ///
 /// See Also
 /// --------
@@ -110,7 +109,7 @@ pub inline fn add(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -120,7 +119,7 @@ pub inline fn add(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?array.Order, .required = false },
+                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -128,7 +127,7 @@ pub inline fn add(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?array.Order, .required = false },
+                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -138,7 +137,7 @@ pub inline fn add(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -175,6 +174,12 @@ pub inline fn add(
 ///
 /// ```zig
 ///     o = x + y
+/// ```
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn add_(o: *O, x: X, y: Y, ctx: anytype) !void
 /// ```
 ///
 /// Parameters
@@ -433,7 +438,7 @@ pub inline fn sub(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -443,7 +448,7 @@ pub inline fn sub(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?array.Order, .required = false },
+                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -451,7 +456,7 @@ pub inline fn sub(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?array.Order, .required = false },
+                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -461,7 +466,7 @@ pub inline fn sub(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -754,7 +759,7 @@ pub inline fn mul(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -764,7 +769,7 @@ pub inline fn mul(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?array.Order, .required = false },
+                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -772,7 +777,7 @@ pub inline fn mul(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?array.Order, .required = false },
+                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -782,7 +787,7 @@ pub inline fn mul(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -1011,7 +1016,7 @@ pub inline fn div(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -1019,7 +1024,7 @@ pub inline fn div(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -1028,7 +1033,7 @@ pub inline fn div(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -1160,7 +1165,7 @@ pub inline fn eq(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?array.Order, .required = false },
+                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1168,7 +1173,7 @@ pub inline fn eq(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1280,7 +1285,7 @@ pub inline fn ne(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?array.Order, .required = false },
+                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1288,7 +1293,7 @@ pub inline fn ne(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1400,7 +1405,7 @@ pub inline fn lt(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?array.Order, .required = false },
+                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1408,7 +1413,7 @@ pub inline fn lt(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1510,7 +1515,7 @@ pub inline fn le(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?array.Order, .required = false },
+                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1518,7 +1523,7 @@ pub inline fn le(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1620,7 +1625,7 @@ pub inline fn gt(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?array.Order, .required = false },
+                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1628,7 +1633,7 @@ pub inline fn gt(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1730,7 +1735,7 @@ pub inline fn ge(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?array.Order, .required = false },
+                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1738,7 +1743,7 @@ pub inline fn ge(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1842,7 +1847,7 @@ pub inline fn max(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -1850,7 +1855,7 @@ pub inline fn max(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -1859,7 +1864,7 @@ pub inline fn max(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -1968,7 +1973,7 @@ pub inline fn min(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -1976,7 +1981,7 @@ pub inline fn min(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -1985,7 +1990,7 @@ pub inline fn min(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2090,7 +2095,7 @@ pub inline fn abs(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                     .copy = .{ .type = bool, .required = false },
                 },
             );
@@ -2099,7 +2104,7 @@ pub inline fn abs(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2107,7 +2112,7 @@ pub inline fn abs(
         return array.abs(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2225,7 +2230,7 @@ pub inline fn abs2(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -2233,7 +2238,7 @@ pub inline fn abs2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2241,7 +2246,7 @@ pub inline fn abs2(
         return array.abs2(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2359,7 +2364,7 @@ pub inline fn exp(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -2367,7 +2372,7 @@ pub inline fn exp(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2375,7 +2380,7 @@ pub inline fn exp(
         return array.exp(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2482,7 +2487,7 @@ pub inline fn exp10(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -2490,7 +2495,7 @@ pub inline fn exp10(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2498,7 +2503,7 @@ pub inline fn exp10(
         return array.exp10(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2595,7 +2600,7 @@ pub inline fn exp2(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -2603,7 +2608,7 @@ pub inline fn exp2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2611,7 +2616,7 @@ pub inline fn exp2(
         return array.exp2(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2708,7 +2713,7 @@ pub inline fn exp10m1(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -2716,7 +2721,7 @@ pub inline fn exp10m1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2724,7 +2729,7 @@ pub inline fn exp10m1(
         return array.exp10m1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2821,7 +2826,7 @@ pub inline fn exp2m1(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -2829,7 +2834,7 @@ pub inline fn exp2m1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2837,7 +2842,7 @@ pub inline fn exp2m1(
         return array.exp2m1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -2934,7 +2939,7 @@ pub inline fn expm1(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -2942,7 +2947,7 @@ pub inline fn expm1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2950,7 +2955,7 @@ pub inline fn expm1(
         return array.expm1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3047,7 +3052,7 @@ pub inline fn log(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3055,7 +3060,7 @@ pub inline fn log(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3063,7 +3068,7 @@ pub inline fn log(
         return array.log(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3170,7 +3175,7 @@ pub inline fn log10(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3178,7 +3183,7 @@ pub inline fn log10(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3186,7 +3191,7 @@ pub inline fn log10(
         return array.log10(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3283,7 +3288,7 @@ pub inline fn log2(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3291,7 +3296,7 @@ pub inline fn log2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3299,7 +3304,7 @@ pub inline fn log2(
         return array.log2(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3396,7 +3401,7 @@ pub inline fn log10p1(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3404,7 +3409,7 @@ pub inline fn log10p1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3412,7 +3417,7 @@ pub inline fn log10p1(
         return array.log10p1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3509,7 +3514,7 @@ pub inline fn log2p1(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3517,7 +3522,7 @@ pub inline fn log2p1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3525,7 +3530,7 @@ pub inline fn log2p1(
         return array.log2p1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3622,7 +3627,7 @@ pub inline fn log1p(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3630,7 +3635,7 @@ pub inline fn log1p(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3638,7 +3643,7 @@ pub inline fn log1p(
         return array.log1p(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3741,7 +3746,7 @@ pub inline fn pow(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3749,7 +3754,7 @@ pub inline fn pow(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3758,7 +3763,7 @@ pub inline fn pow(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -3878,7 +3883,7 @@ pub inline fn sqrt(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -3886,7 +3891,7 @@ pub inline fn sqrt(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3894,7 +3899,7 @@ pub inline fn sqrt(
         return array.sqrt(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4001,7 +4006,7 @@ pub inline fn cbrt(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4009,7 +4014,7 @@ pub inline fn cbrt(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4017,7 +4022,7 @@ pub inline fn cbrt(
         return array.cbrt(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4119,7 +4124,7 @@ pub inline fn hypot(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4127,7 +4132,7 @@ pub inline fn hypot(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4136,7 +4141,7 @@ pub inline fn hypot(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4246,7 +4251,7 @@ pub inline fn sin(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4254,7 +4259,7 @@ pub inline fn sin(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4262,7 +4267,7 @@ pub inline fn sin(
         return array.sin(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4369,7 +4374,7 @@ pub inline fn cos(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4377,7 +4382,7 @@ pub inline fn cos(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4385,7 +4390,7 @@ pub inline fn cos(
         return array.cos(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4492,7 +4497,7 @@ pub inline fn tan(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4500,7 +4505,7 @@ pub inline fn tan(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4508,7 +4513,7 @@ pub inline fn tan(
         return array.tan(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4615,7 +4620,7 @@ pub inline fn asin(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4623,7 +4628,7 @@ pub inline fn asin(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4631,7 +4636,7 @@ pub inline fn asin(
         return array.asin(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4738,7 +4743,7 @@ pub inline fn acos(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4746,7 +4751,7 @@ pub inline fn acos(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4754,7 +4759,7 @@ pub inline fn acos(
         return array.acos(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4861,7 +4866,7 @@ pub inline fn atan(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4869,7 +4874,7 @@ pub inline fn atan(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4877,7 +4882,7 @@ pub inline fn atan(
         return array.atan(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -4989,7 +4994,7 @@ pub inline fn atan2(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -4997,7 +5002,7 @@ pub inline fn atan2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5006,7 +5011,7 @@ pub inline fn atan2(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5115,7 +5120,7 @@ pub inline fn sinpi(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5123,7 +5128,7 @@ pub inline fn sinpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5131,7 +5136,7 @@ pub inline fn sinpi(
         return array.sinpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5228,7 +5233,7 @@ pub inline fn cospi(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5236,7 +5241,7 @@ pub inline fn cospi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5244,7 +5249,7 @@ pub inline fn cospi(
         return array.cospi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5341,7 +5346,7 @@ pub inline fn tanpi(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5349,7 +5354,7 @@ pub inline fn tanpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5357,7 +5362,7 @@ pub inline fn tanpi(
         return array.tanpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5454,7 +5459,7 @@ pub inline fn asinpi(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5462,7 +5467,7 @@ pub inline fn asinpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5470,7 +5475,7 @@ pub inline fn asinpi(
         return array.asinpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5567,7 +5572,7 @@ pub inline fn acospi(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5575,7 +5580,7 @@ pub inline fn acospi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5583,7 +5588,7 @@ pub inline fn acospi(
         return array.acospi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5680,7 +5685,7 @@ pub inline fn atanpi(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5688,7 +5693,7 @@ pub inline fn atanpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5696,7 +5701,7 @@ pub inline fn atanpi(
         return array.atanpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5798,7 +5803,7 @@ pub inline fn atan2pi(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5806,7 +5811,7 @@ pub inline fn atan2pi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5815,7 +5820,7 @@ pub inline fn atan2pi(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -5925,7 +5930,7 @@ pub inline fn sinh(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -5933,7 +5938,7 @@ pub inline fn sinh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5941,7 +5946,7 @@ pub inline fn sinh(
         return array.sinh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6048,7 +6053,7 @@ pub inline fn cosh(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6056,7 +6061,7 @@ pub inline fn cosh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6064,7 +6069,7 @@ pub inline fn cosh(
         return array.cosh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6171,7 +6176,7 @@ pub inline fn tanh(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6179,7 +6184,7 @@ pub inline fn tanh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6187,7 +6192,7 @@ pub inline fn tanh(
         return array.tanh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6294,7 +6299,7 @@ pub inline fn asinh(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6302,7 +6307,7 @@ pub inline fn asinh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6310,7 +6315,7 @@ pub inline fn asinh(
         return array.asinh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6417,7 +6422,7 @@ pub inline fn acosh(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6425,7 +6430,7 @@ pub inline fn acosh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6433,7 +6438,7 @@ pub inline fn acosh(
         return array.acosh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6540,7 +6545,7 @@ pub inline fn atanh(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6548,7 +6553,7 @@ pub inline fn atanh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6556,7 +6561,7 @@ pub inline fn atanh(
         return array.atanh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6664,7 +6669,7 @@ pub inline fn erf(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6672,7 +6677,7 @@ pub inline fn erf(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6680,7 +6685,7 @@ pub inline fn erf(
         return array.erf(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6774,7 +6779,7 @@ pub inline fn erfc(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6782,7 +6787,7 @@ pub inline fn erfc(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6790,7 +6795,7 @@ pub inline fn erfc(
         return array.erfc(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6884,7 +6889,7 @@ pub inline fn gamma(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -6892,7 +6897,7 @@ pub inline fn gamma(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6900,7 +6905,7 @@ pub inline fn gamma(
         return array.gamma(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -6994,7 +6999,7 @@ pub inline fn lgamma(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -7002,7 +7007,7 @@ pub inline fn lgamma(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -7010,7 +7015,7 @@ pub inline fn lgamma(
         return array.lgamma(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -7104,7 +7109,7 @@ pub inline fn re(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -7112,7 +7117,7 @@ pub inline fn re(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -7120,7 +7125,7 @@ pub inline fn re(
         return array.re(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -7159,7 +7164,7 @@ pub inline fn im(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -7167,7 +7172,7 @@ pub inline fn im(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -7175,7 +7180,7 @@ pub inline fn im(
         return array.im(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -7214,7 +7219,7 @@ pub inline fn conjugate(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                     .copy = .{ .type = bool, .required = false },
                 },
             );
@@ -7223,7 +7228,7 @@ pub inline fn conjugate(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -7231,7 +7236,7 @@ pub inline fn conjugate(
         return array.conjugate(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
@@ -7346,7 +7351,7 @@ pub inline fn ceil(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -7354,7 +7359,7 @@ pub inline fn ceil(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?array.Order, .required = false },
+                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -7362,7 +7367,7 @@ pub inline fn ceil(
         return array.ceil(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?array.Order, null) },
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }

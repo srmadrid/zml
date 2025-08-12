@@ -22,7 +22,7 @@ fn avg_complex(values: []const zml.cf64) f64 {
 
 fn random_buffer(
     allocator: std.mem.Allocator,
-    size: usize,
+    size: u32,
 ) ![]f64 {
     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
     const rand = prng.random();
@@ -37,10 +37,10 @@ fn random_buffer(
 /// Generate a random m×n matrix A with specified 2-norm condition number `kappa`.
 pub fn random_matrix(
     allocator: std.mem.Allocator,
-    m: usize,
-    n: usize,
+    m: u32,
+    n: u32,
     kappa: f64,
-    order: zml.linalg.Order,
+    order: zml.Order,
 ) ![]f64 {
     // - `allocator`: memory allocator
     // - `m`, `n`: dimensions
@@ -69,7 +69,7 @@ pub fn random_matrix(
     const tauX = try allocator.alloc(f64, r);
     defer allocator.free(tauX);
     _ = ci.LAPACKE_dgeqrf(
-        zml.scast(c_int, @intFromEnum(order)),
+        order.toCInt(),
         zml.scast(c_int, m),
         zml.scast(c_int, r),
         X.ptr,
@@ -77,7 +77,7 @@ pub fn random_matrix(
         tauX.ptr,
     );
     _ = ci.LAPACKE_dorgqr(
-        zml.scast(c_int, @intFromEnum(order)),
+        order.toCInt(),
         zml.scast(c_int, m),
         zml.scast(c_int, r),
         zml.scast(c_int, r),
@@ -93,7 +93,7 @@ pub fn random_matrix(
     const tauY = try allocator.alloc(f64, r);
     defer allocator.free(tauY);
     _ = ci.LAPACKE_dgeqrf(
-        zml.scast(c_int, @intFromEnum(order)),
+        order.toCInt(),
         zml.scast(c_int, n),
         zml.scast(c_int, r),
         Y.ptr,
@@ -101,7 +101,7 @@ pub fn random_matrix(
         tauY.ptr,
     );
     _ = ci.LAPACKE_dorgqr(
-        zml.scast(c_int, @intFromEnum(order)),
+        order.toCInt(),
         zml.scast(c_int, n),
         zml.scast(c_int, r),
         zml.scast(c_int, r),
@@ -135,32 +135,33 @@ pub fn random_matrix(
         order,
         .no_trans,
         .no_trans,
-        zml.scast(isize, m),
-        zml.scast(isize, n),
-        zml.scast(isize, r),
+        zml.scast(i32, m),
+        zml.scast(i32, n),
+        zml.scast(i32, r),
         1,
         X.ptr,
-        zml.scast(isize, if (order == .col_major) m else r),
+        zml.scast(i32, if (order == .col_major) m else r),
         B.ptr,
-        zml.scast(isize, if (order == .col_major) r else n),
+        zml.scast(i32, if (order == .col_major) r else n),
         0,
         A.ptr,
-        zml.scast(isize, if (order == .col_major) m else n),
+        zml.scast(i32, if (order == .col_major) m else n),
     );
 
     return A;
 }
 
 fn max_difference(a: []const f64, b: []const f64) struct {
-    index: usize,
+    index: u32,
     value: f64,
 } {
     std.debug.assert(a.len == b.len);
 
     var max_diff: f64 = 0;
-    var max_index: usize = 0;
+    var max_index: u32 = 0;
 
-    for (0..a.len) |i| {
+    var i: u32 = 0;
+    while (i < a.len) : (i += 1) {
         const diff = zml.float.abs(a[i] - b[i]);
         if (diff > max_diff) {
             max_diff = diff;
@@ -173,7 +174,7 @@ fn max_difference(a: []const f64, b: []const f64) struct {
 
 fn random_symmetric_matrix(
     allocator: std.mem.Allocator,
-    size: usize,
+    size: u32,
     factor: f64,
 ) ![]f64 {
     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
@@ -195,7 +196,7 @@ fn random_symmetric_matrix(
 /// Generates a random symmetric positive definite matrix with a specified condition number.
 fn random_symmetric_positive_definite_matrix(
     allocator: std.mem.Allocator,
-    size: usize,
+    size: u32,
     cond_target: f64,
 ) ![]f64 {
     // 1) compute λ_i geometrically between 1 and cond_target
@@ -214,7 +215,7 @@ fn random_symmetric_positive_definite_matrix(
     defer allocator.free(tau);
     // QR factorization in-place: X = Q*R
     _ = ci.LAPACKE_dgeqrf(
-        @intFromEnum(zml.linalg.Order.col_major),
+        zml.Order.col_major.toCInt(),
         zml.scast(c_int, size),
         zml.scast(c_int, size),
         X.ptr,
@@ -222,7 +223,7 @@ fn random_symmetric_positive_definite_matrix(
         tau.ptr,
     );
     _ = ci.LAPACKE_dorgqr(
-        @intFromEnum(zml.linalg.Order.col_major),
+        zml.Order.col_major.toCInt(),
         zml.scast(c_int, size),
         zml.scast(c_int, size),
         zml.scast(c_int, size),
@@ -242,7 +243,7 @@ fn random_symmetric_positive_definite_matrix(
     }
     // scale row i of B by λ_i
     for (0..size) |i| {
-        zml.linalg.blas.dscal(zml.scast(isize, size), lambdas[i], B.ptr + i * size, 1);
+        zml.linalg.blas.dscal(zml.scast(i32, size), lambdas[i], B.ptr + i * size, 1);
     }
 
     // 4) Assemble A = Q * D * Q^T as A = Q * B
@@ -251,17 +252,17 @@ fn random_symmetric_positive_definite_matrix(
         .col_major,
         .no_trans,
         .no_trans,
-        zml.scast(isize, size),
-        zml.scast(isize, size),
-        zml.scast(isize, size),
+        zml.scast(i32, size),
+        zml.scast(i32, size),
+        zml.scast(i32, size),
         1,
         X.ptr,
-        zml.scast(isize, size),
+        zml.scast(i32, size),
         B.ptr,
-        zml.scast(isize, size),
+        zml.scast(i32, size),
         0,
         A.ptr,
-        zml.scast(isize, size),
+        zml.scast(i32, size),
     );
 
     return A;
@@ -278,7 +279,7 @@ fn frobernius_norm_difference(a: []const f64, b: []const f64) f64 {
     return zml.float.sqrt(norm);
 }
 
-fn is_symmetric(a: []const f64, size: usize) bool {
+fn is_symmetric(a: []const f64, size: u32) bool {
     for (0..size) |i| {
         for (i + 1..size) |j| {
             if (!std.math.approxEqRel(f64, a[i * size + j], a[j * size + i], 1e-9)) {
@@ -291,8 +292,8 @@ fn is_symmetric(a: []const f64, size: usize) bool {
 
 fn random_complex_matrix(
     allocator: std.mem.Allocator,
-    rows: usize,
-    cols: usize,
+    rows: u32,
+    cols: u32,
     factor: f64,
 ) ![]zml.cf64 {
     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
@@ -307,7 +308,7 @@ fn random_complex_matrix(
 
 fn random_complex_hermitian_positive_definite_matrix(
     allocator: std.mem.Allocator,
-    size: usize,
+    size: u32,
     factor: f64,
 ) ![]zml.cf64 {
     // allocate M
@@ -320,17 +321,17 @@ fn random_complex_hermitian_positive_definite_matrix(
         .row_major,
         .no_trans,
         .conj_trans,
-        zml.scast(isize, size),
-        zml.scast(isize, size),
-        zml.scast(isize, size),
+        zml.scast(i32, size),
+        zml.scast(i32, size),
+        zml.scast(i32, size),
         zml.cf64.init(1, 0),
         M.ptr,
-        zml.scast(isize, size),
+        zml.scast(i32, size),
         M.ptr,
-        zml.scast(isize, size),
+        zml.scast(i32, size),
         zml.cf64.init(0, 0),
         A.ptr,
-        zml.scast(isize, size),
+        zml.scast(i32, size),
     );
 
     allocator.free(M);
@@ -348,7 +349,7 @@ fn frobenius_norm_complex_difference(a: []const zml.cf64, b: []const zml.cf64) f
     return zml.float.sqrt(norm);
 }
 
-fn is_hermitian(a: []const zml.cf64, size: usize) bool {
+fn is_hermitian(a: []const zml.cf64, size: u32) bool {
     for (0..size) |i| {
         for (i + 1..size) |j| {
             if (!std.math.approxEqRel(f64, a[i * size + j].re, a[j * size + i].re, 1e-9) or
@@ -361,21 +362,21 @@ fn is_hermitian(a: []const zml.cf64, size: usize) bool {
     return true;
 }
 
-fn print_matrix(desc: []const u8, m: usize, n: usize, a: []f64, lda: usize, order: zml.linalg.Order) void {
+fn print_matrix(desc: []const u8, m: u32, n: u32, a: []f64, lda: u32, order: zml.Order) void {
     std.debug.print("\n{s}\n", .{desc});
     if (order == .row_major) {
-        var i: usize = 0;
+        var i: u32 = 0;
         while (i < m) : (i += 1) {
-            var j: usize = 0;
+            var j: u32 = 0;
             while (j < n) : (j += 1) {
                 std.debug.print("{d}  ", .{a[i * lda + j]});
             }
             std.debug.print("\n", .{});
         }
     } else {
-        var i: usize = 0;
+        var i: u32 = 0;
         while (i < m) : (i += 1) {
-            var j: usize = 0;
+            var j: u32 = 0;
             while (j < n) : (j += 1) {
                 std.debug.print("{d}  ", .{a[i + j * lda]});
             }
@@ -384,21 +385,21 @@ fn print_matrix(desc: []const u8, m: usize, n: usize, a: []f64, lda: usize, orde
     }
 }
 
-fn print_complex_matrix(desc: []const u8, m: usize, n: usize, a: []zml.cf64, lda: usize, order: zml.linalg.Order) void {
+fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u32, order: zml.Order) void {
     std.debug.print("\n{s}\n", .{desc});
     if (order == .row_major) {
-        var i: usize = 0;
+        var i: u32 = 0;
         while (i < m) : (i += 1) {
-            var j: usize = 0;
+            var j: u32 = 0;
             while (j < n) : (j += 1) {
                 std.debug.print("{d:.4} + {d:.4}i  ", .{ a[i * lda + j].re, a[i * lda + j].im });
             }
             std.debug.print("\n", .{});
         }
     } else {
-        var i: usize = 0;
+        var i: u32 = 0;
         while (i < m) : (i += 1) {
-            var j: usize = 0;
+            var j: u32 = 0;
             while (j < n) : (j += 1) {
                 std.debug.print("{d:.4} + {d:.4}i  ", .{ a[i + j * lda].re, a[i + j * lda].im });
             }
@@ -414,9 +415,9 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
-    std.debug.print("Size of zml.array.Dense: {d}\n", .{@sizeOf(zml.array.Dense(f64))});
-    std.debug.print("Size of zml.array.dense.Kind: {d}\n", .{@sizeOf(zml.array.Kind)});
-    std.debug.print("Size of zml.array.Strided: {d}\n", .{@sizeOf(zml.array.Strided(f64))});
+    const aa: zml.array.Dense(u32) = .empty;
+    const bb: zml.Integer = .empty;
+    _ = zml.add(aa, bb, .{ .array_allocator = a }) catch unreachable;
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;
@@ -465,12 +466,12 @@ pub fn main() !void {
 
     // try lapackPerfTesting(a);
 
-    try arrayKindTesting(a);
+    // try matrixTesting(a);
 
     // coreTesting();
 }
 
-fn ask_user(default: usize) !usize {
+fn ask_user(default: u32) !u32 {
     const stdin = std.io.getStdIn().reader();
     const stdout = std.io.getStdOut().writer();
 
@@ -479,42 +480,57 @@ fn ask_user(default: usize) !usize {
     try stdout.print("Enter the number of iterations: ", .{});
 
     if (try (stdin.readUntilDelimiterOrEof(buf[0..], '\n'))) |user_input| {
-        return std.fmt.parseInt(usize, user_input, 10);
+        return std.fmt.parseInt(u32, user_input, 10);
     } else {
         return default;
     }
 }
 
-fn arrayKindTesting(a: std.mem.Allocator) !void {
-    var arr: zml.array.Dense(f64) = try .init(a, &.{ 8, 8 }, .{ .order = .col_major, .kind = .{ .tridiagonal = .{} } });
-    defer arr.deinit(a);
+fn matrixTesting(a: std.mem.Allocator) !void {
+    var A: zml.matrix.Tridiagonal(f64) = try .init(a, 8);
+    defer A.deinit(a);
 
-    var i: u32 = 1;
-    for (arr.data) |*val| {
-        val.* = zml.scast(f64, i);
-
-        i += 1;
+    var i: u32 = 0;
+    while (i < 3 * A.size - 2) : (i += 1) {
+        A.data[i] = zml.scast(f64, i + 1);
+        //A.data[i] = zml.cf64.init(zml.scast(f64, i + 1), zml.scast(f64, i + 1));
     }
 
-    std.debug.print("Array kind: {}\n", .{arr.kind});
+    std.debug.print("Matrix A:\n", .{});
     i = 0;
-    while (i < arr.shape[0]) : (i += 1) {
+    while (i < A.size) : (i += 1) {
         var j: u32 = 0;
-        while (j < arr.shape[1]) : (j += 1) {
-            std.debug.print("{d:2}  ", .{arr.get(&.{ i, j }) catch unreachable});
+        while (j < A.size) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try A.get(i, j)});
+            //std.debug.print("{d:3} + {d:3}i  ", .{ (try A.get(i, j)).re, (try A.get(i, j)).im });
         }
 
         std.debug.print("\n", .{});
     }
 
-    const arr_T: zml.array.Dense(f64) = try arr.transpose(null);
+    const AT: zml.matrix.Tridiagonal(f64) = A.transpose();
 
-    std.debug.print("Transposed array kind: {}\n", .{arr_T.kind});
+    std.debug.print("Transposed A:\n", .{});
     i = 0;
-    while (i < arr_T.shape[0]) : (i += 1) {
+    while (i < AT.size) : (i += 1) {
         var j: u32 = 0;
-        while (j < arr_T.shape[1]) : (j += 1) {
-            std.debug.print("{d:2}  ", .{arr_T.get(&.{ i, j }) catch unreachable});
+        while (j < AT.size) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try AT.get(i, j)});
+            //std.debug.print("{d:3} + {d:3}i  ", .{ (try AT.get(i, j)).re, (try AT.get(i, j)).im });
+        }
+
+        std.debug.print("\n", .{});
+    }
+
+    const Ak: zml.matrix.Tridiagonal(f64) = try A.submatrix(3, 6);
+
+    std.debug.print("Submatrix Ak:\n", .{});
+    i = 0;
+    while (i < Ak.size) : (i += 1) {
+        var j: u32 = 0;
+        while (j < Ak.size) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try Ak.get(i, j)});
+            //std.debug.print("{d:3} + {d:3}i  ", .{ (try Ak.get(i, j)).re, (try Ak.get(i, j)).im });
         }
 
         std.debug.print("\n", .{});
@@ -543,9 +559,9 @@ fn lapackTesting(a: std.mem.Allocator) !void {
     // const a_col: []f64 = try a.alloc(f64, m * n);
     // defer a.free(a_col);
 
-    // var r: usize = 0;
+    // var r: u32 = 0;
     // while (r < m) : (r += 1) {
-    //     var c: usize = 0;
+    //     var c: u32 = 0;
     //     while (c < n) : (c += 1) {
     //         a_col[r + c * lda_col] = a_row[r * lda_row + c];
     //     }
@@ -597,9 +613,9 @@ fn lapackTesting(a: std.mem.Allocator) !void {
     const a_row: []f64 = try a.alloc(f64, m * n);
     defer a.free(a_row);
 
-    var r: usize = 0;
+    var r: u32 = 0;
     while (r < m) : (r += 1) {
-        var c: usize = 0;
+        var c: u32 = 0;
         while (c < n) : (c += 1) {
             a_row[r * lda_row + c] = a_col[r + c * lda_col];
         }
@@ -610,9 +626,9 @@ fn lapackTesting(a: std.mem.Allocator) !void {
     print_matrix("Original A (row-major)", m, n, a_row, lda_row, .row_major);
 
     // Column-major dgetrf2
-    const info_col: isize = try zml.linalg.lapack.getrf2(.col_major, m, n, a_col.ptr, lda_col, ipiv_col.ptr, .{});
+    const info_col: i32 = try zml.linalg.lapack.getrf2(.col_major, m, n, a_col.ptr, lda_col, ipiv_col.ptr, .{});
     // Row-major wrapper
-    const info_row: isize = try zml.linalg.lapack.getrf2(.row_major, m, n, a_row.ptr, lda_row, ipiv_row.ptr, .{});
+    const info_row: i32 = try zml.linalg.lapack.getrf2(.row_major, m, n, a_row.ptr, lda_row, ipiv_row.ptr, .{});
 
     // Print ipiv (1-based)
     std.debug.print("\nipiv col-major: ", .{});
@@ -633,7 +649,7 @@ fn lapackTesting(a: std.mem.Allocator) !void {
 fn lapackPerfTesting(a: std.mem.Allocator) !void {
     const iter = 1;
     // const m = 300;
-    const n = 1000;
+    const n = 3000;
     const nrhs = 3000;
 
     // A
@@ -645,7 +661,7 @@ fn lapackPerfTesting(a: std.mem.Allocator) !void {
     const w: []f64 = try a.alloc(f64, n);
     defer a.free(w);
     _ = ci.LAPACKE_dsyev(
-        @intFromEnum(zml.linalg.Order.row_major),
+        zml.Order.row_major.toCInt(),
         'N',
         'L',
         zml.scast(c_int, n),
@@ -678,7 +694,7 @@ fn lapackPerfTesting(a: std.mem.Allocator) !void {
     const work: []f64 = try a.alloc(f64, zml.int.min(n, nrhs));
     defer a.free(work);
     _ = ci.LAPACKE_dgesvd(
-        @intFromEnum(zml.linalg.Order.row_major),
+        zml.Order.row_major.toCInt(),
         'N',
         'N',
         zml.scast(c_int, n),
@@ -711,7 +727,7 @@ fn lapackPerfTesting(a: std.mem.Allocator) !void {
     // const ipiv_lapacke: []i32 = try a.alloc(i32, n);
     // defer a.free(ipiv_lapacke);
 
-    var info_zml: isize = 0;
+    var info_zml: i32 = 0;
     var start_time: i128 = std.time.nanoTimestamp();
     for (0..iter) |_| {
         info_zml = try zml.linalg.lapack.posv(
@@ -750,11 +766,11 @@ fn lapackPerfTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("Zml potrf took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9 * iter)});
 
-    var info_lapacke: isize = 0;
+    var info_lapacke: i32 = 0;
     start_time = std.time.nanoTimestamp();
     for (0..iter) |_| {
-        info_lapacke = zml.scast(isize, ci.LAPACKE_dposv(
-            @intFromEnum(zml.linalg.Order.row_major),
+        info_lapacke = zml.scast(i32, ci.LAPACKE_dposv(
+            zml.Order.row_major.toCInt(),
             'L',
             zml.scast(c_int, n),
             zml.scast(c_int, nrhs),
@@ -763,8 +779,8 @@ fn lapackPerfTesting(a: std.mem.Allocator) !void {
             b_lapacke.ptr,
             zml.scast(c_int, ldb_row),
         ));
-        // info_lapacke = zml.scast(isize, ci.LAPACKE_dpotrf(
-        //     @intFromEnum(zml.linalg.Order.col_major),
+        // info_lapacke = zml.scast(i32, ci.LAPACKE_dpotrf(
+        //     @intFromEnum(zml.Order.col_major),
         //     'L',
         //     zml.scast(c_int, n),
         //     a_lapacke.ptr,
@@ -772,7 +788,7 @@ fn lapackPerfTesting(a: std.mem.Allocator) !void {
         // ));
 
         // _ = ci.LAPACKE_dpotrs(
-        //     @intFromEnum(zml.linalg.Order.col_major),
+        //     @intFromEnum(zml.Order.col_major),
         //     'L',
         //     zml.scast(c_int, n),
         //     zml.scast(c_int, nrhs),
@@ -842,8 +858,8 @@ fn blasPerfTesting(a: std.mem.Allocator) !void {
     }
 
     const start_time: i128 = std.time.nanoTimestamp();
-    for (0..1) |_| {
-        zml.linalg.blas.dgemm(.col_major, .no_trans, .no_trans, m, n, k, alpha, A.ptr, m, B.ptr, k, beta, C.ptr, m);
+    for (0..10) |_| {
+        zml.linalg.blas.gemm(.col_major, .no_trans, .no_trans, m, n, k, alpha, A.ptr, m, B.ptr, k, beta, C.ptr, m, .{}) catch unreachable;
     }
     const end_time: i128 = std.time.nanoTimestamp();
 
@@ -895,7 +911,7 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         for (0..A.shape[0]) |i| {
             std.debug.print("\t", .{});
             for (0..A.shape[1]) |j| {
-                std.debug.print("{!d:.2}  ", .{A.get(&[_]usize{ i, j })});
+                std.debug.print("{!d:.2}  ", .{A.get(&[_]u32{ i, j })});
             }
             std.debug.print("\n", .{});
         }
@@ -904,7 +920,7 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         for (0..At.shape[0]) |i| {
             std.debug.print("\t", .{});
             for (0..At.shape[1]) |j| {
-                std.debug.print("{!d:.2}  ", .{At.get(&[_]usize{ i, j })});
+                std.debug.print("{!d:.2}  ", .{At.get(&[_]u32{ i, j })});
             }
             std.debug.print("\n", .{});
         }
@@ -919,7 +935,7 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         for (0..B.shape[0]) |i| {
             std.debug.print("\t", .{});
             for (0..B.shape[1]) |j| {
-                std.debug.print("{!d:.2}  ", .{B.get(&[_]usize{ i, j })});
+                std.debug.print("{!d:.2}  ", .{B.get(&[_]u32{ i, j })});
             }
             std.debug.print("\n", .{});
         }
@@ -965,7 +981,7 @@ fn transposeTesting(a: std.mem.Allocator) !void {
         for (0..x.shape[1]) |j| {
             for (0..x.shape[2]) |k| {
                 for (0..x.shape[3]) |l| {
-                    try x.set(&[_]usize{ i, j, k, l }, @floatFromInt(i * 1000 + j * 100 + k * 10 + l));
+                    try x.set(&[_]u32{ i, j, k, l }, @floatFromInt(i * 1000 + j * 100 + k * 10 + l));
                 }
             }
         }
@@ -1251,7 +1267,7 @@ fn generalTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    const shapes: []const []const usize = &.{
+    const shapes: []const []const u32 = &.{
         &.{ 15, 3, 1 },
         &.{ 3, 1 },
         &.{ 1, 1, 5 },
@@ -1449,7 +1465,7 @@ fn addTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    const sum: f64 = zml.linalg.blas.dasum(zml.scast(isize, F.size), F.data.ptr, 1);
+    const sum: f64 = zml.linalg.blas.dasum(zml.scast(i32, F.size), F.data.ptr, 1);
     std.debug.print("Sum of F: {d}\n", .{sum});
 }
 
@@ -1504,7 +1520,7 @@ fn iterPerfTesting(a: std.mem.Allocator) !void {
     var iterBig: zml.array.Iterator(f64) = zml.array.Iterator(f64).init(&arrBig);
 
     //
-    const n: usize = 10;
+    const n: u32 = 10;
     var start_time = std.time.nanoTimestamp();
 
     var count: u128 = 0;
@@ -1559,16 +1575,16 @@ fn iterPerfTesting(a: std.mem.Allocator) !void {
 }
 
 fn multiIterTesting(a: std.mem.Allocator) !void {
-    var arr1: zml.Array(f64) = try zml.Array(f64).init(a, &[_]usize{ 4, 2, 1 }, .{ .order = .RowMajor });
+    var arr1: zml.Array(f64) = try zml.Array(f64).init(a, &[_]u32{ 4, 2, 1 }, .{ .order = .RowMajor });
     defer arr1.deinit();
-    var arr2: zml.Array(f64) = try zml.Array(f64).init(a, &[_]usize{ 2, 3 }, .{ .order = .ColumnMajor });
+    var arr2: zml.Array(f64) = try zml.Array(f64).init(a, &[_]u32{ 2, 3 }, .{ .order = .ColumnMajor });
     defer arr2.deinit();
 
     // Other arrays for broadcasting testing.
-    //var arr3: zml.Array(f64) = try zml.Array(f64).init(a, &[_]usize{ 2, 1, 1, 3 }, zml.array.Flags{ .RowMajorContiguous = true, .ColumnMajorContiguous = false });
-    var arr3: zml.Array(f64) = try zml.Array(f64).init(a, &[_]usize{ 2, 4, 2, 3 }, .{ .order = .RowMajor });
+    //var arr3: zml.Array(f64) = try zml.Array(f64).init(a, &[_]u32{ 2, 1, 1, 3 }, zml.array.Flags{ .RowMajorContiguous = true, .ColumnMajorContiguous = false });
+    var arr3: zml.Array(f64) = try zml.Array(f64).init(a, &[_]u32{ 2, 4, 2, 3 }, .{ .order = .RowMajor });
     defer arr3.deinit();
-    var scalar: zml.Array(f64) = try zml.Array(f64).init(a, &[_]usize{}, .{});
+    var scalar: zml.Array(f64) = try zml.Array(f64).init(a, &[_]u32{}, .{});
     defer scalar.deinit();
 
     var iter: zml.array.MultiIterator(f64) = try zml.array.MultiIterator(f64).init(&[_]zml.Array(f64){ arr1, arr2, arr3, scalar }, .{ .order = .ColumnMajor });

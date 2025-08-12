@@ -7,16 +7,16 @@ const constants = @import("../../constants.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn spr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ap: anytype,
     ctx: anytype,
 ) !void {
@@ -29,10 +29,10 @@ pub inline fn spr(
 
 fn k_spr(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ap: anytype,
     ctx: anytype,
 ) !void {
@@ -49,29 +49,29 @@ fn k_spr(
     if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
         return;
 
-    const kx: isize = if (incx < 0) (-n + 1) * incx else 0;
+    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
-        var kk: isize = 0;
+        var kk: i32 = 0;
         if (uplo == .upper) {
             if (incx == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                    if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                         const temp: C1 = ops.mul( // temp = alpha * x[j]
-                            x[scast(usize, j)],
+                            x[scast(u32, j)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
-                        var k: isize = kk;
-                        var i: isize = 0;
+                        var k: i32 = kk;
+                        var i: i32 = 0;
                         while (i < j) : (i += 1) {
                             ops.add_( // ap[k] += x[i] * temp
-                                &ap[scast(usize, k)],
-                                ap[scast(usize, k)],
+                                &ap[scast(u32, k)],
+                                ap[scast(u32, k)],
                                 ops.mul(
-                                    x[scast(usize, i)],
+                                    x[scast(u32, i)],
                                     temp,
                                     ctx,
                                 ) catch unreachable,
@@ -82,10 +82,10 @@ fn k_spr(
                         }
 
                         ops.add_( // ap[kk + j] += x[j] * temp
-                            &ap[scast(usize, kk + j)],
-                            ap[scast(usize, kk + j)],
+                            &ap[scast(u32, kk + j)],
+                            ap[scast(u32, kk + j)],
                             ops.mul(
-                                x[scast(usize, j)],
+                                x[scast(u32, j)],
                                 temp,
                                 ctx,
                             ) catch unreachable,
@@ -96,24 +96,24 @@ fn k_spr(
                     kk += j + 1;
                 }
             } else {
-                var jx: isize = kx;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                    if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                         const temp: C1 = ops.mul( // temp = alpha * x[jx]
-                            x[scast(usize, jx)],
+                            x[scast(u32, jx)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
-                        var ix: isize = kx;
-                        var k: isize = kk;
+                        var ix: i32 = kx;
+                        var k: i32 = kk;
                         while (k < kk + j) : (k += 1) {
                             ops.add_( // ap[k] += x[ix] * temp
-                                &ap[scast(usize, k)],
-                                ap[scast(usize, k)],
+                                &ap[scast(u32, k)],
+                                ap[scast(u32, k)],
                                 ops.mul(
-                                    x[scast(usize, ix)],
+                                    x[scast(u32, ix)],
                                     temp,
                                     ctx,
                                 ) catch unreachable,
@@ -124,10 +124,10 @@ fn k_spr(
                         }
 
                         ops.add_( // ap[kk + j] += x[jx] * temp
-                            &ap[scast(usize, kk + j)],
-                            ap[scast(usize, kk + j)],
+                            &ap[scast(u32, kk + j)],
+                            ap[scast(u32, kk + j)],
                             ops.mul(
-                                x[scast(usize, jx)],
+                                x[scast(u32, jx)],
                                 temp,
                                 ctx,
                             ) catch unreachable,
@@ -141,34 +141,34 @@ fn k_spr(
             }
         } else {
             if (incx == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                    if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                         const temp: C1 = ops.mul( // temp = alpha * x[j]
-                            x[scast(usize, j)],
+                            x[scast(u32, j)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
                         ops.add_( // ap[kk] += x[j] * temp
-                            &ap[scast(usize, kk)],
-                            ap[scast(usize, kk)],
+                            &ap[scast(u32, kk)],
+                            ap[scast(u32, kk)],
                             ops.mul(
-                                x[scast(usize, j)],
+                                x[scast(u32, j)],
                                 temp,
                                 ctx,
                             ) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
-                        var k: isize = kk + 1;
-                        var i: isize = j + 1;
+                        var k: i32 = kk + 1;
+                        var i: i32 = j + 1;
                         while (i < n) : (i += 1) {
                             ops.add_( // ap[k] += x[i] * temp
-                                &ap[scast(usize, k)],
-                                ap[scast(usize, k)],
+                                &ap[scast(u32, k)],
+                                ap[scast(u32, k)],
                                 ops.mul(
-                                    x[scast(usize, i)],
+                                    x[scast(u32, i)],
                                     temp,
                                     ctx,
                                 ) catch unreachable,
@@ -182,37 +182,37 @@ fn k_spr(
                     kk += n - j;
                 }
             } else {
-                var jx: isize = kx;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                    if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                         const temp: C1 = ops.mul( // temp = alpha * x[jx]
-                            x[scast(usize, jx)],
+                            x[scast(u32, jx)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
                         ops.add_( // ap[kk] += x[jx] * temp
-                            &ap[scast(usize, kk)],
-                            ap[scast(usize, kk)],
+                            &ap[scast(u32, kk)],
+                            ap[scast(u32, kk)],
                             ops.mul(
-                                x[scast(usize, jx)],
+                                x[scast(u32, jx)],
                                 temp,
                                 ctx,
                             ) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
-                        var ix: isize = jx;
-                        var k: isize = kk + 1;
+                        var ix: i32 = jx;
+                        var k: i32 = kk + 1;
                         while (k < kk + n - j) : (k += 1) {
                             ix += incx;
 
                             ops.add_( // ap[k] += x[ix] * temp
-                                &ap[scast(usize, k)],
-                                ap[scast(usize, k)],
+                                &ap[scast(u32, k)],
+                                ap[scast(u32, k)],
                                 ops.mul(
-                                    x[scast(usize, ix)],
+                                    x[scast(u32, ix)],
                                     temp,
                                     ctx,
                                 ) catch unreachable,

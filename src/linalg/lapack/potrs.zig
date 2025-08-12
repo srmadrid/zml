@@ -9,18 +9,18 @@ const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn potrs(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -32,12 +32,12 @@ pub inline fn potrs(
 
 fn k_potrs_c(
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     const A: type = types.Child(@TypeOf(a));
@@ -135,12 +135,12 @@ fn k_potrs_c(
 
 fn k_potrs_r(
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     const A: type = types.Child(@TypeOf(a));

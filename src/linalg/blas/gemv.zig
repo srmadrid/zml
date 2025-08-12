@@ -8,22 +8,22 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 const Transpose = linalg.Transpose;
 
 pub inline fn gemv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -61,16 +61,16 @@ pub inline fn gemv(
 
 fn k_gemv(
     transa: Transpose,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -94,8 +94,8 @@ fn k_gemv(
 
     // Set lenx and leny, the lengths of the vectors x and y, and set up the
     // start points in x and y.
-    var lenx: isize = 0;
-    var leny: isize = 0;
+    var lenx: i32 = 0;
+    var leny: i32 = 0;
     if (transa == .no_trans or transa == .conj_no_trans) {
         lenx = n;
         leny = m;
@@ -104,15 +104,15 @@ fn k_gemv(
         leny = n;
     }
 
-    const kx: isize = if (incx < 0) (-lenx + 1) * incx else 0;
-    const ky: isize = if (incy < 0) (-leny + 1) * incy else 0;
+    const kx: i32 = if (incx < 0) (-lenx + 1) * incx else 0;
+    const ky: i32 = if (incy < 0) (-leny + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         // First form  y = beta * y.
         if (ops.ne(beta, 1, ctx) catch unreachable) {
             if (incy == 1) {
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(usize, leny)) |i| {
+                    for (0..scast(u32, leny)) |i| {
                         ops.set( // y[i] = 0
                             &y[i],
                             0,
@@ -120,7 +120,7 @@ fn k_gemv(
                         ) catch unreachable;
                     }
                 } else {
-                    for (0..scast(usize, leny)) |i| {
+                    for (0..scast(u32, leny)) |i| {
                         ops.mul_( // y[i] *= beta
                             &y[i],
                             y[i],
@@ -130,11 +130,11 @@ fn k_gemv(
                     }
                 }
             } else {
-                var iy: isize = ky;
+                var iy: i32 = ky;
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(usize, leny)) |_| {
+                    for (0..scast(u32, leny)) |_| {
                         ops.set( // y[iy] = 0
-                            &y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
                             0,
                             ctx,
                         ) catch unreachable;
@@ -142,10 +142,10 @@ fn k_gemv(
                         iy += incy;
                     }
                 } else {
-                    for (0..scast(usize, leny)) |_| {
+                    for (0..scast(u32, leny)) |_| {
                         ops.mul_( // y[iy] *= beta
-                            &y[scast(usize, iy)],
-                            y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
+                            y[scast(u32, iy)],
                             beta,
                             ctx,
                         ) catch unreachable;
@@ -160,39 +160,39 @@ fn k_gemv(
 
         if (transa == .no_trans or transa == .conj_no_trans) {
             // Form  y = alpha * A * x + y  or  y = alpha * conj(A) * x + y.
-            var jx: isize = kx;
+            var jx: i32 = kx;
             if (incy == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp: C1 = ops.mul( // temp = alpha * x[jx]
                         alpha,
-                        x[scast(usize, jx)],
+                        x[scast(u32, jx)],
                         ctx,
                     ) catch unreachable;
 
                     if (noconj) {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // y[i] += temp * a[i + j * lda]
-                                &y[scast(usize, i)],
-                                y[scast(usize, i)],
+                                &y[scast(u32, i)],
+                                y[scast(u32, i)],
                                 ops.mul(
                                     temp,
-                                    a[scast(usize, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
                     } else {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // y[i] += temp * conj(a[i + j * lda])
-                                &y[scast(usize, i)],
-                                y[scast(usize, i)],
+                                &y[scast(u32, i)],
+                                y[scast(u32, i)],
                                 ops.mul(
                                     temp,
-                                    ops.conjugate(a[scast(usize, i + j * lda)], ctx) catch unreachable,
+                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -201,24 +201,24 @@ fn k_gemv(
                     }
                 }
             } else {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp: C1 = ops.mul( // temp = alpha * x[jx]
                         alpha,
-                        x[scast(usize, jx)],
+                        x[scast(u32, jx)],
                         ctx,
                     ) catch unreachable;
 
                     if (noconj) {
-                        var iy: isize = ky;
-                        var i: isize = 0;
+                        var iy: i32 = ky;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // y[iy] += temp * a[i + j * lda]
-                                &y[scast(usize, iy)],
-                                y[scast(usize, iy)],
+                                &y[scast(u32, iy)],
+                                y[scast(u32, iy)],
                                 ops.mul(
                                     temp,
-                                    a[scast(usize, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -227,15 +227,15 @@ fn k_gemv(
                             iy += incy;
                         }
                     } else {
-                        var iy: isize = ky;
-                        var i: isize = 0;
+                        var iy: i32 = ky;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // y[iy] += temp * conj(a[i + j * lda])
-                                &y[scast(usize, iy)],
-                                y[scast(usize, iy)],
+                                &y[scast(u32, iy)],
+                                y[scast(u32, iy)],
                                 ops.mul(
                                     temp,
-                                    ops.conjugate(a[scast(usize, i + j * lda)], ctx) catch unreachable,
+                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -250,34 +250,34 @@ fn k_gemv(
             }
         } else {
             // Form  y = alpha * A^T * x + y  or  y = alpha * A^H * x + y.
-            var jy: isize = ky;
+            var jy: i32 = ky;
             if (incx == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     var temp: C2 = constants.zero(C2, ctx) catch unreachable;
                     if (noconj) {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // temp += a[i + j * lda] * x[i]
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    a[scast(usize, i + j * lda)],
-                                    x[scast(usize, i)],
+                                    a[scast(u32, i + j * lda)],
+                                    x[scast(u32, i)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
                     } else {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // temp += conj(a[i + j * lda]) * x[i]
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(usize, i + j * lda)], ctx) catch unreachable,
-                                    x[scast(usize, i)],
+                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    x[scast(u32, i)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -286,8 +286,8 @@ fn k_gemv(
                     }
 
                     ops.add_( // y[jy] += alpha * temp
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.mul(
                             alpha,
                             temp,
@@ -299,20 +299,20 @@ fn k_gemv(
                     jy += incy;
                 }
             } else {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     var temp: C2 = constants.zero(C2, ctx) catch unreachable;
 
                     if (noconj) {
-                        var ix: isize = kx;
-                        var i: isize = 0;
+                        var ix: i32 = kx;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // temp += a[i + j * lda] * x[ix]
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    a[scast(usize, i + j * lda)],
-                                    x[scast(usize, ix)],
+                                    a[scast(u32, i + j * lda)],
+                                    x[scast(u32, ix)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -321,15 +321,15 @@ fn k_gemv(
                             ix += incx;
                         }
                     } else {
-                        var ix: isize = kx;
-                        var i: isize = 0;
+                        var ix: i32 = kx;
+                        var i: i32 = 0;
                         while (i < m) : (i += 1) {
                             ops.add_( // temp += conj(a[i + j * lda]) * x[ix]
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(usize, i + j * lda)], ctx) catch unreachable,
-                                    x[scast(usize, ix)],
+                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    x[scast(u32, ix)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -340,8 +340,8 @@ fn k_gemv(
                     }
 
                     ops.add_( // y[jy] += alpha * temp
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.mul(
                             alpha,
                             temp,

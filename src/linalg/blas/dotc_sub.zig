@@ -8,11 +8,11 @@ const float = @import("../../float.zig");
 const blas = @import("../blas.zig");
 
 pub fn dotc_sub(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ret: anytype,
     ctx: anytype,
 ) !void {
@@ -25,21 +25,21 @@ pub fn dotc_sub(
 
     if (n <= 0) return blas.Error.InvalidArgument;
 
-    var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-    var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+    var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
     if (comptime types.isArbitraryPrecision(R)) {
         if (comptime types.isArbitraryPrecision(C)) {
             // Orientative implementation for arbitrary precision types
             var temp: C = try ops.init(C, ctx);
             defer ops.deinit(temp, ctx);
-            for (0..scast(usize, n)) |_| {
+            for (0..scast(u32, n)) |_| {
                 try ops.mul_(
                     &temp,
                     ops.conjugate(
-                        x[scast(usize, ix)],
+                        x[scast(u32, ix)],
                         types.mixStructs(ctx, .{ .copy = false }),
                     ) catch unreachable,
-                    y[scast(usize, iy)],
+                    y[scast(u32, iy)],
                     ctx,
                 );
 
@@ -60,13 +60,13 @@ pub fn dotc_sub(
         if (comptime types.isArbitraryPrecision(C)) {
             @compileError("zml.linalg.blas.dotc_sub not implemented for arbitrary precision types yet");
         } else {
-            for (0..scast(usize, n)) |_| {
+            for (0..scast(u32, n)) |_| {
                 ops.add_( // ret += conj(x[ix]) * y[iy]
                     ret,
                     ret.*,
                     ops.mul(
-                        ops.conjugate(x[scast(usize, ix)], ctx) catch unreachable,
-                        y[scast(usize, iy)],
+                        ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                        y[scast(u32, iy)],
                         ctx,
                     ) catch unreachable,
                     ctx,

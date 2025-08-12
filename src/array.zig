@@ -3,10 +3,7 @@ const std = @import("std");
 const opts = @import("options");
 
 const types = @import("types.zig");
-const scast = types.scast;
-const cast = types.cast;
-const validateContext = types.validateContext;
-const getFieldOrDefault = types.getFieldOrDefault;
+const Order = types.Order;
 
 const ops = @import("ops.zig");
 
@@ -187,33 +184,33 @@ pub fn broadcastShapes(
     }
 
     var result: [max_dimensions]u32 = .{0} ** max_dimensions;
-    var i: i32 = scast(i32, ndim - 1);
+    var i: i32 = types.scast(i32, ndim - 1);
     while (i >= 0) : (i -= 1) {
         var max_dim: u32 = 1;
         for (shapes) |shape| {
-            const diff: i32 = scast(i32, ndim - shape.len);
+            const diff: i32 = types.scast(i32, ndim - shape.len);
             if (i - diff >= 0) {
-                if (shape[scast(u32, i - diff)] == 0) {
+                if (shape[types.scast(u32, i - diff)] == 0) {
                     return Error.ZeroDimension;
                 }
 
-                if (shape[scast(u32, i - diff)] > max_dim) {
+                if (shape[types.scast(u32, i - diff)] > max_dim) {
                     if (max_dim != 1) {
                         return Error.NotBroadcastable;
                     }
 
-                    max_dim = shape[scast(u32, i - diff)];
+                    max_dim = shape[types.scast(u32, i - diff)];
                 }
 
-                if (shape[scast(u32, i - diff)] != 1 and
-                    shape[scast(u32, i - diff)] != max_dim)
+                if (shape[types.scast(u32, i - diff)] != 1 and
+                    shape[types.scast(u32, i - diff)] != max_dim)
                 {
                     return Error.NotBroadcastable;
                 }
             }
         }
 
-        result[scast(u32, i)] = max_dim;
+        result[types.scast(u32, i)] = max_dim;
     }
 
     return .{
@@ -320,10 +317,10 @@ pub const Range = struct {
         }
 
         if (self.step > 0) {
-            return (self.stop - self.start + scast(u32, self.step) - 1) / scast(u32, self.step);
+            return (self.stop - self.start + types.scast(u32, self.step) - 1) / types.scast(u32, self.step);
         }
 
-        return (self.start - self.stop + scast(u32, int.abs(self.step)) - 1) / scast(u32, int.abs(self.step));
+        return (self.start - self.stop + types.scast(u32, int.abs(self.step)) - 1) / types.scast(u32, int.abs(self.step));
     }
 };
 
@@ -351,38 +348,3 @@ pub const Flags = packed struct {
     order: Order = .col_major,
     owns_data: bool = true,
 };
-
-pub const Order = enum(u1) {
-    row_major,
-    col_major,
-
-    pub fn toIterationOrder(self: Order) IterationOrder {
-        return switch (self) {
-            .row_major => .right_to_left,
-            .col_major => .left_to_right,
-        };
-    }
-
-    pub fn resolve2(self: Order, other: Order) Order {
-        if (self == other) {
-            return self;
-        }
-
-        return .col_major; // default order
-    }
-
-    pub fn resolve3(self: Order, other1: Order, other2: Order) Order {
-        if (self == other1 and self == other2)
-            return self;
-
-        if (self == other1 or self == other2)
-            return self;
-
-        if (other1 == other2)
-            return other1;
-
-        return .col_major; // default order
-    }
-};
-
-pub const Kind = dense.Kind;

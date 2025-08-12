@@ -1,9 +1,5 @@
 const std = @import("std");
 
-const Dense = @import("array.zig").Dense;
-const Strided = @import("array.zig").Strided;
-const Sparse = @import("array.zig").Sparse;
-
 pub const default_uint = usize;
 pub const default_int = isize;
 pub const default_float = f64;
@@ -24,6 +20,122 @@ const Real = real.Real;
 const complex = @import("complex.zig");
 const Complex = complex.Complex;
 //pub const Expression = @import("../expression/expression.zig").Expression;
+
+const matrix = @import("matrix.zig");
+const array = @import("array.zig");
+
+pub const Order = enum(u1) {
+    row_major,
+    col_major,
+
+    pub inline fn toCUInt(self: Order) c_uint {
+        return switch (self) {
+            .row_major => 101,
+            .col_major => 102,
+        };
+    }
+
+    pub inline fn toCInt(self: Order) c_int {
+        return switch (self) {
+            .row_major => 101,
+            .col_major => 102,
+        };
+    }
+
+    pub inline fn invert(self: Order) Order {
+        return switch (self) {
+            .row_major => .col_major,
+            .col_major => .row_major,
+        };
+    }
+
+    pub fn resolve2(self: Order, other: Order) Order {
+        if (self == other) {
+            return self;
+        }
+
+        return .col_major; // default order
+    }
+
+    pub fn resolve3(self: Order, other1: Order, other2: Order) Order {
+        if (self == other1 and self == other2)
+            return self;
+
+        if (self == other1 or self == other2)
+            return self;
+
+        if (other1 == other2)
+            return other1;
+
+        return .col_major; // default order
+    }
+};
+
+pub const Uplo = enum(u1) {
+    upper,
+    lower,
+
+    pub inline fn toCUInt(self: Uplo) c_uint {
+        return switch (self) {
+            .upper => 121,
+            .lower => 122,
+        };
+    }
+
+    pub inline fn toCInt(self: Uplo) c_int {
+        return switch (self) {
+            .upper => 121,
+            .lower => 122,
+        };
+    }
+
+    pub inline fn toChar(self: Uplo) u8 {
+        return switch (self) {
+            .upper => 'U',
+            .lower => 'L',
+        };
+    }
+
+    pub inline fn invert(self: Uplo) Uplo {
+        return switch (self) {
+            .upper => .lower,
+            .lower => .upper,
+        };
+    }
+};
+
+pub const Diag = enum(u1) {
+    non_unit,
+    unit,
+
+    pub inline fn toCUInt(self: Diag) c_uint {
+        return switch (self) {
+            .non_unit => 131,
+            .unit => 132,
+        };
+    }
+
+    pub inline fn toCInt(self: Diag) c_int {
+        return switch (self) {
+            .non_unit => 131,
+            .unit => 132,
+        };
+    }
+
+    pub inline fn toChar(self: Diag) u8 {
+        return switch (self) {
+            .non_unit => 'N',
+            .unit => 'U',
+        };
+    }
+
+    pub inline fn invert(self: Diag) Diag {
+        return switch (self) {
+            .non_unit => .unit,
+            .unit => .non_unit,
+        };
+    }
+};
 
 /// `NumericType` is an enum that represents the different numeric types
 /// supported by the library. It is used to categorize types based on their
@@ -68,10 +180,49 @@ pub const NumericType = enum {
     expression,
 };
 
-pub const Order = enum {
-    lt,
-    eq,
-    gt,
+const supported_numeric_types: [34]type = .{
+    bool,              u8,
+    u16,               u32,
+    u64,               u128,
+    usize,             c_uint,
+    i8,                i16,
+    i32,               i64,
+    i128,              isize,
+    c_int,             comptime_int,
+    f16,               f32,
+    f64,               f80,
+    f128,              comptime_float,
+    cf16,              cf32,
+    cf64,              cf80,
+    cf128,             comptime_complex,
+    Integer,           Rational,
+    Real,              Complex(Integer),
+    Complex(Rational), Complex(Real),
+};
+
+pub const MatrixType = enum {
+    general,
+    symmetric,
+    hermitian,
+    triangular,
+    diagonal,
+    banded,
+    tridiagonal,
+    sparse,
+    numeric, // Fallback for numeric types that are not matrices
+};
+
+pub const ArrayType = enum {
+    dense,
+    strided,
+    sparse,
+    numeric, // Fallback for numeric types that are not arrays
+};
+
+pub const Domain = enum {
+    numeric,
+    matrix,
+    array,
 };
 
 pub const useless_allocator: std.mem.Allocator = .{
@@ -205,6 +356,58 @@ pub fn isNumeric(comptime T: type) bool {
     }
 }
 
+pub inline fn matrixType(comptime T: type) MatrixType {
+    @setEvalBranchQuota(10000);
+
+    if (isGeneralMatrix(T)) {
+        return .general;
+    } else if (isSymmetricMatrix(T)) {
+        return .symmetric;
+    } else if (isHermitianMatrix(T)) {
+        return .hermitian;
+    } else if (isTriangularMatrix(T)) {
+        return .triangular;
+    } else if (isDiagonalMatrix(T)) {
+        return .diagonal;
+    } else if (isBandedMatrix(T)) {
+        return .banded;
+    } else if (isTridiagonalMatrix(T)) {
+        return .tridiagonal;
+    } else if (isSparseMatrix(T)) {
+        return .sparse;
+    }
+
+    return .numeric; // Fallback for numeric types that are not matrices
+}
+
+pub inline fn arrayType(comptime T: type) ArrayType {
+    @setEvalBranchQuota(10000);
+
+    if (isDenseArray(T)) {
+        return .dense;
+    } else if (isStridedArray(T)) {
+        return .strided;
+    } else if (isSparseArray(T)) {
+        return .sparse;
+    }
+
+    return .numeric; // Fallback for numeric types that are not arrays
+}
+
+pub inline fn domainType(comptime T: type) Domain {
+    @setEvalBranchQuota(10000);
+
+    if (isNumeric(T)) {
+        return .numeric;
+    } else if (isMatrix(T)) {
+        return .matrix;
+    } else if (isArray(T)) {
+        return .array;
+    }
+
+    @compileError("Unsupported type for domainType: " ++ @typeName(T));
+}
+
 /// Checks if the input type is a one-item pointer.
 ///
 /// Parameters
@@ -291,8 +494,259 @@ pub fn isSlice(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a matrix, i.e., an instance of a
+/// `matrix.General`, `matrix.Symmetric`, `matrix.Hermitian`,
+/// `matrix.Triangular`, `matrix.Diagonal`, `matrix.Banded`,
+/// `matrix.Tridiagonal`, or `matrix.Sparse` matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a matrix, `false` otherwise.
+pub fn isMatrix(comptime T: type) bool {
+    @setEvalBranchQuota(10000);
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                const matrix_types: [8]type = .{
+                    matrix.General(numeric_type),
+                    matrix.Symmetric(numeric_type),
+                    matrix.Hermitian(numeric_type),
+                    matrix.Triangular(numeric_type),
+                    matrix.Diagonal(numeric_type),
+                    matrix.Banded(numeric_type),
+                    matrix.Tridiagonal(numeric_type),
+                    matrix.Sparse(numeric_type),
+                };
+
+                inline for (matrix_types) |matrix_type| {
+                    if (T == matrix_type) return true;
+                }
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.General`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.General`, `false` otherwise.
+pub fn isGeneralMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.General(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.Symmetric`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Symmetric`, `false` otherwise.
+pub fn isSymmetricMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Symmetric(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.Hermitian`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Hermitian`, `false` otherwise.
+pub fn isHermitianMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Hermitian(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.Triangular`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Triangular`, `false` otherwise.
+pub fn isTriangularMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Triangular(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.Diagonal`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Diagonal`, `false` otherwise.
+pub fn isDiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Diagonal(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.Banded`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Banded`, `false` otherwise.
+pub fn isBandedMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Banded(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.Tridiagonal`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Tridiagonal`, `false` otherwise.
+pub fn isTridiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Tridiagonal(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.Sparse`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Sparse`, `false` otherwise.
+pub fn isSparseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Sparse(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of an array, i.e., an instance of a
-/// `Dense`, `Strided`, or `Sparse` array.
+/// `array.Dense`, `array.Strided`, or `array.Sparse` array.
 ///
 /// Parameters
 /// ----------
@@ -302,59 +756,32 @@ pub fn isSlice(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is an array, `false` otherwise.
 pub fn isArray(comptime T: type) bool {
+    @setEvalBranchQuota(10000);
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
             if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
                 return false;
             }
 
-            if (!@hasDecl(T, "empty")) return false;
+            inline for (supported_numeric_types) |numeric_type| {
+                const array_types: [3]type = .{
+                    array.Dense(numeric_type),
+                    array.Strided(numeric_type),
+                    array.Sparse(numeric_type),
+                };
 
-            const array_types: []type = &.{ Dense(f64), Strided(f64), Sparse(f64) };
-            inline for (array_types) |array_type| {
-                const ninfo = @typeInfo(array_type).@"struct";
-                const t: T = .empty;
-                const n: array_type = .empty;
-
-                if (tinfo.fields.len != ninfo.fields.len) return false;
-                if (tinfo.decls.len != ninfo.decls.len) return false;
-
-                inline for (tinfo.fields, ninfo.fields) |field_tinfo, field_ninfo| {
-                    comptime if (std.mem.eql(u8, field_ninfo.name, "data")) {
-                        if (!std.mem.eql(u8, field_tinfo.name, "data")) return false;
-
-                        switch (@typeInfo(@TypeOf(@field(t, "data")))) {
-                            .pointer => |p| {
-                                if (p.size != .slice) return false;
-                            },
-                            else => return false,
-                        }
-                    } else if (std.mem.eql(u8, field_ninfo.name, "base")) {
-                        if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
-
-                        switch (@typeInfo(@TypeOf(@field(t, "base")))) {
-                            .optional => continue, // Checking if child type is an Array would lead to infinite recursion
-                            else => return false,
-                        }
-                    } else {
-                        if (!std.meta.eql(@field(t, field_tinfo.name), @field(n, field_ninfo.name))) return false;
-                    };
+                inline for (array_types) |array_type| {
+                    if (T == array_type) return true;
                 }
-
-                inline for (tinfo.decls, ninfo.decls) |decl_tinfo, decl_ninfo| {
-                    if (!std.meta.eql(decl_tinfo, decl_ninfo)) return false;
-                }
-
-                if (tinfo.is_tuple != ninfo.is_tuple) return false;
             }
 
-            return true;
+            return false;
         },
         else => return false,
     }
 }
 
-/// Checks if the input type is an instance of a `Dense`.
+/// Checks if the input type is an instance of a `array.Dense`.
 ///
 /// Parameters
 /// ----------
@@ -362,58 +789,25 @@ pub fn isArray(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `Dense`, `false` otherwise.
-pub fn isDense(comptime T: type) bool {
+/// `bool`: `true` if the type is a `array.Dense`, `false` otherwise.
+pub fn isDenseArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
             if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
                 return false;
             }
 
-            if (!@hasDecl(T, "empty")) return false;
-
-            const ninfo = @typeInfo(Dense(f64)).@"struct";
-            const t: T = .empty;
-            const n: Dense(f64) = .empty;
-
-            if (tinfo.fields.len != ninfo.fields.len) return false;
-            if (tinfo.decls.len != ninfo.decls.len) return false;
-
-            inline for (tinfo.fields, ninfo.fields) |field_tinfo, field_ninfo| {
-                comptime if (std.mem.eql(u8, field_ninfo.name, "data")) {
-                    if (!std.mem.eql(u8, field_tinfo.name, "data")) return false;
-
-                    switch (@typeInfo(@TypeOf(@field(t, "data")))) {
-                        .pointer => |p| {
-                            if (p.size != .slice) return false;
-                        },
-                        else => return false,
-                    }
-                } else if (std.mem.eql(u8, field_ninfo.name, "base")) {
-                    if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
-
-                    switch (@typeInfo(@TypeOf(@field(t, "base")))) {
-                        .optional => continue, // Checking if child type is an Array would lead to infinite recursion
-                        else => return false,
-                    }
-                } else {
-                    if (!std.meta.eql(@field(t, field_tinfo.name), @field(n, field_ninfo.name))) return false;
-                };
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == array.Dense(numeric_type)) return true;
             }
 
-            inline for (tinfo.decls, ninfo.decls) |decl_tinfo, decl_ninfo| {
-                if (!std.meta.eql(decl_tinfo, decl_ninfo)) return false;
-            }
-
-            if (tinfo.is_tuple != ninfo.is_tuple) return false;
-
-            return true;
+            return false;
         },
         else => return false,
     }
 }
 
-/// Checks if the input type is an instance of a `Strided`.
+/// Checks if the input type is an instance of a `array.Strided`.
 ///
 /// Parameters
 /// ----------
@@ -421,58 +815,25 @@ pub fn isDense(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `Strided`, `false` otherwise.
-pub fn isStrided(comptime T: type) bool {
+/// `bool`: `true` if the type is a `array.Strided`, `false` otherwise.
+pub fn isStridedArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
             if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
                 return false;
             }
 
-            if (!@hasDecl(T, "empty")) return false;
-
-            const ninfo = @typeInfo(Strided(f64)).@"struct";
-            const t: T = .empty;
-            const n: Strided(f64) = .empty;
-
-            if (tinfo.fields.len != ninfo.fields.len) return false;
-            if (tinfo.decls.len != ninfo.decls.len) return false;
-
-            inline for (tinfo.fields, ninfo.fields) |field_tinfo, field_ninfo| {
-                comptime if (std.mem.eql(u8, field_ninfo.name, "data")) {
-                    if (!std.mem.eql(u8, field_tinfo.name, "data")) return false;
-
-                    switch (@typeInfo(@TypeOf(@field(t, "data")))) {
-                        .pointer => |p| {
-                            if (p.size != .slice) return false;
-                        },
-                        else => return false,
-                    }
-                } else if (std.mem.eql(u8, field_ninfo.name, "base")) {
-                    if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
-
-                    switch (@typeInfo(@TypeOf(@field(t, "base")))) {
-                        .optional => continue, // Checking if child type is an Array would lead to infinite recursion
-                        else => return false,
-                    }
-                } else {
-                    if (!std.meta.eql(@field(t, field_tinfo.name), @field(n, field_ninfo.name))) return false;
-                };
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == array.Strided(numeric_type)) return true;
             }
 
-            inline for (tinfo.decls, ninfo.decls) |decl_tinfo, decl_ninfo| {
-                if (!std.meta.eql(decl_tinfo, decl_ninfo)) return false;
-            }
-
-            if (tinfo.is_tuple != ninfo.is_tuple) return false;
-
-            return true;
+            return false;
         },
         else => return false,
     }
 }
 
-/// Checks if the input type is an instance of a `Sparse`.
+/// Checks if the input type is an instance of a `array.Sparse`.
 ///
 /// Parameters
 /// ----------
@@ -480,52 +841,19 @@ pub fn isStrided(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `Sparse`, `false` otherwise.
-pub fn isSparse(comptime T: type) bool {
+/// `bool`: `true` if the type is a `array.Sparse`, `false` otherwise.
+pub fn isSparseArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
             if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
                 return false;
             }
 
-            if (!@hasDecl(T, "empty")) return false;
-
-            const ninfo = @typeInfo(Sparse(f64)).@"struct";
-            const t: T = .empty;
-            const n: Sparse(f64) = .empty;
-
-            if (tinfo.fields.len != ninfo.fields.len) return false;
-            if (tinfo.decls.len != ninfo.decls.len) return false;
-
-            inline for (tinfo.fields, ninfo.fields) |field_tinfo, field_ninfo| {
-                comptime if (std.mem.eql(u8, field_ninfo.name, "data")) {
-                    if (!std.mem.eql(u8, field_tinfo.name, "data")) return false;
-
-                    switch (@typeInfo(@TypeOf(@field(t, "data")))) {
-                        .pointer => |p| {
-                            if (p.size != .slice) return false;
-                        },
-                        else => return false,
-                    }
-                } else if (std.mem.eql(u8, field_ninfo.name, "base")) {
-                    if (!std.mem.eql(u8, field_tinfo.name, "base")) return false;
-
-                    switch (@typeInfo(@TypeOf(@field(t, "base")))) {
-                        .optional => continue, // Checking if child type is an Array would lead to infinite recursion
-                        else => return false,
-                    }
-                } else {
-                    if (!std.meta.eql(@field(t, field_tinfo.name), @field(n, field_ninfo.name))) return false;
-                };
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == array.Sparse(numeric_type)) return true;
             }
 
-            inline for (tinfo.decls, ninfo.decls) |decl_tinfo, decl_ninfo| {
-                if (!std.meta.eql(decl_tinfo, decl_ninfo)) return false;
-            }
-
-            if (tinfo.is_tuple != ninfo.is_tuple) return false;
-
-            return true;
+            return false;
         },
         else => return false,
     }
@@ -659,46 +987,131 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
         return X;
     }
 
-    comptime if (isDense(X)) {
-        if (isDense(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isStrided(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isSparse(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else {
-            return Dense(Coerce(Numeric(X), Y));
-        }
-    } else if (isStrided(X)) {
-        if (isDense(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isStrided(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isSparse(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else {
-            return Dense(Coerce(Numeric(X), Y));
-        }
-    } else if (isSparse(X)) {
-        if (isDense(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isStrided(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isSparse(Y)) {
-            return Sparse(Coerce(Numeric(X), Numeric(Y)));
-        } else {
-            return Sparse(Coerce(Numeric(X), Y));
-        }
-    } else {
-        if (isDense(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isStrided(Y)) {
-            return Dense(Coerce(Numeric(X), Numeric(Y)));
-        } else if (isSparse(Y)) {
-            return Sparse(Coerce(Numeric(X), Numeric(Y)));
-        } else {
-            // Two scalar types
-        }
+    comptime switch (domainType(X)) {
+        .numeric => switch (domainType(Y)) {
+            .numeric => {},
+            .matrix => switch (matrixType(Y)) {
+                .general => return matrix.General(Coerce(X, Numeric(Y))), // numeric + general
+                .symmetric => return matrix.Symmetric(Coerce(X, Numeric(Y))), // numeric + symmetric
+                .hermitian => {
+                    if (isComplex(X)) {
+                        return matrix.General(Coerce(X, Numeric(Y))); // numeric (complex) + hermitian
+                    } else {
+                        return matrix.Hermitian(Coerce(X, Numeric(Y))); // numeric (real) + hermitian
+                    }
+                },
+                else => return matrix.General(Coerce(X, Numeric(Y))), // numeric + rest of matrices
+                .numeric => unreachable,
+            },
+            .array => switch (arrayType(Y)) {
+                .dense => return array.Dense(Coerce(X, Numeric(Y))), // numeric + dense
+                .strided => return array.Dense(Coerce(X, Numeric(Y))), // numeric + strided
+                .sparse => return array.Sparse(Coerce(X, Numeric(Y))), // numeric + sparse
+                .numeric => unreachable,
+            },
+        },
+        .matrix => {
+            switch (matrixType(X)) {
+                .general => switch (domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // general + numeric
+                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // general + matrix
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // general + array
+                },
+                .symmetric => switch (domainType(Y)) {
+                    .numeric => return matrix.Symmetric(Coerce(Numeric(X), Y)), // symmetric + numeric
+                    .matrix => switch (matrixType(Y)) {
+                        .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y))), // symmetric + symmetric
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // symmetric + rest of matrices
+                    },
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // symmetric + array
+                },
+                .hermitian => switch (domainType(Y)) {
+                    .numeric => {
+                        if (isComplex(X)) {
+                            return matrix.General(Coerce(Numeric(X), Y)); // hermitian + numeric (complex)
+                        } else {
+                            return matrix.Hermitian(Coerce(Numeric(X), Y)); // hermitian + numeric (real)
+                        }
+                    },
+                    .matrix => switch (matrixType(Y)) {
+                        .hermitian => return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y))), // hermitian + hermitian
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // hermitian + rest of matrices
+                    },
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // hermitian + array
+                },
+                .triangular => switch (domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // triangular + numeric
+                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // triangular + matrix
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // triangular + array
+                },
+                .diagonal => switch (domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // diagonal + numeric
+                    .matrix => switch (matrixType(Y)) {
+                        .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // diagonal + banded
+                        .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + tridiagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // diagonal + rest of matrices
+                    },
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // diagonal + array
+                },
+                .banded => switch (domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // banded + numeric
+                    .matrix => switch (matrixType(Y)) {
+                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // banded + diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // banded + banded
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // banded + rest of matrices
+                    },
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // banded + array
+                },
+                .tridiagonal => switch (domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // tridiagonal + numeric
+                    .matrix => switch (matrixType(Y)) {
+                        .diagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + banded
+                        .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + tridiagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + rest of matrices
+                    },
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + array
+                },
+                .sparse => switch (domainType(Y)) {
+                    .numeric => return matrix.Sparse(Coerce(Numeric(X), Y)), // sparse + numeric
+                    .matrix => switch (matrixType(Y)) {
+                        .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse + sparse
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // sparse + rest of matrices
+                    },
+                    .array => switch (arrayType(Y)) {
+                        .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse (matrix) + sparse (array)
+                        else => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse (matrix) + rest of arrays
+                        .numeric => unreachable,
+                    },
+                },
+                .numeric => unreachable,
+            }
+        },
+        .array => {
+            switch (arrayType(X)) {
+                .dense => switch (domainType(Y)) {
+                    .numeric => return array.Dense(Coerce(Numeric(X), Y)), // dense + numeric
+                    .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // dense + matrix
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // dense + array
+                },
+                .strided => switch (domainType(Y)) {
+                    .numeric => return array.Dense(Coerce(Numeric(X), Y)), // strided + numeric
+                    .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // strided + matrix
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // strided + array
+                },
+                .sparse => switch (domainType(Y)) {
+                    .numeric => return array.Sparse(Coerce(Numeric(X), Y)), // sparse + numeric
+                    .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse + matrix
+                    .array => switch (arrayType(Y)) {
+                        .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse + sparse
+                        else => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse + rest of arrays
+                        .numeric => unreachable,
+                    },
+                },
+                .numeric => unreachable,
+            }
+        },
     };
 
     // Else two numeric types
@@ -933,46 +1346,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
 ///
 /// Unused right now, kept for possible future use.
 pub fn canCoerce(comptime K: type, comptime V: type) bool {
-    comptime if (isDense(K)) {
-        if (isDense(V)) {
-            return canCoerce(Numeric(K), Numeric(V));
-        } else if (isStrided(V)) {
-            return false; // Dense cannot be coerced to Strided
-        } else if (isSparse(V)) {
-            return false; // Dense cannot be coerced to Sparse
-        } else {
-            return false; // Dense cannot be coerced to a scalar
-        }
-    } else if (isStrided(K)) {
-        if (isDense(V)) {
-            return canCoerce(Numeric(K), Numeric(V));
-        } else if (isStrided(V)) {
-            return false; // Strided cannot be coerced to Strided
-        } else if (isSparse(V)) {
-            return false; // Strided cannot be coerced to Sparse
-        } else {
-            return false; // Strided cannot be coerced to a scalar
-        }
-    } else if (isSparse(K)) {
-        if (isDense(V)) {
-            return canCoerce(Numeric(K), Numeric(V));
-        } else if (isStrided(V)) {
-            return false; // Sparse cannot be coerced to Strided
-        } else if (isSparse(V)) {
-            return canCoerce(Numeric(K), Numeric(V));
-        } else {
-            return false; // Sparse cannot be coerced to a scalar
-        }
-    } else {
-        if (isDense(V)) {
-            return canCoerce(K, Numeric(V));
-        } else if (isStrided(V)) {
-            return false; // Scalar cannot be coerced to Strided
-        } else if (isSparse(V)) {
-            return false; // Scalar cannot be coerced to Sparse
-        } else {
-            // Two scalar types
-        }
+    comptime if (isArray(K) or isArray(V) or isMatrix(K) or isMatrix(V)) {
+        @compileError("Cannot use `canCoerce` with arrays or matrices");
     };
 
     const T1: type = K;
@@ -1189,38 +1564,45 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
     return T2 == T3;
 }
 
-/// Coerces the second type to an array of itself if the first type is an
-/// `Array` or a slice. If the first type is not an Array or a slice, it
-/// returns the second type as is.
-/// Coerces `Y` to `Array(Y)` if `X` is an `Array` or a slice, otherwise it
-/// returns `Y` as is.
+/// Coerces the second type to a matrix or array type based on the first type.
 ///
-/// This function is useful for ensuring that the second type is always an
-/// `Array` when the first type is an `Array` or a slice, allowing for
-/// consistent handling of array-like types.
+/// This function is useful for ensuring that the second type is always a matrix
+/// or an array when the first is.
 ///
 /// Parameters
 /// ----------
-/// comptime X (`type`): The type to check. Must be a supported numeric type, an
-/// `Array`, or a slice.
+/// comptime X (`type`): The type to check. Must be a supported numeric type, a
+/// matrix, or an array.
 ///
 /// comptime Y (`type`): The type to coerce. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
-/// `type`: The coerced type, which will be `Array(Y)` if `X` is an `Array` or a
-/// slice, or `Y` otherwise.
+/// `type`: The coerced type.
 ///
 /// Raises
 /// ------
 /// `@compileError`: If `Y` is not a supported numeric type.
-pub fn CoerceToArray(comptime X: type, comptime Y: type) type {
-    _ = numericType(Y);
-
-    if (isDense(X) or isStrided(X) or isSlice(X)) {
-        return Dense(Y);
-    } else if (isSparse(X)) {
-        return Sparse(Y);
+pub fn EnsureMatrixOrArray(comptime X: type, comptime Y: type) type {
+    if (isArray(X)) {
+        switch (arrayType(X)) {
+            .dense => return array.Dense(Y),
+            .strided => return array.Strided(Y),
+            .sparse => return array.Sparse(Y),
+            .numeric => unreachable,
+        }
+    } else if (isMatrix(X)) {
+        switch (matrixType(X)) {
+            .general => return matrix.General(Y),
+            .symmetric => return matrix.Symmetric(Y),
+            .hermitian => return matrix.Hermitian(Y),
+            .triangular => return matrix.Triangular(Y),
+            .diagonal => return matrix.Diagonal(Y),
+            .banded => return matrix.Banded(Y),
+            .tridiagonal => return matrix.Tridiagonal(Y),
+            .sparse => return matrix.Sparse(Y),
+            .numeric => unreachable,
+        }
     } else {
         return Y;
     }
@@ -1445,12 +1827,25 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
 /// Coerces the input type to a floating point type if it is not already a
 /// higher range type.
 pub fn EnsureFloat(comptime T: type) type {
-    if (isDense(T)) {
-        return Dense(EnsureFloat(Numeric(T)));
-    } else if (isStrided(T)) {
-        return Strided(EnsureFloat(Numeric(T)));
-    } else if (isSparse(T)) {
-        return Sparse(EnsureFloat(Numeric(T)));
+    if (isArray(T)) {
+        switch (arrayType(T)) {
+            .dense => return array.Dense(EnsureFloat(Numeric(T))),
+            .strided => return array.Strided(EnsureFloat(Numeric(T))),
+            .sparse => return array.Sparse(EnsureFloat(Numeric(T))),
+            .numeric => unreachable,
+        }
+    } else if (isMatrix(T)) {
+        switch (matrixType(T)) {
+            .general => return matrix.General(EnsureFloat(Numeric(T))),
+            .symmetric => return matrix.Symmetric(EnsureFloat(Numeric(T))),
+            .hermitian => return matrix.Hermitian(EnsureFloat(Numeric(T))),
+            .triangular => return matrix.Triangular(EnsureFloat(Numeric(T))),
+            .diagonal => return matrix.Diagonal(EnsureFloat(Numeric(T))),
+            .banded => return matrix.Banded(EnsureFloat(Numeric(T))),
+            .tridiagonal => return matrix.Tridiagonal(EnsureFloat(Numeric(T))),
+            .sparse => return matrix.Sparse(EnsureFloat(Numeric(T))),
+            .numeric => unreachable,
+        }
     }
 
     switch (numericType(T)) {
@@ -1488,7 +1883,7 @@ pub fn EnsureFloat(comptime T: type) type {
 /// `@compileError`: If the type is not a supported numeric type, slice, or
 /// `Array`.
 pub fn Scalar(comptime T: type) type {
-    if (isArray(T)) {
+    if (isArray(T) or isMatrix(T)) {
         const t: T = .empty;
         return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
     } else if (isSlice(T)) {
@@ -1552,7 +1947,7 @@ pub fn Scalar(comptime T: type) type {
 /// `@compileError`: If the type is not a supported numeric type, slice, or
 /// `Array`.
 pub fn Numeric(comptime T: type) type {
-    if (isArray(T)) {
+    if (isArray(T) or isMatrix(T)) {
         const t: T = .empty;
         return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
     } else if (isSlice(T)) {
@@ -1561,7 +1956,9 @@ pub fn Numeric(comptime T: type) type {
         return K;
     }
 
-    _ = numericType(T); // Will raise compile error if T is not a supported numeric type
+    if (!isNumeric(T)) {
+        @compileError("Expected a numeric type, but got " ++ @typeName(T));
+    }
 
     return T;
 }
@@ -2015,9 +2412,6 @@ pub fn validateContext(comptime Ctx: type, comptime spec: anytype) void {
     if (ctxinfo != .@"struct")
         @compileError("Expected struct for context, got " ++ @typeName(Ctx));
 
-    if (ctxinfo.@"struct".fields.len != 0 and specinfo.@"struct".fields.len == 0)
-        @compileError("Context struct must be empty");
-
     // Check that all required fields exist and types match
     inline for (specinfo.@"struct".fields) |field| {
         const field_spec = @field(spec, field.name);
@@ -2032,21 +2426,89 @@ pub fn validateContext(comptime Ctx: type, comptime spec: anytype) void {
             } else actual_type == expected_type;
 
             if (!types_match)
-                @compileError("Field '" ++ field.name ++ "' has type " ++ @typeName(actual_type) ++ ", expected " ++ @typeName(expected_type));
+                @compileError(formatSpecCtxMismatch(Ctx, spec));
         } else if (required) {
-            @compileError("Required field '" ++ field.name ++ "' missing from context");
+            @compileError(formatSpecCtxMismatch(Ctx, spec));
         }
     }
-
-    if (ctxinfo.@"struct".fields.len != 0 and specinfo.@"struct".fields.len == 0)
-        @compileError("Context struct must be empty");
 
     // Check for unexpected fields in context
     inline for (ctxinfo.@"struct".fields) |ctx_field| {
         if (!@hasField(SpecType, ctx_field.name)) {
-            @compileError("Unexpected field '" ++ ctx_field.name ++ "' in context");
+            @compileError(formatSpecCtxMismatch(Ctx, spec));
         }
     }
+}
+
+fn formatSpecCtxMismatch(
+    comptime Ctx: type,
+    comptime spec: anytype,
+) []const u8 {
+    const ctxinfo = @typeInfo(Ctx);
+
+    const SpecType = @TypeOf(spec);
+    const specinfo = @typeInfo(SpecType);
+
+    comptime var spec_str: []const u8 = "";
+    if (specinfo.@"struct".fields.len == 0) {
+        spec_str = ".{}\n";
+    } else {
+        comptime var max_name_len: usize = 0;
+        comptime var max_type_len: usize = 0;
+        inline for (specinfo.@"struct".fields) |field| {
+            const field_type = @typeName(@field(@field(spec, field.name), "type"));
+            if (field.name.len > max_name_len) max_name_len = field.name.len;
+            if (field_type.len > max_type_len) max_type_len = field_type.len;
+        }
+
+        spec_str = spec_str ++ ".{\n";
+        inline for (specinfo.@"struct".fields) |field| {
+            const field_type = @typeName(@field(@field(spec, field.name), "type"));
+            const required = @hasField(@TypeOf(@field(spec, field.name)), "required") and @field(@field(spec, field.name), "required");
+            spec_str = spec_str ++ std.fmt.comptimePrint(
+                "    .{s}: {s}",
+                .{
+                    field.name,
+                    field_type,
+                },
+            );
+
+            for (0..((max_name_len + max_type_len) - field.name.len - field_type.len)) |_| {
+                spec_str = spec_str ++ " ";
+            }
+
+            spec_str = spec_str ++ std.fmt.comptimePrint(
+                "    ({s})\n",
+                .{
+                    if (required) "required" else "optional",
+                },
+            );
+        }
+        spec_str = spec_str ++ "}\n";
+    }
+
+    comptime var ctx_str: []const u8 = "";
+    if (ctxinfo.@"struct".fields.len == 0) {
+        ctx_str = ".{}\n";
+    } else {
+        ctx_str = ctx_str ++ ".{\n";
+        inline for (ctxinfo.@"struct".fields) |field| {
+            const field_type = @typeName(@FieldType(Ctx, field.name));
+            ctx_str = ctx_str ++ std.fmt.comptimePrint(
+                "    .{s}: {s}\n",
+                .{
+                    field.name,
+                    field_type,
+                },
+            );
+        }
+        ctx_str = ctx_str ++ "}\n";
+    }
+
+    return std.fmt.comptimePrint(
+        "Context struct must have the following structure:\n{s}\nGot:\n{s}",
+        .{ spec_str, ctx_str },
+    );
 }
 
 pub fn getFieldOrDefault(ctx: anytype, comptime field_name: []const u8, comptime FieldType: type, default_value: FieldType) FieldType {

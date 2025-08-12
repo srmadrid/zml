@@ -9,17 +9,17 @@ const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 
 pub inline fn getrf2(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     if (order == .col_major) {
         return k_getrf2_c(m, n, a, lda, ipiv, ctx);
     } else {
@@ -28,19 +28,19 @@ pub inline fn getrf2(
 }
 
 fn k_getrf2_c(
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (m < 0 or n < 0 or lda < int.max(1, m))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (m == 0 or n == 0)
@@ -60,7 +60,7 @@ fn k_getrf2_c(
             const sfmin: Scalar(A) = lapack.lamch(Scalar(A), .sfmin);
 
             // Find pivot and test for singularity.
-            const ii: usize = blas.iamax(m, a, 1, ctx) catch unreachable;
+            const ii: u32 = blas.iamax(m, a, 1, ctx) catch unreachable;
             ipiv[0] = scast(i32, ii) + 1;
 
             if (ops.ne(a[ii], 0, ctx) catch unreachable) {
@@ -85,11 +85,11 @@ fn k_getrf2_c(
                         ctx,
                     ) catch unreachable;
                 } else {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m - 1) : (i += 1) {
                         ops.div_( // a[i + 1] /= a[0]
-                            &a[scast(usize, i + 1)],
-                            a[scast(usize, i + 1)],
+                            &a[scast(u32, i + 1)],
+                            a[scast(u32, i + 1)],
                             a[0],
                             ctx,
                         ) catch unreachable;
@@ -100,13 +100,13 @@ fn k_getrf2_c(
             }
         } else {
             // Use recursive code.
-            const n1: isize = int.div(int.min(m, n), 2);
-            const n2: isize = n - n1;
+            const n1: i32 = int.div(int.min(m, n), 2);
+            const n2: i32 = n - n1;
 
             //        [ A11 ]
             // Factor [ --- ]
             //        [ A21 ]
-            var iinfo: isize = k_getrf2_c(
+            var iinfo: i32 = k_getrf2_c(
                 m,
                 n1,
                 a,
@@ -124,7 +124,7 @@ fn k_getrf2_c(
             lapack.laswp(
                 .col_major,
                 n2,
-                a + scast(usize, n1 * lda),
+                a + scast(u32, n1 * lda),
                 lda,
                 1,
                 n1,
@@ -144,7 +144,7 @@ fn k_getrf2_c(
                 1,
                 a,
                 lda,
-                a + scast(usize, n1 * lda),
+                a + scast(u32, n1 * lda),
                 lda,
                 ctx,
             ) catch unreachable;
@@ -158,12 +158,12 @@ fn k_getrf2_c(
                 n2,
                 n1,
                 -1,
-                a + scast(usize, n1),
+                a + scast(u32, n1),
                 lda,
-                a + scast(usize, n1 * lda),
+                a + scast(u32, n1 * lda),
                 lda,
                 1,
-                a + scast(usize, n1 + n1 * lda),
+                a + scast(u32, n1 + n1 * lda),
                 lda,
                 ctx,
             ) catch unreachable;
@@ -172,9 +172,9 @@ fn k_getrf2_c(
             iinfo = k_getrf2_c(
                 m - n1,
                 n2,
-                a + scast(usize, n1 + n1 * lda),
+                a + scast(u32, n1 + n1 * lda),
                 lda,
-                ipiv + scast(usize, n1),
+                ipiv + scast(u32, n1),
                 ctx,
             ) catch unreachable;
 
@@ -187,11 +187,11 @@ fn k_getrf2_c(
                     ctx,
                 ) catch unreachable;
 
-            var i: isize = n1;
+            var i: i32 = n1;
             while (i < int.min(m, n)) : (i += 1) {
                 ops.add_( // ipiv[i] += n1
-                    &ipiv[scast(usize, i)],
-                    ipiv[scast(usize, i)],
+                    &ipiv[scast(u32, i)],
+                    ipiv[scast(u32, i)],
                     n1,
                     ctx,
                 ) catch unreachable;
@@ -218,19 +218,19 @@ fn k_getrf2_c(
 }
 
 fn k_getrf2_r(
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (m < 0 or n < 0 or lda < int.max(1, n))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (m == 0 or n == 0)
@@ -250,15 +250,15 @@ fn k_getrf2_r(
             const sfmin: Scalar(A) = lapack.lamch(Scalar(A), .sfmin);
 
             // Find pivot and test for singularity.
-            const ii: usize = blas.iamax(m, a, lda, ctx) catch unreachable;
+            const ii: u32 = blas.iamax(m, a, lda, ctx) catch unreachable;
             ipiv[0] = scast(i32, ii) + 1;
 
-            if (ops.ne(a[scast(usize, int.mul(ii, lda, .wrap))], 0, ctx) catch unreachable) {
+            if (ops.ne(a[scast(u32, int.mul(ii, lda, .wrap))], 0, ctx) catch unreachable) {
                 // Apply the interchange.
                 if (ii != 0) {
                     const temp: A = a[0];
-                    a[0] = a[scast(usize, int.mul(ii, lda, .wrap))];
-                    a[scast(usize, int.mul(ii, lda, .wrap))] = temp;
+                    a[0] = a[scast(u32, int.mul(ii, lda, .wrap))];
+                    a[scast(u32, int.mul(ii, lda, .wrap))] = temp;
                 }
 
                 // Compute elements 1:m - 1 of the column.
@@ -270,16 +270,16 @@ fn k_getrf2_r(
                             a[0],
                             ctx,
                         ) catch unreachable,
-                        a + scast(usize, lda),
+                        a + scast(u32, lda),
                         lda,
                         ctx,
                     ) catch unreachable;
                 } else {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m - 1) : (i += 1) {
                         ops.div_( // a[i + 1] /= a[0]
-                            &a[scast(usize, (i + 1) * lda)],
-                            a[scast(usize, (i + 1) * lda)],
+                            &a[scast(u32, (i + 1) * lda)],
+                            a[scast(u32, (i + 1) * lda)],
                             a[0],
                             ctx,
                         ) catch unreachable;
@@ -290,13 +290,13 @@ fn k_getrf2_r(
             }
         } else {
             // Use recursive code.
-            const n1: isize = int.div(int.min(m, n), 2);
-            const n2: isize = n - n1;
+            const n1: i32 = int.div(int.min(m, n), 2);
+            const n2: i32 = n - n1;
 
             //        [ A11 ]
             // Factor [ --- ]
             //        [ A21 ]
-            var iinfo: isize = k_getrf2_r(
+            var iinfo: i32 = k_getrf2_r(
                 m,
                 n1,
                 a,
@@ -314,7 +314,7 @@ fn k_getrf2_r(
             lapack.laswp(
                 .row_major,
                 n2,
-                a + scast(usize, n1),
+                a + scast(u32, n1),
                 lda,
                 1,
                 n1,
@@ -334,7 +334,7 @@ fn k_getrf2_r(
                 1,
                 a,
                 lda,
-                a + scast(usize, n1),
+                a + scast(u32, n1),
                 lda,
                 ctx,
             ) catch unreachable;
@@ -348,12 +348,12 @@ fn k_getrf2_r(
                 n2,
                 n1,
                 -1,
-                a + scast(usize, n1 * lda),
+                a + scast(u32, n1 * lda),
                 lda,
-                a + scast(usize, n1),
+                a + scast(u32, n1),
                 lda,
                 1,
-                a + scast(usize, n1 + n1 * lda),
+                a + scast(u32, n1 + n1 * lda),
                 lda,
                 ctx,
             ) catch unreachable;
@@ -362,9 +362,9 @@ fn k_getrf2_r(
             iinfo = k_getrf2_r(
                 m - n1,
                 n2,
-                a + scast(usize, n1 + n1 * lda),
+                a + scast(u32, n1 + n1 * lda),
                 lda,
-                ipiv + scast(usize, n1),
+                ipiv + scast(u32, n1),
                 ctx,
             ) catch unreachable;
 
@@ -377,11 +377,11 @@ fn k_getrf2_r(
                     ctx,
                 ) catch unreachable;
 
-            var i: isize = n1;
+            var i: i32 = n1;
             while (i < int.min(m, n)) : (i += 1) {
                 ops.add_( // ipiv[i] += n1
-                    &ipiv[scast(usize, i)],
-                    ipiv[scast(usize, i)],
+                    &ipiv[scast(u32, i)],
+                    ipiv[scast(u32, i)],
                     n1,
                     ctx,
                 ) catch unreachable;

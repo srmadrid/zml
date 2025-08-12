@@ -8,19 +8,19 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 
 pub inline fn geru(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -31,15 +31,15 @@ pub inline fn geru(
 }
 
 fn k_geru(
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -56,26 +56,26 @@ fn k_geru(
     if (m == 0 or n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
         return;
 
-    var jy: isize = if (incy < 0) (-n + 1) * incy else 0;
+    var jy: i32 = if (incy < 0) (-n + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         if (incx == 1) {
-            var j: isize = 0;
+            var j: i32 = 0;
             while (j < n) : (j += 1) {
-                if (ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable) {
+                if (ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable) {
                     const temp: C1 = ops.mul( // temp = alpha * y[jy]
                         alpha,
-                        y[scast(usize, jy)],
+                        y[scast(u32, jy)],
                         ctx,
                     ) catch unreachable;
 
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.add_( // a[i + j * lda] += x[i] * temp
-                            &a[scast(usize, i + j * lda)],
-                            a[scast(usize, i + j * lda)],
+                            &a[scast(u32, i + j * lda)],
+                            a[scast(u32, i + j * lda)],
                             ops.mul(
-                                x[scast(usize, i)],
+                                x[scast(u32, i)],
                                 temp,
                                 ctx,
                             ) catch unreachable,
@@ -87,25 +87,25 @@ fn k_geru(
                 jy += incy;
             }
         } else {
-            const kx: isize = if (incx < 0) (-m + 1) * incx else 0;
+            const kx: i32 = if (incx < 0) (-m + 1) * incx else 0;
 
-            var j: isize = 0;
+            var j: i32 = 0;
             while (j < n) : (j += 1) {
-                if (ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable) {
+                if (ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable) {
                     const temp: C1 = ops.mul( // temp = alpha * y[jy]
                         alpha,
-                        y[scast(usize, jy)],
+                        y[scast(u32, jy)],
                         ctx,
                     ) catch unreachable;
 
-                    var ix: isize = kx;
-                    var i: isize = 0;
+                    var ix: i32 = kx;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.add_( // a[i + j * lda] += x[ix] * temp
-                            &a[scast(usize, i + j * lda)],
-                            a[scast(usize, i + j * lda)],
+                            &a[scast(u32, i + j * lda)],
+                            a[scast(u32, i + j * lda)],
                             ops.mul(
-                                x[scast(usize, ix)],
+                                x[scast(u32, ix)],
                                 temp,
                                 ctx,
                             ) catch unreachable,

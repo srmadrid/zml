@@ -6,7 +6,7 @@ pub fn build(b: *std.Build) void {
 
     const options = b.addOptions();
 
-    const opt_max_dimensions = b.option(u32, "max_dimensions", "Maximum number of dimensions for `Array`s") orelse 4;
+    const opt_max_dimensions = b.option(u32, "max_dimensions", "Maximum number of dimensions for `Array`s") orelse 8;
     options.addOption(u32, "max_dimensions", opt_max_dimensions);
 
     // Option to provide BLAS and LAPACK implementations

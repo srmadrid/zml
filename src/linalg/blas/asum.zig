@@ -8,9 +8,9 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn asum(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !Scalar(Child(@TypeOf(x))) {
     const X: type = types.Child(@TypeOf(x));

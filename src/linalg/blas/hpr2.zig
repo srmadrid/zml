@@ -8,18 +8,18 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn hpr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ap: anytype,
     ctx: anytype,
 ) !void {
@@ -54,12 +54,12 @@ pub inline fn hpr2(
 
 fn k_hpr2(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ap: anytype,
     noconj: bool,
     ctx: anytype,
@@ -79,44 +79,44 @@ fn k_hpr2(
     if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
         return;
 
-    const kx: isize = if (incx < 0) (-n + 1) * incx else 0;
-    const ky: isize = if (incy < 0) (-n + 1) * incy else 0;
+    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    const ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
-        var kk: isize = 0;
+        var kk: i32 = 0;
         if (uplo == .upper) {
             if (noconj) {
                 if (incx == 1 and incy == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, j)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[j])
-                                ops.conjugate(y[scast(usize, j)], ctx) catch unreachable,
+                                ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[j])
-                                x[scast(usize, j)],
+                                x[scast(u32, j)],
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var k: isize = kk;
-                            var i: isize = 0;
+                            var k: i32 = kk;
+                            var i: i32 = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // ap[k] += x[i] * temp1 + y[i] * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            x[scast(usize, i)],
+                                            x[scast(u32, i)],
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            y[scast(usize, i)],
+                                            y[scast(u32, i)],
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -129,16 +129,16 @@ fn k_hpr2(
                             }
 
                             ops.add_( // ap[kk + j] = re(ap[kk + j]) + re(x[j] * temp1 + y[j] * temp2)
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        x[scast(usize, j)],
+                                        x[scast(u32, j)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, j)],
+                                        y[scast(u32, j)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -148,8 +148,8 @@ fn k_hpr2(
                             ) catch unreachable;
                         } else {
                             ops.set( // ap[kk + j] = re(ap[kk + j])
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -157,39 +157,39 @@ fn k_hpr2(
                         kk += j + 1;
                     }
                 } else {
-                    var jx: isize = kx;
-                    var jy: isize = ky;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var jy: i32 = ky;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[jy])
-                                ops.conjugate(y[scast(usize, jy)], ctx) catch unreachable,
+                                ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[jx])
-                                x[scast(usize, jx)],
+                                x[scast(u32, jx)],
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var ix: isize = kx;
-                            var iy: isize = ky;
-                            var k: isize = kk;
+                            var ix: i32 = kx;
+                            var iy: i32 = ky;
+                            var k: i32 = kk;
                             while (k < kk + j) : (k += 1) {
                                 ops.add_( // ap[k] += x[ix] * temp1 + y[iy] * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            x[scast(usize, ix)],
+                                            x[scast(u32, ix)],
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            y[scast(usize, iy)],
+                                            y[scast(u32, iy)],
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -203,16 +203,16 @@ fn k_hpr2(
                             }
 
                             ops.add_( // ap[kk + j] = re(ap[kk + j]) + re(x[jx] * temp1 + y[jy] * temp2)
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        x[scast(usize, jx)],
+                                        x[scast(u32, jx)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, jy)],
+                                        y[scast(u32, jy)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -222,8 +222,8 @@ fn k_hpr2(
                             ) catch unreachable;
                         } else {
                             ops.set( // ap[kk + j] = re(ap[kk + j])
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -235,36 +235,36 @@ fn k_hpr2(
                 }
             } else {
                 if (incx == 1 and incy == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, j)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * y[j]
-                                y[scast(usize, j)],
+                                y[scast(u32, j)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[j]))
-                                ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var k: isize = kk;
-                            var i: isize = 0;
+                            var k: i32 = kk;
+                            var i: i32 = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // ap[k] += conj(x[i]) * temp1 + conj(y[i]) * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(usize, i)], ctx) catch unreachable,
+                                            ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(usize, i)], ctx) catch unreachable,
+                                            ops.conjugate(y[scast(u32, i)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -277,16 +277,16 @@ fn k_hpr2(
                             }
 
                             ops.add_( // ap[kk + j] = re(ap[kk + j]) + re(conj(x[j]) * temp1 + conj(y[j]) * temp2)
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(usize, j)], ctx) catch unreachable,
+                                        ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -296,8 +296,8 @@ fn k_hpr2(
                             ) catch unreachable;
                         } else {
                             ops.set( // ap[kk + j] = re(ap[kk + j])
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -305,39 +305,39 @@ fn k_hpr2(
                         kk += j + 1;
                     }
                 } else {
-                    var jx: isize = kx;
-                    var jy: isize = ky;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var jy: i32 = ky;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * y[jy]
-                                y[scast(usize, jy)],
+                                y[scast(u32, jy)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[jx]))
-                                ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var ix: isize = kx;
-                            var iy: isize = ky;
-                            var k: isize = kk;
+                            var ix: i32 = kx;
+                            var iy: i32 = ky;
+                            var k: i32 = kk;
                             while (k < kk + j) : (k += 1) {
                                 ops.add_( // ap[k] += conj(x[ix]) * temp1 + conj(y[iy]) * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(usize, ix)], ctx) catch unreachable,
+                                            ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(usize, iy)], ctx) catch unreachable,
+                                            ops.conjugate(y[scast(u32, iy)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -351,16 +351,16 @@ fn k_hpr2(
                             }
 
                             ops.add_( // ap[kk + j] = re(ap[kk + j]) + re(conj(x[jx]) * temp1 + conj(y[jy]) * temp2)
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(usize, jy)], ctx) catch unreachable,
+                                        ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -370,8 +370,8 @@ fn k_hpr2(
                             ) catch unreachable;
                         } else {
                             ops.set( // ap[kk + j] = re(ap[kk + j])
-                                &ap[scast(usize, kk + j)],
-                                ops.re(ap[scast(usize, kk + j)], ctx) catch unreachable,
+                                &ap[scast(u32, kk + j)],
+                                ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -385,33 +385,33 @@ fn k_hpr2(
         } else {
             if (noconj) {
                 if (incx == 1 and incy == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, j)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[j])
-                                ops.conjugate(y[scast(usize, j)], ctx) catch unreachable,
+                                ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[j])
-                                x[scast(usize, j)],
+                                x[scast(u32, j)],
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
                             ops.add_( // ap[kk] = re(ap[kk]) + re(x[j] * temp1 + y[j] * temp2)
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        x[scast(usize, j)],
+                                        x[scast(u32, j)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, j)],
+                                        y[scast(u32, j)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -420,20 +420,20 @@ fn k_hpr2(
                                 ctx,
                             ) catch unreachable;
 
-                            var k: isize = kk + 1;
-                            var i: isize = j + 1;
+                            var k: i32 = kk + 1;
+                            var i: i32 = j + 1;
                             while (i < n) : (i += 1) {
                                 ops.add_( // ap[k] += x[i] * temp1 + y[i] * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            x[scast(usize, i)],
+                                            x[scast(u32, i)],
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            y[scast(usize, i)],
+                                            y[scast(u32, i)],
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -446,8 +446,8 @@ fn k_hpr2(
                             }
                         } else {
                             ops.set( // ap[kk] = re(ap[kk])
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -455,35 +455,35 @@ fn k_hpr2(
                         kk += n - j;
                     }
                 } else {
-                    var jx: isize = kx;
-                    var jy: isize = ky;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var jy: i32 = ky;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[jy])
-                                ops.conjugate(y[scast(usize, jy)], ctx) catch unreachable,
+                                ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[jx])
-                                x[scast(usize, jx)],
+                                x[scast(u32, jx)],
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
                             ops.add_( // ap[kk] = re(ap[kk]) + re(x[jx] * temp1 + y[jy] * temp2)
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        x[scast(usize, jx)],
+                                        x[scast(u32, jx)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, jy)],
+                                        y[scast(u32, jy)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -492,24 +492,24 @@ fn k_hpr2(
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: isize = jx;
-                            var iy: isize = jy;
-                            var k: isize = kk + 1;
+                            var ix: i32 = jx;
+                            var iy: i32 = jy;
+                            var k: i32 = kk + 1;
                             while (k < kk + n - j) : (k += 1) {
                                 ix += incx;
                                 iy += incy;
 
                                 ops.add_( // ap[k] += x[ix] * temp1 + y[iy] * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            x[scast(usize, ix)],
+                                            x[scast(u32, ix)],
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            y[scast(usize, iy)],
+                                            y[scast(u32, iy)],
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -520,8 +520,8 @@ fn k_hpr2(
                             }
                         } else {
                             ops.set( // ap[kk] = re(ap[kk])
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -533,33 +533,33 @@ fn k_hpr2(
                 }
             } else {
                 if (incx == 1 and incy == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, j)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * y[j]
-                                y[scast(usize, j)],
+                                y[scast(u32, j)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[j]))
-                                ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
                             ops.add_( // ap[kk] = re(ap[kk]) + re(conj(x[j]) * temp1 + conj(y[j]) * temp2)
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(usize, j)], ctx) catch unreachable,
+                                        ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -568,20 +568,20 @@ fn k_hpr2(
                                 ctx,
                             ) catch unreachable;
 
-                            var k: isize = kk + 1;
-                            var i: isize = j + 1;
+                            var k: i32 = kk + 1;
+                            var i: i32 = j + 1;
                             while (i < n) : (i += 1) {
                                 ops.add_( // ap[k] += conj(x[i]) * temp1 + conj(y[i]) * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(usize, i)], ctx) catch unreachable,
+                                            ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(usize, i)], ctx) catch unreachable,
+                                            ops.conjugate(y[scast(u32, i)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -594,8 +594,8 @@ fn k_hpr2(
                             }
                         } else {
                             ops.set( // ap[kk] = re(ap[kk])
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -603,35 +603,35 @@ fn k_hpr2(
                         kk += n - j;
                     }
                 } else {
-                    var jx: isize = kx;
-                    var jy: isize = ky;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var jy: i32 = ky;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable or
-                            ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable)
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
+                            ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * y[jy]
-                                y[scast(usize, jy)],
+                                y[scast(u32, jy)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
                             const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[jx]))
-                                ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
                             ops.add_( // ap[kk] = re(ap[kk]) + re(conj(x[jx]) * temp1 + conj(y[jy]) * temp2)
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(usize, jy)], ctx) catch unreachable,
+                                        ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -640,24 +640,24 @@ fn k_hpr2(
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: isize = jx;
-                            var iy: isize = jy;
-                            var k: isize = kk + 1;
+                            var ix: i32 = jx;
+                            var iy: i32 = jy;
+                            var k: i32 = kk + 1;
                             while (k < kk + n - j) : (k += 1) {
                                 ix += incx;
                                 iy += incy;
 
                                 ops.add_( // ap[k] += conj(x[ix]) * temp1 + conj(y[iy]) * temp2
-                                    &ap[scast(usize, k)],
-                                    ap[scast(usize, k)],
+                                    &ap[scast(u32, k)],
+                                    ap[scast(u32, k)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(usize, ix)], ctx) catch unreachable,
+                                            ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(usize, iy)], ctx) catch unreachable,
+                                            ops.conjugate(y[scast(u32, iy)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -668,8 +668,8 @@ fn k_hpr2(
                             }
                         } else {
                             ops.set( // ap[kk] = re(ap[kk])
-                                &ap[scast(usize, kk)],
-                                ops.re(ap[scast(usize, kk)], ctx) catch unreachable,
+                                &ap[scast(u32, kk)],
+                                ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }

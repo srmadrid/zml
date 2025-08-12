@@ -1,5 +1,5 @@
 const std = @import("std");
-const opts = @import("options");
+const options = @import("options");
 
 const types = @import("../types.zig");
 const scast = types.scast;
@@ -16,10 +16,10 @@ const linalg = @import("../linalg.zig");
 
 const ci = @import("../c.zig");
 
-const Order = linalg.Order;
+const Order = types.Order;
 const Transpose = linalg.Transpose;
-const Uplo = linalg.Uplo;
-const Diag = linalg.Diag;
+const Uplo = types.Uplo;
+const Diag = types.Diag;
 const Side = linalg.Side;
 
 // Level 1 BLAS
@@ -38,14 +38,14 @@ const Side = linalg.Side;
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// `ret` (mutable one-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -67,9 +67,9 @@ const Side = linalg.Side;
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn asum_sub(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ret: anytype,
     ctx: anytype,
 ) !void {
@@ -106,7 +106,7 @@ pub inline fn asum_sub(
         }
     };
 
-    if (comptime opts.link_cblas != null) {
+    if (comptime options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -142,12 +142,12 @@ pub inline fn asum_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// `ret` (`*f32`): Pointer to where the result will be stored.
@@ -161,9 +161,9 @@ pub inline fn asum_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn sasum_sub(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     ret: *f32,
 ) void {
     return asum_sub(n, x, incx, ret, .{}) catch {};
@@ -182,12 +182,12 @@ pub inline fn sasum_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// `ret` (`*f64`): Pointer to where the result will be stored.
@@ -201,9 +201,9 @@ pub inline fn sasum_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dasum_sub(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     ret: *f64,
 ) void {
     return asum_sub(n, x, incx, ret, .{}) catch {};
@@ -222,12 +222,12 @@ pub inline fn dasum_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// `ret` (`*f32`): Pointer to where the result will be stored.
@@ -241,9 +241,9 @@ pub inline fn dasum_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn scasum_sub(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     ret: *f32,
 ) void {
     return asum_sub(n, x, incx, ret, .{}) catch {};
@@ -262,12 +262,12 @@ pub inline fn scasum_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// `ret` (`*f64`): Pointer to where the result will be stored.
@@ -281,9 +281,9 @@ pub inline fn scasum_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dzasum_sub(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     ret: *f64,
 ) void {
     return asum_sub(n, x, incx, ret, .{}) catch {};
@@ -303,14 +303,14 @@ pub inline fn dzasum_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -329,9 +329,9 @@ pub inline fn dzasum_sub(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn asum(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !Scalar(Child(@TypeOf(x))) {
     comptime var X: type = @TypeOf(x);
@@ -350,7 +350,7 @@ pub inline fn asum(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (opts.link_cblas != null) {
+    if (options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -386,12 +386,12 @@ pub inline fn asum(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -403,9 +403,9 @@ pub inline fn asum(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn sasum(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
 ) f32 {
     return asum(n, x, incx, .{}) catch 0;
 }
@@ -423,12 +423,12 @@ pub inline fn sasum(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -440,9 +440,9 @@ pub inline fn sasum(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dasum(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
 ) f64 {
     return asum(n, x, incx, .{}) catch 0;
 }
@@ -460,12 +460,12 @@ pub inline fn dasum(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -478,9 +478,9 @@ pub inline fn dasum(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn scasum(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
 ) f32 {
     return asum(n, x, incx, .{}) catch 0;
 }
@@ -498,12 +498,12 @@ pub inline fn scasum(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -516,9 +516,9 @@ pub inline fn scasum(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dzasum(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
 ) f64 {
     return asum(n, x, incx, .{}) catch 0;
 }
@@ -536,7 +536,7 @@ pub inline fn dzasum(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -546,13 +546,13 @@ pub inline fn dzasum(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
 /// least `1 + (n - 1) * abs(incy)`. On return contains the updated vector `y`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -568,12 +568,12 @@ pub inline fn dzasum(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn axpy(
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -617,7 +617,7 @@ pub inline fn axpy(
         }
     };
 
-    if (comptime X == Y and types.canCoerce(Al, X) and opts.link_cblas != null) {
+    if (comptime X == Y and types.canCoerce(Al, X) and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -655,18 +655,18 @@ pub inline fn axpy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -677,12 +677,12 @@ pub inline fn axpy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn saxpy(
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return axpy(n, alpha, x, incx, y, incy, .{}) catch {};
 }
@@ -700,18 +700,18 @@ pub inline fn saxpy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -722,12 +722,12 @@ pub inline fn saxpy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn daxpy(
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return axpy(n, alpha, x, incx, y, incy, .{}) catch {};
 }
@@ -745,18 +745,18 @@ pub inline fn daxpy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -767,12 +767,12 @@ pub inline fn daxpy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn caxpy(
-    n: isize,
+    n: i32,
     alpha: cf32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return axpy(n, alpha, x, incx, y, incy, .{}) catch {};
 }
@@ -790,18 +790,18 @@ pub inline fn caxpy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -812,12 +812,12 @@ pub inline fn caxpy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zaxpy(
-    n: isize,
+    n: i32,
     alpha: cf64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return axpy(n, alpha, x, incx, y, incy, .{}) catch {};
 }
@@ -834,20 +834,20 @@ pub inline fn zaxpy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
 /// least `1 + (n - 1) * abs(incy)`. On return contains the updated vector `y`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -863,11 +863,11 @@ pub inline fn zaxpy(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn copy(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     comptime var X: type = @TypeOf(x);
@@ -903,7 +903,7 @@ pub inline fn copy(
         }
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -938,16 +938,16 @@ pub inline fn copy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -958,11 +958,11 @@ pub inline fn copy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn scopy(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return copy(n, x, incx, y, incy, .{}) catch {};
 }
@@ -979,16 +979,16 @@ pub inline fn scopy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -999,11 +999,11 @@ pub inline fn scopy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dcopy(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return copy(n, x, incx, y, incy, .{}) catch {};
 }
@@ -1020,16 +1020,16 @@ pub inline fn dcopy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1040,11 +1040,11 @@ pub inline fn dcopy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn ccopy(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return copy(n, x, incx, y, incy, .{}) catch {};
 }
@@ -1061,16 +1061,16 @@ pub inline fn ccopy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1081,11 +1081,11 @@ pub inline fn ccopy(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zcopy(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return copy(n, x, incx, y, incy, .{}) catch {};
 }
@@ -1103,20 +1103,20 @@ pub inline fn zcopy(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (mutable one-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Pointer to where
@@ -1136,11 +1136,11 @@ pub inline fn zcopy(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn dot_sub(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ret: anytype,
     ctx: anytype,
 ) !void {
@@ -1190,7 +1190,7 @@ pub inline fn dot_sub(
         }
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -1219,16 +1219,16 @@ pub inline fn dot_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (`*f32`): Pointer to where the result will be stored.
 ///
@@ -1241,11 +1241,11 @@ pub inline fn dot_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn sdot_sub(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     y: [*]const f32,
-    incy: isize,
+    incy: i32,
     ret: *f32,
 ) void {
     return dot_sub(n, x, incx, y, incy, ret, .{}) catch {};
@@ -1264,16 +1264,16 @@ pub inline fn sdot_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (`*f64`): Pointer to where the result will be stored.
 ///
@@ -1286,11 +1286,11 @@ pub inline fn sdot_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn ddot_sub(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     y: [*]const f64,
-    incy: isize,
+    incy: i32,
     ret: *f64,
 ) void {
     return dot_sub(n, x, incx, y, incy, ret, .{}) catch {};
@@ -1309,20 +1309,20 @@ pub inline fn ddot_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (many-item pointer to `bool`, `int`, `float`, `cfloat` `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (many-item pointer to `bool`, `int`, `float`, `cfloat` `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1339,11 +1339,11 @@ pub inline fn ddot_sub(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn dot(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !Coerce(Child(@TypeOf(x)), Child(@TypeOf(y))) {
     comptime var X: type = @TypeOf(x);
@@ -1375,7 +1375,7 @@ pub inline fn dot(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -1404,16 +1404,16 @@ pub inline fn dot(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1424,11 +1424,11 @@ pub inline fn dot(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn sdot(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     y: [*]const f32,
-    incy: isize,
+    incy: i32,
 ) f32 {
     return dot(n, x, incx, y, incy, .{}) catch 0;
 }
@@ -1446,16 +1446,16 @@ pub inline fn sdot(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1466,11 +1466,11 @@ pub inline fn sdot(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn ddot(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     y: [*]const f64,
-    incy: isize,
+    incy: i32,
 ) f64 {
     return dot(n, x, incx, y, incy, .{}) catch 0;
 }
@@ -1487,20 +1487,20 @@ pub inline fn ddot(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (many-item pointer to `bool`, `int`, `float`, `cfloat` `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (many-item pointer to `bool`, `int`, `float`, `cfloat` `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (mutable one-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Pointer to where
@@ -1520,11 +1520,11 @@ pub inline fn ddot(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn dotc_sub(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ret: anytype,
     ctx: anytype,
 ) !void {
@@ -1574,7 +1574,7 @@ pub inline fn dotc_sub(
         }
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .cfloat => {
                 if (comptime Scalar(X) == f32) {
@@ -1602,16 +1602,16 @@ pub inline fn dotc_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (`*cf32`): Pointer to where the result will be stored.
 ///
@@ -1624,11 +1624,11 @@ pub inline fn dotc_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn cdotc_sub(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
     ret: *cf32,
 ) void {
     return dotc_sub(n, x, incx, y, incy, ret, .{}) catch {};
@@ -1646,16 +1646,16 @@ pub inline fn cdotc_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (`*cf64`): Pointer to where the result will be stored.
 ///
@@ -1668,11 +1668,11 @@ pub inline fn cdotc_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zdotc_sub(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
     ret: *cf64,
 ) void {
     return dotc_sub(n, x, incx, y, incy, ret, .{}) catch {};
@@ -1690,20 +1690,20 @@ pub inline fn zdotc_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (many-item pointer to `bool`, `int`, `float`, `cfloat` `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (many-item pointer to `bool`, `int`, `float`, `cfloat` `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1720,11 +1720,11 @@ pub inline fn zdotc_sub(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn dotc(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !Coerce(Child(@TypeOf(x)), Child(@TypeOf(y))) {
     comptime var X: type = @TypeOf(x);
@@ -1756,7 +1756,7 @@ pub inline fn dotc(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .cfloat => {
                 if (comptime Scalar(X) == f32) {
@@ -1788,16 +1788,16 @@ pub inline fn dotc(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1808,11 +1808,11 @@ pub inline fn dotc(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn cdotc(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
 ) cf32 {
     return dotc(n, x, incx, y, incy, .{}) catch .{ .re = 0, .im = 0 };
 }
@@ -1829,16 +1829,16 @@ pub inline fn cdotc(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -1849,11 +1849,11 @@ pub inline fn cdotc(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zdotc(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
 ) cf64 {
     return dotc(n, x, incx, y, incy, .{}) catch .{ .re = 0, .im = 0 };
 }
@@ -1871,20 +1871,20 @@ pub inline fn zdotc(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (mutable one-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Pointer to where
@@ -1904,11 +1904,11 @@ pub inline fn zdotc(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn dotu_sub(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ret: anytype,
     ctx: anytype,
 ) !void {
@@ -1958,7 +1958,7 @@ pub inline fn dotu_sub(
         }
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .cfloat => {
                 if (comptime Scalar(X) == f32) {
@@ -1987,16 +1987,16 @@ pub inline fn dotu_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (`*cf32`): Pointer to where the result will be stored.
 ///
@@ -2009,11 +2009,11 @@ pub inline fn dotu_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn cdotu_sub(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
     ret: *cf32,
 ) void {
     return dotu_sub(n, x, incx, y, incy, ret, .{}) catch {};
@@ -2032,16 +2032,16 @@ pub inline fn cdotu_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `ret` (`*cf64`): Pointer to the result of the dot product.
 ///
@@ -2054,11 +2054,11 @@ pub inline fn cdotu_sub(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zdotu_sub(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
     ret: *cf64,
 ) void {
     return dotu_sub(n, x, incx, y, incy, ret, .{}) catch {};
@@ -2077,20 +2077,20 @@ pub inline fn zdotu_sub(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -2107,11 +2107,11 @@ pub inline fn zdotu_sub(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn dotu(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !Coerce(Child(@TypeOf(x)), Child(@TypeOf(y))) {
     comptime var X: type = @TypeOf(x);
@@ -2143,7 +2143,7 @@ pub inline fn dotu(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .cfloat => {
                 if (comptime Scalar(X) == f32) {
@@ -2176,16 +2176,16 @@ pub inline fn dotu(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -2196,11 +2196,11 @@ pub inline fn dotu(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn cdotu(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
 ) cf32 {
     return dotu(n, x, incx, y, incy, .{}) catch .{ .re = 0, .im = 0 };
 }
@@ -2218,16 +2218,16 @@ pub inline fn cdotu(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -2238,11 +2238,11 @@ pub inline fn cdotu(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zdotu(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
 ) cf64 {
     return dotu(n, x, incx, y, incy, .{}) catch .{ .re = 0, .im = 0 };
 }
@@ -2259,14 +2259,14 @@ pub inline fn zdotu(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (many-item pointer to, `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -2283,9 +2283,9 @@ pub inline fn zdotu(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn nrm2(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !EnsureFloat(Scalar(Child(@TypeOf(x)))) {
     comptime var X: type = @TypeOf(x);
@@ -2307,7 +2307,7 @@ pub inline fn nrm2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime opts.link_cblas != null) {
+    if (comptime options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -2342,12 +2342,12 @@ pub inline fn nrm2(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -2359,9 +2359,9 @@ pub inline fn nrm2(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn snrm2(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
 ) f32 {
     return nrm2(n, x, incx, .{}) catch 0;
 }
@@ -2378,12 +2378,12 @@ pub inline fn snrm2(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -2395,9 +2395,9 @@ pub inline fn snrm2(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dnrm2(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
 ) f64 {
     return nrm2(n, x, incx, .{}) catch 0;
 }
@@ -2414,12 +2414,12 @@ pub inline fn dnrm2(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -2431,9 +2431,9 @@ pub inline fn dnrm2(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn scnrm2(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
 ) f32 {
     return nrm2(n, x, incx, .{}) catch 0;
 }
@@ -2450,12 +2450,12 @@ pub inline fn scnrm2(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
@@ -2467,9 +2467,9 @@ pub inline fn scnrm2(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dznrm2(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
 ) f64 {
     return nrm2(n, x, incx, .{}) catch 0;
 }
@@ -2486,20 +2486,20 @@ pub inline fn dznrm2(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
 /// least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
 /// least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `c` (`bool`, `int`, `float`, `integer`, `rational`, `real` or `expression`):
 /// The cosine of the rotation angle.
@@ -2521,11 +2521,11 @@ pub inline fn dznrm2(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn rot(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     c: anytype,
     s: anytype,
     ctx: anytype,
@@ -2577,7 +2577,7 @@ pub inline fn rot(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == Y and X == C and X == S and opts.link_cblas != null) {
+    if (comptime X == Y and X == C and X == S and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -2612,16 +2612,16 @@ pub inline fn rot(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `c` (`f32`): The cosine of the rotation angle.
 ///
@@ -2635,7 +2635,7 @@ pub inline fn rot(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn srot(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize, c: f32, s: f32) void {
+pub inline fn srot(n: i32, x: [*]f32, incx: i32, y: [*]f32, incy: i32, c: f32, s: f32) void {
     return rot(n, x, incx, y, incy, c, s, .{}) catch {};
 }
 
@@ -2651,16 +2651,16 @@ pub inline fn srot(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize, c: 
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `c` (`f64`): The cosine of the rotation angle.
 ///
@@ -2674,7 +2674,7 @@ pub inline fn srot(n: isize, x: [*]f32, incx: isize, y: [*]f32, incy: isize, c: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn drot(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, c: f64, s: f64) void {
+pub inline fn drot(n: i32, x: [*]f64, incx: i32, y: [*]f64, incy: i32, c: f64, s: f64) void {
     return rot(n, x, incx, y, incy, c, s, .{}) catch {};
 }
 
@@ -2690,16 +2690,16 @@ pub inline fn drot(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, c: 
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `c` (`f32`): The cosine of the rotation angle.
 ///
@@ -2713,7 +2713,7 @@ pub inline fn drot(n: isize, x: [*]f64, incx: isize, y: [*]f64, incy: isize, c: 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn csrot(n: isize, x: [*]cf32, incx: isize, y: [*]cf32, incy: isize, c: f32, s: f32) void {
+pub inline fn csrot(n: i32, x: [*]cf32, incx: i32, y: [*]cf32, incy: i32, c: f32, s: f32) void {
     return rot(n, x, incx, y, incy, c, s, .{}) catch {};
 }
 
@@ -2729,16 +2729,16 @@ pub inline fn csrot(n: isize, x: [*]cf32, incx: isize, y: [*]cf32, incy: isize, 
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `c` (`f64`): The cosine of the rotation angle.
 ///
@@ -2752,7 +2752,7 @@ pub inline fn csrot(n: isize, x: [*]cf32, incx: isize, y: [*]cf32, incy: isize, 
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zdrot(n: isize, x: [*]cf64, incx: isize, y: [*]cf64, incy: isize, c: f64, s: f64) void {
+pub inline fn zdrot(n: i32, x: [*]cf64, incx: i32, y: [*]cf64, incy: i32, c: f64, s: f64) void {
     return rot(n, x, incx, y, incy, c, s, .{}) catch {};
 }
 
@@ -2864,7 +2864,7 @@ pub inline fn rotg(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and A == C and A == S and opts.link_cblas != null) {
+    if (comptime A == B and A == C and A == S and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
@@ -3063,7 +3063,7 @@ pub inline fn zrotg(a: *cf64, b: *cf64, c: *f64, s: *cf64) void {
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (mutable many-item pointer to `bool`, `int`, `float`, `integer`,
@@ -3071,14 +3071,14 @@ pub inline fn zrotg(a: *cf64, b: *cf64, c: *f64, s: *cf64) void {
 /// `1 + (n - 1) * abs(incx)`. On return, every element `x[i]` is replaced
 /// by `h11 * x[i] + h12 * y[i]`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (mutable many-item pointer to `bool`, `int`, `float`, `integer`,
 /// `rational`, `real` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`. On return, every element `y[i]` is replaced
 /// by `h21 * x[i] + h22 * y[i]`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `param` (many-item pointer to `bool`, `int`, `float`, `integer`, `rational`,
 /// `real` or `expression`): Array, size 5. The elements of the `param` array are:
@@ -3135,11 +3135,11 @@ pub inline fn zrotg(a: *cf64, b: *cf64, c: *f64, s: *cf64) void {
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn rotm(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     param: anytype,
     ctx: anytype,
 ) !void {
@@ -3193,7 +3193,7 @@ pub inline fn rotm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == Y and X == P and opts.link_cblas != null) {
+    if (comptime X == Y and X == P and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -3225,18 +3225,18 @@ pub inline fn rotm(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`. On return,
 /// every element `x[i]` is replaced by `h11 * x[i] + h12 * y[i]`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incy)`. On return,
 /// every element `y[i]` is replaced by `h21 * x[i] + h22 * y[i]`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `param` (`[*]const f32`): Array, size 5. The elements of the `param` array
 /// are:
@@ -3288,11 +3288,11 @@ pub inline fn rotm(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn srotm(
-    n: isize,
+    n: i32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
     param: [*]const f32,
 ) void {
     return rotm(n, x, incx, y, incy, param, .{}) catch {};
@@ -3314,18 +3314,18 @@ pub inline fn srotm(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`. On return,
 /// every element `x[i]` is replaced by `h11 * x[i] + h12 * y[i]`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incy)`. On return,
 /// every element `y[i]` is replaced by `h21 * x[i] + h22 * y[i]`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// `param` (`[*]const f64`): Array, size 5. The elements of the `param` array
 /// are:
@@ -3377,11 +3377,11 @@ pub inline fn srotm(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn drotm(
-    n: isize,
+    n: i32,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
     param: [*]const f64,
 ) void {
     return rotm(n, x, incx, y, incy, param, .{}) catch {};
@@ -3552,7 +3552,7 @@ pub inline fn rotmg(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime D1 == D2 and D1 == X1 and D1 == P and types.canCoerce(Y1, D1) and opts.link_cblas != null) {
+    if (comptime D1 == D2 and D1 == X1 and D1 == P and types.canCoerce(Y1, D1) and options.link_cblas != null) {
         switch (comptime types.numericType(D1)) {
             .float => {
                 if (comptime D1 == f32) {
@@ -3756,7 +3756,7 @@ pub inline fn drotmg(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -3766,7 +3766,7 @@ pub inline fn drotmg(
 /// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
 /// least `1 + (n - 1) * abs(incx)`. On return contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// Returns
 /// -------
@@ -3782,10 +3782,10 @@ pub inline fn drotmg(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn scal(
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -3812,7 +3812,7 @@ pub inline fn scal(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime types.canCoerce(Al, X) and opts.link_cblas != null) {
+    if (comptime types.canCoerce(Al, X) and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -3857,7 +3857,7 @@ pub inline fn scal(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -3865,7 +3865,7 @@ pub inline fn scal(
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// Returns
 /// -------
@@ -3876,10 +3876,10 @@ pub inline fn scal(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn sscal(
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
 ) void {
     return scal(n, alpha, x, incx, .{}) catch {};
 }
@@ -3896,7 +3896,7 @@ pub inline fn sscal(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -3904,7 +3904,7 @@ pub inline fn sscal(
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// Returns
 /// -------
@@ -3915,10 +3915,10 @@ pub inline fn sscal(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dscal(
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
 ) void {
     return scal(n, alpha, x, incx, .{}) catch {};
 }
@@ -3935,7 +3935,7 @@ pub inline fn dscal(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -3943,7 +3943,7 @@ pub inline fn dscal(
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// Returns
 /// -------
@@ -3954,10 +3954,10 @@ pub inline fn dscal(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn cscal(
-    n: isize,
+    n: i32,
     alpha: cf32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return scal(n, alpha, x, incx, .{}) catch {};
 }
@@ -3974,7 +3974,7 @@ pub inline fn cscal(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -3982,7 +3982,7 @@ pub inline fn cscal(
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// Returns
 /// -------
@@ -3993,10 +3993,10 @@ pub inline fn cscal(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zscal(
-    n: isize,
+    n: i32,
     alpha: cf64,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
 ) void {
     return scal(n, alpha, x, incx, .{}) catch {};
 }
@@ -4013,7 +4013,7 @@ pub inline fn zscal(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -4021,7 +4021,7 @@ pub inline fn zscal(
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// Returns
 /// -------
@@ -4032,10 +4032,10 @@ pub inline fn zscal(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn csscal(
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return scal(n, alpha, x, incx, .{}) catch {};
 }
@@ -4052,7 +4052,7 @@ pub inline fn csscal(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -4060,7 +4060,7 @@ pub inline fn csscal(
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// Returns
 /// -------
@@ -4070,7 +4070,7 @@ pub inline fn csscal(
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
-pub inline fn zdscal(n: isize, alpha: f64, x: [*]cf64, incx: isize) void {
+pub inline fn zdscal(n: i32, alpha: f64, x: [*]cf64, incx: i32) void {
     return scal(n, alpha, x, incx, .{}) catch {};
 }
 
@@ -4081,20 +4081,20 @@ pub inline fn zdscal(n: isize, alpha: f64, x: [*]cf64, incx: isize) void {
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
 /// least `1 + (n - 1) * abs(incx)`. On return contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
 /// `integer`, `rational`, `real`, `complex` or `expression`): Array, size at
 /// least `1 + (n - 1) * abs(incy)`. On return contains the updated vector `y`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -4110,11 +4110,11 @@ pub inline fn zdscal(n: isize, alpha: f64, x: [*]cf64, incx: isize) void {
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn swap(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     comptime var X: type = @TypeOf(x);
@@ -4145,7 +4145,7 @@ pub inline fn swap(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime X == Y and opts.link_cblas != null) {
+    if (comptime X == Y and options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -4175,18 +4175,18 @@ pub inline fn swap(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incy)`. On return
 /// contains the updated vector `y`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -4197,11 +4197,11 @@ pub inline fn swap(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn sswap(
-    n: isize,
+    n: i32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return swap(n, x, incx, y, incy, .{}) catch {};
 }
@@ -4213,18 +4213,18 @@ pub inline fn sswap(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incy)`. On return
 /// contains the updated vector `y`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -4235,11 +4235,11 @@ pub inline fn sswap(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn dswap(
-    n: isize,
+    n: i32,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return swap(n, x, incx, y, incy, .{}) catch {};
 }
@@ -4251,18 +4251,18 @@ pub inline fn dswap(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incy)`. On return
 /// contains the updated vector `y`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -4273,11 +4273,11 @@ pub inline fn dswap(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn cswap(
-    n: isize,
+    n: i32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return swap(n, x, incx, y, incy, .{}) catch {};
 }
@@ -4289,18 +4289,18 @@ pub inline fn cswap(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vectors `x` and `y`. Must
+/// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
 /// be greater than 0.
 ///
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`. On return
 /// contains the updated vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for the elements of `x`.
+/// `incx` (`i32`): Specifies the increment for the elements of `x`.
 ///
 /// `y` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incy)`. On return
 /// contains the updated vector `y`.
 ///
-/// `incy` (`isize`): Specifies the increment for the elements of `y`.
+/// `incy` (`i32`): Specifies the increment for the elements of `y`.
 ///
 /// Returns
 /// -------
@@ -4311,11 +4311,11 @@ pub inline fn cswap(
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn zswap(
-    n: isize,
+    n: i32,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return swap(n, x, incx, y, incy, .{}) catch {};
 }
@@ -4331,19 +4331,19 @@ pub inline fn zswap(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the maximum absolute value in `x`.
+/// `u32`: The index of the element with the maximum absolute value in `x`.
 ///
 /// Errors
 /// ------
@@ -4356,11 +4356,11 @@ pub inline fn zswap(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn iamax(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
-) !usize {
+) !u32 {
     comptime var X: type = @TypeOf(x);
 
     comptime if (!types.isManyPointer(X))
@@ -4379,7 +4379,7 @@ pub inline fn iamax(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime opts.link_cblas != null) {
+    if (comptime options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -4414,27 +4414,27 @@ pub inline fn iamax(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the maximum absolute value in `x`.
+/// `u32`: The index of the element with the maximum absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn isamax(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamax(n, x, incx, .{}) catch 0;
 }
 
@@ -4450,27 +4450,27 @@ pub inline fn isamax(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the maximum absolute value in `x`.
+/// `u32`: The index of the element with the maximum absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn idamax(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamax(n, x, incx, .{}) catch 0;
 }
 
@@ -4486,27 +4486,27 @@ pub inline fn idamax(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the maximum absolute value in `x`.
+/// `u32`: The index of the element with the maximum absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn icamax(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamax(n, x, incx, .{}) catch 0;
 }
 
@@ -4522,27 +4522,27 @@ pub inline fn icamax(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the maximum absolute value in `x`.
+/// `u32`: The index of the element with the maximum absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn izamax(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamax(n, x, incx, .{}) catch 0;
 }
 
@@ -4557,19 +4557,19 @@ pub inline fn izamax(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the smallest absolute value in `x`.
+/// `u32`: The index of the element with the smallest absolute value in `x`.
 ///
 /// Errors
 /// ------
@@ -4582,11 +4582,11 @@ pub inline fn izamax(
 /// corresponding CBLAS function, if available. In that case, no errors will be
 /// raised even if the arguments are invalid.
 pub inline fn iamin(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
-) !usize {
+) !u32 {
     comptime var X: type = @TypeOf(x);
 
     comptime if (!types.isManyPointer(X))
@@ -4605,7 +4605,7 @@ pub inline fn iamin(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime opts.link_cblas != null) {
+    if (comptime options.link_cblas != null) {
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
@@ -4640,27 +4640,27 @@ pub inline fn iamin(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the smallest absolute value in `x`.
+/// `u32`: The index of the element with the smallest absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn isamin(
-    n: isize,
+    n: i32,
     x: [*]const f32,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamin(n, x, incx, .{}) catch 0;
 }
 
@@ -4676,27 +4676,27 @@ pub inline fn isamin(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the smallest absolute value in `x`.
+/// `u32`: The index of the element with the smallest absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn idamin(
-    n: isize,
+    n: i32,
     x: [*]const f64,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamin(n, x, incx, .{}) catch 0;
 }
 
@@ -4712,27 +4712,27 @@ pub inline fn idamin(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the smallest absolute value in `x`.
+/// `u32`: The index of the element with the smallest absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn icamin(
-    n: isize,
+    n: i32,
     x: [*]const cf32,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamin(n, x, incx, .{}) catch 0;
 }
 
@@ -4748,27 +4748,27 @@ pub inline fn icamin(
 ///
 /// Parameters
 /// ----------
-/// `n` (`isize`): Specifies the number of elements in vector `x`. Must be
+/// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
 /// greater than 0.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// greater than 0.
 ///
 /// Returns
 /// -------
-/// `usize`: The index of the element with the smallest absolute value in `x`.
+/// `u32`: The index of the element with the smallest absolute value in `x`.
 ///
 /// Notes
 /// -----
 /// If the `link_cblas` option is not `null`, the function will call the
 /// corresponding CBLAS function.
 pub inline fn izamin(
-    n: isize,
+    n: i32,
     x: [*]const cf64,
-    incx: isize,
-) usize {
+    incx: i32,
+) u32 {
     return iamin(n, x, incx, .{}) catch 0;
 }
 
@@ -4814,16 +4814,16 @@ pub inline fn izamin(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// `kl` (`i32`): Specifies the number of sub-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// `ku` (`i32`): Specifies the number of super-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -4832,7 +4832,7 @@ pub inline fn izamin(
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
@@ -4840,7 +4840,7 @@ pub inline fn izamin(
 /// `1 + (n - 1) * abs(incx)` when `transa` is `no_transpose` or
 /// `conj_no_transpose`, or `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -4853,7 +4853,7 @@ pub inline fn izamin(
 /// `conj_no_transpose`, or `1 + (n - 1) * abs(incy)` otherwise. On return,
 /// contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -4873,18 +4873,18 @@ pub inline fn izamin(
 pub inline fn gbmv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
-    kl: isize,
-    ku: isize,
+    m: i32,
+    n: i32,
+    kl: i32,
+    ku: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -4938,24 +4938,24 @@ pub inline fn gbmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_sgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_sgbmv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_dgbmv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_cgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_cgbmv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zgbmv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_zgbmv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, kl), scast(c_int, ku), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -5005,30 +5005,30 @@ pub inline fn gbmv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// `kl` (`i32`): Specifies the number of sub-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// `ku` (`i32`): Specifies the number of super-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -5039,7 +5039,7 @@ pub inline fn gbmv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5053,18 +5053,18 @@ pub inline fn gbmv(
 pub inline fn sgbmv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
-    kl: isize,
-    ku: isize,
+    m: i32,
+    n: i32,
+    kl: i32,
+    ku: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     beta: f32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5109,30 +5109,30 @@ pub inline fn sgbmv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// `kl` (`i32`): Specifies the number of sub-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// `ku` (`i32`): Specifies the number of super-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -5143,7 +5143,7 @@ pub inline fn sgbmv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5157,18 +5157,18 @@ pub inline fn sgbmv(
 pub inline fn dgbmv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
-    kl: isize,
-    ku: isize,
+    m: i32,
+    n: i32,
+    kl: i32,
+    ku: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     beta: f64,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5213,30 +5213,30 @@ pub inline fn dgbmv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// `kl` (`i32`): Specifies the number of sub-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// `ku` (`i32`): Specifies the number of super-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -5247,7 +5247,7 @@ pub inline fn dgbmv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5261,18 +5261,18 @@ pub inline fn dgbmv(
 pub inline fn cgbmv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
-    kl: isize,
-    ku: isize,
+    m: i32,
+    n: i32,
+    kl: i32,
+    ku: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     beta: cf32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5317,30 +5317,30 @@ pub inline fn cgbmv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `kl` (`isize`): Specifies the number of sub-diagonals of the matrix `A`.
+/// `kl` (`i32`): Specifies the number of sub-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
-/// `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
+/// `ku` (`i32`): Specifies the number of super-diagonals of the matrix `A`.
 /// Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)` when
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -5351,7 +5351,7 @@ pub inline fn cgbmv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5365,18 +5365,18 @@ pub inline fn cgbmv(
 pub inline fn zgbmv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
-    kl: isize,
-    ku: isize,
+    m: i32,
+    n: i32,
+    kl: i32,
+    ku: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     beta: cf64,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return gbmv(order, transa, m, n, kl, ku, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5421,10 +5421,10 @@ pub inline fn zgbmv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -5434,7 +5434,7 @@ pub inline fn zgbmv(
 /// `real`, `complex` or `expression`): Array, size at least `lda * k`, where
 /// `k` is `n` when `order` is `col_major`, or `m` when `order` is `row_major`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -5443,7 +5443,7 @@ pub inline fn zgbmv(
 /// `1 + (n - 1) * abs(incx)` when `transa` is `no_transpose` or
 /// `conj_no_transpose`, or `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -5456,7 +5456,7 @@ pub inline fn zgbmv(
 /// `conj_no_transpose`, or `1 + (n - 1) * abs(incy)` otherwise. On return,
 /// contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5476,16 +5476,16 @@ pub inline fn zgbmv(
 pub inline fn gemv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -5539,24 +5539,24 @@ pub inline fn gemv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_sgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_sgemv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_dgemv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_cgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_cgemv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zgemv(@intFromEnum(order), @intFromEnum(transa), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_zgemv(order.toCUInt(), transa.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -5606,10 +5606,10 @@ pub inline fn gemv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -5617,7 +5617,7 @@ pub inline fn gemv(
 /// `a` (`[*]const f32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -5625,7 +5625,7 @@ pub inline fn gemv(
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -5636,7 +5636,7 @@ pub inline fn gemv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5650,16 +5650,16 @@ pub inline fn gemv(
 pub inline fn sgemv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     beta: f32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5704,10 +5704,10 @@ pub inline fn sgemv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -5715,7 +5715,7 @@ pub inline fn sgemv(
 /// `a` (`[*]const f64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -5723,7 +5723,7 @@ pub inline fn sgemv(
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -5734,7 +5734,7 @@ pub inline fn sgemv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5748,16 +5748,16 @@ pub inline fn sgemv(
 pub inline fn dgemv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     beta: f64,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5802,10 +5802,10 @@ pub inline fn dgemv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -5813,7 +5813,7 @@ pub inline fn dgemv(
 /// `a` (`[*]const cf32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -5821,7 +5821,7 @@ pub inline fn dgemv(
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -5832,7 +5832,7 @@ pub inline fn dgemv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5846,16 +5846,16 @@ pub inline fn dgemv(
 pub inline fn cgemv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     beta: cf32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5900,10 +5900,10 @@ pub inline fn cgemv(
 /// - `conj_no_transpose`: `y = alpha * conj(A) * x + beta * y`
 /// - `conj_transpose`: `y = alpha * A^H * x + beta * y`
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -5911,7 +5911,7 @@ pub inline fn cgemv(
 /// `a` (`[*]const cf64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -5919,7 +5919,7 @@ pub inline fn cgemv(
 /// `transa` is `no_transpose` or `conj_no_transpose`, or
 /// `1 + (m - 1) * abs(incx)` otherwise.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -5930,7 +5930,7 @@ pub inline fn cgemv(
 /// `1 + (n - 1) * abs(incy)` otherwise. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -5944,16 +5944,16 @@ pub inline fn cgemv(
 pub inline fn zgemv(
     order: Order,
     transa: Transpose,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     beta: cf64,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return gemv(order, transa, m, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -5974,10 +5974,10 @@ pub inline fn zgemv(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -5987,14 +5987,14 @@ pub inline fn zgemv(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -6002,7 +6002,7 @@ pub inline fn zgemv(
 /// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
 /// is `row_major`. On return, contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6022,15 +6022,15 @@ pub inline fn zgemv(
 /// raised even if the arguments are invalid.
 pub inline fn ger(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -6079,13 +6079,13 @@ pub inline fn ger(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_sger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_sger(order.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dger(@intFromEnum(order), scast(c_int, m), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_dger(order.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -6111,29 +6111,29 @@ pub inline fn ger(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6147,15 +6147,15 @@ pub inline fn ger(
 /// corresponding CBLAS function.
 pub inline fn sger(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     y: [*]const f32,
-    incy: isize,
+    incy: i32,
     a: [*]f32,
-    lda: isize,
+    lda: i32,
 ) void {
     return ger(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -6176,29 +6176,29 @@ pub inline fn sger(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6212,15 +6212,15 @@ pub inline fn sger(
 /// corresponding CBLAS function.
 pub inline fn dger(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f64,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     y: [*]const f64,
-    incy: isize,
+    incy: i32,
     a: [*]f64,
-    lda: isize,
+    lda: i32,
 ) void {
     return ger(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -6241,10 +6241,10 @@ pub inline fn dger(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -6254,14 +6254,14 @@ pub inline fn dger(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -6269,7 +6269,7 @@ pub inline fn dger(
 /// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
 /// is `row_major`. On return, contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6289,15 +6289,15 @@ pub inline fn dger(
 /// raised even if the arguments are invalid.
 pub inline fn gerc(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -6346,15 +6346,15 @@ pub inline fn gerc(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_cgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_cgerc(order.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_zgerc(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_zgerc(order.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -6380,29 +6380,29 @@ pub inline fn gerc(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6416,15 +6416,15 @@ pub inline fn gerc(
 /// corresponding CBLAS function.
 pub inline fn cgerc(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
 ) void {
     return gerc(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -6445,29 +6445,29 @@ pub inline fn cgerc(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6481,15 +6481,15 @@ pub inline fn cgerc(
 /// corresponding CBLAS function.
 pub inline fn zgerc(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
 ) void {
     return gerc(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -6510,10 +6510,10 @@ pub inline fn zgerc(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -6523,14 +6523,14 @@ pub inline fn zgerc(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -6538,7 +6538,7 @@ pub inline fn zgerc(
 /// `lda * k`, where `k` is `n` when `order` is `col_major`, or `m` when `order`
 /// is `row_major`. On return, contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6558,15 +6558,15 @@ pub inline fn zgerc(
 /// raised even if the arguments are invalid.
 pub inline fn geru(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -6615,15 +6615,15 @@ pub inline fn geru(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_cgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_cgeru(order.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_zgeru(@intFromEnum(order), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_zgeru(order.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -6649,29 +6649,29 @@ pub inline fn geru(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6685,15 +6685,15 @@ pub inline fn geru(
 /// corresponding CBLAS function.
 pub inline fn cgeru(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
 ) void {
     return geru(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -6714,29 +6714,29 @@ pub inline fn cgeru(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `A`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `A`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `A`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (m - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * k`, where `k` is `n` when
 /// `order` is `col_major`, or `m` when `order` is `row_major`. On return,
 /// contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` when
 /// `order` is `col_major`, or `max(1, n)` when `order` is `row_major`.
 ///
@@ -6750,15 +6750,15 @@ pub inline fn cgeru(
 /// corresponding CBLAS function.
 pub inline fn zgeru(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
 ) void {
     return geru(order, m, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -6786,10 +6786,10 @@ pub inline fn zgeru(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -6798,14 +6798,14 @@ pub inline fn zgeru(
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -6817,7 +6817,7 @@ pub inline fn zgeru(
 /// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -6837,16 +6837,16 @@ pub inline fn zgeru(
 pub inline fn hbmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -6900,17 +6900,17 @@ pub inline fn hbmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_chbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_chbmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zhbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_zhbmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -6943,22 +6943,22 @@ pub inline fn hbmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -6967,7 +6967,7 @@ pub inline fn hbmv(
 /// `y` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incy)`. On
 /// return, contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -6981,16 +6981,16 @@ pub inline fn hbmv(
 pub inline fn chbmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     beta: cf32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -7018,22 +7018,22 @@ pub inline fn chbmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -7042,7 +7042,7 @@ pub inline fn chbmv(
 /// `y` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incy)`. On
 /// return, contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -7056,16 +7056,16 @@ pub inline fn chbmv(
 pub inline fn zhbmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     beta: cf64,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return hbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -7093,7 +7093,7 @@ pub inline fn zhbmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -7102,14 +7102,14 @@ pub inline fn zhbmv(
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -7121,7 +7121,7 @@ pub inline fn zhbmv(
 /// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -7141,15 +7141,15 @@ pub inline fn zhbmv(
 pub inline fn hemv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -7203,17 +7203,17 @@ pub inline fn hemv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_chemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_chemv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zhemv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_zhemv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -7246,19 +7246,19 @@ pub inline fn hemv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is
@@ -7267,7 +7267,7 @@ pub inline fn hemv(
 /// `y` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incy)`. On
 /// return, contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -7281,15 +7281,15 @@ pub inline fn hemv(
 pub inline fn chemv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     beta: cf32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return hemv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -7317,19 +7317,19 @@ pub inline fn chemv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is
@@ -7338,7 +7338,7 @@ pub inline fn chemv(
 /// `y` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incy)`. On
 /// return, contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -7352,15 +7352,15 @@ pub inline fn chemv(
 pub inline fn zhemv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     beta: cf64,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return hemv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -7388,7 +7388,7 @@ pub inline fn zhemv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
@@ -7398,14 +7398,14 @@ pub inline fn zhemv(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * n`. On return, contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -7425,12 +7425,12 @@ pub inline fn zhemv(
 pub inline fn her(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -7472,13 +7472,13 @@ pub inline fn her(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and types.canCoerce(Al, Scalar(A)) and opts.link_cblas != null) {
+    if (comptime A == X and types.canCoerce(Al, Scalar(A)) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_cher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
+                    return ci.cblas_cher(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_zher(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
+                    return ci.cblas_zher(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -7511,20 +7511,20 @@ pub inline fn her(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
 /// result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -7538,12 +7538,12 @@ pub inline fn her(
 pub inline fn cher(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
 ) void {
     return her(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
@@ -7571,20 +7571,20 @@ pub inline fn cher(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
 /// result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -7598,12 +7598,12 @@ pub inline fn cher(
 pub inline fn zher(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
 ) void {
     return her(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
@@ -7631,7 +7631,7 @@ pub inline fn zher(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -7641,21 +7641,21 @@ pub inline fn zher(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * n`. On return, contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -7675,14 +7675,14 @@ pub inline fn zher(
 pub inline fn her2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -7731,15 +7731,15 @@ pub inline fn her2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(Al)) {
             .cfloat => {
                 if (comptime Scalar(Al) == f32) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_cher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_cher2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 } else if (comptime Scalar(Al) == f64) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_zher2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_zher2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -7772,25 +7772,25 @@ pub inline fn her2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
 /// result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -7804,14 +7804,14 @@ pub inline fn her2(
 pub inline fn cher2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
 ) void {
     return her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -7839,25 +7839,25 @@ pub inline fn cher2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
 /// result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -7871,14 +7871,14 @@ pub inline fn cher2(
 pub inline fn zher2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
 ) void {
     return her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -7906,7 +7906,7 @@ pub inline fn zher2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -7920,7 +7920,7 @@ pub inline fn zher2(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -7932,7 +7932,7 @@ pub inline fn zher2(
 /// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -7952,14 +7952,14 @@ pub inline fn zher2(
 pub inline fn hpmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     ap: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -8013,17 +8013,17 @@ pub inline fn hpmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_chpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, ap, x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_chpmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, ap, x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zhpmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, ap, x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
+                    return ci.cblas_zhpmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, ap, x, scast(c_int, incx), &beta_casted, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -8056,7 +8056,7 @@ pub inline fn hpmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -8065,7 +8065,7 @@ pub inline fn hpmv(
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -8075,7 +8075,7 @@ pub inline fn hpmv(
 /// return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -8089,14 +8089,14 @@ pub inline fn hpmv(
 pub inline fn chpmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf32,
     ap: [*]const cf32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     beta: cf32,
     y: [*]cf32,
-    incy: isize,
+    incy: i32,
 ) void {
     return hpmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -8124,7 +8124,7 @@ pub inline fn chpmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -8133,7 +8133,7 @@ pub inline fn chpmv(
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`cf64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -8143,7 +8143,7 @@ pub inline fn chpmv(
 /// return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -8157,14 +8157,14 @@ pub inline fn chpmv(
 pub inline fn zhpmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf64,
     ap: [*]const cf64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     beta: cf64,
     y: [*]cf64,
-    incy: isize,
+    incy: i32,
 ) void {
     return hpmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -8192,7 +8192,7 @@ pub inline fn zhpmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
@@ -8202,7 +8202,7 @@ pub inline fn zhpmv(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `ap` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -8226,10 +8226,10 @@ pub inline fn zhpmv(
 pub inline fn hpr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ap: anytype,
     ctx: anytype,
 ) !void {
@@ -8272,13 +8272,13 @@ pub inline fn hpr(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_chpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), ap);
+                    return ci.cblas_chpr(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), ap);
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_zhpr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), ap);
+                    return ci.cblas_zhpr(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), ap);
                 }
             },
             else => {},
@@ -8311,14 +8311,14 @@ pub inline fn hpr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]cf32`): Array, size at least `(n * (n + 1)) / 2`.
@@ -8334,10 +8334,10 @@ pub inline fn hpr(
 pub inline fn chpr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     ap: [*]cf32,
 ) void {
     return hpr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
@@ -8366,14 +8366,14 @@ pub inline fn chpr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]cf64`): Array, size at least `(n * (n + 1)) / 2`.
@@ -8389,10 +8389,10 @@ pub inline fn chpr(
 pub inline fn zhpr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     ap: [*]cf64,
 ) void {
     return hpr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
@@ -8421,7 +8421,7 @@ pub inline fn zhpr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -8431,14 +8431,14 @@ pub inline fn zhpr(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `ap` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -8462,12 +8462,12 @@ pub inline fn zhpr(
 pub inline fn hpr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ap: anytype,
     ctx: anytype,
 ) !void {
@@ -8517,15 +8517,15 @@ pub inline fn hpr2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_chpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                    return ci.cblas_chpr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_zhpr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                    return ci.cblas_zhpr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 }
             },
             else => {},
@@ -8558,19 +8558,19 @@ pub inline fn hpr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]cf32`): Array, size at least `(n * (n + 1)) / 2`. On return,
@@ -8587,12 +8587,12 @@ pub inline fn hpr2(
 pub inline fn chpr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf32,
     x: [*]const cf32,
-    incx: isize,
+    incx: i32,
     y: [*]const cf32,
-    incy: isize,
+    incy: i32,
     ap: [*]cf32,
 ) void {
     return hpr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
@@ -8621,19 +8621,19 @@ pub inline fn chpr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const cf64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]cf364`): Array, size at least `(n * (n + 1)) / 2`. On return,
@@ -8650,12 +8650,12 @@ pub inline fn chpr2(
 pub inline fn zhpr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: cf64,
     x: [*]const cf64,
-    incx: isize,
+    incx: i32,
     y: [*]const cf64,
-    incy: isize,
+    incy: i32,
     ap: [*]cf64,
 ) void {
     return hpr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
@@ -8684,10 +8684,10 @@ pub inline fn zhpr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -8696,14 +8696,14 @@ pub inline fn zhpr2(
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -8715,7 +8715,7 @@ pub inline fn zhpr2(
 /// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -8735,16 +8735,16 @@ pub inline fn zhpr2(
 pub inline fn sbmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -8798,13 +8798,13 @@ pub inline fn sbmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_ssbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_ssbmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dsbmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_dsbmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -8837,22 +8837,22 @@ pub inline fn sbmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -8861,7 +8861,7 @@ pub inline fn sbmv(
 /// `y` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incy)`. On return,
 /// contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -8875,16 +8875,16 @@ pub inline fn sbmv(
 pub inline fn ssbmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     beta: f32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return sbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -8912,22 +8912,22 @@ pub inline fn ssbmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y` need
@@ -8936,7 +8936,7 @@ pub inline fn ssbmv(
 /// `y` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incy)`. On return,
 /// contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -8950,16 +8950,16 @@ pub inline fn ssbmv(
 pub inline fn dsbmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     beta: f64,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return sbmv(order, uplo, n, k, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -8987,7 +8987,7 @@ pub inline fn dsbmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -9001,7 +9001,7 @@ pub inline fn dsbmv(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -9013,7 +9013,7 @@ pub inline fn dsbmv(
 /// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -9033,14 +9033,14 @@ pub inline fn dsbmv(
 pub inline fn spmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     ap: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -9094,13 +9094,13 @@ pub inline fn spmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_sspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_sspmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dspmv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
+                    return ci.cblas_dspmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -9133,7 +9133,7 @@ pub inline fn spmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -9142,7 +9142,7 @@ pub inline fn spmv(
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -9152,7 +9152,7 @@ pub inline fn spmv(
 /// return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -9166,14 +9166,14 @@ pub inline fn spmv(
 pub inline fn sspmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     ap: [*]const f32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     beta: f32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -9201,7 +9201,7 @@ pub inline fn sspmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -9210,7 +9210,7 @@ pub inline fn sspmv(
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is 0, then `y`
@@ -9220,7 +9220,7 @@ pub inline fn sspmv(
 /// return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -9234,14 +9234,14 @@ pub inline fn sspmv(
 pub inline fn dspmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     ap: [*]const f64,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     beta: f64,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -9269,7 +9269,7 @@ pub inline fn dspmv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -9279,7 +9279,7 @@ pub inline fn dspmv(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `ap` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -9303,10 +9303,10 @@ pub inline fn dspmv(
 pub inline fn spr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ap: anytype,
     ctx: anytype,
 ) !void {
@@ -9346,13 +9346,13 @@ pub inline fn spr(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_sspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), ap);
+                    return ci.cblas_sspr(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), ap);
                 } else if (comptime A == f64) {
-                    return ci.cblas_dspr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), ap);
+                    return ci.cblas_dspr(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), ap);
                 }
             },
             else => {},
@@ -9385,14 +9385,14 @@ pub inline fn spr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]f32`): Array, size at least `(n * (n + 1)) / 2`.
@@ -9408,10 +9408,10 @@ pub inline fn spr(
 pub inline fn sspr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     ap: [*]f32,
 ) void {
     return spr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
@@ -9440,14 +9440,14 @@ pub inline fn sspr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]f64`): Array, size at least `(n * (n + 1)) / 2`.
@@ -9463,10 +9463,10 @@ pub inline fn sspr(
 pub inline fn dspr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     ap: [*]f64,
 ) void {
     return spr(order, uplo, n, alpha, x, incx, ap, .{}) catch {};
@@ -9495,7 +9495,7 @@ pub inline fn dspr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -9505,14 +9505,14 @@ pub inline fn dspr(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `ap` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -9536,12 +9536,12 @@ pub inline fn dspr(
 pub inline fn spr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ap: anytype,
     ctx: anytype,
 ) !void {
@@ -9591,13 +9591,13 @@ pub inline fn spr2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_sspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                    return ci.cblas_sspr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 } else if (comptime A == f64) {
-                    return ci.cblas_dspr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), ap);
+                    return ci.cblas_dspr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), ap);
                 }
             },
             else => {},
@@ -9630,19 +9630,19 @@ pub inline fn spr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]f32`): Array, size at least `(n * (n + 1)) / 2`. On return,
@@ -9659,12 +9659,12 @@ pub inline fn spr2(
 pub inline fn sspr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     y: [*]const f32,
-    incy: isize,
+    incy: i32,
     ap: [*]f32,
 ) void {
     return spr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
@@ -9693,19 +9693,19 @@ pub inline fn sspr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// supplied in `ap`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `ap` (`[*]f64`): Array, size at least `(n * (n + 1)) / 2`. On return,
@@ -9722,12 +9722,12 @@ pub inline fn sspr2(
 pub inline fn dspr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     y: [*]const f64,
-    incy: isize,
+    incy: i32,
     ap: [*]f64,
 ) void {
     return spr2(order, uplo, n, alpha, x, incx, y, incy, ap, .{}) catch {};
@@ -9756,7 +9756,7 @@ pub inline fn dspr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -9765,14 +9765,14 @@ pub inline fn dspr2(
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -9784,7 +9784,7 @@ pub inline fn dspr2(
 /// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -9804,15 +9804,15 @@ pub inline fn dspr2(
 pub inline fn symv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -9866,13 +9866,13 @@ pub inline fn symv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_ssymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_ssymv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dsymv(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
+                    return ci.cblas_dsymv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), x, scast(c_int, incx), scast(A, beta), y, scast(c_int, incy));
                 }
             },
             else => {},
@@ -9905,19 +9905,19 @@ pub inline fn symv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f32`): Specifies the scalar `beta`. When `beta` is
@@ -9926,7 +9926,7 @@ pub inline fn symv(
 /// `y` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incy)`. On
 /// return, contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -9940,15 +9940,15 @@ pub inline fn symv(
 pub inline fn ssymv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     beta: f32,
     y: [*]f32,
-    incy: isize,
+    incy: i32,
 ) void {
     return symv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -9976,19 +9976,19 @@ pub inline fn ssymv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`f64`): Specifies the scalar `beta`. When `beta` is
@@ -9997,7 +9997,7 @@ pub inline fn ssymv(
 /// `y` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incy)`. On
 /// return, contains the result of the operation.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -10011,15 +10011,15 @@ pub inline fn ssymv(
 pub inline fn dsymv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     beta: f64,
     y: [*]f64,
-    incy: isize,
+    incy: i32,
 ) void {
     return symv(order, uplo, n, alpha, a, lda, x, incx, beta, y, incy, .{}) catch {};
 }
@@ -10047,7 +10047,7 @@ pub inline fn dsymv(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
@@ -10057,14 +10057,14 @@ pub inline fn dsymv(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -10084,12 +10084,12 @@ pub inline fn dsymv(
 pub inline fn syr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -10128,13 +10128,13 @@ pub inline fn syr(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_ssyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), a, scast(c_int, lda));
+                    return ci.cblas_ssyr(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), a, scast(c_int, lda));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dsyr(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), a, scast(c_int, lda));
+                    return ci.cblas_dsyr(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -10167,19 +10167,19 @@ pub inline fn syr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -10193,12 +10193,12 @@ pub inline fn syr(
 pub inline fn ssyr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     a: [*]f32,
-    lda: isize,
+    lda: i32,
 ) void {
     return syr(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
@@ -10226,19 +10226,19 @@ pub inline fn ssyr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -10252,12 +10252,12 @@ pub inline fn ssyr(
 pub inline fn dsyr(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     a: [*]f64,
-    lda: isize,
+    lda: i32,
 ) void {
     return syr(order, uplo, n, alpha, x, incx, a, lda, .{}) catch {};
 }
@@ -10285,7 +10285,7 @@ pub inline fn dsyr(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -10295,21 +10295,21 @@ pub inline fn dsyr(
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * n`. On return, contains the result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -10329,14 +10329,14 @@ pub inline fn dsyr(
 pub inline fn syr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -10385,13 +10385,13 @@ pub inline fn syr2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_ssyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_ssyr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dsyr2(@intFromEnum(order), @intFromEnum(uplo), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
+                    return ci.cblas_dsyr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
                 }
             },
             else => {},
@@ -10424,25 +10424,25 @@ pub inline fn syr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const f32`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
 /// result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -10456,14 +10456,14 @@ pub inline fn syr2(
 pub inline fn ssyr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f32,
     x: [*]const f32,
-    incx: isize,
+    incx: i32,
     y: [*]const f32,
-    incy: isize,
+    incy: i32,
     a: [*]f32,
-    lda: isize,
+    lda: i32,
 ) void {
     return syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -10491,25 +10491,25 @@ pub inline fn ssyr2(
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
 ///
 /// `x` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `y` (`[*]const f64`): Array, size at least `1 + (n - 1) * abs(incy)`.
 ///
-/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
 /// result of the operation.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -10523,14 +10523,14 @@ pub inline fn ssyr2(
 pub inline fn dsyr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: f64,
     x: [*]const f64,
-    incx: isize,
+    incx: i32,
     y: [*]const f64,
-    incy: isize,
+    incy: i32,
     a: [*]f64,
-    lda: isize,
+    lda: i32,
 ) void {
     return syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, .{}) catch {};
 }
@@ -10584,23 +10584,23 @@ pub inline fn dsyr2(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -10622,12 +10622,12 @@ pub inline fn tbmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(a);
@@ -10661,20 +10661,20 @@ pub inline fn tbmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and opts.link_cblas != null) {
+    if (comptime A == X and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_stbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_stbmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtbmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctbmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztbmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztbmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
@@ -10733,20 +10733,20 @@ pub inline fn tbmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -10762,12 +10762,12 @@ pub inline fn stbmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -10821,20 +10821,20 @@ pub inline fn stbmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -10850,12 +10850,12 @@ pub inline fn dtbmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -10909,20 +10909,20 @@ pub inline fn dtbmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -10938,12 +10938,12 @@ pub inline fn ctbmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -10997,20 +10997,20 @@ pub inline fn ctbmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11026,12 +11026,12 @@ pub inline fn ztbmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbmv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -11088,16 +11088,16 @@ pub inline fn ztbmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -11106,7 +11106,7 @@ pub inline fn ztbmv(
 /// contain the n-element right-hand side vector `b`. On return, it contains the
 /// solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11128,12 +11128,12 @@ pub inline fn tbsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(a);
@@ -11167,20 +11167,20 @@ pub inline fn tbsv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and opts.link_cblas != null) {
+    if (comptime A == X and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_stbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_stbsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtbsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctbsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztbsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztbsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), scast(c_int, k), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
@@ -11242,22 +11242,22 @@ pub inline fn tbsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`. Before
 /// entry, the incremented array `x` must contain the n-element right-hand side
 /// vector `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11273,12 +11273,12 @@ pub inline fn stbsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -11335,22 +11335,22 @@ pub inline fn stbsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`. Before
 /// entry, the incremented array `x` must contain the n-element right-hand side
 /// vector `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11366,12 +11366,12 @@ pub inline fn dtbsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -11428,22 +11428,22 @@ pub inline fn dtbsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`. Before
 /// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
 /// solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11459,12 +11459,12 @@ pub inline fn ctbsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -11521,22 +11521,22 @@ pub inline fn ctbsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`. Before
 /// entry, the incremented array `x` must contain the n-element right-hand side vector `b`. On return, it contains the
 /// solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11552,12 +11552,12 @@ pub inline fn ztbsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tbsv(order, uplo, transa, diag, n, k, a, lda, x, incx, .{}) catch {};
 }
@@ -11611,7 +11611,7 @@ pub inline fn ztbsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
@@ -11622,7 +11622,7 @@ pub inline fn ztbsv(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11644,10 +11644,10 @@ pub inline fn tpmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(ap);
@@ -11681,20 +11681,20 @@ pub inline fn tpmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and opts.link_cblas != null) {
+    if (comptime A == X and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_stpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_stpmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_dtpmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_ctpmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztpmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_ztpmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             else => {},
@@ -11753,14 +11753,14 @@ pub inline fn tpmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const f32`): Array, size at least `(n * (n + 1)) / 2`.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11776,10 +11776,10 @@ pub inline fn stpmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const f32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -11833,14 +11833,14 @@ pub inline fn stpmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const f64`): Array, size at least `(n * (n + 1)) / 2`.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11856,10 +11856,10 @@ pub inline fn dtpmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const f64,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -11913,14 +11913,14 @@ pub inline fn dtpmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const cf32`): Array, size at least `(n * (n + 1)) / 2`.
 ///
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -11936,10 +11936,10 @@ pub inline fn ctpmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const cf32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -11993,14 +11993,14 @@ pub inline fn ctpmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const cf64`): Array, size at least `(n * (n + 1)) / 2`.
 ///
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12016,10 +12016,10 @@ pub inline fn ztpmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const cf64,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpmv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -12074,7 +12074,7 @@ pub inline fn ztpmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
@@ -12087,7 +12087,7 @@ pub inline fn ztpmv(
 /// contain the n-element right-hand side vector `b`. On return, it contains
 /// the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12109,10 +12109,10 @@ pub inline fn tpsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(ap);
@@ -12146,20 +12146,20 @@ pub inline fn tpsv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and opts.link_cblas != null) {
+    if (comptime A == X and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_stpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_stpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_dtpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_ctpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztpsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), ap, x, scast(c_int, incx));
+                    return ci.cblas_ztpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
                 }
             },
             else => {},
@@ -12219,7 +12219,7 @@ pub inline fn tpsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const f32`): Array, size at least `(n * (n + 1)) / 2`.
@@ -12228,7 +12228,7 @@ pub inline fn tpsv(
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12244,10 +12244,10 @@ pub inline fn stpsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const f32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -12302,7 +12302,7 @@ pub inline fn stpsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const f64`): Array, size at least `(n * (n + 1)) / 2`.
@@ -12311,7 +12311,7 @@ pub inline fn stpsv(
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12327,10 +12327,10 @@ pub inline fn dtpsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const f64,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -12385,7 +12385,7 @@ pub inline fn dtpsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const cf32`): Array, size at least `(n * (n + 1)) / 2`.
@@ -12394,7 +12394,7 @@ pub inline fn dtpsv(
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12410,10 +12410,10 @@ pub inline fn ctpsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const cf32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -12468,7 +12468,7 @@ pub inline fn ctpsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `ap` (`[*]const cf64`): Array, size at least `(n * (n + 1)) / 2`.
@@ -12477,7 +12477,7 @@ pub inline fn ctpsv(
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12493,10 +12493,10 @@ pub inline fn ztpsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     ap: [*]const cf64,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
 ) void {
     return tpsv(order, uplo, transa, diag, n, ap, x, incx, .{}) catch {};
 }
@@ -12550,20 +12550,20 @@ pub inline fn ztpsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12585,11 +12585,11 @@ pub inline fn trmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(a);
@@ -12623,20 +12623,20 @@ pub inline fn trmv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and opts.link_cblas != null) {
+    if (comptime A == X and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_strmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_strmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtrmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctrmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztrmv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztrmv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
@@ -12695,17 +12695,17 @@ pub inline fn trmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12721,11 +12721,11 @@ pub inline fn strmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
 ) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -12779,17 +12779,17 @@ pub inline fn strmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12805,11 +12805,11 @@ pub inline fn dtrmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
 ) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -12863,17 +12863,17 @@ pub inline fn dtrmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12889,11 +12889,11 @@ pub inline fn ctrmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -12947,17 +12947,17 @@ pub inline fn ctrmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -12973,11 +12973,11 @@ pub inline fn ztrmv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
 ) void {
     return trmv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -13034,13 +13034,13 @@ pub inline fn ztrmv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
@@ -13049,7 +13049,7 @@ pub inline fn ztrmv(
 /// contain the n-element right-hand side vector `b`. On return, it contains
 /// the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -13071,11 +13071,11 @@ pub inline fn trsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(a);
@@ -13109,20 +13109,20 @@ pub inline fn trsv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == X and opts.link_cblas != null) {
+    if (comptime A == X and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_strsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_strsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_dtrsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ctrsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztrsv(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
+                    return ci.cblas_ztrsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), a, scast(c_int, lda), x, scast(c_int, incx));
                 }
             },
             else => {},
@@ -13184,19 +13184,19 @@ pub inline fn trsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]f32`): Array, size at least `1 + (n - 1) * abs(incx)`. On entry,
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -13212,11 +13212,11 @@ pub inline fn strsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     x: [*]f32,
-    incx: isize,
+    incx: i32,
 ) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -13273,19 +13273,19 @@ pub inline fn strsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]f64`): Array, size at least `1 + (n - 1) * abs(incx)`. On entry,
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -13301,11 +13301,11 @@ pub inline fn dtrsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     x: [*]f64,
-    incx: isize,
+    incx: i32,
 ) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -13362,19 +13362,19 @@ pub inline fn dtrsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]cf32`): Array, size at least `1 + (n - 1) * abs(incx)`. On entry,
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -13390,11 +13390,11 @@ pub inline fn ctrsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     x: [*]cf32,
-    incx: isize,
+    incx: i32,
 ) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -13451,19 +13451,19 @@ pub inline fn ctrsv(
 /// - If `diag = unit`, then the matrix is unit triangular.
 /// - If `diag = non_unit`, then the matrix is non-unit triangular.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// `x` (`[*]cf64`): Array, size at least `1 + (n - 1) * abs(incx)`. On entry,
 /// the incremented array `x` must contain the n-element right-hand side vector
 /// `b`. On return, it contains the solution vector `x`.
 ///
-/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -13479,11 +13479,11 @@ pub inline fn ztrsv(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    n: isize,
+    n: i32,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     x: [*]cf64,
-    incx: isize,
+    incx: i32,
 ) void {
     return trsv(order, uplo, transa, diag, n, a, lda, x, incx, .{}) catch {};
 }
@@ -13521,13 +13521,13 @@ pub inline fn ztrsv(
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
 /// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
+/// `m` (`i32`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `op(B)` and the
+/// `n` (`i32`): Specifies the number of columns of the matrix `op(B)` and the
 /// number of columns of the matrix `C`. Must be greater than or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of columns of the matrix `op(A)` and the
+/// `k` (`i32`): Specifies the number of columns of the matrix `op(A)` and the
 /// number of rows of the matrix `op(B)`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -13540,7 +13540,7 @@ pub inline fn ztrsv(
 /// | `order = col_major` | `lda * k`                                       | `lda * m`                                 |
 /// | `order = row_major` | `lda * m`                                       | `lda * k`                                 |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` or `transa = conj_no_trans` | `transa = trans` or `transa = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13554,7 +13554,7 @@ pub inline fn ztrsv(
 /// | `order = col_major` | `ldb * n`                                       | `ldb * k`                                 |
 /// | `order = row_major` | `ldb * k`                                       | `ldb * n`                                 |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transb = no_trans` or `transb = conj_no_trans` | `transb = trans` or `transb = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13568,7 +13568,7 @@ pub inline fn ztrsv(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `ldc * n` if `order = col_major` or `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -13591,17 +13591,17 @@ pub inline fn gemm(
     order: Order,
     transa: Transpose,
     transb: Transpose,
-    m: isize,
-    n: isize,
-    k: isize,
+    m: i32,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -13655,24 +13655,24 @@ pub inline fn gemm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_sgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_sgemm(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_dgemm(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_cgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_cgemm(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zgemm(@intFromEnum(order), @intFromEnum(transa), @intFromEnum(transb), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_zgemm(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -13713,13 +13713,13 @@ pub inline fn gemm(
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
 /// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
+/// `m` (`i32`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `op(B)` and the
+/// `n` (`i32`): Specifies the number of columns of the matrix `op(B)` and the
 /// number of columns of the matrix `C`. Must be greater than or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of columns of the matrix `op(A)` and the
+/// `k` (`i32`): Specifies the number of columns of the matrix `op(A)` and the
 /// number of rows of the matrix `op(B)`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -13730,7 +13730,7 @@ pub inline fn gemm(
 /// | `order = col_major` | `lda * k`                                       | `lda * m`                                 |
 /// | `order = row_major` | `lda * m`                                       | `lda * k`                                 |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` or `transa = conj_no_trans` | `transa = trans` or `transa = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13743,7 +13743,7 @@ pub inline fn gemm(
 /// | `order = col_major` | `ldb * n`                                       | `ldb * k`                                 |
 /// | `order = row_major` | `ldb * k`                                       | `ldb * n`                                 |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transb = no_trans` or `transb = conj_no_trans` | `transb = trans` or `transb = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13755,7 +13755,7 @@ pub inline fn gemm(
 /// `c` (`[*]f32`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -13771,17 +13771,17 @@ pub inline fn sgemm(
     order: Order,
     transa: Transpose,
     transb: Transpose,
-    m: isize,
-    n: isize,
-    k: isize,
+    m: i32,
+    n: i32,
+    k: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     b: [*]const f32,
-    ldb: isize,
+    ldb: i32,
     beta: f32,
     c: [*]f32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -13817,13 +13817,13 @@ pub inline fn sgemm(
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
 /// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
+/// `m` (`i32`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `op(B)` and the
+/// `n` (`i32`): Specifies the number of columns of the matrix `op(B)` and the
 /// number of columns of the matrix `C`. Must be greater than or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of columns of the matrix `op(A)` and the
+/// `k` (`i32`): Specifies the number of columns of the matrix `op(A)` and the
 /// number of rows of the matrix `op(B)`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -13834,7 +13834,7 @@ pub inline fn sgemm(
 /// | `order = col_major` | `lda * k`                                       | `lda * m`                                 |
 /// | `order = row_major` | `lda * m`                                       | `lda * k`                                 |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program:
 /// |                     | `transa = no_trans` or `transa = conj_no_trans` | `transa = trans` or `transa = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13847,7 +13847,7 @@ pub inline fn sgemm(
 /// | `order = col_major` | `ldb * n`                                       | `ldb * k`                                 |
 /// | `order = row_major` | `ldb * k`                                       | `ldb * n`                                 |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program:
 /// |                     | `transb = no_trans` or `transb = conj_no_trans` | `transb = trans` or `transb = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13859,7 +13859,7 @@ pub inline fn sgemm(
 /// `c` (`[*]f64`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -13875,17 +13875,17 @@ pub inline fn dgemm(
     order: Order,
     transa: Transpose,
     transb: Transpose,
-    m: isize,
-    n: isize,
-    k: isize,
+    m: i32,
+    n: i32,
+    k: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     b: [*]const f64,
-    ldb: isize,
+    ldb: i32,
     beta: f64,
     c: [*]f64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -13921,13 +13921,13 @@ pub inline fn dgemm(
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
 /// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
+/// `m` (`i32`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `op(B)` and the
+/// `n` (`i32`): Specifies the number of columns of the matrix `op(B)` and the
 /// number of columns of the matrix `C`. Must be greater than or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of columns of the matrix `op(A)` and the
+/// `k` (`i32`): Specifies the number of columns of the matrix `op(A)` and the
 /// number of rows of the matrix `op(B)`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -13938,7 +13938,7 @@ pub inline fn dgemm(
 /// | `order = col_major` | `lda * k`                                       | `lda * m`                                 |
 /// | `order = row_major` | `lda * m`                                       | `lda * k`                                 |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program:
 /// |                     | `transa = no_trans` or `transa = conj_no_trans` | `transa = trans` or `transa = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13951,7 +13951,7 @@ pub inline fn dgemm(
 /// | `order = col_major` | `ldb * n`                                       | `ldb * k`                                 |
 /// | `order = row_major` | `ldb * k`                                       | `ldb * n`                                 |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program:
 /// |                     | `transb = no_trans` or `transb = conj_no_trans` | `transb = trans` or `transb = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -13963,7 +13963,7 @@ pub inline fn dgemm(
 /// `c` (`[*]cf32`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -13979,17 +13979,17 @@ pub inline fn cgemm(
     order: Order,
     transa: Transpose,
     transb: Transpose,
-    m: isize,
-    n: isize,
-    k: isize,
+    m: i32,
+    n: i32,
+    k: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]const cf32,
-    ldb: isize,
+    ldb: i32,
     beta: cf32,
     c: [*]cf32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -14025,13 +14025,13 @@ pub inline fn cgemm(
 /// - If `transb = conj_no_trans`, then `op(B) = conj(B)`.
 /// - If `transb = conj_trans`, then `op(B) = B^H`.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `op(A)` and of the
+/// `m` (`i32`): Specifies the number of rows of the matrix `op(A)` and of the
 /// matrix `C`. Must be greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `op(B)` and the
+/// `n` (`i32`): Specifies the number of columns of the matrix `op(B)` and the
 /// number of columns of the matrix `C`. Must be greater than or equal to 0.
 ///
-/// `k` (`isize`): Specifies the number of columns of the matrix `op(A)` and the
+/// `k` (`i32`): Specifies the number of columns of the matrix `op(A)` and the
 /// number of rows of the matrix `op(B)`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -14042,7 +14042,7 @@ pub inline fn cgemm(
 /// | `order = col_major` | `lda * k`                                       | `lda * m`                                 |
 /// | `order = row_major` | `lda * m`                                       | `lda * k`                                 |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program:
 /// |                     | `transa = no_trans` or `transa = conj_no_trans` | `transa = trans` or `transa = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -14055,7 +14055,7 @@ pub inline fn cgemm(
 /// | `order = col_major` | `ldb * n`                                       | `ldb * k`                                 |
 /// | `order = row_major` | `ldb * k`                                       | `ldb * n`                                 |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program:
 /// |                     | `transb = no_trans` or `transb = conj_no_trans` | `transb = trans` or `transb = conj_trans` |
 /// |---------------------|-------------------------------------------------|-------------------------------------------|
@@ -14067,7 +14067,7 @@ pub inline fn cgemm(
 /// `c` (`[*]cf64`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -14083,17 +14083,17 @@ pub inline fn zgemm(
     order: Order,
     transa: Transpose,
     transb: Transpose,
-    m: isize,
-    n: isize,
-    k: isize,
+    m: i32,
+    n: i32,
+    k: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]const cf64,
-    ldb: isize,
+    ldb: i32,
     beta: cf64,
     c: [*]cf64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -14132,10 +14132,10 @@ pub inline fn zgemm(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -14145,7 +14145,7 @@ pub inline fn zgemm(
 /// `real`, `complex` or `expression`): Array, size at least `lda * ka`, where
 /// `ka` is `m` if `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
@@ -14153,7 +14153,7 @@ pub inline fn zgemm(
 /// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
 /// `order = col_major` and `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -14164,7 +14164,7 @@ pub inline fn zgemm(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `ldc * n` if `order = col_major` and `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -14187,16 +14187,16 @@ pub inline fn hemm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -14250,17 +14250,17 @@ pub inline fn hemm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_chemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_chemm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zhemm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_zhemm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -14304,10 +14304,10 @@ pub inline fn hemm(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -14316,14 +14316,14 @@ pub inline fn hemm(
 /// `a` (`[*]const cf32`): Array, size at least `lda * ka`, where `ka` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]const cf32`): Array, size at least `ldb * n` if `order = col_major`
 /// and `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -14332,7 +14332,7 @@ pub inline fn hemm(
 /// `c` (`[*]cf32`): Array, size at least `ldc * n` if `order = col_major` and
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -14348,16 +14348,16 @@ pub inline fn chemm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]const cf32,
-    ldb: isize,
+    ldb: i32,
     beta: cf32,
     c: [*]cf32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return hemm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -14396,10 +14396,10 @@ pub inline fn chemm(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -14408,14 +14408,14 @@ pub inline fn chemm(
 /// `a` (`[*]const cf64`): Array, size at least `lda * ka`, where `ka` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]const cf64`): Array, size at least `ldb * n` if `order = col_major`
 /// and `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -14424,7 +14424,7 @@ pub inline fn chemm(
 /// `c` (`[*]cf64`): Array, size at least `ldc * n` if `order = col_major` and
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -14440,16 +14440,16 @@ pub inline fn zhemm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]const cf64,
-    ldb: isize,
+    ldb: i32,
     beta: cf64,
     c: [*]cf64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return hemm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -14487,7 +14487,7 @@ pub inline fn zhemm(
 /// - If `trans = no_trans`, then `C = alpha * A * A^H + beta * C`.
 /// - If `trans = conj_trans`, then `C = alpha * A^H * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
@@ -14500,7 +14500,7 @@ pub inline fn zhemm(
 /// | `order = col_major` | `lda * k`           | `lda * n`             |
 /// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -14514,7 +14514,7 @@ pub inline fn zhemm(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -14535,14 +14535,14 @@ pub inline fn herk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -14592,13 +14592,13 @@ pub inline fn herk(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == C and types.canCoerce(Al, Scalar(A)) and types.canCoerce(Be, Scalar(A)) and opts.link_cblas != null) {
+    if (comptime A == C and types.canCoerce(Al, Scalar(A)) and types.canCoerce(Be, Scalar(A)) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return ci.cblas_cherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(Scalar(A), alpha), a, scast(c_int, lda), scast(Scalar(A), beta), c, scast(c_int, ldc));
+                    return ci.cblas_cherk(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(Scalar(A), alpha), a, scast(c_int, lda), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_zherk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(Scalar(A), alpha), a, scast(c_int, lda), scast(Scalar(A), beta), c, scast(c_int, ldc));
+                    return ci.cblas_zherk(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(Scalar(A), alpha), a, scast(c_int, lda), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -14641,7 +14641,7 @@ pub inline fn herk(
 /// - If `trans = no_trans`, then `C = alpha * A * A^H + beta * C`.
 /// - If `trans = conj_trans`, then `C = alpha * A^H * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -14652,7 +14652,7 @@ pub inline fn herk(
 /// | `order = col_major` | `lda * k`           | `lda * n`             |
 /// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -14664,7 +14664,7 @@ pub inline fn herk(
 /// `c` ([*]cf32`): Array, size at least
 /// `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -14679,14 +14679,14 @@ pub inline fn cherk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     beta: f32,
     c: [*]cf32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return herk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
@@ -14724,7 +14724,7 @@ pub inline fn cherk(
 /// - If `trans = no_trans`, then `C = alpha * A * A^H + beta * C`.
 /// - If `trans = conj_trans`, then `C = alpha * A^H * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -14735,7 +14735,7 @@ pub inline fn cherk(
 /// | `order = col_major` | `lda * k`           | `lda * n`             |
 /// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -14747,7 +14747,7 @@ pub inline fn cherk(
 /// `c` ([*]cf64`): Array, size at least
 /// `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -14762,14 +14762,14 @@ pub inline fn zherk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     beta: f64,
     c: [*]cf64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return herk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
@@ -14808,10 +14808,10 @@ pub inline fn zherk(
 /// - If `trans = no_trans`, then `C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C`.
 /// - If `trans = conj_trans`, then `C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = conj_trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -14825,7 +14825,7 @@ pub inline fn zherk(
 /// | `order = col_major` | `lda * k`           | `lda * n`             |
 /// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -14839,7 +14839,7 @@ pub inline fn zherk(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`             |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`             |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -14853,7 +14853,7 @@ pub inline fn zherk(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -14875,16 +14875,16 @@ pub inline fn her2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -14941,15 +14941,15 @@ pub inline fn her2k(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, Scalar(A)) and opts.link_cblas != null) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, Scalar(A)) and options.link_cblas != null) {
         switch (comptime types.numericType(Al)) {
             .cfloat => {
                 if (comptime Scalar(Al) == f32) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_cher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), scast(Scalar(A), beta), c, scast(c_int, ldc));
+                    return ci.cblas_cher2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 } else if (comptime Scalar(Al) == f64) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_zher2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), scast(Scalar(A), beta), c, scast(c_int, ldc));
+                    return ci.cblas_zher2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), scast(Scalar(A), beta), c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -14993,10 +14993,10 @@ pub inline fn her2k(
 /// - If `trans = no_trans`, then `C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C`.
 /// - If `trans = conj_trans`, then `C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = conj_trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -15008,7 +15008,7 @@ pub inline fn her2k(
 /// | `order = col_major` | `lda * k`           | `lda * n`             |
 /// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -15021,7 +15021,7 @@ pub inline fn her2k(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`             |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`             |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -15032,7 +15032,7 @@ pub inline fn her2k(
 ///
 /// `c` (`[*]cf32`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -15047,16 +15047,16 @@ pub inline fn cher2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]const cf32,
-    ldb: isize,
+    ldb: i32,
     beta: f32,
     c: [*]cf32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -15095,10 +15095,10 @@ pub inline fn cher2k(
 /// - If `trans = no_trans`, then `C = alpha * A * B^H + conj(alpha) * B * A^H + beta * C`.
 /// - If `trans = conj_trans`, then `C = alpha * A^H * B + conj(alpha) * B^H * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = conj_trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -15110,7 +15110,7 @@ pub inline fn cher2k(
 /// | `order = col_major` | `lda * k`           | `lda * n`             |
 /// | `order = row_major` | `lda * n`           | `lda * k`             |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -15123,7 +15123,7 @@ pub inline fn cher2k(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`             |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`             |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = conj_trans` |
 /// |---------------------|---------------------|-----------------------|
@@ -15134,7 +15134,7 @@ pub inline fn cher2k(
 ///
 /// `c` (`[*]cf64`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -15149,16 +15149,16 @@ pub inline fn zher2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]const cf64,
-    ldb: isize,
+    ldb: i32,
     beta: f64,
     c: [*]cf64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return her2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -15197,10 +15197,10 @@ pub inline fn zher2k(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -15210,7 +15210,7 @@ pub inline fn zher2k(
 /// `real`, `complex` or `expression`): Array, size at least `lda * ka`, where
 /// `ka` is `m` if `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
@@ -15218,7 +15218,7 @@ pub inline fn zher2k(
 /// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
 /// `order = col_major` or `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15229,7 +15229,7 @@ pub inline fn zher2k(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `ldc * n` if `order = col_major` or `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15252,16 +15252,16 @@ pub inline fn symm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -15315,24 +15315,24 @@ pub inline fn symm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_ssymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_ssymm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_dsymm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_csymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_csymm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zsymm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_zsymm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -15376,10 +15376,10 @@ pub inline fn symm(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -15387,14 +15387,14 @@ pub inline fn symm(
 /// `a` (`[*]const f32`): Array, size at least `lda * ka`, where `ka` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]const f32`): Array, size at least `ldb * n` if `order = col_major`
 /// or `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15403,7 +15403,7 @@ pub inline fn symm(
 /// `c` (`[*]f32`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15419,16 +15419,16 @@ pub inline fn ssymm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     b: [*]const f32,
-    ldb: isize,
+    ldb: i32,
     beta: f32,
     c: [*]f32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -15467,10 +15467,10 @@ pub inline fn ssymm(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -15478,14 +15478,14 @@ pub inline fn ssymm(
 /// `a` (`[*]const f64`): Array, size at least `lda * ka`, where `ka` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]const f64`): Array, size at least `ldb * n` if `order = col_major`
 /// or `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15494,7 +15494,7 @@ pub inline fn ssymm(
 /// `c` (`[*]f64`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15510,16 +15510,16 @@ pub inline fn dsymm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     b: [*]const f64,
-    ldb: isize,
+    ldb: i32,
     beta: f64,
     c: [*]f64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -15558,10 +15558,10 @@ pub inline fn dsymm(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -15569,14 +15569,14 @@ pub inline fn dsymm(
 /// `a` (`[*]const cf32`): Array, size at least `lda * ka`, where `ka` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]const cf32`): Array, size at least `ldb * n` if `order = col_major`
 /// or `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15585,7 +15585,7 @@ pub inline fn dsymm(
 /// `c` (`[*]cf32`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15601,16 +15601,16 @@ pub inline fn csymm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]const cf32,
-    ldb: isize,
+    ldb: i32,
     beta: cf32,
     c: [*]cf32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -15649,10 +15649,10 @@ pub inline fn csymm(
 /// - If `uplo = upper`, then the upper triangular part of `A` is used.
 /// - If `uplo = lower`, then the lower triangular part of `A` is used.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `C`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `C`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `C`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -15660,14 +15660,14 @@ pub inline fn csymm(
 /// `a` (`[*]const cf64`): Array, size at least `lda * ka`, where `ka` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` and `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]const cf64`): Array, size at least `ldb * n` if `order = col_major`
 /// or `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15676,7 +15676,7 @@ pub inline fn csymm(
 /// `c` (`[*]cf64`): Array, size at least `ldc * n` if `order = col_major` or
 /// `ldc * m` if `order = row_major`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` and `max(1, n)` if `order = row_major`.
 ///
@@ -15692,16 +15692,16 @@ pub inline fn zsymm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]const cf64,
-    ldb: isize,
+    ldb: i32,
     beta: cf64,
     c: [*]cf64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return symm(order, side, uplo, m, n, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -15740,7 +15740,7 @@ pub inline fn zsymm(
 /// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -15753,7 +15753,7 @@ pub inline fn zsymm(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -15767,7 +15767,7 @@ pub inline fn zsymm(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -15788,14 +15788,14 @@ pub inline fn syrk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -15839,24 +15839,24 @@ pub inline fn syrk(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_ssyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_ssyrk(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), scast(A, beta), c, scast(c_int, ldc));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_dsyrk(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_csyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_csyrk(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), &beta_casted, c, scast(c_int, ldc));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zsyrk(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_zsyrk(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -15900,7 +15900,7 @@ pub inline fn syrk(
 /// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -15911,7 +15911,7 @@ pub inline fn syrk(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -15922,7 +15922,7 @@ pub inline fn syrk(
 ///
 /// `c` (`[*]f32`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -15937,14 +15937,14 @@ pub inline fn ssyrk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     beta: f32,
     c: [*]f32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
@@ -15983,7 +15983,7 @@ pub inline fn ssyrk(
 /// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -15994,7 +15994,7 @@ pub inline fn ssyrk(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16005,7 +16005,7 @@ pub inline fn ssyrk(
 ///
 /// `c` (`[*]f64`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16020,14 +16020,14 @@ pub inline fn dsyrk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     beta: f64,
     c: [*]f64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
@@ -16066,7 +16066,7 @@ pub inline fn dsyrk(
 /// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -16077,7 +16077,7 @@ pub inline fn dsyrk(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16088,7 +16088,7 @@ pub inline fn dsyrk(
 ///
 /// `c` (`[*]cf32`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16103,14 +16103,14 @@ pub inline fn csyrk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     beta: cf32,
     c: [*]cf32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
@@ -16149,7 +16149,7 @@ pub inline fn csyrk(
 /// - If `trans = no_trans`, then `C = alpha * A * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -16160,7 +16160,7 @@ pub inline fn csyrk(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16171,7 +16171,7 @@ pub inline fn csyrk(
 ///
 /// `c` (`[*]cf64`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16186,14 +16186,14 @@ pub inline fn zsyrk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     beta: cf64,
     c: [*]cf64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syrk(order, uplo, trans, n, k, alpha, a, lda, beta, c, ldc, .{}) catch {};
 }
@@ -16232,10 +16232,10 @@ pub inline fn zsyrk(
 /// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -16249,7 +16249,7 @@ pub inline fn zsyrk(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16263,7 +16263,7 @@ pub inline fn zsyrk(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`        |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`        |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16277,7 +16277,7 @@ pub inline fn zsyrk(
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16299,16 +16299,16 @@ pub inline fn syr2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -16362,24 +16362,24 @@ pub inline fn syr2k(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and opts.link_cblas != null) {
+    if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_ssyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_ssyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+                    return ci.cblas_dsyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_csyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_csyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
                     const beta_casted: A = scast(A, beta);
-                    return ci.cblas_zsyr2k(@intFromEnum(order), @intFromEnum(uplo), @intFromEnum(trans), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+                    return ci.cblas_zsyr2k(order.toCUInt(), uplo.toCUInt(), trans.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
                 }
             },
             else => {},
@@ -16423,10 +16423,10 @@ pub inline fn syr2k(
 /// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -16438,7 +16438,7 @@ pub inline fn syr2k(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16451,7 +16451,7 @@ pub inline fn syr2k(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`        |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`        |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16462,7 +16462,7 @@ pub inline fn syr2k(
 ///
 /// `c` (`[*]f32`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16477,16 +16477,16 @@ pub inline fn ssyr2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     b: [*]const f32,
-    ldb: isize,
+    ldb: i32,
     beta: f32,
     c: [*]f32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -16525,10 +16525,10 @@ pub inline fn ssyr2k(
 /// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -16540,7 +16540,7 @@ pub inline fn ssyr2k(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16553,7 +16553,7 @@ pub inline fn ssyr2k(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`        |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`        |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16564,7 +16564,7 @@ pub inline fn ssyr2k(
 ///
 /// `c` (`[*]f64`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16579,16 +16579,16 @@ pub inline fn dsyr2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     b: [*]const f64,
-    ldb: isize,
+    ldb: i32,
     beta: f64,
     c: [*]f64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -16627,10 +16627,10 @@ pub inline fn dsyr2k(
 /// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -16642,7 +16642,7 @@ pub inline fn dsyr2k(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16655,7 +16655,7 @@ pub inline fn dsyr2k(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`        |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`        |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16666,7 +16666,7 @@ pub inline fn dsyr2k(
 ///
 /// `c` (`[*]cf32`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16681,16 +16681,16 @@ pub inline fn csyr2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]const cf32,
-    ldb: isize,
+    ldb: i32,
     beta: cf32,
     c: [*]cf32,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -16729,10 +16729,10 @@ pub inline fn csyr2k(
 /// - If `trans = no_trans`, then `C = alpha * A * B^T + alpha * B * A^T + beta * C`.
 /// - If `trans = trans`, then `C = alpha * A^T * B + alpha * B^T * A + beta * C`.
 ///
-/// `n` (`isize`): Specifies the order of the matrix `C`. Must be greater than
+/// `n` (`i32`): Specifies the order of the matrix `C`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`isize`): With `trans = no_trans`, specifies the number of columns of
+/// `k` (`i32`): With `trans = no_trans`, specifies the number of columns of
 /// the matrices `A` and `B`. With `trans = trans`, specifies the number
 /// of rows of the matrices `A` and `B`. Must be greater than or equal to 0.
 ///
@@ -16744,7 +16744,7 @@ pub inline fn csyr2k(
 /// | `order = col_major` | `lda * k`           | `lda * n`        |
 /// | `order = row_major` | `lda * n`           | `lda * k`        |
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16757,7 +16757,7 @@ pub inline fn csyr2k(
 /// | `order = col_major` | `ldb * k`           | `ldb * n`        |
 /// | `order = row_major` | `ldb * n`           | `ldb * k`        |
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to:
 /// |                     | `transa = no_trans` | `transa = trans` |
 /// |---------------------|---------------------|------------------|
@@ -16768,7 +16768,7 @@ pub inline fn csyr2k(
 ///
 /// `c` (`[*]cf64`): Array, size at least `ldc * n`.
 ///
-/// `ldc` (`isize`): Specifies the leading dimension of `c` as declared in the
+/// `ldc` (`i32`): Specifies the leading dimension of `c` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, n)`.
 ///
 /// Returns
@@ -16783,16 +16783,16 @@ pub inline fn zsyr2k(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]const cf64,
-    ldb: isize,
+    ldb: i32,
     beta: cf64,
     c: [*]cf64,
-    ldc: isize,
+    ldc: i32,
 ) void {
     return syr2k(order, uplo, trans, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
@@ -16841,10 +16841,10 @@ pub inline fn zsyr2k(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -16854,7 +16854,7 @@ pub inline fn zsyr2k(
 /// `real`, `complex` or `expression`): Array, size at least `lda * k`, where
 /// `k` is `m` if `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
@@ -16862,7 +16862,7 @@ pub inline fn zsyr2k(
 /// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
 /// `order = col_major` or `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -16887,13 +16887,13 @@ pub inline fn trmm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -16929,22 +16929,22 @@ pub inline fn trmm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == B and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_strmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_strmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_dtrmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_ctrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_ctrmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_ztrmm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_ztrmm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             else => {},
@@ -16998,10 +16998,10 @@ pub inline fn trmm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -17009,14 +17009,14 @@ pub inline fn trmm(
 /// `a` (`[*]const f32`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]f32`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17034,13 +17034,13 @@ pub inline fn strmm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     b: [*]f32,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
@@ -17089,10 +17089,10 @@ pub inline fn strmm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -17100,14 +17100,14 @@ pub inline fn strmm(
 /// `a` (`[*]const f64`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]f64`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17125,13 +17125,13 @@ pub inline fn dtrmm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     b: [*]f64,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
@@ -17180,10 +17180,10 @@ pub inline fn dtrmm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -17191,14 +17191,14 @@ pub inline fn dtrmm(
 /// `a` (`[*]const cf32`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]cf32`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17216,13 +17216,13 @@ pub inline fn ctrmm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]cf32,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
@@ -17271,10 +17271,10 @@ pub inline fn ctrmm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -17282,14 +17282,14 @@ pub inline fn ctrmm(
 /// `a` (`[*]const cf64`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`[*]cf64`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17307,13 +17307,13 @@ pub inline fn ztrmm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]cf64,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trmm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
@@ -17361,10 +17361,10 @@ pub inline fn ztrmm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -17374,7 +17374,7 @@ pub inline fn ztrmm(
 /// `real`, `complex` or `expression`): Array, size at least `lda * k`, where
 /// `k` is `m` if `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
@@ -17382,7 +17382,7 @@ pub inline fn ztrmm(
 /// `real`, `complex` or `expression`): Array, size at least `ldb * n` if
 /// `order = col_major` or `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17407,13 +17407,13 @@ pub inline fn trsm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -17449,22 +17449,22 @@ pub inline fn trsm(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and types.canCoerce(Al, A) and opts.link_cblas != null) {
+    if (comptime A == B and types.canCoerce(Al, A) and options.link_cblas != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return ci.cblas_strsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_strsm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (comptime A == f64) {
-                    return ci.cblas_dtrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_dtrsm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_ctrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_ctrsm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
                 } else if (comptime Scalar(A) == f64) {
                     const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_ztrsm(@intFromEnum(order), @intFromEnum(side), @intFromEnum(uplo), @intFromEnum(transa), @intFromEnum(diag), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
+                    return ci.cblas_ztrsm(order.toCUInt(), side.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, m), scast(c_int, n), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb));
                 }
             },
             else => {},
@@ -17517,10 +17517,10 @@ pub inline fn trsm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f32`): Specifies the scalar `alpha`.
@@ -17528,14 +17528,14 @@ pub inline fn trsm(
 /// `a` (`[*]const f32`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`f32`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17553,13 +17553,13 @@ pub inline fn strsm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     b: [*]f32,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
@@ -17607,10 +17607,10 @@ pub inline fn strsm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`f64`): Specifies the scalar `alpha`.
@@ -17618,14 +17618,14 @@ pub inline fn strsm(
 /// `a` (`[*]const f64`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`f64`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17643,13 +17643,13 @@ pub inline fn dtrsm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: f64,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     b: [*]f64,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
@@ -17697,10 +17697,10 @@ pub inline fn dtrsm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf32`): Specifies the scalar `alpha`.
@@ -17708,14 +17708,14 @@ pub inline fn dtrsm(
 /// `a` (`[*]const cf32`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`cf32`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17733,13 +17733,13 @@ pub inline fn ctrsm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]cf32,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }
@@ -17787,10 +17787,10 @@ pub inline fn ctrsm(
 /// - If `diag = unit`, then `A` is a unit triangular matrix.
 /// - If `diag = non_unit`, then `A` is not a unit triangular matrix.
 ///
-/// `m` (`isize`): Specifies the number of rows of the matrix `B`. Must be
+/// `m` (`i32`): Specifies the number of rows of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
-/// `n` (`isize`): Specifies the number of columns of the matrix `B`. Must be
+/// `n` (`i32`): Specifies the number of columns of the matrix `B`. Must be
 /// greater than or equal to 0.
 ///
 /// `alpha` (`cf64`): Specifies the scalar `alpha`.
@@ -17798,14 +17798,14 @@ pub inline fn ctrsm(
 /// `a` (`[*]const cf64`): Array, size at least `lda * k`, where `k` is `m` if
 /// `side = left` and `n` if `side = right`.
 ///
-/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `side = left` or `max(1, n)` if `side = right`.
 ///
 /// `b` (`cf64`): Array, size at least `ldb * n` if `order = col_major` or
 /// `ldb * m` if `order = row_major`.
 ///
-/// `ldb` (`isize`): Specifies the leading dimension of `b` as declared in the
+/// `ldb` (`i32`): Specifies the leading dimension of `b` as declared in the
 /// calling (sub)program. Must be greater than or equal to `max(1, m)` if
 /// `order = col_major` or `max(1, n)` if `order = row_major`.
 ///
@@ -17823,13 +17823,13 @@ pub inline fn ztrsm(
     uplo: Uplo,
     transa: Transpose,
     diag: Diag,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: cf64,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]cf64,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return trsm(order, side, uplo, transa, diag, m, n, alpha, a, lda, b, ldb, .{}) catch {};
 }

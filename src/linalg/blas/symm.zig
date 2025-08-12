@@ -8,24 +8,24 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 const Side = linalg.Side;
-const Uplo = linalg.Uplo;
+const Uplo = types.Uplo;
 
 pub inline fn symm(
     order: Order,
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -66,16 +66,16 @@ pub inline fn symm(
 fn k_symm(
     side: Side,
     uplo: Uplo,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -87,7 +87,7 @@ fn k_symm(
     const T2: type = types.Coerce(A, B);
     const CC: type = types.Coerce(Al, types.Coerce(A, types.Coerce(B, types.Coerce(Be, C))));
 
-    const nrowa: isize = if (side == .left) m else n;
+    const nrowa: i32 = if (side == .left) m else n;
 
     if (m < 0 or n < 0 or lda < int.max(1, nrowa) or ldb < int.max(1, m) or ldc < int.max(1, m))
         return blas.Error.InvalidArgument;
@@ -100,25 +100,25 @@ fn k_symm(
     if (comptime !types.isArbitraryPrecision(CC)) {
         if (ops.eq(alpha, 0, ctx) catch unreachable) {
             if (ops.eq(beta, 0, ctx) catch unreachable) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.set( // c[i + j * ldc] = 0
-                            &c[scast(usize, i + j * ldc)],
+                            &c[scast(u32, i + j * ldc)],
                             0,
                             ctx,
                         ) catch unreachable;
                     }
                 }
             } else {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.mul_( // c[i + j * ldc] *= beta
-                            &c[scast(usize, i + j * ldc)],
-                            c[scast(usize, i + j * ldc)],
+                            &c[scast(u32, i + j * ldc)],
+                            c[scast(u32, i + j * ldc)],
                             beta,
                             ctx,
                         ) catch unreachable;
@@ -131,26 +131,26 @@ fn k_symm(
 
         if (side == .left) {
             if (uplo == .upper) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         const temp1: T1 = ops.mul( // temp1 = alpha * b[i + j * ldb]
-                            b[scast(usize, i + j * ldb)],
+                            b[scast(u32, i + j * ldb)],
                             alpha,
                             ctx,
                         ) catch unreachable;
                         var temp2: T2 = constants.zero(T2, ctx) catch unreachable;
 
-                        var k: isize = 0;
+                        var k: i32 = 0;
 
                         while (k < i) : (k += 1) {
                             ops.add_( // c[k + j * ldc] += temp1 * a[k + i * lda]
-                                &c[scast(usize, k + j * ldc)],
-                                c[scast(usize, k + j * ldc)],
+                                &c[scast(u32, k + j * ldc)],
+                                c[scast(u32, k + j * ldc)],
                                 ops.mul(
                                     temp1,
-                                    a[scast(usize, k + i * lda)],
+                                    a[scast(u32, k + i * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -160,8 +160,8 @@ fn k_symm(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    b[scast(usize, k + j * ldb)],
-                                    a[scast(usize, k + i * lda)],
+                                    b[scast(u32, k + j * ldb)],
+                                    a[scast(u32, k + i * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -170,11 +170,11 @@ fn k_symm(
 
                         if (ops.eq(beta, 0, ctx) catch unreachable) {
                             ops.set( // c[i + j * ldc] = temp1 * a[i + i * lda] + alpha * temp2
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 ops.add(
                                     ops.mul(
                                         temp1,
-                                        a[scast(usize, i + i * lda)],
+                                        a[scast(u32, i + i * lda)],
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
@@ -188,19 +188,19 @@ fn k_symm(
                             ) catch unreachable;
                         } else {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // c[i + j * ldc] += temp1 * a[i + i * lda] + alpha * temp2
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 ops.add(
                                     ops.mul(
                                         temp1,
-                                        a[scast(usize, i + i * lda)],
+                                        a[scast(u32, i + i * lda)],
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
@@ -216,25 +216,25 @@ fn k_symm(
                     }
                 }
             } else {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    var i: isize = m - 1;
+                    var i: i32 = m - 1;
                     while (i >= 0) : (i -= 1) {
                         const temp1: T1 = ops.mul( // temp1 = alpha * b[i + j * ldb]
-                            b[scast(usize, i + j * ldb)],
+                            b[scast(u32, i + j * ldb)],
                             alpha,
                             ctx,
                         ) catch unreachable;
                         var temp2: T2 = constants.zero(T2, ctx) catch unreachable;
 
-                        var k: isize = i + 1;
+                        var k: i32 = i + 1;
                         while (k < m) : (k += 1) {
                             ops.add_( // c[k + j * ldc] += temp1 * a[k + i * lda]
-                                &c[scast(usize, k + j * ldc)],
-                                c[scast(usize, k + j * ldc)],
+                                &c[scast(u32, k + j * ldc)],
+                                c[scast(u32, k + j * ldc)],
                                 ops.mul(
                                     temp1,
-                                    a[scast(usize, k + i * lda)],
+                                    a[scast(u32, k + i * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -244,8 +244,8 @@ fn k_symm(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    b[scast(usize, k + j * ldb)],
-                                    a[scast(usize, k + i * lda)],
+                                    b[scast(u32, k + j * ldb)],
+                                    a[scast(u32, k + i * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -254,11 +254,11 @@ fn k_symm(
 
                         if (ops.eq(beta, 0, ctx) catch unreachable) {
                             ops.set( // c[i + j * ldc] = temp1 * a[i + i * lda] + alpha * temp2
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 ops.add(
                                     ops.mul(
                                         temp1,
-                                        a[scast(usize, i + i * lda)],
+                                        a[scast(u32, i + i * lda)],
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
@@ -272,19 +272,19 @@ fn k_symm(
                             ) catch unreachable;
                         } else {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // c[i + j * ldc] += temp1 * a[i + i * lda] + alpha * temp2
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 ops.add(
                                     ops.mul(
                                         temp1,
-                                        a[scast(usize, i + i * lda)],
+                                        a[scast(u32, i + i * lda)],
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
@@ -301,43 +301,43 @@ fn k_symm(
                 }
             }
         } else {
-            var j: isize = 0;
+            var j: i32 = 0;
             while (j < n) : (j += 1) {
                 var temp1: T1 = ops.mul( // temp1 = alpha * a[j + j * lda]
-                    a[scast(usize, j + j * lda)],
+                    a[scast(u32, j + j * lda)],
                     alpha,
                     ctx,
                 ) catch unreachable;
 
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.set( // c[i + j * ldc] = temp1 * b[i + j * ldb]
-                            &c[scast(usize, i + j * ldc)],
+                            &c[scast(u32, i + j * ldc)],
                             ops.mul(
                                 temp1,
-                                b[scast(usize, i + j * ldb)],
+                                b[scast(u32, i + j * ldb)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     }
                 } else {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.mul_( // c[i + j * ldc] *= beta
-                            &c[scast(usize, i + j * ldc)],
-                            c[scast(usize, i + j * ldc)],
+                            &c[scast(u32, i + j * ldc)],
+                            c[scast(u32, i + j * ldc)],
                             beta,
                             ctx,
                         ) catch unreachable;
 
                         ops.add_( // c[i + j * ldc] += temp1 * b[i + j * ldb]
-                            &c[scast(usize, i + j * ldc)],
-                            c[scast(usize, i + j * ldc)],
+                            &c[scast(u32, i + j * ldc)],
+                            c[scast(u32, i + j * ldc)],
                             ops.mul(
                                 temp1,
-                                b[scast(usize, i + j * ldb)],
+                                b[scast(u32, i + j * ldb)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -345,14 +345,14 @@ fn k_symm(
                     }
                 }
 
-                var k: isize = 0;
+                var k: i32 = 0;
                 while (k < j) : (k += 1) {
                     if (uplo == .upper) {
                         ops.set( // temp1 = alpha * a[k + j * lda]
                             &temp1,
                             ops.mul(
                                 alpha,
-                                a[scast(usize, k + j * lda)],
+                                a[scast(u32, k + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -362,21 +362,21 @@ fn k_symm(
                             &temp1,
                             ops.mul(
                                 alpha,
-                                a[scast(usize, j + k * lda)],
+                                a[scast(u32, j + k * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     }
 
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.add_( // c[i + j * ldc] += temp1 * b[i + k * ldb]
-                            &c[scast(usize, i + j * ldc)],
-                            c[scast(usize, i + j * ldc)],
+                            &c[scast(u32, i + j * ldc)],
+                            c[scast(u32, i + j * ldc)],
                             ops.mul(
                                 temp1,
-                                b[scast(usize, i + k * ldb)],
+                                b[scast(u32, i + k * ldb)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -391,7 +391,7 @@ fn k_symm(
                             &temp1,
                             ops.mul(
                                 alpha,
-                                a[scast(usize, j + k * lda)],
+                                a[scast(u32, j + k * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -401,21 +401,21 @@ fn k_symm(
                             &temp1,
                             ops.mul(
                                 alpha,
-                                a[scast(usize, k + j * lda)],
+                                a[scast(u32, k + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     }
 
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < m) : (i += 1) {
                         ops.add_( // c[i + j * ldc] += temp1 * b[i + k * ldb]
-                            &c[scast(usize, i + j * ldc)],
-                            c[scast(usize, i + j * ldc)],
+                            &c[scast(u32, i + j * ldc)],
+                            c[scast(u32, i + j * ldc)],
                             ops.mul(
                                 temp1,
-                                b[scast(usize, i + k * ldb)],
+                                b[scast(u32, i + k * ldb)],
                                 ctx,
                             ) catch unreachable,
                             ctx,

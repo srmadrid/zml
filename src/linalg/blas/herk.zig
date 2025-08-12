@@ -9,22 +9,22 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 const Transpose = linalg.Transpose;
-const Uplo = linalg.Uplo;
+const Uplo = types.Uplo;
 
 pub inline fn herk(
     order: Order,
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -61,14 +61,14 @@ pub inline fn herk(
 fn k_herk(
     uplo: Uplo,
     trans: Transpose,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     beta: anytype,
     c: anytype,
-    ldc: isize,
+    ldc: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -78,7 +78,7 @@ fn k_herk(
     const T1: type = types.Coerce(Al, A);
     const CC: type = types.Coerce(Al, types.Coerce(A, types.Coerce(Be, C)));
 
-    const nrowa: isize = if (trans == .no_trans) n else k;
+    const nrowa: i32 = if (trans == .no_trans) n else k;
 
     if (trans == .conj_no_trans or trans == .trans or
         n < 0 or k < 0 or lda < int.max(1, nrowa) or ldc < int.max(1, n))
@@ -94,66 +94,66 @@ fn k_herk(
         if (ops.eq(alpha, 0, ctx) catch unreachable) {
             if (uplo == .upper) {
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i <= j) : (i += 1) {
                             ops.set( // c[i + j * ldc] = 0
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 0,
                                 ctx,
                             ) catch unreachable;
                         }
                     }
                 } else {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i < j) : (i += 1) {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
                         }
 
                         ops.mul_( // c[j + j * ldc] = beta * re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             beta,
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     }
                 }
             } else {
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        var i: isize = j;
+                        var i: i32 = j;
                         while (i < n) : (i += 1) {
                             ops.set( // c[i + j * ldc] = 0
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 0,
                                 ctx,
                             ) catch unreachable;
                         }
                     }
                 } else {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
                         ops.mul_( // c[j + j * ldc] = beta * re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             beta,
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
-                        var i: isize = j + 1;
+                        var i: i32 = j + 1;
                         while (i < n) : (i += 1) {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
@@ -167,59 +167,59 @@ fn k_herk(
 
         if (trans == .no_trans) {
             if (uplo == .upper) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     if (ops.eq(beta, 0, ctx) catch unreachable) {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i <= j) : (i += 1) {
                             ops.set( // c[i + j * ldc] = 0
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 0,
                                 ctx,
                             ) catch unreachable;
                         }
                     } else if (ops.ne(beta, 1, ctx) catch unreachable) {
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i < j) : (i += 1) {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
                         }
 
                         ops.mul_( // c[j + j * ldc] = beta * re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             beta,
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     } else {
                         ops.set( // c[j + j * ldc] = re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            &c[scast(u32, j + j * ldc)],
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     }
 
-                    var l: isize = 0;
+                    var l: i32 = 0;
                     while (l < k) : (l += 1) {
-                        if (ops.ne(a[scast(usize, j + l * lda)], 0, ctx) catch unreachable) {
+                        if (ops.ne(a[scast(u32, j + l * lda)], 0, ctx) catch unreachable) {
                             const temp: T1 = ops.mul( // temp = alpha * conj(a[j + l * lda])
-                                ops.conjugate(a[scast(usize, j + l * lda)], ctx) catch unreachable,
+                                ops.conjugate(a[scast(u32, j + l * lda)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
-                            var i: isize = 0;
+                            var i: i32 = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // c[i + j * ldc] += temp * a[i + l * lda]
-                                    &c[scast(usize, i + j * ldc)],
-                                    c[scast(usize, i + j * ldc)],
+                                    &c[scast(u32, i + j * ldc)],
+                                    c[scast(u32, i + j * ldc)],
                                     ops.mul(
                                         temp,
-                                        a[scast(usize, i + l * lda)],
+                                        a[scast(u32, i + l * lda)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -227,11 +227,11 @@ fn k_herk(
                             }
 
                             ops.add_( // c[j + j * ldc] = re(c[j + j * ldc]) + re(temp * a[i + l * lda])
-                                &c[scast(usize, j + j * ldc)],
-                                ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                                &c[scast(u32, j + j * ldc)],
+                                ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                                 ops.re(ops.mul(
                                     temp,
-                                    a[scast(usize, i + l * lda)],
+                                    a[scast(u32, i + l * lda)],
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
                                 ctx,
@@ -240,70 +240,70 @@ fn k_herk(
                     }
                 }
             } else {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     if (ops.eq(beta, 0, ctx) catch unreachable) {
-                        var i: isize = j;
+                        var i: i32 = j;
                         while (i < n) : (i += 1) {
                             ops.set( // c[i + j * ldc] = 0
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 0,
                                 ctx,
                             ) catch unreachable;
                         }
                     } else if (ops.ne(beta, 1, ctx) catch unreachable) {
                         ops.mul_( // c[j + j * ldc] = beta * re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             beta,
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
-                        var i: isize = j + 1;
+                        var i: i32 = j + 1;
                         while (i < n) : (i += 1) {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
                         }
                     } else {
                         ops.set( // c[j + j * ldc] = re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            &c[scast(u32, j + j * ldc)],
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     }
 
-                    var l: isize = 0;
+                    var l: i32 = 0;
                     while (l < k) : (l += 1) {
-                        if (ops.ne(a[scast(usize, j + l * lda)], 0, ctx) catch unreachable) {
+                        if (ops.ne(a[scast(u32, j + l * lda)], 0, ctx) catch unreachable) {
                             const temp: T1 = ops.mul( // temp = alpha * conj(a[j + l * lda])
-                                ops.conjugate(a[scast(usize, j + l * lda)], ctx) catch unreachable,
+                                ops.conjugate(a[scast(u32, j + l * lda)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // c[j + j * ldc] = re(c[j + j * ldc]) + re(temp * a[j + l * lda])
-                                &c[scast(usize, j + j * ldc)],
-                                ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                                &c[scast(u32, j + j * ldc)],
+                                ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                                 ops.re(ops.mul(
                                     temp,
-                                    a[scast(usize, j + l * lda)],
+                                    a[scast(u32, j + l * lda)],
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
 
-                            var i: isize = j + 1;
+                            var i: i32 = j + 1;
                             while (i < n) : (i += 1) {
                                 ops.add_( // c[i + j * ldc] += temp * a[i + l * lda]
-                                    &c[scast(usize, i + j * ldc)],
-                                    c[scast(usize, i + j * ldc)],
+                                    &c[scast(u32, i + j * ldc)],
+                                    c[scast(u32, i + j * ldc)],
                                     ops.mul(
                                         temp,
-                                        a[scast(usize, i + l * lda)],
+                                        a[scast(u32, i + l * lda)],
                                         ctx,
                                     ) catch unreachable,
                                     ctx,
@@ -315,20 +315,20 @@ fn k_herk(
             }
         } else {
             if (uplo == .upper) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    var i: isize = 0;
+                    var i: i32 = 0;
                     while (i < j) : (i += 1) {
                         var temp: A = constants.zero(A, ctx) catch unreachable;
 
-                        var l: isize = 0;
+                        var l: i32 = 0;
                         while (l < k) : (l += 1) {
                             ops.add_( // temp += conj(a[l + i * lda]) * a[l + j * lda]
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(usize, l + i * lda)], ctx) catch unreachable,
-                                    a[scast(usize, l + j * lda)],
+                                    ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                    a[scast(u32, l + j * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -337,22 +337,22 @@ fn k_herk(
 
                         if (ops.eq(beta, 0, ctx) catch unreachable) {
                             ops.mul_( // c[i + j * ldc] = alpha * temp
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 alpha,
                                 temp,
                                 ctx,
                             ) catch unreachable;
                         } else {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // c[i + j * ldc] += alpha * temp
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 ops.mul(
                                     alpha,
                                     temp,
@@ -365,14 +365,14 @@ fn k_herk(
 
                     var rtemp: Scalar(A) = constants.zero(Scalar(A), ctx) catch unreachable;
 
-                    var l: isize = 0;
+                    var l: i32 = 0;
                     while (l < k) : (l += 1) {
                         ops.add_( // rtemp += re(conj(a[l + j * lda]) * a[l + j * lda])
                             &rtemp,
                             rtemp,
                             ops.re(ops.mul(
-                                ops.conjugate(a[scast(usize, l + j * lda)], ctx) catch unreachable,
-                                a[scast(usize, l + j * lda)],
+                                ops.conjugate(a[scast(u32, l + j * lda)], ctx) catch unreachable,
+                                a[scast(u32, l + j * lda)],
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable,
                             ctx,
@@ -381,22 +381,22 @@ fn k_herk(
 
                     if (ops.eq(beta, 0, ctx) catch unreachable) {
                         ops.mul_( // c[j + j * ldc] = alpha * rtemp
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             alpha,
                             rtemp,
                             ctx,
                         ) catch unreachable;
                     } else {
                         ops.mul_( // c[j + j * ldc] = beta * re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             beta,
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
                         ops.add_( // c[j + j * ldc] += alpha * rtemp
-                            &c[scast(usize, j + j * ldc)],
-                            c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
+                            c[scast(u32, j + j * ldc)],
                             ops.mul(
                                 alpha,
                                 rtemp,
@@ -407,18 +407,18 @@ fn k_herk(
                     }
                 }
             } else {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     var rtemp: Scalar(A) = constants.zero(Scalar(A), ctx) catch unreachable;
 
-                    var l: isize = 0;
+                    var l: i32 = 0;
                     while (l < k) : (l += 1) {
                         ops.add_( // rtemp += re(conj(a[l + j * lda]) * a[l + j * lda])
                             &rtemp,
                             rtemp,
                             ops.re(ops.mul(
-                                ops.conjugate(a[scast(usize, l + j * lda)], ctx) catch unreachable,
-                                a[scast(usize, l + j * lda)],
+                                ops.conjugate(a[scast(u32, l + j * lda)], ctx) catch unreachable,
+                                a[scast(u32, l + j * lda)],
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable,
                             ctx,
@@ -427,22 +427,22 @@ fn k_herk(
 
                     if (ops.eq(beta, 0, ctx) catch unreachable) {
                         ops.mul_( // c[j + j * ldc] = alpha * rtemp
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             alpha,
                             rtemp,
                             ctx,
                         ) catch unreachable;
                     } else {
                         ops.mul_( // c[j + j * ldc] = beta * re(c[j + j * ldc])
-                            &c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
                             beta,
-                            ops.re(c[scast(usize, j + j * ldc)], ctx) catch unreachable,
+                            ops.re(c[scast(u32, j + j * ldc)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
                         ops.add_( // c[j + j * ldc] += alpha * rtemp
-                            &c[scast(usize, j + j * ldc)],
-                            c[scast(usize, j + j * ldc)],
+                            &c[scast(u32, j + j * ldc)],
+                            c[scast(u32, j + j * ldc)],
                             ops.mul(
                                 alpha,
                                 rtemp,
@@ -452,7 +452,7 @@ fn k_herk(
                         ) catch unreachable;
                     }
 
-                    var i: isize = j + 1;
+                    var i: i32 = j + 1;
                     while (i < n) : (i += 1) {
                         var temp: A = constants.zero(A, ctx) catch unreachable;
 
@@ -462,8 +462,8 @@ fn k_herk(
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(usize, l + i * lda)], ctx) catch unreachable,
-                                    a[scast(usize, l + j * lda)],
+                                    ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                    a[scast(u32, l + j * lda)],
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -472,22 +472,22 @@ fn k_herk(
 
                         if (ops.eq(beta, 0, ctx) catch unreachable) {
                             ops.mul_( // c[i + j * ldc] = alpha * temp
-                                &c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
                                 alpha,
                                 temp,
                                 ctx,
                             ) catch unreachable;
                         } else {
                             ops.mul_( // c[i + j * ldc] *= beta
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 beta,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // c[i + j * ldc] += alpha * temp
-                                &c[scast(usize, i + j * ldc)],
-                                c[scast(usize, i + j * ldc)],
+                                &c[scast(u32, i + j * ldc)],
+                                c[scast(u32, i + j * ldc)],
                                 ops.mul(
                                     alpha,
                                     temp,

@@ -8,9 +8,9 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn asum_sub(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ret: anytype,
     ctx: anytype,
 ) !void {
@@ -22,18 +22,18 @@ pub fn asum_sub(
     if (n <= 0 or incx <= 0)
         return blas.Error.InvalidArgument;
 
-    var ix: isize = 0;
+    var ix: i32 = 0;
     if (comptime types.isArbitraryPrecision(R)) {
         if (comptime types.isArbitraryPrecision(X)) {
             // Orientative implementation for arbitrary precision types
             if (comptime types.isComplex(X)) {
                 var temp: Scalar(X) = try ops.init(Scalar(X), ctx);
                 defer ops.deinit(&temp, ctx);
-                for (0..scast(usize, n)) |_| {
+                for (0..scast(u32, n)) |_| {
                     try ops.add_(
                         &temp,
-                        ops.abs(x[scast(usize, ix)].re, types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
-                        ops.abs(x[scast(usize, ix)].im, types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
+                        ops.abs(x[scast(u32, ix)].re, types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
+                        ops.abs(x[scast(u32, ix)].im, types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
                         ctx,
                     );
 
@@ -42,11 +42,11 @@ pub fn asum_sub(
                     ix += incx;
                 }
             } else {
-                for (0..scast(usize, n)) |_| {
+                for (0..scast(u32, n)) |_| {
                     try ops.add_(
                         ret,
                         ret.*,
-                        ops.abs(x[scast(usize, ix)], types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
+                        ops.abs(x[scast(u32, ix)], types.mixStructs(ctx, .{ .copy = false })) catch unreachable,
                         ctx,
                     );
 
@@ -63,13 +63,13 @@ pub fn asum_sub(
             @compileError("zml.linalg.blas.asum_sub not implemented for arbitrary precision types yet");
         } else {
             if (comptime types.isComplex(X)) {
-                for (0..scast(usize, n)) |_| {
+                for (0..scast(u32, n)) |_| {
                     ops.add_( // ret += |x[ix].re| + |x[ix].im|
                         ret,
                         ret.*,
                         ops.add(
-                            ops.abs(x[scast(usize, ix)].re, ctx) catch unreachable,
-                            ops.abs(x[scast(usize, ix)].im, ctx) catch unreachable,
+                            ops.abs(x[scast(u32, ix)].re, ctx) catch unreachable,
+                            ops.abs(x[scast(u32, ix)].im, ctx) catch unreachable,
                             ctx,
                         ) catch unreachable,
                         ctx,
@@ -78,11 +78,11 @@ pub fn asum_sub(
                     ix += incx;
                 }
             } else {
-                for (0..scast(usize, n)) |_| {
+                for (0..scast(u32, n)) |_| {
                     ops.add_( // ret += |x[ix]|
                         ret,
                         ret.*,
-                        ops.abs(x[scast(usize, ix)], ctx) catch unreachable,
+                        ops.abs(x[scast(u32, ix)], ctx) catch unreachable,
                         ctx,
                     ) catch unreachable;
 

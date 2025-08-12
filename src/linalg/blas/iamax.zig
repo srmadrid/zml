@@ -9,29 +9,29 @@ const float = @import("../../float.zig");
 const blas = @import("../blas.zig");
 
 pub fn iamax(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
-) !usize {
+) !u32 {
     const X: type = types.Child(@TypeOf(x));
 
     if (n <= 0 or incx <= 0) return blas.Error.InvalidArgument;
 
     if (n == 1) return 0;
 
-    var imax: usize = 0;
+    var imax: u32 = 0;
 
     if (comptime !types.isArbitraryPrecision(X)) {
         if (comptime !types.isComplex(X)) {
             var max: X = ops.abs(x[0], ctx) catch unreachable;
-            var ix: isize = if (incx < 0) (-n + 2) * incx else incx;
-            for (1..scast(usize, n)) |i| {
-                const absx: X = ops.abs(x[scast(usize, ix)], ctx) catch unreachable;
+            var ix: i32 = if (incx < 0) (-n + 2) * incx else incx;
+            for (1..scast(u32, n)) |i| {
+                const absx: X = ops.abs(x[scast(u32, ix)], ctx) catch unreachable;
 
                 if (ops.gt(absx, max, ctx) catch unreachable) {
                     max = absx;
-                    imax = i;
+                    imax = scast(u32, i);
                 }
 
                 ix += incx;
@@ -43,17 +43,17 @@ pub fn iamax(
                 ctx,
             ) catch unreachable;
 
-            var ix: isize = if (incx < 0) (-n + 2) * incx else incx;
-            for (1..scast(usize, n)) |i| {
+            var ix: i32 = if (incx < 0) (-n + 2) * incx else incx;
+            for (1..scast(u32, n)) |i| {
                 const absx: Scalar(X) = ops.add(
-                    ops.abs(x[scast(usize, ix)].re, ctx) catch unreachable,
-                    ops.abs(x[scast(usize, ix)].im, ctx) catch unreachable,
+                    ops.abs(x[scast(u32, ix)].re, ctx) catch unreachable,
+                    ops.abs(x[scast(u32, ix)].im, ctx) catch unreachable,
                     ctx,
                 ) catch unreachable;
 
                 if (ops.gt(absx, max, ctx) catch unreachable) {
                     max = absx;
-                    imax = i;
+                    imax = scast(u32, i);
                 }
 
                 ix += incx;

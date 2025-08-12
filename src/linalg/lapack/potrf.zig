@@ -9,17 +9,17 @@ const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn potrf(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     if (order == .col_major) {
         return k_potrf_c(uplo, n, a, lda, ctx);
     } else {
@@ -29,17 +29,17 @@ pub inline fn potrf(
 
 fn k_potrf_c(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (n < 0 or lda < int.max(1, n))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (n == 0)
@@ -47,7 +47,7 @@ fn k_potrf_c(
 
     // Determine the block size for this environment. Always returns the
     // same number for getrf regardless of 'S', 'D', 'C', or 'Z'.
-    const nb: isize = lapack.ilaenv(1, "DPOTRF", " ", n, -1, -1, -1);
+    const nb: i32 = lapack.ilaenv(1, "DPOTRF", " ", n, -1, -1, -1);
     if (comptime !types.isArbitraryPrecision(A)) {
         if (nb <= 1 or nb >= n) {
             // Use unblocked code.
@@ -63,10 +63,10 @@ fn k_potrf_c(
             // Use blocked code.
             if (uplo == .upper) {
                 // Compute the Cholesky factorization A = U^T * U or A = U^H * U.
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += nb) {
                     // Update and factorize the current diagonal block and test for non-positive-definiteness.
-                    const jb: isize = int.min(nb, n - j);
+                    const jb: i32 = int.min(nb, n - j);
 
                     if (comptime !types.isComplex(A)) {
                         blas.syrk(
@@ -76,10 +76,10 @@ fn k_potrf_c(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j * lda),
+                            a + scast(u32, j * lda),
                             lda,
                             1,
-                            a + scast(usize, j + j * lda),
+                            a + scast(u32, j + j * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -91,10 +91,10 @@ fn k_potrf_c(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j * lda),
+                            a + scast(u32, j * lda),
                             lda,
                             1,
-                            a + scast(usize, j + j * lda),
+                            a + scast(u32, j + j * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -104,7 +104,7 @@ fn k_potrf_c(
                         .col_major,
                         .upper,
                         jb,
-                        a + scast(usize, j + j * lda),
+                        a + scast(u32, j + j * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -124,12 +124,12 @@ fn k_potrf_c(
                             n - j - jb,
                             j,
                             -1,
-                            a + scast(usize, j * lda),
+                            a + scast(u32, j * lda),
                             lda,
-                            a + scast(usize, (j + jb) * lda),
+                            a + scast(u32, (j + jb) * lda),
                             lda,
                             1,
-                            a + scast(usize, j + (j + jb) * lda),
+                            a + scast(u32, j + (j + jb) * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -143,9 +143,9 @@ fn k_potrf_c(
                             jb,
                             n - j - jb,
                             1,
-                            a + scast(usize, j + j * lda),
+                            a + scast(u32, j + j * lda),
                             lda,
-                            a + scast(usize, j + (j + jb) * lda),
+                            a + scast(u32, j + (j + jb) * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -153,10 +153,10 @@ fn k_potrf_c(
                 }
             } else {
                 // Compute the Cholesky factorization A = L * L^T or A = L * L^H.
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += nb) {
                     // Update and factorize the current diagonal block and test for non-positive-definiteness.
-                    const jb: isize = int.min(nb, n - j);
+                    const jb: i32 = int.min(nb, n - j);
 
                     if (comptime !types.isComplex(A)) {
                         blas.syrk(
@@ -166,10 +166,10 @@ fn k_potrf_c(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j),
+                            a + scast(u32, j),
                             lda,
                             1,
-                            a + scast(usize, j + j * lda),
+                            a + scast(u32, j + j * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -181,10 +181,10 @@ fn k_potrf_c(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j),
+                            a + scast(u32, j),
                             lda,
                             1,
-                            a + scast(usize, j + j * lda),
+                            a + scast(u32, j + j * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -194,7 +194,7 @@ fn k_potrf_c(
                         .col_major,
                         .lower,
                         jb,
-                        a + scast(usize, j + j * lda),
+                        a + scast(u32, j + j * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -214,12 +214,12 @@ fn k_potrf_c(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j + jb),
+                            a + scast(u32, j + jb),
                             lda,
-                            a + scast(usize, j),
+                            a + scast(u32, j),
                             lda,
                             1,
-                            a + scast(usize, (j + jb) + j * lda),
+                            a + scast(u32, (j + jb) + j * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -233,9 +233,9 @@ fn k_potrf_c(
                             n - j - jb,
                             jb,
                             1,
-                            a + scast(usize, j + j * lda),
+                            a + scast(u32, j + j * lda),
                             lda,
-                            a + scast(usize, (j + jb) + j * lda),
+                            a + scast(u32, (j + jb) + j * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -253,17 +253,17 @@ fn k_potrf_c(
 
 fn k_potrf_r(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (n < 0 or lda < int.max(1, n))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (n == 0)
@@ -271,7 +271,7 @@ fn k_potrf_r(
 
     // Determine the block size for this environment. Always returns the
     // same number for getrf regardless of 'S', 'D', 'C', or 'Z'.
-    const nb: isize = lapack.ilaenv(1, "DPOTRF", " ", n, -1, -1, -1);
+    const nb: i32 = lapack.ilaenv(1, "DPOTRF", " ", n, -1, -1, -1);
     if (comptime !types.isArbitraryPrecision(A)) {
         if (nb <= 1 or nb >= n) {
             // Use unblocked code.
@@ -287,10 +287,10 @@ fn k_potrf_r(
             // Use blocked code.
             if (uplo == .upper) {
                 // Compute the Cholesky factorization A = U^T * U or A = U^H * U.
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += nb) {
                     // Update and factorize the current diagonal block and test for non-positive-definiteness.
-                    const jb: isize = int.min(nb, n - j);
+                    const jb: i32 = int.min(nb, n - j);
 
                     if (comptime !types.isComplex(A)) {
                         blas.syrk(
@@ -300,10 +300,10 @@ fn k_potrf_r(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j),
+                            a + scast(u32, j),
                             lda,
                             1,
-                            a + scast(usize, j * lda + j),
+                            a + scast(u32, j * lda + j),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -315,10 +315,10 @@ fn k_potrf_r(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j),
+                            a + scast(u32, j),
                             lda,
                             1,
-                            a + scast(usize, j * lda + j),
+                            a + scast(u32, j * lda + j),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -328,7 +328,7 @@ fn k_potrf_r(
                         .row_major,
                         .upper,
                         jb,
-                        a + scast(usize, j * lda + j),
+                        a + scast(u32, j * lda + j),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -348,12 +348,12 @@ fn k_potrf_r(
                             n - j - jb,
                             j,
                             -1,
-                            a + scast(usize, j),
+                            a + scast(u32, j),
                             lda,
-                            a + scast(usize, (j + jb)),
+                            a + scast(u32, (j + jb)),
                             lda,
                             1,
-                            a + scast(usize, j * lda + (j + jb)),
+                            a + scast(u32, j * lda + (j + jb)),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -367,9 +367,9 @@ fn k_potrf_r(
                             jb,
                             n - j - jb,
                             1,
-                            a + scast(usize, j * lda + j),
+                            a + scast(u32, j * lda + j),
                             lda,
-                            a + scast(usize, j * lda + (j + jb)),
+                            a + scast(u32, j * lda + (j + jb)),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -377,10 +377,10 @@ fn k_potrf_r(
                 }
             } else {
                 // Compute the Cholesky factorization A = L * L^T or A = L * L^H.
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += nb) {
                     // Update and factorize the current diagonal block and test for non-positive-definiteness.
-                    const jb: isize = int.min(nb, n - j);
+                    const jb: i32 = int.min(nb, n - j);
 
                     if (comptime !types.isComplex(A)) {
                         blas.syrk(
@@ -390,10 +390,10 @@ fn k_potrf_r(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j * lda),
+                            a + scast(u32, j * lda),
                             lda,
                             1,
-                            a + scast(usize, j * lda + j),
+                            a + scast(u32, j * lda + j),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -405,10 +405,10 @@ fn k_potrf_r(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, j * lda),
+                            a + scast(u32, j * lda),
                             lda,
                             1,
-                            a + scast(usize, j * lda + j),
+                            a + scast(u32, j * lda + j),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -418,7 +418,7 @@ fn k_potrf_r(
                         .row_major,
                         .lower,
                         jb,
-                        a + scast(usize, j * lda + j),
+                        a + scast(u32, j * lda + j),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -438,12 +438,12 @@ fn k_potrf_r(
                             jb,
                             j,
                             -1,
-                            a + scast(usize, (j + jb) * lda),
+                            a + scast(u32, (j + jb) * lda),
                             lda,
-                            a + scast(usize, j * lda),
+                            a + scast(u32, j * lda),
                             lda,
                             1,
-                            a + scast(usize, (j + jb) * lda + j),
+                            a + scast(u32, (j + jb) * lda + j),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -457,9 +457,9 @@ fn k_potrf_r(
                             n - j - jb,
                             jb,
                             1,
-                            a + scast(usize, j * lda + j),
+                            a + scast(u32, j * lda + j),
                             lda,
-                            a + scast(usize, (j + jb) * lda + j),
+                            a + scast(u32, (j + jb) * lda + j),
                             lda,
                             ctx,
                         ) catch unreachable;

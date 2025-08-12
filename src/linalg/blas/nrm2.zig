@@ -11,9 +11,9 @@ const ops = @import("../../ops.zig");
 const blas = @import("../blas.zig");
 
 pub fn nrm2(
-    n: isize,
+    n: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     ctx: anytype,
 ) !EnsureFloat(Scalar(Child(@TypeOf(x)))) {
     const X: type = Child(@TypeOf(x));
@@ -27,12 +27,12 @@ pub fn nrm2(
         var temp: EnsureFloat(Scalar(X)) = try ops.init(EnsureFloat(Scalar(X)), ctx);
         defer ops.deinit(&temp, ctx);
 
-        var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-        for (0..scast(usize, n)) |_| {
+        var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+        for (0..scast(u32, n)) |_| {
             if (comptime types.isComplex(X)) {
-                try ops.abs2_(&temp, x[scast(usize, ix)], ctx);
+                try ops.abs2_(&temp, x[scast(u32, ix)], ctx);
             } else {
-                try ops.pow_(&temp, x[scast(usize, ix)], 2, ctx);
+                try ops.pow_(&temp, x[scast(u32, ix)], 2, ctx);
             }
 
             try ops.add_(&sum, sum, temp, ctx);
@@ -61,9 +61,9 @@ pub fn nrm2(
         var notbig: bool = true;
 
         if (comptime types.numericType(X) == .cfloat) {
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            for (0..scast(usize, n)) |_| {
-                var ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(usize, ix)].re);
+            var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+            for (0..scast(u32, n)) |_| {
+                var ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(u32, ix)].re);
                 if (ax > tbig) {
                     abig += float.pow(ax * sbig, 2);
                     notbig = false;
@@ -73,7 +73,7 @@ pub fn nrm2(
                     amed += float.pow(ax, 2);
                 }
 
-                ax = float.abs(x[scast(usize, ix)].im);
+                ax = float.abs(x[scast(u32, ix)].im);
                 if (ax > tbig) {
                     abig += float.pow(ax * sbig, 2);
                     notbig = false;
@@ -86,9 +86,9 @@ pub fn nrm2(
                 ix += incx;
             }
         } else {
-            var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-            for (0..scast(usize, n)) |_| {
-                const ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(usize, ix)]);
+            var ix: i32 = if (incx < 0) (-n + 1) * incx else 0;
+            for (0..scast(u32, n)) |_| {
+                const ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(u32, ix)]);
                 if (ax > tbig) {
                     abig += float.pow(ax * sbig, 2);
                     notbig = false;

@@ -8,20 +8,20 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn spmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     ap: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -33,14 +33,14 @@ pub inline fn spmv(
 
 fn k_spmv(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     ap: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -60,15 +60,15 @@ fn k_spmv(
         (ops.eq(alpha, 0, ctx) catch unreachable and ops.eq(beta, 1, ctx) catch unreachable))
         return;
 
-    const kx: isize = if (incx < 0) (-n + 1) * incx else 0;
-    const ky: isize = if (incy < 0) (-n + 1) * incy else 0;
+    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    const ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         // First form  y = beta * y.
         if (ops.ne(beta, 1, ctx) catch unreachable) {
             if (incy == 1) {
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(usize, n)) |i| {
+                    for (0..scast(u32, n)) |i| {
                         ops.set( // y[i] = 0
                             &y[i],
                             0,
@@ -76,7 +76,7 @@ fn k_spmv(
                         ) catch unreachable;
                     }
                 } else {
-                    for (0..scast(usize, n)) |i| {
+                    for (0..scast(u32, n)) |i| {
                         ops.mul_( // y[i] *= beta
                             &y[i],
                             y[i],
@@ -86,11 +86,11 @@ fn k_spmv(
                     }
                 }
             } else {
-                var iy: isize = ky;
+                var iy: i32 = ky;
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(usize, n)) |_| {
+                    for (0..scast(u32, n)) |_| {
                         ops.set( // y[iy] = 0
-                            &y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
                             0,
                             ctx,
                         ) catch unreachable;
@@ -98,10 +98,10 @@ fn k_spmv(
                         iy += incy;
                     }
                 } else {
-                    for (0..scast(usize, n)) |_| {
+                    for (0..scast(u32, n)) |_| {
                         ops.mul_( // y[iy] *= beta
-                            &y[scast(usize, iy)],
-                            y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
+                            y[scast(u32, iy)],
                             beta,
                             ctx,
                         ) catch unreachable;
@@ -114,27 +114,27 @@ fn k_spmv(
 
         if (ops.eq(alpha, 0, ctx) catch unreachable) return;
 
-        var kk: isize = 0;
+        var kk: i32 = 0;
         if (uplo == .upper) {
             if (incx == 1 and incy == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
-                        x[scast(usize, j)],
+                        x[scast(u32, j)],
                         alpha,
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                    var k: isize = kk;
-                    var i: isize = 0;
+                    var k: i32 = kk;
+                    var i: i32 = 0;
                     while (i < j) : (i += 1) {
                         ops.add_( // y[i] += temp1 * ap[k]
-                            &y[scast(usize, i)],
-                            y[scast(usize, i)],
+                            &y[scast(u32, i)],
+                            y[scast(u32, i)],
                             ops.mul(
                                 temp1,
-                                ap[scast(usize, k)],
+                                ap[scast(u32, k)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -144,8 +144,8 @@ fn k_spmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                ap[scast(usize, k)],
-                                x[scast(usize, i)],
+                                ap[scast(u32, k)],
+                                x[scast(u32, i)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -155,12 +155,12 @@ fn k_spmv(
                     }
 
                     ops.add_( // y[j] += temp1 * ap[kk + j] + alpha * temp2
-                        &y[scast(usize, j)],
-                        y[scast(usize, j)],
+                        &y[scast(u32, j)],
+                        y[scast(u32, j)],
                         ops.add(
                             ops.mul(
                                 temp1,
-                                ap[scast(usize, kk + j)],
+                                ap[scast(u32, kk + j)],
                                 ctx,
                             ) catch unreachable,
                             ops.mul(
@@ -176,27 +176,27 @@ fn k_spmv(
                     kk += j + 1;
                 }
             } else {
-                var jx: isize = kx;
-                var jy: isize = ky;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var jy: i32 = ky;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
-                        x[scast(usize, jx)],
+                        x[scast(u32, jx)],
                         alpha,
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                    var ix: isize = kx;
-                    var iy: isize = ky;
-                    var k: isize = kk;
+                    var ix: i32 = kx;
+                    var iy: i32 = ky;
+                    var k: i32 = kk;
                     while (k < kk + j) : (k += 1) {
                         ops.add_( // y[iy] += temp1 * ap[k]
-                            &y[scast(usize, iy)],
-                            y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
+                            y[scast(u32, iy)],
                             ops.mul(
                                 temp1,
-                                ap[scast(usize, k)],
+                                ap[scast(u32, k)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -206,8 +206,8 @@ fn k_spmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                ap[scast(usize, k)],
-                                x[scast(usize, ix)],
+                                ap[scast(u32, k)],
+                                x[scast(u32, ix)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -218,12 +218,12 @@ fn k_spmv(
                     }
 
                     ops.add_( // y[jy] += temp1 * ap[kk + j] + alpha * temp2
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.add(
                             ops.mul(
                                 temp1,
-                                ap[scast(usize, kk + j)],
+                                ap[scast(u32, kk + j)],
                                 ctx,
                             ) catch unreachable,
                             ops.mul(
@@ -243,35 +243,35 @@ fn k_spmv(
             }
         } else {
             if (incx == 1 and incy == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
-                        x[scast(usize, j)],
+                        x[scast(u32, j)],
                         alpha,
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
                     ops.add_( // y[j] += temp1 * ap[kk]
-                        &y[scast(usize, j)],
-                        y[scast(usize, j)],
+                        &y[scast(u32, j)],
+                        y[scast(u32, j)],
                         ops.mul(
                             temp1,
-                            ap[scast(usize, kk)],
+                            ap[scast(u32, kk)],
                             ctx,
                         ) catch unreachable,
                         ctx,
                     ) catch unreachable;
 
-                    var k: isize = kk + 1;
-                    var i: isize = j + 1;
+                    var k: i32 = kk + 1;
+                    var i: i32 = j + 1;
                     while (i < n) : (i += 1) {
                         ops.add_( // y[i] += temp1 * ap[k]
-                            &y[scast(usize, i)],
-                            y[scast(usize, i)],
+                            &y[scast(u32, i)],
+                            y[scast(u32, i)],
                             ops.mul(
                                 temp1,
-                                ap[scast(usize, k)],
+                                ap[scast(u32, k)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -281,8 +281,8 @@ fn k_spmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                ap[scast(usize, k)],
-                                x[scast(usize, i)],
+                                ap[scast(u32, k)],
+                                x[scast(u32, i)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -292,8 +292,8 @@ fn k_spmv(
                     }
 
                     ops.add_( // y[j] += alpha * temp2
-                        &y[scast(usize, j)],
-                        y[scast(usize, j)],
+                        &y[scast(u32, j)],
+                        y[scast(u32, j)],
                         ops.mul(
                             alpha,
                             temp2,
@@ -305,41 +305,41 @@ fn k_spmv(
                     kk += n - j;
                 }
             } else {
-                var jx: isize = kx;
-                var jy: isize = ky;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var jy: i32 = ky;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
-                        x[scast(usize, jx)],
+                        x[scast(u32, jx)],
                         alpha,
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
                     ops.add_( // y[jy] += temp1 * ap[kk]
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.mul(
                             temp1,
-                            ap[scast(usize, kk)],
+                            ap[scast(u32, kk)],
                             ctx,
                         ) catch unreachable,
                         ctx,
                     ) catch unreachable;
 
-                    var ix: isize = jx;
-                    var iy: isize = jy;
-                    var k: isize = kk + 1;
+                    var ix: i32 = jx;
+                    var iy: i32 = jy;
+                    var k: i32 = kk + 1;
                     while (k < kk + n - j) : (k += 1) {
                         ix += incx;
                         iy += incy;
 
                         ops.add_( // y[iy] += temp1 * ap[k]
-                            &y[scast(usize, iy)],
-                            y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
+                            y[scast(u32, iy)],
                             ops.mul(
                                 temp1,
-                                ap[scast(usize, k)],
+                                ap[scast(u32, k)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -349,8 +349,8 @@ fn k_spmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                ap[scast(usize, k)],
-                                x[scast(usize, ix)],
+                                ap[scast(u32, k)],
+                                x[scast(u32, ix)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -358,8 +358,8 @@ fn k_spmv(
                     }
 
                     ops.add_( // y[jy] += alpha * temp2
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.mul(
                             alpha,
                             temp2,

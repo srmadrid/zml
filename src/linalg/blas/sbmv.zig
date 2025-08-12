@@ -8,22 +8,22 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn sbmv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -61,16 +61,16 @@ pub inline fn sbmv(
 
 fn k_sbmv(
     uplo: Uplo,
-    n: isize,
-    k: isize,
+    n: i32,
+    k: i32,
     alpha: anytype,
     a: anytype,
-    lda: isize,
+    lda: i32,
     x: anytype,
-    incx: isize,
+    incx: i32,
     beta: anytype,
     y: anytype,
-    incy: isize,
+    incy: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -90,15 +90,15 @@ fn k_sbmv(
         (ops.eq(alpha, 0, ctx) catch unreachable and ops.eq(beta, 1, ctx) catch unreachable))
         return;
 
-    var kx: isize = if (incx < 0) (-n + 1) * incx else 0;
-    var ky: isize = if (incy < 0) (-n + 1) * incy else 0;
+    var kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    var ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         // First form  y = beta * y.
         if (ops.ne(beta, 1, ctx) catch unreachable) {
             if (incy == 1) {
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(usize, n)) |i| {
+                    for (0..scast(u32, n)) |i| {
                         ops.set( // y[i] = 0
                             &y[i],
                             0,
@@ -106,7 +106,7 @@ fn k_sbmv(
                         ) catch unreachable;
                     }
                 } else {
-                    for (0..scast(usize, n)) |i| {
+                    for (0..scast(u32, n)) |i| {
                         ops.mul_( // y[i] *= beta
                             &y[i],
                             y[i],
@@ -116,11 +116,11 @@ fn k_sbmv(
                     }
                 }
             } else {
-                var iy: isize = ky;
+                var iy: i32 = ky;
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(usize, n)) |_| {
+                    for (0..scast(u32, n)) |_| {
                         ops.set( // y[iy] = 0
-                            &y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
                             0,
                             ctx,
                         ) catch unreachable;
@@ -128,10 +128,10 @@ fn k_sbmv(
                         iy += incy;
                     }
                 } else {
-                    for (0..scast(usize, n)) |_| {
+                    for (0..scast(u32, n)) |_| {
                         ops.mul_( // y[iy] *= beta
-                            &y[scast(usize, iy)],
-                            y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
+                            y[scast(u32, iy)],
                             beta,
                             ctx,
                         ) catch unreachable;
@@ -146,24 +146,24 @@ fn k_sbmv(
 
         if (uplo == .upper) {
             if (incx == 1 and incy == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
                         alpha,
-                        x[scast(usize, j)],
+                        x[scast(u32, j)],
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                    const l: isize = k - j;
-                    var i: isize = int.max(0, j - k);
+                    const l: i32 = k - j;
+                    var i: i32 = int.max(0, j - k);
                     while (i < j) : (i += 1) {
                         ops.add_( // y[i] += temp1 * a[l + i + j * lda]
-                            &y[scast(usize, i)],
-                            y[scast(usize, i)],
+                            &y[scast(u32, i)],
+                            y[scast(u32, i)],
                             ops.mul(
                                 temp1,
-                                a[scast(usize, l + i + j * lda)],
+                                a[scast(u32, l + i + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -173,8 +173,8 @@ fn k_sbmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                a[scast(usize, l + i + j * lda)],
-                                x[scast(usize, i)],
+                                a[scast(u32, l + i + j * lda)],
+                                x[scast(u32, i)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -182,12 +182,12 @@ fn k_sbmv(
                     }
 
                     ops.add_( // y[j] += temp1 * a[k + j * lda + alpha * temp2
-                        &y[scast(usize, j)],
-                        y[scast(usize, j)],
+                        &y[scast(u32, j)],
+                        y[scast(u32, j)],
                         ops.add(
                             ops.mul(
                                 temp1,
-                                a[scast(usize, k + j * lda)],
+                                a[scast(u32, k + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ops.mul(
@@ -201,28 +201,28 @@ fn k_sbmv(
                     ) catch unreachable;
                 }
             } else {
-                var jx: isize = kx;
-                var jy: isize = ky;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var jy: i32 = ky;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
                         alpha,
-                        x[scast(usize, jx)],
+                        x[scast(u32, jx)],
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                    var ix: isize = kx;
-                    var iy: isize = ky;
-                    const l: isize = k - j;
-                    var i: isize = int.max(0, j - k);
+                    var ix: i32 = kx;
+                    var iy: i32 = ky;
+                    const l: i32 = k - j;
+                    var i: i32 = int.max(0, j - k);
                     while (i < j) : (i += 1) {
                         ops.add_( // y[iy] += temp1 * a[l + i + j * lda]
-                            &y[scast(usize, iy)],
-                            y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
+                            y[scast(u32, iy)],
                             ops.mul(
                                 temp1,
-                                a[scast(usize, l + i + j * lda)],
+                                a[scast(u32, l + i + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -232,8 +232,8 @@ fn k_sbmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                a[scast(usize, l + i + j * lda)],
-                                x[scast(usize, ix)],
+                                a[scast(u32, l + i + j * lda)],
+                                x[scast(u32, ix)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -244,12 +244,12 @@ fn k_sbmv(
                     }
 
                     ops.add_( // y[jy] += temp1 * a[k + j * lda + alpha * temp2
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.add(
                             ops.mul(
                                 temp1,
-                                a[scast(usize, k + j * lda)],
+                                a[scast(u32, k + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ops.mul(
@@ -273,35 +273,35 @@ fn k_sbmv(
             }
         } else {
             if (incx == 1 and incy == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
                         alpha,
-                        x[scast(usize, j)],
+                        x[scast(u32, j)],
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
                     ops.add_( // y[j] += temp1 * a[0 + j * lda]
-                        &y[scast(usize, j)],
-                        y[scast(usize, j)],
+                        &y[scast(u32, j)],
+                        y[scast(u32, j)],
                         ops.mul(
                             temp1,
-                            a[scast(usize, 0 + j * lda)],
+                            a[scast(u32, 0 + j * lda)],
                             ctx,
                         ) catch unreachable,
                         ctx,
                     ) catch unreachable;
 
-                    const l: isize = -j;
-                    var i: isize = j + 1;
+                    const l: i32 = -j;
+                    var i: i32 = j + 1;
                     while (i < int.min(n, j + k + 1)) : (i += 1) {
                         ops.add_( // y[i] += temp1 * a[l + i + j * lda]
-                            &y[scast(usize, i)],
-                            y[scast(usize, i)],
+                            &y[scast(u32, i)],
+                            y[scast(u32, i)],
                             ops.mul(
                                 temp1,
-                                a[scast(usize, l + i + j * lda)],
+                                a[scast(u32, l + i + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -311,8 +311,8 @@ fn k_sbmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                a[scast(usize, l + i + j * lda)],
-                                x[scast(usize, i)],
+                                a[scast(u32, l + i + j * lda)],
+                                x[scast(u32, i)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -320,8 +320,8 @@ fn k_sbmv(
                     }
 
                     ops.add_( // y[j] += alpha * temp2
-                        &y[scast(usize, j)],
-                        y[scast(usize, j)],
+                        &y[scast(u32, j)],
+                        y[scast(u32, j)],
                         ops.mul(
                             ops.conjugate(alpha, ctx) catch unreachable,
                             temp2,
@@ -331,42 +331,42 @@ fn k_sbmv(
                     ) catch unreachable;
                 }
             } else {
-                var jx: isize = kx;
-                var jy: isize = ky;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var jy: i32 = ky;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
                     const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
                         alpha,
-                        x[scast(usize, jx)],
+                        x[scast(u32, jx)],
                         ctx,
                     ) catch unreachable;
                     var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
                     ops.add_( // y[jy] += temp1 * a[0 + j * lda]
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.mul(
                             temp1,
-                            a[scast(usize, 0 + j * lda)],
+                            a[scast(u32, 0 + j * lda)],
                             ctx,
                         ) catch unreachable,
                         ctx,
                     ) catch unreachable;
 
-                    const l: isize = -j;
-                    var ix: isize = jx;
-                    var iy: isize = jy;
-                    var i: isize = j + 1;
+                    const l: i32 = -j;
+                    var ix: i32 = jx;
+                    var iy: i32 = jy;
+                    var i: i32 = j + 1;
                     while (i < int.min(n, j + k + 1)) : (i += 1) {
                         ix += incx;
                         iy += incy;
 
                         ops.add_( // y[iy] += temp1 * a[l + i + j * lda]
-                            &y[scast(usize, iy)],
-                            y[scast(usize, iy)],
+                            &y[scast(u32, iy)],
+                            y[scast(u32, iy)],
                             ops.mul(
                                 temp1,
-                                a[scast(usize, l + i + j * lda)],
+                                a[scast(u32, l + i + j * lda)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -376,8 +376,8 @@ fn k_sbmv(
                             &temp2,
                             temp2,
                             ops.mul(
-                                a[scast(usize, l + i + j * lda)],
-                                x[scast(usize, ix)],
+                                a[scast(u32, l + i + j * lda)],
+                                x[scast(u32, ix)],
                                 ctx,
                             ) catch unreachable,
                             ctx,
@@ -385,8 +385,8 @@ fn k_sbmv(
                     }
 
                     ops.add_( // y[jy] += alpha * temp2
-                        &y[scast(usize, jy)],
-                        y[scast(usize, jy)],
+                        &y[scast(u32, jy)],
+                        y[scast(u32, jy)],
                         ops.mul(
                             ops.conjugate(alpha, ctx) catch unreachable,
                             temp2,

@@ -8,20 +8,20 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn syr2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -33,14 +33,14 @@ pub inline fn syr2(
 
 fn k_syr2(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     y: anytype,
-    incy: isize,
+    incy: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -58,41 +58,41 @@ fn k_syr2(
     if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
         return;
 
-    const kx: isize = if (incx < 0) (-n + 1) * incx else 0;
-    const ky: isize = if (incy < 0) (-n + 1) * incy else 0;
+    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    const ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         if (uplo == .upper) {
             if (incx == 1 and incy == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(usize, j)], 0, ctx) catch unreachable)
+                    if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
+                        ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                     {
                         const temp1: C1 = ops.mul( // temp1 = alpha * y[j]
-                            y[scast(usize, j)],
+                            y[scast(u32, j)],
                             alpha,
                             ctx,
                         ) catch unreachable;
                         const temp2: C2 = ops.mul( // temp2 = alpha * x[j]
-                            x[scast(usize, j)],
+                            x[scast(u32, j)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
-                        var i: isize = 0;
+                        var i: i32 = 0;
                         while (i < j) : (i += 1) {
                             ops.add_( // a[i + j * lda] += x[i] * temp1 + y[i] * temp2
-                                &a[scast(usize, i + j * lda)],
-                                a[scast(usize, i + j * lda)],
+                                &a[scast(u32, i + j * lda)],
+                                a[scast(u32, i + j * lda)],
                                 ops.add(
                                     ops.mul(
-                                        x[scast(usize, i)],
+                                        x[scast(u32, i)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, i)],
+                                        y[scast(u32, i)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -103,16 +103,16 @@ fn k_syr2(
                         }
 
                         ops.add_( // a[j + j * lda] += x[j] * temp1 + y[j] * temp2
-                            &a[scast(usize, j + j * lda)],
-                            a[scast(usize, j + j * lda)],
+                            &a[scast(u32, j + j * lda)],
+                            a[scast(u32, j + j * lda)],
                             ops.add(
                                 ops.mul(
-                                    x[scast(usize, j)],
+                                    x[scast(u32, j)],
                                     temp1,
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    y[scast(usize, j)],
+                                    y[scast(u32, j)],
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -123,39 +123,39 @@ fn k_syr2(
                     }
                 }
             } else {
-                var jx: isize = kx;
-                var jy: isize = ky;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var jy: i32 = ky;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable)
+                    if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
+                        ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                     {
                         const temp1: C1 = ops.mul( // temp1 = alpha * y[jy]
-                            y[scast(usize, jy)],
+                            y[scast(u32, jy)],
                             alpha,
                             ctx,
                         ) catch unreachable;
                         const temp2: C2 = ops.mul( // temp2 = alpha * x[jx]
-                            x[scast(usize, jx)],
+                            x[scast(u32, jx)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
-                        var ix: isize = kx;
-                        var iy: isize = ky;
-                        var i: isize = 0;
+                        var ix: i32 = kx;
+                        var iy: i32 = ky;
+                        var i: i32 = 0;
                         while (i < j) : (i += 1) {
                             ops.add_( // a[i + j * lda] += x[ix] * temp1 + y[iy] * temp2
-                                &a[scast(usize, i + j * lda)],
-                                a[scast(usize, i + j * lda)],
+                                &a[scast(u32, i + j * lda)],
+                                a[scast(u32, i + j * lda)],
                                 ops.add(
                                     ops.mul(
-                                        x[scast(usize, ix)],
+                                        x[scast(u32, ix)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, iy)],
+                                        y[scast(u32, iy)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -169,16 +169,16 @@ fn k_syr2(
                         }
 
                         ops.add_( // a[j + j * lda] += x[jx] * temp1 + y[jy] * temp2
-                            &a[scast(usize, j + j * lda)],
-                            a[scast(usize, j + j * lda)],
+                            &a[scast(u32, j + j * lda)],
+                            a[scast(u32, j + j * lda)],
                             ops.add(
                                 ops.mul(
-                                    x[scast(usize, jx)],
+                                    x[scast(u32, jx)],
                                     temp1,
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    y[scast(usize, jy)],
+                                    y[scast(u32, jy)],
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -194,33 +194,33 @@ fn k_syr2(
             }
         } else {
             if (incx == 1 and incy == 1) {
-                var j: isize = 0;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(usize, j)], 0, ctx) catch unreachable)
+                    if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
+                        ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                     {
                         const temp1: C1 = ops.mul( // temp1 = alpha * y[j]
-                            y[scast(usize, j)],
+                            y[scast(u32, j)],
                             alpha,
                             ctx,
                         ) catch unreachable;
                         const temp2: C2 = ops.mul( // temp2 = alpha * x[j]
-                            x[scast(usize, j)],
+                            x[scast(u32, j)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
                         ops.add_( // a[j + j * lda] += x[j] * temp1 + y[j] * temp2
-                            &a[scast(usize, j + j * lda)],
-                            a[scast(usize, j + j * lda)],
+                            &a[scast(u32, j + j * lda)],
+                            a[scast(u32, j + j * lda)],
                             ops.add(
                                 ops.mul(
-                                    x[scast(usize, j)],
+                                    x[scast(u32, j)],
                                     temp1,
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    y[scast(usize, j)],
+                                    y[scast(u32, j)],
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -229,19 +229,19 @@ fn k_syr2(
                             ctx,
                         ) catch unreachable;
 
-                        var i: isize = j + 1;
+                        var i: i32 = j + 1;
                         while (i < n) : (i += 1) {
                             ops.add_( // a[i + j * lda] += x[i] * temp1 + y[i] * temp2
-                                &a[scast(usize, i + j * lda)],
-                                a[scast(usize, i + j * lda)],
+                                &a[scast(u32, i + j * lda)],
+                                a[scast(u32, i + j * lda)],
                                 ops.add(
                                     ops.mul(
-                                        x[scast(usize, i)],
+                                        x[scast(u32, i)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, i)],
+                                        y[scast(u32, i)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -253,35 +253,35 @@ fn k_syr2(
                     }
                 }
             } else {
-                var jx: isize = kx;
-                var jy: isize = ky;
-                var j: isize = 0;
+                var jx: i32 = kx;
+                var jy: i32 = ky;
+                var j: i32 = 0;
                 while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(usize, jy)], 0, ctx) catch unreachable)
+                    if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
+                        ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                     {
                         const temp1: C1 = ops.mul( // temp1 = alpha * y[jx]
-                            y[scast(usize, jy)],
+                            y[scast(u32, jy)],
                             alpha,
                             ctx,
                         ) catch unreachable;
                         const temp2: C2 = ops.mul( // temp2 = alpha * x[jx]
-                            x[scast(usize, jx)],
+                            x[scast(u32, jx)],
                             alpha,
                             ctx,
                         ) catch unreachable;
 
                         ops.add_( // a[j + j * lda] += x[jx] * temp1 + y[jy] * temp2
-                            &a[scast(usize, j + j * lda)],
-                            a[scast(usize, j + j * lda)],
+                            &a[scast(u32, j + j * lda)],
+                            a[scast(u32, j + j * lda)],
                             ops.add(
                                 ops.mul(
-                                    x[scast(usize, jx)],
+                                    x[scast(u32, jx)],
                                     temp1,
                                     ctx,
                                 ) catch unreachable,
                                 ops.mul(
-                                    y[scast(usize, jy)],
+                                    y[scast(u32, jy)],
                                     temp2,
                                     ctx,
                                 ) catch unreachable,
@@ -290,24 +290,24 @@ fn k_syr2(
                             ctx,
                         ) catch unreachable;
 
-                        var ix: isize = jx;
-                        var iy: isize = jy;
-                        var i: isize = j + 1;
+                        var ix: i32 = jx;
+                        var iy: i32 = jy;
+                        var i: i32 = j + 1;
                         while (i < n) : (i += 1) {
                             ix += incx;
                             iy += incy;
 
                             ops.add_( // a[i + j * lda] += x[ix] * temp1 + y[iy] * temp2
-                                &a[scast(usize, i + j * lda)],
-                                a[scast(usize, i + j * lda)],
+                                &a[scast(u32, i + j * lda)],
+                                a[scast(u32, i + j * lda)],
                                 ops.add(
                                     ops.mul(
-                                        x[scast(usize, ix)],
+                                        x[scast(u32, ix)],
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        y[scast(usize, iy)],
+                                        y[scast(u32, iy)],
                                         temp2,
                                         ctx,
                                     ) catch unreachable,

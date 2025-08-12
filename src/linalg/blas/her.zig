@@ -8,18 +8,18 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
-const Order = linalg.Order;
-const Uplo = linalg.Uplo;
+const Order = types.Order;
+const Uplo = types.Uplo;
 
 pub inline fn her(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -31,12 +31,12 @@ pub inline fn her(
 
 fn k_her(
     uplo: Uplo,
-    n: isize,
+    n: i32,
     alpha: anytype,
     x: anytype,
-    incx: isize,
+    incx: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     noconj: bool,
     ctx: anytype,
 ) !void {
@@ -53,28 +53,28 @@ fn k_her(
     if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
         return;
 
-    const kx: isize = if (incx < 0) (-n + 1) * incx else 0;
+    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         if (uplo == .upper) {
             if (noconj) {
                 if (incx == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[j])
-                                ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
-                            var i: isize = 0;
+                            var i: i32 = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += x[i] * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        x[scast(usize, i)],
+                                        x[scast(u32, i)],
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -83,10 +83,10 @@ fn k_her(
                             }
 
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[j] * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    x[scast(usize, j)],
+                                    x[scast(u32, j)],
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -94,31 +94,31 @@ fn k_her(
                             ) catch unreachable;
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
                     }
                 } else {
-                    var jx: isize = kx;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[jx])
-                                ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: isize = kx;
-                            var i: isize = 0;
+                            var ix: i32 = kx;
+                            var i: i32 = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += x[ix] * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        x[scast(usize, ix)],
+                                        x[scast(u32, ix)],
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -129,10 +129,10 @@ fn k_her(
                             }
 
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[jx] * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    x[scast(usize, jx)],
+                                    x[scast(u32, jx)],
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -140,8 +140,8 @@ fn k_her(
                             ) catch unreachable;
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -151,22 +151,22 @@ fn k_her(
                 }
             } else {
                 if (incx == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * x[j]
-                                x[scast(usize, j)],
+                                x[scast(u32, j)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
-                            var i: isize = 0;
+                            var i: i32 = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += conj(x[i]) * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, i)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -175,10 +175,10 @@ fn k_her(
                             }
 
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[j]) * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                    ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -186,31 +186,31 @@ fn k_her(
                             ) catch unreachable;
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
                     }
                 } else {
-                    var jx: isize = kx;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * x[jx]
-                                x[scast(usize, jx)],
+                                x[scast(u32, jx)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: isize = kx;
-                            var i: isize = 0;
+                            var ix: i32 = kx;
+                            var i: i32 = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += conj(x[ix]) * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, ix)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -220,10 +220,10 @@ fn k_her(
                                 ix += incx;
                             }
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[jx]) * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                    ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -231,8 +231,8 @@ fn k_her(
                             ) catch unreachable;
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -244,33 +244,33 @@ fn k_her(
         } else {
             if (noconj) {
                 if (incx == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[j])
-                                ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[j] * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    x[scast(usize, j)],
+                                    x[scast(u32, j)],
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
 
-                            var i: isize = j + 1;
+                            var i: i32 = j + 1;
                             while (i < n) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += x[i] * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        x[scast(usize, i)],
+                                        x[scast(u32, i)],
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -279,44 +279,44 @@ fn k_her(
                             }
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
                     }
                 } else {
-                    var jx: isize = kx;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[jx])
-                                ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[jx] * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    x[scast(usize, jx)],
+                                    x[scast(u32, jx)],
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: isize = jx;
-                            var i: isize = j + 1;
+                            var ix: i32 = jx;
+                            var i: i32 = j + 1;
                             while (i < n) : (i += 1) {
                                 ix += incx;
 
                                 ops.add_( // a[i + j * lda] += x[ix] * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        x[scast(usize, ix)],
+                                        x[scast(u32, ix)],
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -325,8 +325,8 @@ fn k_her(
                             }
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
@@ -335,33 +335,33 @@ fn k_her(
                 }
             } else {
                 if (incx == 1) {
-                    var j: isize = 0;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, j)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * x[j]
-                                x[scast(usize, j)],
+                                x[scast(u32, j)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[j]) * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(usize, j)], ctx) catch unreachable,
+                                    ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
 
-                            var i: isize = j + 1;
+                            var i: i32 = j + 1;
                             while (i < n) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += conj(x[i]) * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, i)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -370,44 +370,44 @@ fn k_her(
                             }
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }
                     }
                 } else {
-                    var jx: isize = kx;
-                    var j: isize = 0;
+                    var jx: i32 = kx;
+                    var j: i32 = 0;
                     while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(usize, jx)], 0, ctx) catch unreachable) {
+                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * x[jx]
-                                x[scast(usize, jx)],
+                                x[scast(u32, jx)],
                                 alpha,
                                 ctx,
                             ) catch unreachable;
 
                             ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[jx]) * temp)
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(usize, jx)], ctx) catch unreachable,
+                                    ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: isize = jx;
-                            var i: isize = j + 1;
+                            var ix: i32 = jx;
+                            var i: i32 = j + 1;
                             while (i < n) : (i += 1) {
                                 ix += incx;
 
                                 ops.add_( // a[i + j * lda] += conj(x[ix]) * temp
-                                    &a[scast(usize, i + j * lda)],
-                                    a[scast(usize, i + j * lda)],
+                                    &a[scast(u32, i + j * lda)],
+                                    a[scast(u32, i + j * lda)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(usize, ix)], ctx) catch unreachable,
+                                        ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -416,8 +416,8 @@ fn k_her(
                             }
                         } else {
                             ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(usize, j + j * lda)],
-                                ops.re(a[scast(usize, j + j * lda)], ctx) catch unreachable,
+                                &a[scast(u32, j + j * lda)],
+                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
                         }

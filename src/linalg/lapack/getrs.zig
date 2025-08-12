@@ -9,19 +9,19 @@ const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 const Transpose = linalg.Transpose;
 
 pub inline fn getrs(
     order: Order,
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -33,13 +33,13 @@ pub inline fn getrs(
 
 fn k_getrs_c(
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     const A: type = types.Child(@TypeOf(a));
@@ -163,13 +163,13 @@ fn k_getrs_c(
 
 fn k_getrs_r(
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     const A: type = types.Child(@TypeOf(a));

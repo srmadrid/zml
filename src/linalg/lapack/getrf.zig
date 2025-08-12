@@ -9,17 +9,17 @@ const int = @import("../../int.zig");
 const linalg = @import("../../linalg.zig");
 const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
-const Order = linalg.Order;
+const Order = types.Order;
 
 pub inline fn getrf(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     if (order == .col_major) {
         return k_getrf_c(m, n, a, lda, ipiv, ctx);
     } else {
@@ -28,19 +28,19 @@ pub inline fn getrf(
 }
 
 fn k_getrf_c(
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (m < 0 or n < 0 or lda < int.max(1, m))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (m == 0 or n == 0)
@@ -48,7 +48,7 @@ fn k_getrf_c(
 
     // Determine the block size for this environment. Always returns the
     // same number for getrf regardless of 'S', 'D', 'C', or 'Z'.
-    const nb: isize = lapack.ilaenv(1, "DGETRF", " ", m, n, -1, -1);
+    const nb: i32 = lapack.ilaenv(1, "DGETRF", " ", m, n, -1, -1);
     if (comptime !types.isArbitraryPrecision(A)) {
         if (nb <= 1 or nb >= int.min(m, n)) {
             // Use unblocked code.
@@ -64,19 +64,19 @@ fn k_getrf_c(
             ) catch unreachable;
         } else {
             // Use blocked code.
-            var j: isize = 0;
+            var j: i32 = 0;
             while (j < int.min(m, n)) : (j += nb) {
-                const jb: isize = int.min(int.min(m, n) - j, nb);
+                const jb: i32 = int.min(int.min(m, n) - j, nb);
 
                 // Factor diagonal and subdiagonal blocks and test for exact singularity.
-                //const iinfo: isize = lapack.getrf2(
-                const iinfo: isize = @import("getrf2.zig").getrf2(
+                //const iinfo: i32 = lapack.getrf2(
+                const iinfo: i32 = @import("getrf2.zig").getrf2(
                     .col_major,
                     m - j,
                     jb,
-                    a + scast(usize, j + j * lda),
+                    a + scast(u32, j + j * lda),
                     lda,
-                    ipiv + scast(usize, j),
+                    ipiv + scast(u32, j),
                     ctx,
                 ) catch unreachable;
 
@@ -84,11 +84,11 @@ fn k_getrf_c(
                 if (info == 0 and iinfo > 0)
                     info = iinfo + j;
 
-                var i: isize = j;
+                var i: i32 = j;
                 while (i < int.min(m, j + jb)) : (i += 1) {
                     ops.add_( // ipiv[i] += j;
-                        &ipiv[scast(usize, i)],
-                        ipiv[scast(usize, i)],
+                        &ipiv[scast(u32, i)],
+                        ipiv[scast(u32, i)],
                         j,
                         ctx,
                     ) catch unreachable;
@@ -111,7 +111,7 @@ fn k_getrf_c(
                     lapack.laswp(
                         .col_major,
                         n - j - jb,
-                        a + scast(usize, (j + jb) * lda),
+                        a + scast(u32, (j + jb) * lda),
                         lda,
                         j + 1,
                         j + jb,
@@ -129,9 +129,9 @@ fn k_getrf_c(
                         jb,
                         n - j - jb,
                         1,
-                        a + scast(usize, j + j * lda),
+                        a + scast(u32, j + j * lda),
                         lda,
-                        a + scast(usize, j + (j + jb) * lda),
+                        a + scast(u32, j + (j + jb) * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -146,12 +146,12 @@ fn k_getrf_c(
                             n - j - jb,
                             jb,
                             -1,
-                            a + scast(usize, (j + jb) + j * lda),
+                            a + scast(u32, (j + jb) + j * lda),
                             lda,
-                            a + scast(usize, j + (j + jb) * lda),
+                            a + scast(u32, j + (j + jb) * lda),
                             lda,
                             1,
-                            a + scast(usize, (j + jb) + (j + jb) * lda),
+                            a + scast(u32, (j + jb) + (j + jb) * lda),
                             lda,
                             ctx,
                         ) catch unreachable;
@@ -168,19 +168,19 @@ fn k_getrf_c(
 }
 
 fn k_getrf_r(
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     const A: type = types.Child(@TypeOf(a));
 
     if (m < 0 or n < 0 or lda < int.max(1, m))
         return lapack.Error.InvalidArgument;
 
-    var info: isize = 0;
+    var info: i32 = 0;
 
     // Quick return if possible.
     if (m == 0 or n == 0)
@@ -189,7 +189,7 @@ fn k_getrf_r(
     if (comptime !types.isArbitraryPrecision(A)) {
         // Determine the block size for this environment. Always returns the
         // same number for getrf regardless of 'S', 'D', 'C', or 'Z'.
-        const nb: isize = lapack.ilaenv(1, "DGETRF", " ", m, n, -1, -1);
+        const nb: i32 = lapack.ilaenv(1, "DGETRF", " ", m, n, -1, -1);
         if (nb <= 1 or nb >= int.min(m, n)) {
             // Use unblocked code.
             info = lapack.getrf2(
@@ -204,19 +204,19 @@ fn k_getrf_r(
             ) catch unreachable;
         } else {
             // Use blocked code.
-            var j: isize = 0;
+            var j: i32 = 0;
             while (j < int.min(m, n)) : (j += nb) {
-                const jb: isize = int.min(int.min(m, n) - j, nb);
+                const jb: i32 = int.min(int.min(m, n) - j, nb);
 
                 // Factor diagonal and subdiagonal blocks and test for exact singularity.
-                //const iinfo: isize = lapack.getrf2(
-                const iinfo: isize = @import("getrf2.zig").getrf2(
+                //const iinfo: i32 = lapack.getrf2(
+                const iinfo: i32 = @import("getrf2.zig").getrf2(
                     .row_major,
                     m - j,
                     jb,
-                    a + scast(usize, j + j * lda),
+                    a + scast(u32, j + j * lda),
                     lda,
-                    ipiv + scast(usize, j),
+                    ipiv + scast(u32, j),
                     ctx,
                 ) catch unreachable;
 
@@ -224,11 +224,11 @@ fn k_getrf_r(
                 if (info == 0 and iinfo > 0)
                     info = iinfo + j;
 
-                var i: isize = j;
+                var i: i32 = j;
                 while (i < int.min(m, j + jb)) : (i += 1) {
                     ops.add_( // ipiv[i] += j;
-                        &ipiv[scast(usize, i)],
-                        ipiv[scast(usize, i)],
+                        &ipiv[scast(u32, i)],
+                        ipiv[scast(u32, i)],
                         j,
                         ctx,
                     ) catch unreachable;
@@ -251,7 +251,7 @@ fn k_getrf_r(
                     lapack.laswp(
                         .row_major,
                         n - j - jb,
-                        a + scast(usize, j + jb),
+                        a + scast(u32, j + jb),
                         lda,
                         j + 1,
                         j + jb,
@@ -269,9 +269,9 @@ fn k_getrf_r(
                         jb,
                         n - j - jb,
                         1,
-                        a + scast(usize, j + j * lda),
+                        a + scast(u32, j + j * lda),
                         lda,
-                        a + scast(usize, (j + jb) + j * lda),
+                        a + scast(u32, (j + jb) + j * lda),
                         lda,
                         ctx,
                     ) catch unreachable;
@@ -286,12 +286,12 @@ fn k_getrf_r(
                             n - j - jb,
                             jb,
                             -1,
-                            a + scast(usize, j + (j + jb) * lda),
+                            a + scast(u32, j + (j + jb) * lda),
                             lda,
-                            a + scast(usize, (j + jb) + j * lda),
+                            a + scast(u32, (j + jb) + j * lda),
                             lda,
                             1,
-                            a + scast(usize, (j + jb) + (j + jb) * lda),
+                            a + scast(u32, (j + jb) + (j + jb) * lda),
                             lda,
                             ctx,
                         ) catch unreachable;

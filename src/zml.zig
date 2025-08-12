@@ -1,9 +1,11 @@
 const std = @import("std");
 
 pub const types = @import("types.zig");
-pub const Order = types.Order;
 pub const scast = types.scast;
 pub const cast = types.cast;
+pub const Order = types.Order;
+pub const Uplo = types.Uplo;
+pub const Diag = types.Diag;
 
 pub const int = @import("int.zig");
 pub const float = @import("float.zig");
@@ -22,6 +24,8 @@ pub const real = @import("real.zig");
 pub const Real = real.Real;
 pub const complex = @import("complex.zig");
 pub const Complex = complex.Complex;
+
+pub const matrix = @import("matrix.zig");
 pub const array = @import("array.zig");
 
 const constants = @import("constants.zig");

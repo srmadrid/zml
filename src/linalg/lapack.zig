@@ -1,5 +1,5 @@
 const std = @import("std");
-const opts = @import("options");
+const options = @import("options");
 
 const types = @import("../types.zig");
 const scast = types.scast;
@@ -16,10 +16,10 @@ const linalg = @import("../linalg.zig");
 
 const ci = @import("../c.zig");
 
-const Order = linalg.Order;
+const Order = types.Order;
 const Transpose = linalg.Transpose;
-const Uplo = linalg.Uplo;
-const Diag = linalg.Diag;
+const Uplo = types.Uplo;
+const Diag = types.Diag;
 const Side = linalg.Side;
 
 pub const Mach = enum {
@@ -60,7 +60,7 @@ pub inline fn lamch(
     comptime if (!types.isNumeric(T))
         @compileError("zml.linalg.lapack.lamch requires T to be a numeric, got " ++ @typeName(T));
 
-    if (comptime opts.link_lapacke != null) {
+    if (comptime options.link_lapacke != null) {
         switch (comptime types.numericType(T)) {
             .float => {
                 if (comptime T == f32) {
@@ -94,7 +94,7 @@ pub inline fn lamch(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -103,14 +103,14 @@ pub inline fn lamch(
 /// `order = .row_major`, where `mm` is not less than the maximum of
 /// `ipiv[k1 - 1 + j  *abs(incx)]`, for `0 <= j < k2 - k1`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
-/// `k1` (`isize`): The first element of `ipiv` for which a row interchange will
+/// `k1` (`i32`): The first element of `ipiv` for which a row interchange will
 /// be done.
 ///
-/// `k2` (`isize`): The last element of `ipiv` for which a row interchange will
+/// `k2` (`i32`): The last element of `ipiv` for which a row interchange will
 /// be done.
 ///
 /// `ipiv` (`[*]const i32`): Array, size at least `k1 + (k2 - k1) * abs(incx)`.
@@ -118,7 +118,7 @@ pub inline fn lamch(
 /// `k2` of ipiv are accessed. `ipiv[k] = l` implies rows `k` and `l` are to be
 /// interchanged.
 ///
-/// `incx` (`isize`): The increment for the elements of `ipiv`. If `incx` is
+/// `incx` (`i32`): The increment for the elements of `ipiv`. If `incx` is
 /// negative, the pivots are applied in reverse order. Must be different from 0.
 ///
 /// Returns
@@ -138,13 +138,13 @@ pub inline fn lamch(
 /// be raised even if the arguments are invalid.
 pub inline fn laswp(
     order: Order,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) !void {
     comptime var A: type = @TypeOf(a);
 
@@ -156,11 +156,11 @@ pub inline fn laswp(
     comptime if (!types.isNumeric(A))
         @compileError("zml.linalg.lapack.laswp requires a's child type to be a numeric, got " ++ @typeName(A));
 
-    if (comptime opts.link_lapacke != null) {
+    if (comptime options.link_lapacke != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    const result = ci.LAPACKE_slaswp(@intFromEnum(order), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
+                    const result = ci.LAPACKE_slaswp(order.toCInt(), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
 
                     if (result < 0) {
                         if (result == -1011)
@@ -171,7 +171,7 @@ pub inline fn laswp(
 
                     return;
                 } else if (comptime A == f64) {
-                    const result = ci.LAPACKE_dlaswp(@intFromEnum(order), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
+                    const result = ci.LAPACKE_dlaswp(order.toCInt(), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
 
                     if (result < 0) {
                         if (result == -1011)
@@ -185,7 +185,7 @@ pub inline fn laswp(
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    const result = ci.LAPACKE_claswp(@intFromEnum(order), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
+                    const result = ci.LAPACKE_claswp(order.toCInt(), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
 
                     if (result < 0) {
                         if (result == -1011)
@@ -196,7 +196,7 @@ pub inline fn laswp(
 
                     return;
                 } else if (comptime Scalar(A) == f64) {
-                    const result = ci.LAPACKE_zlaswp(@intFromEnum(order), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
+                    const result = ci.LAPACKE_zlaswp(order.toCInt(), scast(c_int, n), a, scast(c_int, lda), scast(c_int, k1), scast(c_int, k2), ipiv, scast(c_int, incx));
 
                     if (result < 0) {
                         if (result == -1011)
@@ -226,21 +226,21 @@ pub inline fn laswp(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * mm` if `order = .row_major`, where `mm` is not less than the maximum
 /// of `ipiv[k1 - 1 + j  *abs(incx)]`, for `0 <= j < k2 - k1`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
-/// `k1` (`isize`): The first element of `ipiv` for which a row interchange will
+/// `k1` (`i32`): The first element of `ipiv` for which a row interchange will
 /// be done.
 ///
-/// `k2` (`isize`): The last element of `ipiv` for which a row interchange will
+/// `k2` (`i32`): The last element of `ipiv` for which a row interchange will
 /// be done.
 ///
 /// `ipiv` (`[*]const i32`): Array, size at least `k1 + (k2 - k1) * abs(incx)`.
@@ -248,7 +248,7 @@ pub inline fn laswp(
 /// `k2` of ipiv are accessed. `ipiv[k] = l` implies rows `k` and `l` are to be
 /// interchanged.
 ///
-/// `incx` (`isize`): The increment for the elements of `ipiv`. If `incx` is
+/// `incx` (`i32`): The increment for the elements of `ipiv`. If `incx` is
 /// negative, the pivots are applied in reverse order. Must be different from 0.
 ///
 /// Returns
@@ -261,13 +261,13 @@ pub inline fn laswp(
 /// corresponding LAPACKE function.
 pub inline fn slaswp(
     order: Order,
-    n: isize,
+    n: i32,
     a: [*]f32,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) void {
     return laswp(order, n, a, lda, k1, k2, ipiv, incx) catch {};
 }
@@ -283,21 +283,21 @@ pub inline fn slaswp(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * mm` if `order = .row_major`, where `mm` is not less than the maximum
 /// of `ipiv[k1 - 1 + j  *abs(incx)]`, for `0 <= j < k2 - k1`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
-/// `k1` (`isize`): The first element of `ipiv` for which a row interchange will
+/// `k1` (`i32`): The first element of `ipiv` for which a row interchange will
 /// be done.
 ///
-/// `k2` (`isize`): The last element of `ipiv` for which a row interchange will
+/// `k2` (`i32`): The last element of `ipiv` for which a row interchange will
 /// be done.
 ///
 /// `ipiv` (`[*]const i32`): Array, size at least `k1 + (k2 - k1) * abs(incx)`.
@@ -305,7 +305,7 @@ pub inline fn slaswp(
 /// `k2` of ipiv are accessed. `ipiv[k] = l` implies rows `k` and `l` are to be
 /// interchanged.
 ///
-/// `incx` (`isize`): The increment for the elements of `ipiv`. If `incx` is
+/// `incx` (`i32`): The increment for the elements of `ipiv`. If `incx` is
 /// negative, the pivots are applied in reverse order. Must be different from 0.
 ///
 /// Returns
@@ -318,13 +318,13 @@ pub inline fn slaswp(
 /// corresponding LAPACKE function.
 pub inline fn dlaswp(
     order: Order,
-    n: isize,
+    n: i32,
     a: [*]f64,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) void {
     return laswp(order, n, a, lda, k1, k2, ipiv, incx) catch {};
 }
@@ -340,21 +340,21 @@ pub inline fn dlaswp(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * mm` if `order = .row_major`, where `mm` is not less than the maximum
 /// of `ipiv[k1 - 1 + j  *abs(incx)]`, for `0 <= j < k2 - k1`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
-/// `k1` (`isize`): The first element of `ipiv` for which a row interchange will
+/// `k1` (`i32`): The first element of `ipiv` for which a row interchange will
 /// be done.
 ///
-/// `k2` (`isize`): The last element of `ipiv` for which a row interchange will
+/// `k2` (`i32`): The last element of `ipiv` for which a row interchange will
 /// be done.
 ///
 /// `ipiv` (`[*]const i32`): Array, size at least `k1 + (k2 - k1) * abs(incx)`.
@@ -362,7 +362,7 @@ pub inline fn dlaswp(
 /// `k2` of ipiv are accessed. `ipiv[k] = l` implies rows `k` and `l` are to be
 /// interchanged.
 ///
-/// `incx` (`isize`): The increment for the elements of `ipiv`. If `incx` is
+/// `incx` (`i32`): The increment for the elements of `ipiv`. If `incx` is
 /// negative, the pivots are applied in reverse order. Must be different from 0.
 ///
 /// Returns
@@ -375,13 +375,13 @@ pub inline fn dlaswp(
 /// corresponding LAPACKE function.
 pub inline fn claswp(
     order: Order,
-    n: isize,
+    n: i32,
     a: [*]cf32,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) void {
     return laswp(order, n, a, lda, k1, k2, ipiv, incx) catch {};
 }
@@ -397,21 +397,21 @@ pub inline fn claswp(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * mm` if `order = .row_major`, where `mm` is not less than the maximum
 /// of `ipiv[k1 - 1 + j  *abs(incx)]`, for `0 <= j < k2 - k1`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
-/// `k1` (`isize`): The first element of `ipiv` for which a row interchange will
+/// `k1` (`i32`): The first element of `ipiv` for which a row interchange will
 /// be done.
 ///
-/// `k2` (`isize`): The last element of `ipiv` for which a row interchange will
+/// `k2` (`i32`): The last element of `ipiv` for which a row interchange will
 /// be done.
 ///
 /// `ipiv` (`[*]const i32`): Array, size at least `k1 + (k2 - k1) * abs(incx)`.
@@ -419,7 +419,7 @@ pub inline fn claswp(
 /// `k2` of ipiv are accessed. `ipiv[k] = l` implies rows `k` and `l` are to be
 /// interchanged.
 ///
-/// `incx` (`isize`): The increment for the elements of `ipiv`. If `incx` is
+/// `incx` (`i32`): The increment for the elements of `ipiv`. If `incx` is
 /// negative, the pivots are applied in reverse order. Must be different from 0.
 ///
 /// Returns
@@ -432,13 +432,13 @@ pub inline fn claswp(
 /// corresponding LAPACKE function.
 pub inline fn zlaswp(
     order: Order,
-    n: isize,
+    n: i32,
     a: [*]cf64,
-    lda: isize,
-    k1: isize,
-    k2: isize,
+    lda: i32,
+    k1: i32,
+    k2: i32,
     ipiv: [*]const i32,
-    incx: isize,
+    incx: i32,
 ) void {
     return laswp(order, n, a, lda, k1, k2, ipiv, incx) catch {};
 }
@@ -475,10 +475,10 @@ pub inline fn zlaswp(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -486,7 +486,7 @@ pub inline fn zlaswp(
 /// at least `lda * n` if `order = .col_major` or `lda * m` if
 /// `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -496,7 +496,7 @@ pub inline fn zlaswp(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Errors
@@ -511,13 +511,13 @@ pub inline fn zlaswp(
 /// be raised even if the arguments are invalid.
 pub inline fn getrf2(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     comptime var A: type = @TypeOf(a);
 
     comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
@@ -535,12 +535,12 @@ pub inline fn getrf2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime opts.link_lapacke != null) {
+    if (comptime options.link_lapacke != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return scast(isize, ci.LAPACKE_sgetrf2(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_sgetrf2(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -548,8 +548,8 @@ pub inline fn getrf2(
                         ipiv,
                     ));
                 } else if (comptime A == f64) {
-                    return scast(isize, ci.LAPACKE_dgetrf2(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_dgetrf2(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -560,8 +560,8 @@ pub inline fn getrf2(
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return scast(isize, ci.LAPACKE_cgetrf2(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_cgetrf2(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -569,8 +569,8 @@ pub inline fn getrf2(
                         ipiv,
                     ));
                 } else if (comptime Scalar(A) == f64) {
-                    return scast(isize, ci.LAPACKE_zgetrf2(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_zgetrf2(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -618,16 +618,16 @@ pub inline fn getrf2(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -637,7 +637,7 @@ pub inline fn getrf2(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -646,12 +646,12 @@ pub inline fn getrf2(
 /// corresponding LAPACKE function.
 pub inline fn sgetrf2(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]f32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -687,16 +687,16 @@ pub inline fn sgetrf2(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -706,7 +706,7 @@ pub inline fn sgetrf2(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -715,12 +715,12 @@ pub inline fn sgetrf2(
 /// corresponding LAPACKE function.
 pub inline fn dgetrf2(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]f64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -756,16 +756,16 @@ pub inline fn dgetrf2(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -775,7 +775,7 @@ pub inline fn dgetrf2(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -784,12 +784,12 @@ pub inline fn dgetrf2(
 /// corresponding LAPACKE function.
 pub inline fn cgetrf2(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -825,16 +825,16 @@ pub inline fn cgetrf2(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -844,7 +844,7 @@ pub inline fn cgetrf2(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -853,12 +853,12 @@ pub inline fn cgetrf2(
 /// corresponding LAPACKE function.
 pub inline fn zgetrf2(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf2(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -880,10 +880,10 @@ pub inline fn zgetrf2(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -891,7 +891,7 @@ pub inline fn zgetrf2(
 /// at least `lda * n` if `order = .col_major` or `lda * m` if
 /// `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -901,7 +901,7 @@ pub inline fn zgetrf2(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Errors
@@ -916,13 +916,13 @@ pub inline fn zgetrf2(
 /// be raised even if the arguments are invalid.
 pub inline fn getrf(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     comptime var A: type = @TypeOf(a);
 
     comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
@@ -940,12 +940,12 @@ pub inline fn getrf(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime opts.link_lapacke != null) {
+    if (comptime options.link_lapacke != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return scast(isize, ci.LAPACKE_sgetrf(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_sgetrf(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -953,8 +953,8 @@ pub inline fn getrf(
                         ipiv,
                     ));
                 } else if (comptime A == f64) {
-                    return scast(isize, ci.LAPACKE_dgetrf(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_dgetrf(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -965,8 +965,8 @@ pub inline fn getrf(
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return scast(isize, ci.LAPACKE_cgetrf(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_cgetrf(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -974,8 +974,8 @@ pub inline fn getrf(
                         ipiv,
                     ));
                 } else if (comptime Scalar(A) == f64) {
-                    return scast(isize, ci.LAPACKE_zgetrf(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_zgetrf(
+                        order.toCInt(),
                         scast(c_int, m),
                         scast(c_int, n),
                         a,
@@ -1009,16 +1009,16 @@ pub inline fn getrf(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`f32`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -1028,7 +1028,7 @@ pub inline fn getrf(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -1037,12 +1037,12 @@ pub inline fn getrf(
 /// corresponding LAPACKE function.
 pub inline fn sgetrf(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]f32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1064,16 +1064,16 @@ pub inline fn sgetrf(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`f64`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -1083,7 +1083,7 @@ pub inline fn sgetrf(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -1092,12 +1092,12 @@ pub inline fn sgetrf(
 /// corresponding LAPACKE function.
 pub inline fn dgetrf(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]f64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1119,16 +1119,16 @@ pub inline fn dgetrf(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`cf32`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -1138,7 +1138,7 @@ pub inline fn dgetrf(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -1147,12 +1147,12 @@ pub inline fn dgetrf(
 /// corresponding LAPACKE function.
 pub inline fn cgetrf(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1174,16 +1174,16 @@ pub inline fn cgetrf(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `m` (`isize`): The number of rows of the matrix `A`. Must be greater than or
+/// `m` (`i32`): The number of rows of the matrix `A`. Must be greater than or
 /// equal to 0.
 ///
-/// `n` (`isize`): The number of columns of the matrix `A`. Must be greater than
+/// `n` (`i32`): The number of columns of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
 /// `a` (`cf64`): Array, size at least `lda * n` if `order = .col_major` or
 /// `lda * m` if `order = .row_major`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, m)` if `order = .col_major` or `max(1, n)` if
 /// `order = .row_major`.
 ///
@@ -1193,7 +1193,7 @@ pub inline fn cgetrf(
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a` and `ipiv`.
 ///
 /// Notes
@@ -1202,12 +1202,12 @@ pub inline fn cgetrf(
 /// corresponding LAPACKE function.
 pub inline fn zgetrf(
     order: Order,
-    m: isize,
-    n: isize,
+    m: i32,
+    n: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
-) isize {
+) i32 {
     return getrf(order, m, n, a, lda, ipiv, null) catch -1;
 }
 
@@ -1255,17 +1255,17 @@ pub inline fn zgetrf(
 /// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
 /// - If `transa = .conj_trans`, then `A^H * X = B`.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
@@ -1276,7 +1276,7 @@ pub inline fn zgetrf(
 /// least `ldb * nrhs` if `order = .col_major` or `ldb * n` if
 /// `order = .row_major`. On return, contains the solution matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
@@ -1298,13 +1298,13 @@ pub inline fn zgetrf(
 pub inline fn getrs(
     order: Order,
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(a);
@@ -1335,12 +1335,12 @@ pub inline fn getrs(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (transa != .conj_no_trans and (comptime A == B and opts.link_lapacke != null)) {
+    if (transa != .conj_no_trans and (comptime A == B and options.link_lapacke != null)) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
                     _ = ci.LAPACKE_sgetrs(
-                        @intFromEnum(order),
+                        order.toCInt(),
                         transa.toChar(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1354,7 +1354,7 @@ pub inline fn getrs(
                     return;
                 } else if (comptime A == f64) {
                     _ = ci.LAPACKE_dgetrs(
-                        @intFromEnum(order),
+                        order.toCInt(),
                         transa.toChar(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1371,7 +1371,7 @@ pub inline fn getrs(
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
                     _ = ci.LAPACKE_cgetrs(
-                        @intFromEnum(order),
+                        order.toCInt(),
                         transa.toChar(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1385,7 +1385,7 @@ pub inline fn getrs(
                     return;
                 } else if (comptime Scalar(A) == f64) {
                     _ = ci.LAPACKE_zgetrs(
-                        @intFromEnum(order),
+                        order.toCInt(),
                         transa.toChar(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
@@ -1450,15 +1450,15 @@ pub inline fn getrs(
 /// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
 /// - If `transa = .conj_trans`, then `A^H * X = B`.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
@@ -1468,7 +1468,7 @@ pub inline fn getrs(
 /// or `ldb * n` if `order = .row_major`. On return, contains the solution
 /// matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
@@ -1483,13 +1483,13 @@ pub inline fn getrs(
 pub inline fn sgetrs(
     order: Order,
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]f32,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
@@ -1538,15 +1538,15 @@ pub inline fn sgetrs(
 /// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
 /// - If `transa = .conj_trans`, then `A^H * X = B`.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
@@ -1556,7 +1556,7 @@ pub inline fn sgetrs(
 /// or `ldb * n` if `order = .row_major`. On return, contains the solution
 /// matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
@@ -1571,13 +1571,13 @@ pub inline fn sgetrs(
 pub inline fn dgetrs(
     order: Order,
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]f64,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
@@ -1626,15 +1626,15 @@ pub inline fn dgetrs(
 /// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
 /// - If `transa = .conj_trans`, then `A^H * X = B`.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
@@ -1644,7 +1644,7 @@ pub inline fn dgetrs(
 /// or `ldb * n` if `order = .row_major`. On return, contains the solution
 /// matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
@@ -1659,13 +1659,13 @@ pub inline fn dgetrs(
 pub inline fn cgetrs(
     order: Order,
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]cf32,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
@@ -1714,15 +1714,15 @@ pub inline fn cgetrs(
 /// - If `transa = .conj_no_trans`, then `conj(A) * X = B`.
 /// - If `transa = .conj_trans`, then `A^H * X = B`.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. The pivot indices as
@@ -1732,7 +1732,7 @@ pub inline fn cgetrs(
 /// or `ldb * n` if `order = .row_major`. On return, contains the solution
 /// matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
@@ -1747,13 +1747,13 @@ pub inline fn cgetrs(
 pub inline fn zgetrs(
     order: Order,
     transa: Transpose,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]cf64,
-    ldb: isize,
+    ldb: i32,
 ) void {
     return getrs(order, transa, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch {};
 }
@@ -1780,10 +1780,10 @@ pub inline fn zgetrs(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -1791,7 +1791,7 @@ pub inline fn zgetrs(
 /// least `lda * n`. On return, contains the LU factorization of the matrix `A`
 /// as computed by `getrf`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
@@ -1803,13 +1803,13 @@ pub inline fn zgetrs(
 /// least `ldb * nrhs` if `order = .col_major` or `ldb * n` if
 /// `order = .row_major`. On return, contains the solution matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`, `ipiv`, and `b`.
 ///
 /// Errors
@@ -1825,15 +1825,15 @@ pub inline fn zgetrs(
 /// be raised even if the arguments are invalid.
 pub inline fn gesv(
     order: Order,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     comptime var A: type = @TypeOf(a);
     comptime var B: type = @TypeOf(b);
 
@@ -1862,12 +1862,12 @@ pub inline fn gesv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    if (comptime A == B and opts.link_lapacke != null) {
+    if (comptime A == B and options.link_lapacke != null) {
         switch (comptime types.numericType(A)) {
             .float => {
                 if (comptime A == f32) {
-                    return scast(isize, ci.LAPACKE_sgesv(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_sgesv(
+                        order.toCInt(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
                         a,
@@ -1877,8 +1877,8 @@ pub inline fn gesv(
                         scast(c_int, ldb),
                     ));
                 } else if (comptime A == f64) {
-                    return scast(isize, ci.LAPACKE_dgesv(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_dgesv(
+                        order.toCInt(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
                         a,
@@ -1891,8 +1891,8 @@ pub inline fn gesv(
             },
             .cfloat => {
                 if (comptime Scalar(A) == f32) {
-                    return scast(isize, ci.LAPACKE_cgesv(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_cgesv(
+                        order.toCInt(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
                         a,
@@ -1902,8 +1902,8 @@ pub inline fn gesv(
                         scast(c_int, ldb),
                     ));
                 } else if (comptime Scalar(A) == f64) {
-                    return scast(isize, ci.LAPACKE_zgesv(
-                        @intFromEnum(order),
+                    return scast(i32, ci.LAPACKE_zgesv(
+                        order.toCInt(),
                         scast(c_int, n),
                         scast(c_int, nrhs),
                         a,
@@ -1943,16 +1943,16 @@ pub inline fn gesv(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the LU
 /// factorization of the matrix `A` as computed by `sgetrf`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
@@ -1963,13 +1963,13 @@ pub inline fn gesv(
 /// `ldb * n` if `order = .row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`, `ipiv`, and `b`.
 ///
 /// Notes
@@ -1978,14 +1978,14 @@ pub inline fn gesv(
 /// corresponding LAPACKE function.
 pub inline fn sgesv(
     order: Order,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]f32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]f32,
-    ldb: isize,
-) isize {
+    ldb: i32,
+) i32 {
     return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
 }
 
@@ -2011,16 +2011,16 @@ pub inline fn sgesv(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the LU
 /// factorization of the matrix `A` as computed by `dgetrf`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
@@ -2031,13 +2031,13 @@ pub inline fn sgesv(
 /// `ldb * n` if `order = .row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`, `ipiv`, and `b`.
 ///
 /// Notes
@@ -2046,14 +2046,14 @@ pub inline fn sgesv(
 /// corresponding LAPACKE function.
 pub inline fn dgesv(
     order: Order,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]f64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]f64,
-    ldb: isize,
-) isize {
+    ldb: i32,
+) i32 {
     return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
 }
 
@@ -2079,16 +2079,16 @@ pub inline fn dgesv(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the LU
 /// factorization of the matrix `A` as computed by `cgetrf`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
@@ -2099,13 +2099,13 @@ pub inline fn dgesv(
 /// or `ldb * n` if `order = .row_major`. On return, contains the solution
 /// matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`, `ipiv`, and `b`.
 ///
 /// Notes
@@ -2114,14 +2114,14 @@ pub inline fn dgesv(
 /// corresponding LAPACKE function.
 pub inline fn cgesv(
     order: Order,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]cf32,
-    ldb: isize,
-) isize {
+    ldb: i32,
+) i32 {
     return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
 }
 
@@ -2147,16 +2147,16 @@ pub inline fn cgesv(
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
 /// row-major or column-major.
 ///
-/// `n` (`isize`): The order of the matrix `A` and the number of rows of the
+/// `n` (`i32`): The order of the matrix `A` and the number of rows of the
 /// matrix `B`. Must be greater than or equal to 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the LU
 /// factorization of the matrix `A` as computed by `zgetrf`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `ipiv` (`[*]i32`): Array, size at least `max(1, n)`. On return contains the
@@ -2167,13 +2167,13 @@ pub inline fn cgesv(
 /// or `ldb * n` if `order = .row_major`. On return, contains the solution
 /// matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = .col_major` or `max(1, nrhs)` if
 /// `order = .row_major`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`, `ipiv`, and `b`.
 ///
 /// Notes
@@ -2182,14 +2182,14 @@ pub inline fn cgesv(
 /// corresponding LAPACKE function.
 pub inline fn zgesv(
     order: Order,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
     ipiv: [*]i32,
     b: [*]cf64,
-    ldb: isize,
-) isize {
+    ldb: i32,
+) i32 {
     return gesv(order, n, nrhs, a, lda, ipiv, b, ldb, .{}) catch -1;
 }
 
@@ -2246,7 +2246,7 @@ pub inline fn zgesv(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -2254,12 +2254,12 @@ pub inline fn zgesv(
 /// least `lda * n`. On return, contains the Cholesky factorization of the
 /// matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Errors
@@ -2275,11 +2275,11 @@ pub inline fn zgesv(
 pub inline fn potrf2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     comptime var A: type = @TypeOf(a);
 
     comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
@@ -2297,20 +2297,20 @@ pub inline fn potrf2(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime opts.link_lapacke != null) {
+    // if (comptime options.link_lapacke != null) {
     //     switch (comptime types.numericType(A)) {
     //         .float => {
     //             if (comptime A == f32) {
-    //                 return scast(isize, ci.LAPACKE_spotrf2(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_spotrf2(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
     //                     scast(c_int, lda),
     //                 ));
     //             } else if (comptime A == f64) {
-    //                 return scast(isize, ci.LAPACKE_dpotrf2(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_dpotrf2(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
@@ -2320,16 +2320,16 @@ pub inline fn potrf2(
     //         },
     //         .cfloat => {
     //             if (comptime Scalar(A) == f32) {
-    //                 return scast(isize, ci.LAPACKE_cpotrf2(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_cpotrf2(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
     //                     scast(c_int, lda),
     //                 ));
     //             } else if (comptime Scalar(A) == f64) {
-    //                 return scast(isize, ci.LAPACKE_zpotrf2(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_zpotrf2(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
@@ -2397,18 +2397,18 @@ pub inline fn potrf2(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -2418,10 +2418,10 @@ pub inline fn potrf2(
 pub inline fn spotrf2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]f32,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf2(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -2478,18 +2478,18 @@ pub inline fn spotrf2(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -2499,10 +2499,10 @@ pub inline fn spotrf2(
 pub inline fn dpotrf2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]f64,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf2(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -2559,18 +2559,18 @@ pub inline fn dpotrf2(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -2580,10 +2580,10 @@ pub inline fn dpotrf2(
 pub inline fn cpotrf2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]cf32,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf2(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -2640,18 +2640,18 @@ pub inline fn cpotrf2(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -2661,10 +2661,10 @@ pub inline fn cpotrf2(
 pub inline fn zpotrf2(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]cf64,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf2(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -2711,7 +2711,7 @@ pub inline fn zpotrf2(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -2719,12 +2719,12 @@ pub inline fn zpotrf2(
 /// least `lda * n`. On return, contains the Cholesky factorization of the
 /// matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Errors
@@ -2740,11 +2740,11 @@ pub inline fn zpotrf2(
 pub inline fn potrf(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     comptime var A: type = @TypeOf(a);
 
     comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
@@ -2762,20 +2762,20 @@ pub inline fn potrf(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime opts.link_lapacke != null) {
+    // if (comptime options.link_lapacke != null) {
     //     switch (comptime types.numericType(A)) {
     //         .float => {
     //             if (comptime A == f32) {
-    //                 return scast(isize, ci.LAPACKE_spotrf(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_spotrf(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
     //                     scast(c_int, lda),
     //                 ));
     //             } else if (comptime A == f64) {
-    //                 return scast(isize, ci.LAPACKE_dpotrf(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_dpotrf(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
@@ -2785,16 +2785,16 @@ pub inline fn potrf(
     //         },
     //         .cfloat => {
     //             if (comptime Scalar(A) == f32) {
-    //                 return scast(isize, ci.LAPACKE_cpotrf(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_cpotrf(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
     //                     scast(c_int, lda),
     //                 ));
     //             } else if (comptime Scalar(A) == f64) {
-    //                 return scast(isize, ci.LAPACKE_zpotrf(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_zpotrf(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     a,
@@ -2850,18 +2850,18 @@ pub inline fn potrf(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -2871,10 +2871,10 @@ pub inline fn potrf(
 pub inline fn spotrf(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]f32,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -2919,18 +2919,18 @@ pub inline fn spotrf(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -2940,10 +2940,10 @@ pub inline fn spotrf(
 pub inline fn dpotrf(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]f64,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -2988,18 +2988,18 @@ pub inline fn dpotrf(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -3009,10 +3009,10 @@ pub inline fn dpotrf(
 pub inline fn cpotrf(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]cf32,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -3057,18 +3057,18 @@ pub inline fn cpotrf(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// Returns
 /// -------
-/// `isize`: 0 if successful, or `i` if `u11` is exactly zero. The result is
+/// `i32`: 0 if successful, or `i` if `u11` is exactly zero. The result is
 /// stored in `a`.
 ///
 /// Notes
@@ -3078,10 +3078,10 @@ pub inline fn cpotrf(
 pub inline fn zpotrf(
     order: Order,
     uplo: Uplo,
-    n: isize,
+    n: i32,
     a: [*]cf64,
-    lda: isize,
-) isize {
+    lda: i32,
+) i32 {
     return potrf(order, uplo, n, a, lda, .{}) catch -1;
 }
 
@@ -3131,17 +3131,17 @@ pub inline fn zpotrf(
 /// - If `uplo = lower`, then the factorization is `A = L * L^T` or
 /// `A = L * L^H`.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (many-item pointer to `bool`, `int`, `float`, `cfloat`, `integer`,
 /// `rational`, `real`, `complex` or `expression`): Array, size at least
 /// `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -3149,7 +3149,7 @@ pub inline fn zpotrf(
 /// least `ldb * nrhs` if `order = col_major`, or `ldb * n` if
 /// `order = row_major`. On return, contains the solution matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3171,12 +3171,12 @@ pub inline fn zpotrf(
 pub inline fn potrs(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
 ) !void {
     comptime var A: type = @TypeOf(a);
@@ -3205,12 +3205,12 @@ pub inline fn potrs(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime A == B and opts.link_lapacke != null) {
+    // if (comptime A == B and options.link_lapacke != null) {
     //     switch (comptime types.numericType(A)) {
     //         .float => {
     //             if (comptime A == f32) {
     //                 _ = ci.LAPACKE_spotrs(
-    //                     @intFromEnum(order),
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3222,9 +3222,9 @@ pub inline fn potrs(
 
     //                 return;
     //             } else if (comptime A == f64) {
-    //                 std.debug.print("Calling LAPACKE_dpotrs with order: {}, uplo: {}, n: {}, nrhs: {}, lda: {}, ldb: {}\n", .{ @intFromEnum(order), uplo.toChar(), n, nrhs, lda, ldb });
+    //                 std.debug.print("Calling LAPACKE_dpotrs with order: {}, uplo: {}, n: {}, nrhs: {}, lda: {}, ldb: {}\n", .{ order.toCInt(), uplo.toChar(), n, nrhs, lda, ldb });
     //                 _ = ci.LAPACKE_dpotrs(
-    //                     @intFromEnum(order),
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3240,7 +3240,7 @@ pub inline fn potrs(
     //         .cfloat => {
     //             if (comptime Scalar(A) == f32) {
     //                 _ = ci.LAPACKE_cpotrs(
-    //                     @intFromEnum(order),
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3253,7 +3253,7 @@ pub inline fn potrs(
     //                 return;
     //             } else if (comptime Scalar(A) == f64) {
     //                 _ = ci.LAPACKE_zpotrs(
-    //                     @intFromEnum(order),
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3304,22 +3304,22 @@ pub inline fn potrs(
 /// - If `uplo = upper`, then the factorization is `A = U^T * U`.
 /// - If `uplo = lower`, then the factorization is `A = L * L^T`.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]f32`): Array, size at least `ldb * nrhs` if `order = col_major`, or
 /// `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3334,14 +3334,14 @@ pub inline fn potrs(
 pub inline fn spotrs(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const f32,
-    lda: isize,
+    lda: i32,
     b: [*]f32,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
@@ -3376,22 +3376,22 @@ pub inline fn spotrs(
 /// - If `uplo = upper`, then the factorization is `A = U^T * U`.
 /// - If `uplo = lower`, then the factorization is `A = L * L^T`.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const f64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]f64`): Array, size at least `ldb * nrhs` if `order = col_major`, or
 /// `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3406,14 +3406,14 @@ pub inline fn spotrs(
 pub inline fn dpotrs(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const f64,
-    lda: isize,
+    lda: i32,
     b: [*]f64,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
@@ -3448,22 +3448,22 @@ pub inline fn dpotrs(
 /// - If `uplo = upper`, then the factorization is `A = U^H * U`.
 /// - If `uplo = lower`, then the factorization is `A = L * L^H`.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf32`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]cf32`): Array, size at least `ldb * nrhs` if `order = col_major`,
 /// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3478,14 +3478,14 @@ pub inline fn dpotrs(
 pub inline fn cpotrs(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const cf32,
-    lda: isize,
+    lda: i32,
     b: [*]cf32,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
@@ -3520,22 +3520,22 @@ pub inline fn cpotrs(
 /// - If `uplo = upper`, then the factorization is `A = U^H * U`.
 /// - If `uplo = lower`, then the factorization is `A = L * L^H`.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]const cf64`): Array, size at least `lda * n`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]cf64`): Array, size at least `ldb * nrhs` if `order = col_major`,
 /// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3550,14 +3550,14 @@ pub inline fn cpotrs(
 pub inline fn zpotrs(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]const cf64,
-    lda: isize,
+    lda: i32,
     b: [*]cf64,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
@@ -3609,10 +3609,10 @@ pub inline fn zpotrs(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` or `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -3620,7 +3620,7 @@ pub inline fn zpotrs(
 /// least `lda * n`. On return, contains the Cholesky factorization of the
 /// matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (mutable many-item pointer to `bool`, `int`, `float`, `cfloat`,
@@ -3628,7 +3628,7 @@ pub inline fn zpotrs(
 /// least `ldb * nrhs` if `order = col_major`, or `ldb * n` if
 /// `order = row_major`. On return, contains the solution matrix `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3650,14 +3650,14 @@ pub inline fn zpotrs(
 pub inline fn posv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: anytype,
-    lda: isize,
+    lda: i32,
     b: anytype,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) !isize {
+) !i32 {
     comptime var A: type = @TypeOf(a);
     comptime var B: type = @TypeOf(b);
 
@@ -3684,12 +3684,12 @@ pub inline fn posv(
         validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime A == B and opts.link_lapacke != null) {
+    // if (comptime A == B and options.link_lapacke != null) {
     //     switch (comptime types.numericType(A)) {
     //         .float => {
     //             if (comptime A == f32) {
-    //                 return scast(isize, ci.LAPACKE_sposv(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_sposv(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3699,8 +3699,8 @@ pub inline fn posv(
     //                     scast(c_int, ldb),
     //                 ));
     //             } else if (comptime A == f64) {
-    //                 return scast(isize, ci.LAPACKE_dposv(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_dposv(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3713,8 +3713,8 @@ pub inline fn posv(
     //         },
     //         .cfloat => {
     //             if (comptime Scalar(A) == f32) {
-    //                 return scast(isize, ci.LAPACKE_cposv(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_cposv(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3724,8 +3724,8 @@ pub inline fn posv(
     //                     scast(c_int, ldb),
     //                 ));
     //             } else if (comptime Scalar(A) == f64) {
-    //                 return scast(isize, ci.LAPACKE_zposv(
-    //                     @intFromEnum(order),
+    //                 return scast(i32, ci.LAPACKE_zposv(
+    //                     order.toCInt(),
     //                     uplo.toChar(),
     //                     scast(c_int, n),
     //                     scast(c_int, nrhs),
@@ -3778,23 +3778,23 @@ pub inline fn posv(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]f32`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]f32`): Array, size at least `ldb * nrhs` if `order = col_major`, or
 /// `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3809,14 +3809,14 @@ pub inline fn posv(
 pub inline fn sposv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]f32,
-    lda: isize,
+    lda: i32,
     b: [*]f32,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
@@ -3855,23 +3855,23 @@ pub inline fn sposv(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^T` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]f64`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]f64`): Array, size at least `ldb * nrhs` if `order = col_major`, or
 /// `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3886,14 +3886,14 @@ pub inline fn sposv(
 pub inline fn dposv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]f64,
-    lda: isize,
+    lda: i32,
     b: [*]f64,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
@@ -3932,23 +3932,23 @@ pub inline fn dposv(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]cf32`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]cf32`): Array, size at least `ldb * nrhs` if `order = col_major`,
 /// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -3963,14 +3963,14 @@ pub inline fn dposv(
 pub inline fn cposv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]cf32,
-    lda: isize,
+    lda: i32,
     b: [*]cf32,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
@@ -4009,23 +4009,23 @@ pub inline fn cposv(
 /// - If `uplo = lower`, then the lower triangular part of `A` is stored, and
 /// the factorization is `A = L * L^H` is computed.
 ///
-/// `n` (`isize`): The order of the matrix `A`. Must be greater than or equal to
+/// `n` (`i32`): The order of the matrix `A`. Must be greater than or equal to
 /// 0.
 ///
-/// `nrhs` (`isize`): The number of right-hand sides, i.e., the number of
+/// `nrhs` (`i32`): The number of right-hand sides, i.e., the number of
 /// columns of the matrix `B`. Must be greater than or equal to 0.
 ///
 /// `a` (`[*]cf64`): Array, size at least `lda * n`. On return, contains the
 /// Cholesky factorization of the matrix `A`.
 ///
-/// `lda` (`isize`): The leading dimension of the array `a`. Must be grater than
+/// `lda` (`i32`): The leading dimension of the array `a`. Must be grater than
 /// or equal to `max(1, n)`.
 ///
 /// `b` (`[*]cf64`): Array, size at least `ldb * nrhs` if `order = col_major`,
 /// or `ldb * n` if `order = row_major`. On return, contains the solution matrix
 /// `X`.
 ///
-/// `ldb` (`isize`): The leading dimension of the array `b`. Must be greater
+/// `ldb` (`i32`): The leading dimension of the array `b`. Must be greater
 /// than or equal to `max(1, n)` if `order = col_major`, or `max(1, nrhs)` if
 /// `order = row_major`.
 ///
@@ -4040,14 +4040,14 @@ pub inline fn cposv(
 pub inline fn zposv(
     order: Order,
     uplo: Uplo,
-    n: isize,
-    nrhs: isize,
+    n: i32,
+    nrhs: i32,
     a: [*]cf64,
-    lda: isize,
+    lda: i32,
     b: [*]cf64,
-    ldb: isize,
+    ldb: i32,
     ctx: anytype,
-) isize {
+) i32 {
     return posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx) catch {};
 }
 
