@@ -415,10 +415,6 @@ pub fn main() !void {
     const a = gpa.allocator();
     //_ = a;
 
-    const aa: zml.array.Dense(u32) = .empty;
-    const bb: zml.Integer = .empty;
-    _ = zml.add(aa, bb, .{ .array_allocator = a }) catch unreachable;
-
     // const a: u64 = 1000;
     // const b: f64 = 1000;
     // const c = zml.add(a, b, .{}) catch unreachable;
@@ -466,7 +462,7 @@ pub fn main() !void {
 
     // try lapackPerfTesting(a);
 
-    // try matrixTesting(a);
+    try matrixTesting(a);
 
     // coreTesting();
 }
@@ -484,6 +480,69 @@ fn ask_user(default: u32) !u32 {
     } else {
         return default;
     }
+}
+
+fn add1(a: f64) f64 {
+    return a + 1;
+}
+
+fn perfTesting(a: std.mem.Allocator) !void {
+    var A_base: zml.matrix.General(f64) = try .init(a, 8, 10, .{ .order = .col_major });
+    defer A_base.deinit(a);
+    const A = A_base;
+    //try A_base.transpose().submatrix(3, 8);
+
+    var i: u32 = 0;
+    while (i < A_base.rows * A_base.cols) : (i += 1) {
+        A_base.data[i] = zml.scast(f64, i + 1);
+    }
+
+    std.debug.print("Matrix A_base:\n", .{});
+    i = 0;
+    while (i < A_base.rows) : (i += 1) {
+        var j: u32 = 0;
+        while (j < A_base.cols) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try A_base.get(i, j)});
+        }
+        std.debug.print("\n", .{});
+    }
+
+    std.debug.print("Matrix A:\n", .{});
+    i = 0;
+    while (i < A.rows) : (i += 1) {
+        var j: u32 = 0;
+        while (j < A.cols) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try A.get(i, j)});
+        }
+
+        std.debug.print("\n", .{});
+    }
+    //std.debug.print("Data of A: {any}\n", .{A.data[0..A.size]});
+
+    const start_time = std.time.nanoTimestamp();
+    var B: zml.matrix.General(f64) = try zml.matrix.apply1(a, A, add1, .{ .order = .row_major }, .{});
+    const end_time: i128 = std.time.nanoTimestamp();
+
+    defer B.deinit(a);
+
+    // std.debug.print("x: {}, {}; result: {}, {}\n", .{
+    //     A_base.uplo, A_base.flags.order,
+    //     B.uplo,      B.flags.order,
+    // });
+
+    std.debug.print("Took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9)});
+
+    std.debug.print("Matrix B (add1(A)):\n", .{});
+    i = 0;
+    while (i < B.rows) : (i += 1) {
+        var j: u32 = 0;
+        while (j < B.cols) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try B.get(i, j)});
+        }
+
+        std.debug.print("\n", .{});
+    }
+    //std.debug.print("Data of B: {any}\n", .{B.data[0..B.size]});
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {
@@ -508,29 +567,16 @@ fn matrixTesting(a: std.mem.Allocator) !void {
         std.debug.print("\n", .{});
     }
 
-    const AT: zml.matrix.Tridiagonal(f64) = A.transpose();
+    var AG: zml.matrix.General(f64) = try A.toGeneral(a, .{});
+    defer AG.deinit(a);
 
     std.debug.print("Transposed A:\n", .{});
     i = 0;
-    while (i < AT.size) : (i += 1) {
+    while (i < AG.rows) : (i += 1) {
         var j: u32 = 0;
-        while (j < AT.size) : (j += 1) {
-            std.debug.print("{d:2}  ", .{try AT.get(i, j)});
-            //std.debug.print("{d:3} + {d:3}i  ", .{ (try AT.get(i, j)).re, (try AT.get(i, j)).im });
-        }
-
-        std.debug.print("\n", .{});
-    }
-
-    const Ak: zml.matrix.Tridiagonal(f64) = try A.submatrix(3, 6);
-
-    std.debug.print("Submatrix Ak:\n", .{});
-    i = 0;
-    while (i < Ak.size) : (i += 1) {
-        var j: u32 = 0;
-        while (j < Ak.size) : (j += 1) {
-            std.debug.print("{d:2}  ", .{try Ak.get(i, j)});
-            //std.debug.print("{d:3} + {d:3}i  ", .{ (try Ak.get(i, j)).re, (try Ak.get(i, j)).im });
+        while (j < AG.cols) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try AG.get(i, j)});
+            //std.debug.print("{d:3} + {d:3}i  ", .{ (try AG.get(i, j)).re, (try AG.get(i, j)).im });
         }
 
         std.debug.print("\n", .{});

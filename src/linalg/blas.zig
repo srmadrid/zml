@@ -36,6 +36,12 @@ const Side = linalg.Side;
 ///
 /// where `x` is a vector with `n` elements.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn asum_sub(n: i32, x: [*]const X, incx: i32, ret: *R, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
@@ -301,6 +307,12 @@ pub inline fn dzasum_sub(
 ///
 /// where `x` is a vector with `n` elements.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn asum(n: i32, x: [*]const X, incx: i32, ctx: anytype) !Scalar(X)
+/// ```
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
@@ -533,6 +545,12 @@ pub inline fn dzasum(
 ///
 /// where `alpha` is a scalar, and `x` and `y` are vectors each with `n`
 /// elements.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn axpy(n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -832,6 +850,11 @@ pub inline fn zaxpy(
 ///
 /// where `x` and `y` are vectors.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn copy(n: i32, x: [*]const X, incx: i32, y: [*]Y, incy: i32, ctx: anytype) !void
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
@@ -1101,6 +1124,12 @@ pub inline fn zcopy(
 ///
 /// where `x` and `y` are vectors.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn dot_sub(n: i32, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ret: *R, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
@@ -1307,6 +1336,12 @@ pub inline fn ddot_sub(
 ///
 /// where `x` and `y` are vectors.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn dot(n: i32, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ctx: anytype) !Coerce(X, Y)
+/// ```
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
@@ -1484,6 +1519,12 @@ pub inline fn ddot(
 /// ```
 ///
 /// where `x` and `y` are vectors.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn dotc_sub(n: i32, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ret: *R, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -1688,6 +1729,11 @@ pub inline fn zdotc_sub(
 ///
 /// where `x` and `y` are vectors.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn dotc(n: i32, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ctx: anytype) !Coerce(X, Y)
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
@@ -1868,6 +1914,12 @@ pub inline fn zdotc(
 /// ```
 ///
 /// where `x` and `y` are vectors.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn dotu_sub(n: i32, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ret: *R, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -2075,6 +2127,12 @@ pub inline fn zdotu_sub(
 ///
 /// where `x` and `y` are vectors.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn dotu(n: i32, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ctx: anytype) !Coerce(X, Y)
+/// ```
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
@@ -2256,6 +2314,12 @@ pub inline fn zdotu(
 /// ```
 ///
 /// where `x` is a vector.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn nrm2(n: i32, x: [*]const X, incx: i32, ctx: anytype) !EnsureFloat(Scalar(X))
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -2482,6 +2546,12 @@ pub inline fn dznrm2(
 /// ```zig
 ///     x[i] = c * x[i] + s * y[i]
 ///     y[i] = c * y[i] - s * x[i]
+/// ```
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn rot(n: i32, x: [*]X, incx: i32, y: [*]Y, incy: i32, c: C, s: S, ctx: anytype) !void
 /// ```
 ///
 /// Parameters
@@ -2769,6 +2839,12 @@ pub inline fn zdrot(n: i32, x: [*]cf64, incx: i32, y: [*]cf64, incy: i32, c: f64
 ///
 /// The parameter `z` is defined such that if `|a| > |b|`, `z` is `s`; otherwise
 /// if `c` is not 0 `z` is `1/c`; otherwise `z` is `1`.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn rotg(a: *A, b: *B, c: *C, s: *S, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -3121,6 +3197,12 @@ pub inline fn zrotg(a: *cf64, b: *cf64, c: *f64, s: *cf64) void {
 /// based on the value of flag and are not required to be set in the `param`
 /// vector.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn rotm(n: i32, x: [*]X, incx: i32, y: [*]Y, incy: i32, param: [*]const P, ctx: anytype) !void
+/// ```
+///
 /// Returns
 /// -------
 /// `void`: The result is stored in `x` and `y`.
@@ -3463,6 +3545,11 @@ pub inline fn drotm(
 /// based on the value of flag and are not required to be set in the `param`
 /// vector.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn rotmg(d1: *D1, d2: *D2, x1: *X1, y1: Y1, param: [*]P, ctx: anytype) !void
+///
 /// Returns
 /// -------
 /// `void`: The result is stored in `a`, `b`, `c` and `s`.
@@ -3753,6 +3840,12 @@ pub inline fn drotmg(
 /// ```
 ///
 /// where `alpha` is a scalar, and `x` is an `n`-element vector.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn scal(n: i32, alpha: Al, x: [*]X, incx: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -4079,6 +4172,12 @@ pub inline fn zdscal(n: i32, alpha: f64, x: [*]cf64, incx: i32) void {
 /// Given two vectors `x` and `y`, the `swap` routine returns vectors `y` and
 /// `x` swapped, each replacing the other.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn swap(n: i32, x: [*]X, incx: i32, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vectors `x` and `y`. Must
@@ -4329,6 +4428,12 @@ pub inline fn zswap(
 /// If more than one vector element is found with the same largest absolute
 /// value, the index of the first one encountered is returned.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn iamax(n: i32, x: [*]const X, incx: i32, ctx: anytype) !u32
+/// ```
+///
 /// Parameters
 /// ----------
 /// `n` (`i32`): Specifies the number of elements in vector `x`. Must be
@@ -4554,6 +4659,12 @@ pub inline fn izamax(
 ///
 /// If more than one vector element is found with the same smallest absolute
 /// value, the index of the first one encountered is returned.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn iamin(n: i32, x: [*]const X, incx: i32, ctx: anytype) !u32
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -4802,6 +4913,12 @@ pub inline fn izamin(
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
 /// `m`-by-`n` band matrix with `kl` sub-diagonals and `ku` super-diagonals.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn gbmv(order: Order, transa: Transpose, m: i32, n: i32, kl: i32, ku: i32, alpha: Al, a: [*]const A, lda: i32, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -5410,6 +5527,12 @@ pub inline fn zgbmv(
 /// where `alpha` and `beta` are scalars, `x` and `y` are vectors, `A` is an
 /// `m`-by-`n` matrix.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn gemv(order: Order, transa: Transpose, m: i32, n: i32, alpha: Al, a: [*]const A, lda: i32, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -5969,6 +6092,12 @@ pub inline fn zgemv(
 /// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
 /// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn ger(order: Order, m: i32, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -6235,6 +6364,12 @@ pub inline fn dger(
 ///
 /// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
 /// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn gerc(order: Order, m: i32, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -6505,6 +6640,12 @@ pub inline fn zgerc(
 /// where `alpha` is a scalar, `x` is an `m`-element vector, `y` is an
 /// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn geru(order: Order, m: i32, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -6773,6 +6914,12 @@ pub inline fn zgeru(
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian band matrix with `k` super-diagonals.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn hbmv(order: Order, uplo: Uplo, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -7081,6 +7228,12 @@ pub inline fn zhbmv(
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian matrix.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn hemv(order: Order, uplo: Uplo, n: i32, alpha: Al, a: [*]const A, lda: i32, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -7376,6 +7529,12 @@ pub inline fn zhemv(
 /// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
 /// `n`-by-`n` Hermitian matrix.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn her(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -7618,6 +7777,12 @@ pub inline fn zher(
 ///
 /// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
 /// an `n`-by-`n` Hermitian matrix.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn her2(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -7893,6 +8058,12 @@ pub inline fn zher2(
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn hpmv(order: Order, uplo: Uplo, n: i32, alpha: Al, ap: [*]const A, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -8180,6 +8351,12 @@ pub inline fn zhpmv(
 /// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
 /// `n`-by-`n` Hermitian matrix, supplied in packed form.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn hpr(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, ap: [*]A, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -8408,6 +8585,12 @@ pub inline fn zhpr(
 ///
 /// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
 /// an `n`-by-`n` Hermitian matrix, supplied in packed form.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn hpr2(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ap: [*]A, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -8671,6 +8854,12 @@ pub inline fn zhpr2(
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` symmetryc band matrix, with `k` super-diagonals.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn sbmv(order: Order, uplo: Uplo, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, x: [*]const X, incx: i32, beta: Be, y: [*]cf32, incy: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -8975,6 +9164,12 @@ pub inline fn dsbmv(
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` symmetric matrix, supplied in packed form.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn spmv(order: Order, uplo: Uplo, n: i32, alpha: Al, ap: [*]const A, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -9257,6 +9452,12 @@ pub inline fn dspmv(
 /// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
 /// `n`-by-`n` symmetric matrix, supplied in packed form.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn spr(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, ap: [*]A, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -9482,6 +9683,12 @@ pub inline fn dspr(
 ///
 /// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
 /// an `n`-by-`n` symmetric matrix, supplied in packed form.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn spr2(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, ap: [*]A, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -9743,6 +9950,12 @@ pub inline fn dspr2(
 ///
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` symmetric matrix.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn symv(order: Order, uplo: Uplo, n: i32, alpha: Al, a: [*]const A, lda: i32, x: [*]const X, incx: i32, beta: Be, y: [*]f64, incy: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -10035,6 +10248,12 @@ pub inline fn dsymv(
 /// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
 /// `n`-by-`n` symmetric matrix.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn syr(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -10272,6 +10491,12 @@ pub inline fn dsyr(
 ///
 /// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
 /// an `n`-by-`n` symmetric matrix.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn syr2(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -10563,6 +10788,12 @@ pub inline fn dsyr2(
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
 /// or lower triangular band matrix, with `k + 1` diagonals.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn tbmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, k: i32, a: [*]const A, lda: i32, x: [*]X, incx: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -11067,6 +11298,12 @@ pub inline fn ztbmv(
 /// upper or lower triangular band matrix, with `k + 1` diagonals. The routine
 /// does not test for singularity or near-singularity, such tests must be
 /// performed before calling this routine.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn tbsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, k: i32, a: [*]const A, lda: i32, x: [*]X, incx: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -11591,6 +11828,12 @@ pub inline fn ztbsv(
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
 /// or lower triangular matrix, supplied in packed form.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn tpmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, ap: [*]const A, x: [*]X, incx: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -12053,6 +12296,12 @@ pub inline fn ztpmv(
 ///
 /// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
 /// non-unit, upper or lower triangular matrix, supplied in packed form.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn tpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, ap: [*]const A, x: [*]X, incx: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -12529,6 +12778,12 @@ pub inline fn ztpsv(
 ///
 /// `x` is an `n`-element vector, `A` is an `n`-by-`n` unit, or non-unit, upper
 /// or lower triangular matrix.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn trmv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, a: [*]const A, lda: i32, x: [*]X, incx: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -13013,6 +13268,12 @@ pub inline fn ztrmv(
 /// upper or lower triangular matrix. The routine does not test for singularity
 /// or near-singularity, such tests must be performed before calling this
 /// routine.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn trsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, a: [*]const A, lda: i32, x: [*]X, incx: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -13503,6 +13764,12 @@ pub inline fn ztrsv(
 /// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` and `beta` are
 /// scalars, `op(A)` is an `m`-by-`k` matrix, `op(B)` is a `k`-by-`n`, and `C`
 /// is an `m`-by-`n` matrix.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn gemm(order: Order, transa: Transpose, transb: Transpose, m: i32, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]const B, ldb: i32, beta: Be, c: [*]C, ldc: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -14117,6 +14384,12 @@ pub inline fn zgemm(
 /// where `alpha` and `beta` are scalars, `A` is a Hermitian matrix, `B` and `C`
 /// are `m`-by-`n` general matrices.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn hemm(order: Order, side: Side, uplo: Uplo, m: i32, n: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]const B, ldb: i32, beta: Be, c: [*]C, ldc: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -14473,6 +14746,12 @@ pub inline fn zhemm(
 /// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
 /// second case.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn herk(order: Order, uplo: Uplo, trans: Transpose, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, beta: Be, c: [*]C, ldc: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -14793,6 +15072,12 @@ pub inline fn zherk(
 /// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` Hermitian
 /// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
 /// matrices in the second case.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn her2k(order: Order, uplo: Uplo, trans: Transpose, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]const B, ldb: i32, beta: Be, c: [*]C, ldc: i32) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -15181,6 +15466,12 @@ pub inline fn zher2k(
 ///
 /// where `alpha` and `beta` are scalars, `A` is a symmetric matrix, `B` and `C`
 /// are `m`-by-`n` matrices.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn symm(order: Order, side: Side, uplo: Uplo, m: i32, n: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]const B, ldb: i32, beta: Be, c: [*]C, ldc: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -15726,6 +16017,12 @@ pub inline fn zsymm(
 /// `A` is an `n`-by-`k` matrix in the first case and a `k`-by-`n` matrix in the
 /// second case.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn syrk(order: Order, uplo: Uplo, trans: Transpose, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, beta: Be, c: [*]C, ldc: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -16217,6 +16514,12 @@ pub inline fn zsyrk(
 /// where `alpha` and `beta` are scalars, `C` is an `n`-by-`n` symmetric
 /// matrix, `A` and `B` are `n`-by-`k` matrices in the first case and `k`-by-`n`
 /// matrices in the second case.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn syr2k(order: Order, uplo: Uplo, trans: Transpose, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]const B, ldb: i32, beta: Be, c: [*]C, ldc: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -16816,6 +17119,12 @@ pub inline fn zsyr2k(
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` is an
 /// `m`-by-`n` matrix.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn trmm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: i32, n: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]B, ldb: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -17335,6 +17644,12 @@ pub inline fn ztrmm(
 /// where `op(X)` is `X`, `X^T`, `conj(X)`, or `X^H`, `alpha` is a scalar,
 /// `A` is a unit, or non-unit, upper or lower triangular matrix, and `B` and
 /// `X` are `m`-by-`n` matrices.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn trsm(order: Order, side: Side, uplo: Uplo, transa: Transpose, diag: Diag, m: i32, n: i32, alpha: Al, a: [*]const A, lda: i32, b: [*]B, ldb: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------

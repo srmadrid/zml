@@ -89,6 +89,12 @@ pub inline fn lamch(
 /// `A`. One row interchange is initiated for each of rows `k1` through `k2` of
 /// `A`.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn laswp(order: Order, n: i32, a: [*]A, lda: i32, k1: i32, k2: i32, ipiv: [*]const i32, incx: i32) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -469,6 +475,12 @@ pub inline fn zlaswp(
 /// and `n2 = n - n1`. The subroutine calls itself to factor `[ A11 A12 ]`, does
 /// the swaps on `[ A12 A22 ]^T`, solves `A12`, updates `A22`, and then it calls
 /// itself to factor `A22` and do the swaps on `A21`.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn getrf2(order: Order, m: i32, n: i32, a: [*]A, lda: i32, ipiv: [*]i32, ctx: anytype) !i32
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -875,6 +887,12 @@ pub inline fn zgetrf2(
 /// diagonal elements (lower trapezoidal if `m > n`), and `U` is upper
 /// triangular (upper trapezoidal if `m < n`).
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn getrf(order: Order, m: i32, n: i32, a: [*]A, lda: i32, ipiv: [*]i32, ctx: anytype) !i32
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -1243,6 +1261,12 @@ pub inline fn zgetrf(
 /// computed by `getrf`, `B` is an `n`-by-`nrhs` matrix of right-hand
 /// sides, and `X` is an `n`-by-`nrhs` matrix of solutions.
 ///
+/// Signature
+/// ---------
+/// ```zig
+/// fn getrs(order: Order, transa: Transpose, n: i32, nrhs: i32, a: [*]const A, lda: i32, ipiv: [*]const i32, b: [*]B, ldb: i32, ctx: anytype) !void
+/// ```
+///
 /// Parameters
 /// ----------
 /// `order` (`Order`): Specifies whether two-dimensional array storage is
@@ -1302,7 +1326,7 @@ pub inline fn getrs(
     nrhs: i32,
     a: anytype,
     lda: i32,
-    ipiv: [*]i32,
+    ipiv: [*]const i32,
     b: anytype,
     ldb: i32,
     ctx: anytype,
@@ -1487,7 +1511,7 @@ pub inline fn sgetrs(
     nrhs: i32,
     a: [*]const f32,
     lda: i32,
-    ipiv: [*]i32,
+    ipiv: [*]const i32,
     b: [*]f32,
     ldb: i32,
 ) void {
@@ -1575,7 +1599,7 @@ pub inline fn dgetrs(
     nrhs: i32,
     a: [*]const f64,
     lda: i32,
-    ipiv: [*]i32,
+    ipiv: [*]const i32,
     b: [*]f64,
     ldb: i32,
 ) void {
@@ -1663,7 +1687,7 @@ pub inline fn cgetrs(
     nrhs: i32,
     a: [*]const cf32,
     lda: i32,
-    ipiv: [*]i32,
+    ipiv: [*]const i32,
     b: [*]cf32,
     ldb: i32,
 ) void {
@@ -1751,7 +1775,7 @@ pub inline fn zgetrs(
     nrhs: i32,
     a: [*]const cf64,
     lda: i32,
-    ipiv: [*]i32,
+    ipiv: [*]const i32,
     b: [*]cf64,
     ldb: i32,
 ) void {
@@ -1774,6 +1798,12 @@ pub inline fn zgetrs(
 /// factor `A` as `A = P * L * U`, where `P` is a permutation matrix, `L` is
 /// unit lower triangular, and `U` is upper triangular. The factored form of `A`
 /// is then used to solve the system of equations `A * X = B`.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn gesv(order: Order, n: i32, nrhs: i32, a: [*]A, lda: i32, ipiv: [*]i32, b: B[*], ldb: i32, ctx: anytype) !i32
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -2233,6 +2263,12 @@ pub inline fn zgesv(
 /// where `A11` is `n1`-by-`n1` and `A22` is `n2`-by-`n2`, with `n1 = n / 2` and
 /// `n2 = n - n1`. The subroutine calls itself to factor `A11`. Update and scale
 /// `A21` or `A12`, update `A22` then call itself to factor `A22`.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn potrf2(order: Order, uplo: Uplo, n: i32, a: [*]A, lda: i32, ctx: anytype) !i32
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -2697,7 +2733,13 @@ pub inline fn zpotrf2(
 ///     A = L * L^H,
 /// ```
 ///
-///  where `U` is an upper triangular matrix and `L` is lower triangular.
+/// where `U` is an upper triangular matrix and `L` is lower triangular.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn potrf(order: Order, uplo: Uplo, n: i32, a: [*]A, lda: i32, ctx: anytype) !i32
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -3119,6 +3161,12 @@ pub inline fn zpotrf(
 /// system is solved with multiple right-hand sides stored in the columns of the
 /// matrix `B`. Before calling this routine, you must call `potrf` to compute
 /// the Cholesky factorization of `A`.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn potrs(order: Order, uplo: Uplo, n: i32, nrhs: i32, a: [*]const A, lda: i32, b: [*]B, ldb: i32, ctx: anytype) !void
+/// ```
 ///
 /// Parameters
 /// ----------
@@ -3596,6 +3644,12 @@ pub inline fn zpotrs(
 /// where `U` is an upper triangular matrix and `L` is lower triangular. The
 /// factored form of `A` is then used to solve the system of equations
 /// `A * X = B`.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn posv(order: Order, uplo: Uplo, n: i32, nrhs: i32, a: [*]A, lda: i32, b: [*]B, ldb: i32, ctx: anytype) !i32
+/// ```
 ///
 /// Parameters
 /// ----------

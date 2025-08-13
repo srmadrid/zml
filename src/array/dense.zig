@@ -3,6 +3,7 @@ const std = @import("std");
 const types = @import("../types.zig");
 const ReturnType1 = types.ReturnType1;
 const ReturnType2 = types.ReturnType2;
+const Numeric = types.Numeric;
 
 const ops = @import("../ops.zig");
 const int = @import("../int.zig");
@@ -11,6 +12,7 @@ const array = @import("../array.zig");
 const Order = types.Order;
 const Flags = array.Flags;
 const Range = array.Range;
+const IterationOrder = array.IterationOrder;
 
 const strided = @import("strided.zig");
 const Strided = strided.Strided;
@@ -61,7 +63,7 @@ pub fn Dense(comptime T: type) type {
             if (shape.len > 0) {
                 var i: u32 = 0;
                 while (i < shape.len) : (i += 1) {
-                    const idx: u32 = if (opts.order == .row_major) shape.len - i - 1 else i;
+                    const idx: u32 = types.scast(u32, if (opts.order == .row_major) shape.len - i - 1 else i);
 
                     if (shape[idx] == 1) {
                         array_strides[idx] = 0; // No stride for the new dimension.
@@ -749,13 +751,11 @@ pub fn Dense(comptime T: type) type {
         }
 
         pub fn reshape(self: *Dense(T), shape: []const u32) !Dense(T) {
-            if (shape.len > array.max_dimensions) {
+            if (shape.len > array.max_dimensions)
                 return array.Error.TooManyDimensions;
-            }
 
-            if (shape.len == 0) {
+            if (shape.len == 0)
                 return array.Error.ZeroDimension;
-            }
 
             var new_size: u64 = 1;
             var new_shape: [array.max_dimensions]u32 = .{0} ** array.max_dimensions;
@@ -856,9 +856,8 @@ pub fn Dense(comptime T: type) type {
             if (shape.len > array.max_dimensions)
                 return array.Error.TooManyDimensions;
 
-            if (shape.len < self.ndim) {
+            if (shape.len < self.ndim)
                 return array.Error.TooLittleDimensions;
-            }
 
             var new_shape: [array.max_dimensions]u32 = .{0} ** array.max_dimensions;
             var strides: [array.max_dimensions]u32 = .{0} ** array.max_dimensions;
@@ -876,7 +875,7 @@ pub fn Dense(comptime T: type) type {
                         return array.Error.NotBroadcastable; // Broadcasting is not possible if the shapes do not match or are not compatible.
 
                     new_shape[types.scast(u32, i)] = int.max(self.shape[types.scast(u32, i - diff)], shape[types.scast(u32, i)]);
-                    strides[types.scast(u32, i)] = types.scast(i32, self.metadata.dense.strides[types.scast(u32, i - diff)]);
+                    strides[types.scast(u32, i)] = types.scast(i32, self.strides[types.scast(u32, i - diff)]);
                 } else {
                     new_shape[types.scast(u32, i)] = shape[types.scast(u32, i)];
                     strides[types.scast(u32, i)] = 0; // No stride for the new dimensions.
@@ -923,7 +922,7 @@ pub fn Dense(comptime T: type) type {
             var i: u32 = 0;
             var j: u32 = 0;
             while (i < self.ndim) {
-                const stride: i32 = types.scast(i32, self.metadata.dense.strides[i]);
+                const stride: i32 = types.scast(i32, self.strides[i]);
 
                 if (i >= ranges.len) {
                     shape[j] = self.shape[i];
@@ -1049,50 +1048,95 @@ pub fn Dense(comptime T: type) type {
     };
 }
 
-pub inline fn apply1(
-    comptime X: type,
+fn loop1(
+    result: anytype,
+    x: anytype,
+    comptime op: anytype,
+    depth: u32,
+    order: types.IterationOrder,
+    ir: u32,
+    ix: u32,
+    ctx: anytype,
+) !void {
+    if (depth == 0) {
+        const opinfo = @typeInfo(@TypeOf(op));
+        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            if (comptime opinfo.@"fn".params.len == 1) {
+                result.data[jr] = op(x.data[jx]);
+            } else if (comptime opinfo.@"fn".params.len == 2) {
+                result.data[jr] = try op(x.data[jx], ctx);
+            }
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    } else {
+        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            try loop1(
+                result,
+                x,
+                op,
+                depth - 1,
+                order,
+                jr,
+                jx,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    }
+}
+
+pub fn apply1(
     allocator: std.mem.Allocator,
     x: anytype,
     comptime op: anytype,
-    order: array.Order,
+    opts: struct {
+        order: ?Order = null,
+    },
     ctx: anytype,
-) !Dense(ReturnType1(op, X)) {
-    var result: Dense(ReturnType1(op, X)) = try .init(allocator, x.shape[0..x.ndim], .{ .order = order });
+) !Dense(ReturnType1(op, Numeric(@TypeOf(x)))) {
+    const X: type = Numeric(@TypeOf(x));
+
+    var result: Dense(ReturnType1(op, X)) = try .init(allocator, x.shape[0..x.ndim], .{ .order = opts.order orelse x.flags.order });
     errdefer result.deinit(allocator);
 
-    var j: u32 = 0;
-    if (result.flags.order == x.flags.order) {
+    if (std.mem.eql(u32, result.strides[0..result.ndim], x.strides[0..x.ndim])) {
         // Trivial loop
         //errdefer cleanup(ReturnType1(op, X), allocator, result.data[0..j]);
 
         const opinfo = @typeInfo(@TypeOf(op));
-        for (0..result.size) |i| {
+        var i: u32 = 0;
+        while (i < result.size) : (i += 1) {
             if (comptime opinfo.@"fn".params.len == 1) {
                 result.data[i] = op(x.data[i]);
             } else if (comptime opinfo.@"fn".params.len == 2) {
                 result.data[i] = try op(x.data[i], ctx);
             }
-
-            j += 1;
         }
     } else {
-        // Different order, but same shape
-        const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
-        errdefer strided.cleanup(ReturnType1(op, X), &result, j, iteration_order, ctx);
-        const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
-        var iterr: array.Iterator(ReturnType1(op, X)) = .init(&result);
-        var iterx: array.Iterator(X) = .init(&x);
-        const opinfo = @typeInfo(@TypeOf(op));
-        for (0..result.size) |_| {
-            if (comptime opinfo.@"fn".params.len == 1) {
-                result.data[iterr.index] = op(x.data[iterx.index]);
-            } else if (comptime opinfo.@"fn".params.len == 2) {
-                result.data[iterr.index] = try op(x.data[iterx.index], ctx);
-            }
-
-            _ = iterr.nextAO(axis, iteration_order);
-            _ = iterx.nextAO(axis, iteration_order);
-        }
+        try loop1(
+            &result,
+            &x,
+            op,
+            result.ndim - 1,
+            result.flags.order.toIterationOrder(),
+            0,
+            0,
+            ctx,
+        );
     }
 
     return result;
@@ -1181,7 +1225,7 @@ pub fn apply2(
     comptime Y: type,
     y: anytype,
     comptime op: anytype,
-    order: array.Order,
+    order: Order,
     ctx: anytype,
 ) !Dense(ReturnType2(op, X, Y)) {
     if (comptime !types.isDense(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {

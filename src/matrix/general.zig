@@ -1,6 +1,9 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const ReturnType1 = types.ReturnType1;
+const ReturnType2 = types.ReturnType2;
+const Numeric = types.Numeric;
 const Order = types.Order;
 const ops = @import("../ops.zig");
 const constants = @import("../constants.zig");
@@ -32,7 +35,9 @@ pub fn General(comptime T: type) type {
             allocator: std.mem.Allocator,
             rows: u32,
             cols: u32,
-            order: Order,
+            opts: struct {
+                order: Order = .col_major,
+            },
         ) !General(T) {
             if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
@@ -41,8 +46,8 @@ pub fn General(comptime T: type) type {
                 .data = (try allocator.alloc(T, rows * cols)).ptr,
                 .rows = rows,
                 .cols = cols,
-                .strides = if (order == .col_major) .{ 1, rows } else .{ cols, 1 },
-                .flags = .{ .order = order, .owns_data = true },
+                .strides = if (opts.order == .col_major) .{ 1, rows } else .{ cols, 1 },
+                .flags = .{ .order = opts.order, .owns_data = true },
             };
         }
 
@@ -51,10 +56,12 @@ pub fn General(comptime T: type) type {
             rows: u32,
             cols: u32,
             value: anytype,
-            order: Order,
+            opts: struct {
+                order: Order = .col_major,
+            },
             ctx: anytype,
         ) !General(T) {
-            const mat: General(T) = try .init(allocator, rows, cols, order);
+            const mat: General(T) = try .init(allocator, rows, cols, .{ .order = opts.order });
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -76,16 +83,18 @@ pub fn General(comptime T: type) type {
         pub fn eye(
             allocator: std.mem.Allocator,
             size: u32,
-            order: Order,
+            opts: struct {
+                order: Order = .col_major,
+            },
             ctx: anytype,
         ) !General(T) {
-            const mat: General(T) = try .init(allocator, size, size, order);
+            const mat: General(T) = try .init(allocator, size, size, .{ .order = opts.order });
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (order == .col_major) {
+                if (opts.order == .col_major) {
                     var j: u32 = 0;
                     while (j < size) : (j += 1) {
                         mat.data[j + j * size] = constants.one(T, ctx) catch unreachable;
@@ -154,7 +163,7 @@ pub fn General(comptime T: type) type {
                 .cols = self.rows,
                 .strides = .{ self.strides[1], self.strides[0] },
                 .flags = .{
-                    .order = self.flags.order,
+                    .order = self.flags.order.invert(),
                     .owns_data = false,
                 },
             };
@@ -187,4 +196,76 @@ pub fn General(comptime T: type) type {
             };
         }
     };
+}
+
+pub fn apply1(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    comptime op: anytype,
+    opts: struct {
+        order: ?Order = null,
+    },
+    ctx: anytype,
+) !General(ReturnType1(op, Numeric(@TypeOf(x)))) {
+    const X: type = Numeric(@TypeOf(x));
+
+    var result: General(ReturnType1(op, X)) = try .init(allocator, x.rows, x.cols, .{ .order = opts.order orelse x.flags.order });
+    errdefer result.deinit(allocator);
+
+    const opinfo = @typeInfo(@TypeOf(op));
+    if (result.flags.order == .col_major) {
+        if (x.flags.order == .col_major) {
+            var j: u32 = 0;
+            while (j < x.cols) : (j += 1) {
+                var i: u32 = 0;
+                while (i < x.rows) : (i += 1) {
+                    if (comptime opinfo.@"fn".params.len == 1) {
+                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]]);
+                    } else if (comptime opinfo.@"fn".params.len == 2) {
+                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], ctx);
+                    }
+                }
+            }
+        } else {
+            var j: u32 = 0;
+            while (j < x.cols) : (j += 1) {
+                var i: u32 = 0;
+                while (i < x.rows) : (i += 1) {
+                    if (comptime opinfo.@"fn".params.len == 1) {
+                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j]);
+                    } else if (comptime opinfo.@"fn".params.len == 2) {
+                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], ctx);
+                    }
+                }
+            }
+        }
+    } else {
+        if (x.flags.order == .col_major) {
+            var i: u32 = 0;
+            while (i < x.rows) : (i += 1) {
+                var j: u32 = 0;
+                while (j < x.cols) : (j += 1) {
+                    if (comptime opinfo.@"fn".params.len == 1) {
+                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]]);
+                    } else if (comptime opinfo.@"fn".params.len == 2) {
+                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], ctx);
+                    }
+                }
+            }
+        } else {
+            var i: u32 = 0;
+            while (i < x.rows) : (i += 1) {
+                var j: u32 = 0;
+                while (j < x.cols) : (j += 1) {
+                    if (comptime opinfo.@"fn".params.len == 1) {
+                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j]);
+                    } else if (comptime opinfo.@"fn".params.len == 2) {
+                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], ctx);
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
 }

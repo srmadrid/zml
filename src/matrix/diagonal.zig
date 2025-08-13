@@ -11,6 +11,7 @@ const constants = @import("../constants.zig");
 const int = @import("../int.zig");
 
 const matrix = @import("../matrix.zig");
+const General = matrix.General;
 const Flags = matrix.Flags;
 
 pub fn Diagonal(comptime T: type) type {
@@ -132,6 +133,34 @@ pub fn Diagonal(comptime T: type) type {
             // Unchecked version of set. Assumes row and col are equal and
             // within bounds.
             self.data[row] = value;
+        }
+
+        pub fn toGeneral(self: Diagonal(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
+            var result: General(T) = try .init(allocator, self.size, self.size, .{ .order = self.flags.order });
+            errdefer result.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                var j: u32 = 0;
+                while (j < self.size) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < j) : (i += 1) {
+                        result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                    }
+
+                    result.data[j * self.size + j] = self.data[j];
+
+                    i = j + 1;
+                    while (i < self.size) : (i += 1) {
+                        result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return result;
         }
 
         pub fn transpose(self: Diagonal(T)) Diagonal(T) {

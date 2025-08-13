@@ -61,6 +61,7 @@ const constants = @import("../constants.zig");
 const int = @import("../int.zig");
 
 const matrix = @import("../matrix.zig");
+const General = matrix.General;
 const Flags = matrix.Flags;
 
 pub fn Banded(comptime T: type) type {
@@ -92,19 +93,21 @@ pub fn Banded(comptime T: type) type {
             cols: u32,
             lower: u32,
             upper: u32,
-            order: Order,
+            opts: struct {
+                order: Order = .col_major,
+            },
         ) !Banded(T) {
             if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
 
             return Banded(T){
-                .data = (try allocator.alloc(T, (lower + upper + 1) * (if (order == .col_major) cols else rows))).ptr,
+                .data = (try allocator.alloc(T, (lower + upper + 1) * (if (opts.order == .col_major) cols else rows))).ptr,
                 .rows = rows,
                 .cols = cols,
-                .strides = if (order == .col_major) .{ 1, lower + upper + 1 } else .{ lower + upper + 1, 1 },
+                .strides = if (opts.order == .col_major) .{ 1, lower + upper + 1 } else .{ lower + upper + 1, 1 },
                 .lower = lower,
                 .upper = upper,
-                .flags = .{ .order = order, .owns_data = true },
+                .flags = .{ .order = opts.order, .owns_data = true },
             };
         }
 
@@ -115,10 +118,12 @@ pub fn Banded(comptime T: type) type {
             lower: u32,
             upper: u32,
             value: anytype,
-            order: Order,
+            opts: struct {
+                order: Order = .col_major,
+            },
             ctx: anytype,
         ) !Banded(T) {
-            const mat: Banded(T) = try .init(allocator, rows, cols, lower, upper, order);
+            const mat: Banded(T) = try .init(allocator, rows, cols, lower, upper, .{ .order = opts.order });
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -126,7 +131,7 @@ pub fn Banded(comptime T: type) type {
 
                 const value_casted: T = types.scast(T, value);
 
-                if (order == .col_major) {
+                if (opts.order == .col_major) {
                     var j: u32 = 0;
                     while (j < cols) : (j += 1) {
                         var i: u32 = if (j < upper) 0 else j - upper;
@@ -155,16 +160,18 @@ pub fn Banded(comptime T: type) type {
             size: u32,
             lower: u32,
             upper: u32,
-            order: Order,
+            opts: struct {
+                order: Order = .col_major,
+            },
             ctx: anytype,
         ) !Banded(T) {
-            const mat: Banded(T) = try .init(allocator, size, size, lower, upper, order);
+            const mat: Banded(T) = try .init(allocator, size, size, lower, upper, .{ .order = opts.order });
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (order == .col_major) {
+                if (opts.order == .col_major) {
                     var j: u32 = 0;
                     while (j < size) : (j += 1) {
                         var i: u32 = if (j < upper) 0 else j - upper;
@@ -252,6 +259,53 @@ pub fn Banded(comptime T: type) type {
             } else {
                 self.data[row * self.strides[0] + (self.lower + col - row) * self.strides[1]] = value;
             }
+        }
+
+        pub fn toGeneral(self: Banded(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
+            var result: General(T) = try .init(allocator, self.rows, self.cols, .{ .order = self.flags.order });
+            errdefer result.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (self.flags.order == .col_major) {
+                    var j: u32 = 0;
+                    while (j < self.cols) : (j += 1) {
+                        var i: u32 = 0;
+                        while (i < if (j < self.upper) 0 else j - self.upper) : (i += 1) {
+                            result.data[i + j * result.strides[1]] = constants.zero(T, ctx) catch unreachable;
+                        }
+
+                        while (i <= int.min(self.rows - 1, j + self.lower)) : (i += 1) {
+                            result.data[i + j * result.strides[1]] = self.data[(self.upper + i - j) + j * self.strides[1]];
+                        }
+
+                        while (i < self.rows) : (i += 1) {
+                            result.data[i + j * result.strides[1]] = constants.zero(T, ctx) catch unreachable;
+                        }
+                    }
+                } else {
+                    var i: u32 = 0;
+                    while (i < self.rows) : (i += 1) {
+                        var j: u32 = 0;
+                        while (j < if (i < self.lower) 0 else i - self.lower) : (j += 1) {
+                            result.data[i * result.strides[0] + j] = constants.zero(T, ctx) catch unreachable;
+                        }
+
+                        while (j <= int.min(self.cols - 1, i + self.upper)) : (j += 1) {
+                            result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + (self.lower + j - i)];
+                        }
+
+                        while (j < self.cols) : (j += 1) {
+                            result.data[i * result.strides[0] + j] = constants.zero(T, ctx) catch unreachable;
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return result;
         }
 
         pub fn transpose(self: Banded(T)) Banded(T) {

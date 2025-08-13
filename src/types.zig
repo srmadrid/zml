@@ -42,6 +42,13 @@ pub const Order = enum(u1) {
         };
     }
 
+    pub inline fn toIterationOrder(self: Order) IterationOrder {
+        return switch (self) {
+            .row_major => .right_to_left,
+            .col_major => .left_to_right,
+        };
+    }
+
     pub inline fn invert(self: Order) Order {
         return switch (self) {
             .row_major => .col_major,
@@ -135,6 +142,11 @@ pub const Diag = enum(u1) {
             .unit => .non_unit,
         };
     }
+};
+
+pub const IterationOrder = enum {
+    left_to_right,
+    right_to_left,
 };
 
 /// `NumericType` is an enum that represents the different numeric types
@@ -1587,7 +1599,7 @@ pub fn EnsureMatrixOrArray(comptime X: type, comptime Y: type) type {
     if (isArray(X)) {
         switch (arrayType(X)) {
             .dense => return array.Dense(Y),
-            .strided => return array.Strided(Y),
+            .strided => return array.Dense(Y),
             .sparse => return array.Sparse(Y),
             .numeric => unreachable,
         }
@@ -1601,6 +1613,39 @@ pub fn EnsureMatrixOrArray(comptime X: type, comptime Y: type) type {
             .banded => return matrix.Banded(Y),
             .tridiagonal => return matrix.Tridiagonal(Y),
             .sparse => return matrix.Sparse(Y),
+            .numeric => unreachable,
+        }
+    } else {
+        return Y;
+    }
+}
+
+pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
+    if (isMatrix(X)) {
+        switch (matrixType(X)) {
+            .general => return matrix.General(Y),
+            .symmetric => return matrix.Symmetric(Y),
+            .hermitian => return matrix.Hermitian(Y),
+            .triangular => return matrix.Triangular(Y),
+            .diagonal => return matrix.Diagonal(Y),
+            .banded => return matrix.Banded(Y),
+            .tridiagonal => return matrix.Tridiagonal(Y),
+            .sparse => return matrix.Sparse(Y),
+            .numeric => unreachable,
+        }
+    } else if (isArray(X)) {
+        @compileError("Cannot ensure matrix type from an array type. Use `EnsureMatrixOrArray` or `EnsureArray` instead.");
+    } else {
+        return Y;
+    }
+}
+
+pub fn EnsureArray(comptime X: type, comptime Y: type) type {
+    if (isArray(X)) {
+        switch (arrayType(X)) {
+            .dense => return array.Dense(Y),
+            .strided => return array.Dense(Y),
+            .sparse => return array.Sparse(Y),
             .numeric => unreachable,
         }
     } else {

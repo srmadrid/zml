@@ -17,9 +17,16 @@ pub const Strided = strided.Strided;
 const sparse = @import("array/sparse.zig");
 pub const Sparse = sparse.Sparse;
 
+pub fn AnyArray(comptime T: type) type {
+    return union(enum) {
+        dense: *const Dense(T),
+        strided: *const Strided(T),
+        sparse: *const Sparse(T),
+    };
+}
+
 pub const Iterator = @import("array/iterators.zig").Iterator;
 //pub const MultiIterator = @import("array/iterators.zig").MultiIterator;
-pub const IterationOrder = @import("array/iterators.zig").IterationOrder;
 
 pub const max_dimensions = opts.max_dimensions;
 

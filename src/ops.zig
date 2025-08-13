@@ -6,7 +6,7 @@ const scast = types.scast;
 const Scalar = types.Scalar;
 const Numeric = types.Numeric;
 const Coerce = types.Coerce;
-const CoerceToArray = types.CoerceToArray;
+const EnsureMatrixOrArray = types.EnsureMatrixOrArray;
 const Child = types.Child;
 const EnsureFloat = types.EnsureFloat;
 const needsAllocator = types.needsAllocator;
@@ -22,6 +22,7 @@ const integer = @import("integer.zig");
 const rational = @import("rational.zig");
 const real = @import("real.zig");
 const complex = @import("complex.zig");
+const matrix = @import("matrix.zig");
 const array = @import("array.zig");
 
 /// Adds two values of any two supported types.
@@ -100,9 +101,7 @@ pub inline fn add(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or types.isSlice(X) or
-        types.isArray(Y) or types.isSlice(Y))
-    {
+    if (comptime types.isArray(C)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
             validateContext(
                 @TypeOf(ctx),
@@ -140,29 +139,67 @@ pub inline fn add(
             .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
-    }
-
-    switch (comptime types.numericType(C)) {
-        .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .int => {
-            comptime validateContext(
+    } else if (comptime types.isMatrix(C)) {
+        comptime if (types.isArbitraryPrecision(Numeric(C))) {
+            validateContext(
                 @TypeOf(ctx),
-                .{ .mode = .{ .type = int.Mode, .required = false } },
+                .{
+                    .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .order = .{ .type = ?types.Order, .required = false },
+                },
             );
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
+                );
+            } else {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
+                );
+            }
+        };
 
-            return int.add(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
-        },
-        .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+        return matrix.add(
+            ctx.matrix_allocator,
+            x,
+            y,
+            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+        );
+    } else {
+        switch (comptime types.numericType(C)) {
+            .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .int => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{ .mode = .{ .type = int.Mode, .required = false } },
+                );
 
-            return float.add(x, y);
-        },
-        .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+                return int.add(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
+            },
+            .float => {
+                comptime validateContext(@TypeOf(ctx), .{});
 
-            return cfloat.add(x, y);
-        },
-        else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return float.add(x, y);
+            },
+            .cfloat => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return cfloat.add(x, y);
+            },
+            else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1153,7 +1190,7 @@ pub inline fn eq(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
+) !EnsureMatrixOrArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
@@ -1273,7 +1310,7 @@ pub inline fn ne(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
+) !EnsureMatrixOrArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
@@ -1393,7 +1430,7 @@ pub inline fn lt(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
+) !EnsureMatrixOrArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
@@ -1503,7 +1540,7 @@ pub inline fn le(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
+) !EnsureMatrixOrArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
@@ -1613,7 +1650,7 @@ pub inline fn gt(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
+) !EnsureMatrixOrArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
@@ -1723,7 +1760,7 @@ pub inline fn ge(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !CoerceToArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
+) !EnsureMatrixOrArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
@@ -2085,7 +2122,7 @@ pub inline fn min_(
 pub inline fn abs(
     x: anytype,
     ctx: anytype,
-) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
+) !EnsureMatrixOrArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
@@ -2220,7 +2257,7 @@ pub inline fn abs_(
 pub inline fn abs2(
     x: anytype,
     ctx: anytype,
-) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
+) !EnsureMatrixOrArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
@@ -7099,7 +7136,7 @@ pub inline fn lgamma_(
 pub inline fn re(
     x: anytype,
     ctx: anytype,
-) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
+) !EnsureMatrixOrArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
@@ -7154,7 +7191,7 @@ pub inline fn re(
 pub inline fn im(
     x: anytype,
     ctx: anytype,
-) !CoerceToArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
+) !EnsureMatrixOrArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
 
     if (comptime types.isArray(X) or types.isSlice(X)) {

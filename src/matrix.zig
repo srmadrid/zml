@@ -8,11 +8,10 @@ const Order = types.Order;
 const ops = @import("ops.zig");
 
 const int = @import("int.zig");
-const float = @import("float.zig");
 
 const general = @import("matrix/general.zig");
 pub const General = general.General;
-const symmetric = @import("matrix/symmetric.zig");
+pub const symmetric = @import("matrix/symmetric.zig");
 pub const Symmetric = symmetric.Symmetric;
 const hermitian = @import("matrix/hermitian.zig");
 pub const Hermitian = hermitian.Hermitian;
@@ -26,6 +25,9 @@ const tridiagonal = @import("matrix/tridiagonal.zig");
 pub const Tridiagonal = tridiagonal.Tridiagonal;
 const sparse = @import("matrix/sparse.zig");
 pub const Sparse = sparse.Sparse;
+
+const matops = @import("matrix/ops.zig");
+pub const apply1 = matops.apply1;
 
 pub const Error = error{
     ZeroDimension,
