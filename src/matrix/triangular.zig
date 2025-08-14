@@ -17,6 +17,9 @@ const matrix = @import("../matrix.zig");
 const General = matrix.General;
 const Flags = matrix.Flags;
 
+const array = @import("../array.zig");
+const Dense = array.Dense;
+
 pub fn Triangular(comptime T: type) type {
     if (!types.isNumeric(T))
         @compileError("Triangular requires a numeric type, got " ++ @typeName(T));
@@ -433,6 +436,101 @@ pub fn Triangular(comptime T: type) type {
             return result;
         }
 
+        pub fn toDense(self: *const Triangular(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+            var result: Dense(T) = try .init(allocator, &.{ self.rows, self.cols }, .{ .order = self.flags.order });
+            errdefer result.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (self.flags.order == .col_major) {
+                    if (self.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < self.cols) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
+                            }
+
+                            if (self.diag == .unit) {
+                                result.data[j + j * result.strides[1]] = constants.one(T, ctx) catch unreachable;
+                            } else {
+                                result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+                            }
+
+                            i = j + 1;
+                            while (i < self.rows) : (i += 1) {
+                                result.data[i + j * result.strides[1]] = constants.zero(T, ctx) catch unreachable;
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < self.cols) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                result.data[i + j * result.strides[1]] = constants.zero(T, ctx) catch unreachable;
+                            }
+
+                            if (self.diag == .unit) {
+                                result.data[j + j * result.strides[1]] = constants.one(T, ctx) catch unreachable;
+                            } else {
+                                result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+                            }
+
+                            i = j + 1;
+                            while (i < self.rows) : (i += 1) {
+                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
+                            }
+                        }
+                    }
+                } else {
+                    if (self.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < self.rows) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                result.data[i * result.strides[0] + j] = constants.zero(T, ctx) catch unreachable;
+                            }
+
+                            if (self.diag == .unit) {
+                                result.data[i * result.strides[0] + i] = constants.one(T, ctx) catch unreachable;
+                            } else {
+                                result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+                            }
+
+                            j = i + 1;
+                            while (j < self.cols) : (j += 1) {
+                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < self.rows) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
+                            }
+
+                            if (self.diag == .unit) {
+                                result.data[i * result.strides[0] + i] = constants.one(T, ctx) catch unreachable;
+                            } else {
+                                result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+                            }
+
+                            j = i + 1;
+                            while (j < self.cols) : (j += 1) {
+                                result.data[i * result.strides[0] + j] = constants.zero(T, ctx) catch unreachable;
+                            }
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return result;
+        }
+
         pub fn transpose(self: Triangular(T)) Triangular(T) {
             return Triangular(T){
                 .data = self.data,
@@ -442,7 +540,7 @@ pub fn Triangular(comptime T: type) type {
                 .uplo = self.uplo.invert(),
                 .diag = self.diag,
                 .flags = .{
-                    .order = self.flags.order,
+                    .order = self.flags.order.invert(),
                     .owns_data = false,
                 },
             };

@@ -12,6 +12,9 @@ const int = @import("../int.zig");
 const matrix = @import("../matrix.zig");
 const Flags = matrix.Flags;
 
+const array = @import("../array.zig");
+const Dense = array.Dense;
+
 pub fn General(comptime T: type) type {
     if (!types.isNumeric(T))
         @compileError("General requires a numeric type, got " ++ @typeName(T));
@@ -156,6 +159,24 @@ pub fn General(comptime T: type) type {
             self.data[row * self.strides[0] + col * self.strides[1]] = value;
         }
 
+        pub fn toDense(self: *const General(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+            var result: Dense(T) = try .init(allocator, &.{ self.rows, self.cols }, .{ .order = self.flags.order });
+            errdefer result.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                var i: u32 = 0;
+                while (i < self.rows * self.cols) : (i += 1) {
+                    result.data[i] = self.data[i];
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return result;
+        }
+
         pub fn transpose(self: General(T)) General(T) {
             return General(T){
                 .data = self.data,
@@ -189,6 +210,20 @@ pub fn General(comptime T: type) type {
                 .rows = sub_rows,
                 .cols = sub_cols,
                 .strides = self.strides,
+                .flags = .{
+                    .order = self.flags.order,
+                    .owns_data = false,
+                },
+            };
+        }
+
+        pub fn asDense(self: *const General(T)) Dense(T) {
+            return Dense(T){
+                .data = self.data,
+                .ndim = 2,
+                .shape = .{ self.rows, self.cols } ++ .{0} ** (array.max_dim - 2),
+                .strides = .{ self.strides[0], self.strides[1] } ++ .{0} ** (array.max_dim - 2),
+                .base = null,
                 .flags = .{
                     .order = self.flags.order,
                     .owns_data = false,

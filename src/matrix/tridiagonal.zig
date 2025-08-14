@@ -17,6 +17,9 @@ const matrix = @import("../matrix.zig");
 const General = matrix.General;
 const Flags = matrix.Flags;
 
+const array = @import("../array.zig");
+const Dense = array.Dense;
+
 pub fn Tridiagonal(comptime T: type) type {
     if (!types.isNumeric(T))
         @compileError("Tridiagonal requires a numeric type, got " ++ @typeName(T));
@@ -182,6 +185,35 @@ pub fn Tridiagonal(comptime T: type) type {
 
         pub fn toGeneral(self: Tridiagonal(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
             var result: General(T) = try .init(allocator, self.size, self.size, .{ .order = self.flags.order });
+            errdefer result.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                var j: u32 = 0;
+                while (j < self.size) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < self.size) : (i += 1) {
+                        if (i == j) { // Diagonal
+                            result.data[j + j * result.strides[1]] = self.data[self.offset + j + (self.osize - 1)];
+                        } else if (i == j + 1) { // Subdiagonal
+                            result.data[i + j * result.strides[1]] = self.data[self.offset + i + self.osize + (self.osize - 1) - self.sdoffset - 1];
+                        } else if (i + 1 == j) { // Superdiagonal
+                            result.data[i + j * result.strides[1]] = self.data[self.offset + j + self.sdoffset - 1];
+                        } else {
+                            result.data[i + j * result.strides[1]] = constants.zero(T, .{}) catch unreachable;
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return result;
+        }
+
+        pub fn toDense(self: *const Tridiagonal(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+            var result: Dense(T) = try .init(allocator, &.{ self.size, self.size }, .{ .order = self.flags.order });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {

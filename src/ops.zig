@@ -287,7 +287,7 @@ pub inline fn add_(
 
     O = types.Child(O);
 
-    if (comptime types.isArray(O) or types.isSlice(O)) {
+    if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Both types are arbitrary precision
@@ -349,34 +349,68 @@ pub inline fn add_(
         };
 
         return array.add_(o, x, y, ctx);
-    } else if (comptime types.isArray(X) or types.isSlice(X) or types.isArray(Y) or types.isSlice(Y)) {
-        @compileError("zml.add_: o must be an `Array` or slice if x or y is an `Array` or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
-
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => {
-                comptime validateContext(
+    } else if (comptime types.isArray(X) or types.isArray(Y)) {
+        @compileError("zml.add_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O))) {
+            validateContext(
+                @TypeOf(ctx),
+                .{
+                    .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .order = .{ .type = ?types.Order, .required = false },
+                },
+            );
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                validateContext(
                     @TypeOf(ctx),
-                    .{ .mode = .{ .type = int.Mode, .required = false } },
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
                 );
+            } else {
+                validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
+                );
+            }
+        };
 
-                o.* = scast(O, int.add(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default)));
-            },
-            .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+        return matrix.add_(o, x, y, ctx);
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.add_: o must be a matrix or an array if x or y is a matrix, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else {
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+                .int => {
+                    comptime validateContext(
+                        @TypeOf(ctx),
+                        .{ .mode = .{ .type = int.Mode, .required = false } },
+                    );
 
-                o.* = scast(O, float.add(x, y));
-            },
-            .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.add(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default)));
+                },
+                .float => {
+                    comptime validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, cfloat.add(x, y));
+                    o.* = scast(O, float.add(x, y));
+                },
+                .cfloat => {
+                    comptime validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, cfloat.add(x, y));
+                },
+                else => @compileError("zml.add_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.add_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.add_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -2125,7 +2159,7 @@ pub inline fn abs(
 ) !EnsureMatrixOrArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = @TypeOf(x);
 
-    if (comptime types.isArray(X) or types.isSlice(X)) {
+    if (comptime types.isArray(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
             validateContext(
                 @TypeOf(ctx),
@@ -2152,26 +2186,28 @@ pub inline fn abs(
             .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
             stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
-    }
+    } else if (comptime types.isMatrix(X)) {
+        @compileError("zml.abs not defined for matrices, got " ++ @typeName(X) ++ ", convert to an array first");
+    } else {
+        switch (types.numericType(X)) {
+            .bool => @compileError("zml.abs not defined for " ++ @typeName(X)),
+            .int => {
+                comptime validateContext(@TypeOf(ctx), .{});
 
-    switch (types.numericType(X)) {
-        .bool => @compileError("zml.abs not defined for " ++ @typeName(X)),
-        .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+                return int.abs(x);
+            },
+            .float => {
+                comptime validateContext(@TypeOf(ctx), .{});
 
-            return int.abs(x);
-        },
-        .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+                return float.abs(x);
+            },
+            .cfloat => {
+                comptime validateContext(@TypeOf(ctx), .{});
 
-            return float.abs(x);
-        },
-        .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
-
-            return cfloat.abs(x);
-        },
-        else => @compileError("zml.abs not implemented for " ++ @typeName(X) ++ " yet"),
+                return cfloat.abs(x);
+            },
+            else => @compileError("zml.abs not implemented for " ++ @typeName(X) ++ " yet"),
+        }
     }
 }
 

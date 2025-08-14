@@ -19,6 +19,9 @@ const matrix = @import("../matrix.zig");
 const General = matrix.General;
 const Flags = matrix.Flags;
 
+const array = @import("../array.zig");
+const Dense = array.Dense;
+
 pub fn Symmetric(comptime T: type) type {
     if (!types.isNumeric(T))
         @compileError("Symmetric requires a numeric type, got " ++ @typeName(T));
@@ -255,6 +258,69 @@ pub fn Symmetric(comptime T: type) type {
 
         pub fn toGeneral(self: Symmetric(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
             var result: General(T) = try .init(allocator, self.size, self.size, .{ .order = self.flags.order });
+            errdefer result.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (self.flags.order == .col_major) {
+                    if (self.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
+                                result.data[j + i * result.strides[1]] = self.data[i + j * self.strides[1]];
+                            }
+
+                            result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+
+                            var i: u32 = j + 1;
+                            while (i < self.size) : (i += 1) {
+                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
+                                result.data[j + i * result.strides[1]] = self.data[i + j * self.strides[1]];
+                            }
+                        }
+                    }
+                } else {
+                    if (self.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+
+                            var j: u32 = i + 1;
+                            while (j < self.size) : (j += 1) {
+                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
+                                result.data[j * result.strides[0] + i] = self.data[i * self.strides[0] + j];
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
+                                result.data[j * result.strides[0] + i] = self.data[i * self.strides[0] + j];
+                            }
+
+                            result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return result;
+        }
+
+        pub fn toDense(self: *const Symmetric(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+            var result: Dense(T) = try .init(allocator, &.{ self.size, self.size }, .{ .order = self.flags.order });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {

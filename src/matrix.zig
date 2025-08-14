@@ -11,7 +11,7 @@ const int = @import("int.zig");
 
 const general = @import("matrix/general.zig");
 pub const General = general.General;
-pub const symmetric = @import("matrix/symmetric.zig");
+const symmetric = @import("matrix/symmetric.zig");
 pub const Symmetric = symmetric.Symmetric;
 const hermitian = @import("matrix/hermitian.zig");
 pub const Hermitian = hermitian.Hermitian;

@@ -25,7 +25,7 @@ pub fn Strided(comptime T: type) type {
         ndim: u32,
         shape: [array.max_dimensions]u32,
         strides: [array.max_dimensions]i32,
-        size: u32,
+        size: u64,
         offset: u32,
         base: ?*const anyopaque,
         flags: Flags = .{},
@@ -126,7 +126,7 @@ pub fn Strided(comptime T: type) type {
                 const idx: u32 = axes_[i];
 
                 new_shape[i] = self.shape[idx];
-                new_strides[i] = self.metadata.strided.strides[idx];
+                new_strides[i] = self.strides[idx];
                 size *= new_shape[i];
             }
 
@@ -136,7 +136,7 @@ pub fn Strided(comptime T: type) type {
                 .shape = new_shape,
                 .strides = new_strides,
                 .size = size,
-                .offset = self.metadata.strided.offset,
+                .offset = self.offset,
                 .base = if (self.flags.owns_data) self else self.base,
                 .flags = .{
                     .order = self.flags.order,
@@ -161,7 +161,7 @@ pub fn Strided(comptime T: type) type {
             while (i >= 0) : (i -= 1) {
                 if (i - diff >= 0) {
                     new_shape[types.scast(u32, i)] = int.max(self.shape[types.scast(u32, i - diff)], shape[types.scast(u32, i)]);
-                    strides[types.scast(u32, i)] = self.metadata.strided.strides[types.scast(u32, i - diff)];
+                    strides[types.scast(u32, i)] = self.strides[types.scast(u32, i - diff)];
                 } else {
                     new_shape[types.scast(u32, i)] = shape[types.scast(u32, i)];
                     strides[types.scast(u32, i)] = 0; // No stride for the new dimensions.
@@ -172,11 +172,11 @@ pub fn Strided(comptime T: type) type {
 
             return Strided(T){
                 .data = self.data,
-                .ndim = shape.len,
+                .ndim = types.scast(u32, shape.len),
                 .shape = new_shape,
                 .strides = strides,
                 .size = size,
-                .offset = self.metadata.strided.offset,
+                .offset = self.offset,
                 .base = if (self.flags.owns_data) self else self.base,
                 .flags = .{
                     .order = self.flags.order,
@@ -193,12 +193,12 @@ pub fn Strided(comptime T: type) type {
             var size: u32 = 1;
             var shape: [array.max_dimensions]u32 = .{0} ** array.max_dimensions;
             var strides: [array.max_dimensions]i32 = .{0} ** array.max_dimensions;
-            var offset: u32 = self.metadata.strided.offset;
+            var offset: u32 = self.offset;
 
             var i: u32 = 0;
             var j: u32 = 0;
             while (i < self.ndim) {
-                const stride: i32 = self.metadata.strided.strides[i];
+                const stride: i32 = self.strides[i];
 
                 if (i >= ranges.len) {
                     shape[j] = self.shape[i];
@@ -418,60 +418,157 @@ pub fn apply1(
     return result;
 }
 
-pub fn apply1_(
-    comptime O: type,
-    o: anytype,
-    comptime X: type,
+fn set_loop(
+    result: anytype,
     x: anytype,
-    comptime op_to: anytype,
+    depth: u32,
+    order: types.IterationOrder,
+    ir: i32,
+    first: *bool,
     ctx: anytype,
 ) !void {
-    if (comptime !types.isStrided(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
-        const iteration_order: array.IterationOrder = o.flags.order.toIterationOrder();
-        const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
-        var itero: array.Iterator(O) = .init(o);
-        const first: u32 = itero.index;
+    if (depth == 0) {
+        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
 
-        const opinfo = @typeInfo(@TypeOf(op_to));
+        var jr: i32 = ir + if (first.*) result.strides[idx] else 0; // Skip the first element if first is true.
+        var j: u32 = if (first.*) 1 else 0;
+        while (j < result.shape[idx]) : (j += 1) {
+            try ops.set(
+                &result.data[types.scast(u32, jr)],
+                x,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+        }
+
+        first.* = false; // Set first to false after the first iteration.
+    } else {
+        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+
+        var jr: i32 = ir;
+        var j: u32 = 0;
+        while (j < result.shape[idx]) : (j += 1) {
+            try set_loop(
+                result,
+                x,
+                depth - 1,
+                order,
+                jr,
+                first,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+        }
+    }
+}
+
+fn loop1_(
+    result: anytype,
+    x: anytype,
+    comptime op_: anytype,
+    depth: u32,
+    order: types.IterationOrder,
+    ir: i32,
+    ix: i32,
+    ctx: anytype,
+) !void {
+    if (depth == 0) {
+        const opinfo = @typeInfo(@TypeOf(op_));
+        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+
+        var jr: i32 = ir;
+        var jx: i32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            if (comptime opinfo.@"fn".params.len == 2) {
+                op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)]);
+            } else if (comptime opinfo.@"fn".params.len == 3) {
+                try op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], ctx);
+            }
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    } else {
+        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+
+        var jr: i32 = ir;
+        var jx: i32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            try loop1_(
+                result,
+                x,
+                op_,
+                depth - 1,
+                order,
+                jr,
+                jx,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    }
+}
+
+pub fn apply1_(
+    o: anytype,
+    x: anytype,
+    comptime op_: anytype,
+    ctx: anytype,
+) !void {
+    const X: type = Numeric(@TypeOf(x));
+
+    if (comptime !types.isStridedArray(@TypeOf(x))) {
+        const opinfo = @typeInfo(@TypeOf(op_));
         if (comptime opinfo.@"fn".params.len == 2) {
-            op_to(&o.data[first], x);
+            op_(&o.data[o.offset], x);
         } else if (comptime opinfo.@"fn".params.len == 3) {
-            try op_to(&o.data[first], x, ctx);
+            try op_(&o.data[o.offset], x, ctx);
         }
-        _ = itero.nextAO(axis, iteration_order);
+        std.debug.print("o.data[o.offset]: {any}\n", .{o.data[o.offset]});
 
-        for (1..o.size) |_| {
-            try ops.set(&o.data[itero.index], o.data[first], ctx);
-
-            _ = itero.nextAO(axis, iteration_order);
-        }
+        var first: bool = true;
+        try set_loop(
+            o,
+            o.data[o.offset],
+            o.ndim - 1,
+            o.flags.order.toIterationOrder(),
+            types.scast(i32, o.offset),
+            &first,
+            ctx,
+        );
 
         return;
     }
 
-    const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
-    if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
-        return array.Error.NotBroadcastable;
+    var xx: Strided(X) = undefined;
+    if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
+        // Same shape
+        xx = x;
+    } else {
+        const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
+
+        if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim]))
+            return array.Error.NotBroadcastable;
+
+        xx = try @constCast(&x).broadcast(bct.shape[0..bct.ndim]);
     }
 
-    const xx: Strided(X) = try x.broadcast(bct.shape[0..bct.ndim]);
-
-    const iteration_order: array.IterationOrder = o.flags.order.toIterationOrder();
-    const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
-    var itero: array.Iterator(O) = .init(o);
-    var iterx: array.Iterator(X) = .init(&xx);
-
-    const opinfo = @typeInfo(@TypeOf(op_to));
-    for (0..o.size) |_| {
-        if (comptime opinfo.@"fn".params.len == 2) {
-            op_to(&o.data[itero.index], xx.data[iterx.index]);
-        } else if (comptime opinfo.@"fn".params.len == 3) {
-            try op_to(&o.data[itero.index], xx.data[iterx.index], ctx);
-        }
-
-        _ = itero.nextAO(axis, iteration_order);
-        _ = iterx.nextAO(axis, iteration_order);
-    }
+    try loop1_(
+        o,
+        &xx,
+        op_,
+        o.ndim - 1,
+        o.flags.order.toIterationOrder(),
+        types.scast(i32, o.offset),
+        types.scast(i32, xx.offset),
+        ctx,
+    );
 
     return;
 }
@@ -584,7 +681,7 @@ pub fn apply2_(
     x: anytype,
     comptime Y: type,
     y: anytype,
-    comptime op_to: anytype,
+    comptime op_: anytype,
     ctx: anytype,
 ) !void {
     if (comptime !types.isStrided(@TypeOf(x)) and !types.isSlice(@TypeOf(x)) and
@@ -594,11 +691,11 @@ pub fn apply2_(
         const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
         var itero: array.Iterator(O) = .init(o);
         const first: u32 = itero.index;
-        const opinfo = @typeInfo(@TypeOf(op_to));
+        const opinfo = @typeInfo(@TypeOf(op_));
         if (comptime opinfo.@"fn".params.len == 3) {
-            op_to(&o.data[first], x, y);
+            op_(&o.data[first], x, y);
         } else if (comptime opinfo.@"fn".params.len == 4) {
-            try op_to(&o.data[first], x, y, ctx);
+            try op_(&o.data[first], x, y, ctx);
         }
         _ = itero.nextAO(axis, iteration_order);
 
@@ -626,12 +723,12 @@ pub fn apply2_(
         const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
         var itero: array.Iterator(O) = .init(o);
         var itery: array.Iterator(Y) = .init(&yy);
-        const opinfo = @typeInfo(@TypeOf(op_to));
+        const opinfo = @typeInfo(@TypeOf(op_));
         for (0..o.size) |_| {
             if (comptime opinfo.@"fn".params.len == 3) {
-                op_to(&o.data[itero.index], x, yy.data[itery.index]);
+                op_(&o.data[itero.index], x, yy.data[itery.index]);
             } else if (comptime opinfo.@"fn".params.len == 4) {
-                try op_to(&o.data[itero.index], x, yy.data[itery.index], ctx);
+                try op_(&o.data[itero.index], x, yy.data[itery.index], ctx);
             }
 
             _ = itero.nextAO(axis, iteration_order);
@@ -656,12 +753,12 @@ pub fn apply2_(
         const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
         var itero: array.Iterator(O) = .init(o);
         var iterx: array.Iterator(X) = .init(&xx);
-        const opinfo = @typeInfo(@TypeOf(op_to));
+        const opinfo = @typeInfo(@TypeOf(op_));
         for (0..o.size) |_| {
             if (comptime opinfo.@"fn".params.len == 3) {
-                op_to(&o.data[itero.index], xx.data[iterx.index], y);
+                op_(&o.data[itero.index], xx.data[iterx.index], y);
             } else if (comptime opinfo.@"fn".params.len == 4) {
-                try op_to(&o.data[itero.index], xx.data[iterx.index], y, ctx);
+                try op_(&o.data[itero.index], xx.data[iterx.index], y, ctx);
             }
 
             _ = itero.nextAO(axis, iteration_order);
@@ -693,12 +790,12 @@ pub fn apply2_(
     var itero: array.Iterator(O) = .init(o);
     var iterx: array.Iterator(X) = .init(&xx);
     var itery: array.Iterator(Y) = .init(&yy);
-    const opinfo = @typeInfo(@TypeOf(op_to));
+    const opinfo = @typeInfo(@TypeOf(op_));
     for (0..o.size) |_| {
         if (comptime opinfo.@"fn".params.len == 3) {
-            op_to(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index]);
+            op_(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index]);
         } else if (comptime opinfo.@"fn".params.len == 4) {
-            try op_to(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index], ctx);
+            try op_(&o.data[itero.index], xx.data[iterx.index], yy.data[itery.index], ctx);
         }
 
         _ = itero.nextAO(axis, iteration_order);

@@ -25,28 +25,3 @@ const diagonal = @import("diagonal.zig");
 const banded = @import("banded.zig");
 const tridiagonal = @import("tridiagonal.zig");
 const sparse = @import("sparse.zig");
-
-pub fn apply1(
-    allocator: std.mem.Allocator,
-    x: anytype,
-    comptime op: anytype,
-    opts: struct {
-        order: ?types.Order = null,
-        // eventually will add axis, axes and keepdims opts, to apply2 as well
-    },
-    ctx: anytype,
-) !EnsureMatrix(@TypeOf(x), ReturnType1(op, Numeric(@TypeOf(x)))) {
-    const X: type = @TypeOf(x);
-
-    comptime if (!types.isMatrix(X))
-        @compileError("apply1: x must be a matrix, got " ++ @typeName(X));
-
-    comptime if (@typeInfo(@TypeOf(op)) != .@"fn" or (@typeInfo(@TypeOf(op)).@"fn".params.len != 1 and @typeInfo(@TypeOf(op)).@"fn".params.len != 2))
-        @compileError("apply1: op must be a function of one argument, or a function of two arguments with the second argument being a context, got " ++ @typeName(@TypeOf(op)));
-
-    switch (comptime types.matrixType(@TypeOf(x))) {
-        .general => return general.apply1(allocator, x, op, .{ .order = opts.order }, ctx),
-        .sparse => @compileError("apply1: sparse matrices are not implemented yet"),
-        else => @compileError("apply1 is only defined for general and sparse matrices, got " ++ @typeName(@TypeOf(x))),
-    }
-}

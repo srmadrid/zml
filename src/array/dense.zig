@@ -1,3 +1,9 @@
+//! Dense arrays are multi-dimensional arrays that store their data in a single
+//! 1-dimensional array. Any dense array guarantees that:
+//! - The entire data array is accessed.
+//! - The strides are ordered in ascending order if the array is in column-major
+//! order, or in descending order if it is in row-major order.
+
 const std = @import("std");
 
 const types = @import("../types.zig");
@@ -807,7 +813,7 @@ pub fn Dense(comptime T: type) type {
             };
         }
 
-        pub fn transpose(self: *Dense(T), axes: ?[]const u32) !Dense(T) {
+        pub fn transpose(self: *Dense(T), axes: ?[]const u32) !Strided(T) {
             const axes_: []const u32 =
                 axes orelse
                 array.trivialReversePermutation(self.ndim)[0..self.ndim];
@@ -825,34 +831,34 @@ pub fn Dense(comptime T: type) type {
             }
 
             var new_shape: [array.max_dimensions]u32 = .{0} ** array.max_dimensions;
-            var new_strides: [array.max_dimensions]u32 = .{0} ** array.max_dimensions;
+            var new_strides: [array.max_dimensions]i32 = .{0} ** array.max_dimensions;
             var size: u32 = 1;
 
             var i: u32 = 0;
             while (i < self.ndim) : (i += 1) {
-                const idx: u32 = axes[i];
+                const idx: u32 = axes_[i];
 
                 new_shape[i] = self.shape[idx];
-                new_strides[i] = self.strides[idx];
+                new_strides[i] = types.scast(i32, self.strides[idx]);
                 size *= new_shape[i];
             }
 
-            return Dense(T){
+            return Strided(T){
                 .data = self.data,
                 .ndim = self.ndim,
                 .shape = new_shape,
                 .strides = new_strides,
                 .size = size,
+                .offset = 0,
                 .base = if (self.flags.owns_data) self else self.base,
                 .flags = .{
-                    .order = self.flags.order, // Underlying order remains the same.
+                    .order = self.flags.order,
                     .owns_data = false,
                 },
-                .kind = .{ .general = .{} },
             };
         }
 
-        pub fn broadcast(self: *const Dense(T), shape: []const u32) !Dense(T) {
+        pub fn broadcast(self: *Dense(T), shape: []const u32) !Dense(T) {
             if (shape.len > array.max_dimensions)
                 return array.Error.TooManyDimensions;
 
@@ -875,7 +881,7 @@ pub fn Dense(comptime T: type) type {
                         return array.Error.NotBroadcastable; // Broadcasting is not possible if the shapes do not match or are not compatible.
 
                     new_shape[types.scast(u32, i)] = int.max(self.shape[types.scast(u32, i - diff)], shape[types.scast(u32, i)]);
-                    strides[types.scast(u32, i)] = types.scast(i32, self.strides[types.scast(u32, i - diff)]);
+                    strides[types.scast(u32, i)] = self.strides[types.scast(u32, i - diff)];
                 } else {
                     new_shape[types.scast(u32, i)] = shape[types.scast(u32, i)];
                     strides[types.scast(u32, i)] = 0; // No stride for the new dimensions.
@@ -886,7 +892,7 @@ pub fn Dense(comptime T: type) type {
 
             return Dense(T){
                 .data = self.data,
-                .ndim = shape.len,
+                .ndim = types.scast(u32, shape.len),
                 .shape = new_shape,
                 .strides = strides,
                 .size = size,
@@ -1142,15 +1148,66 @@ pub fn apply1(
     return result;
 }
 
+fn loop1_(
+    result: anytype,
+    x: anytype,
+    comptime op_: anytype,
+    depth: u32,
+    order: types.IterationOrder,
+    ir: u32,
+    ix: u32,
+    ctx: anytype,
+) !void {
+    if (depth == 0) {
+        const opinfo = @typeInfo(@TypeOf(op_));
+        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            if (comptime opinfo.@"fn".params.len == 2) {
+                op_(&result.data[jr], x.data[jx]);
+            } else if (comptime opinfo.@"fn".params.len == 3) {
+                try op_(&result.data[jr], x.data[jx], ctx);
+            }
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    } else {
+        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            try loop1_(
+                result,
+                x,
+                op_,
+                depth - 1,
+                order,
+                jr,
+                jx,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    }
+}
+
 pub fn apply1_(
-    comptime O: type,
     o: anytype,
-    comptime X: type,
     x: anytype,
     comptime op_: anytype,
     ctx: anytype,
 ) !void {
-    if (comptime !types.isDense(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
+    const X: type = Numeric(@TypeOf(x));
+
+    if (comptime !types.isDenseArray(@TypeOf(x))) {
         // Only run the function once if x is a scalar
         const opinfo = @typeInfo(@TypeOf(op_));
         if (comptime opinfo.@"fn".params.len == 2) {
@@ -1168,7 +1225,7 @@ pub fn apply1_(
 
     var xx: Dense(X) = undefined;
     if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
-        if (o.flags.order == x.flags.order) {
+        if (std.mem.eql(u32, o.strides[0..o.ndim], x.strides[0..x.ndim])) {
             // Trivial loop
             const opinfo = @typeInfo(@TypeOf(op_));
             for (0..o.size) |i| {
@@ -1186,28 +1243,23 @@ pub fn apply1_(
         }
     } else {
         const bct = try array.broadcastShapes(&.{ o.shape[0..o.ndim], x.shape[0..x.ndim] });
-        if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim])) {
+
+        if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim]))
             return array.Error.NotBroadcastable;
-        }
 
-        //xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
+        xx = try @constCast(&x).broadcast(bct.shape[0..bct.ndim]);
     }
 
-    const iteration_order: array.IterationOrder = o.flags.order.toIterationOrder();
-    const axis: u32 = if (iteration_order == .right_to_left) o.ndim - 1 else 0;
-    var itero: array.Iterator(O) = .init(o);
-    var iterx: array.Iterator(X) = .init(&xx);
-    const opinfo = @typeInfo(@TypeOf(op_));
-    for (0..o.size) |_| {
-        if (comptime opinfo.@"fn".params.len == 2) {
-            op_(&o.data[itero.index], xx.data[iterx.index]);
-        } else if (comptime opinfo.@"fn".params.len == 3) {
-            try op_(&o.data[itero.index], xx.data[iterx.index], ctx);
-        }
-
-        _ = itero.nextAO(axis, iteration_order);
-        _ = iterx.nextAO(axis, iteration_order);
-    }
+    try loop1_(
+        o,
+        &xx,
+        op_,
+        o.ndim - 1,
+        o.flags.order.toIterationOrder(),
+        0,
+        0,
+        ctx,
+    );
 
     return;
 }

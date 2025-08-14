@@ -12,7 +12,7 @@ const float = @import("float.zig");
 
 const dense = @import("array/dense.zig");
 pub const Dense = dense.Dense;
-const strided = @import("array/strided.zig");
+pub const strided = @import("array/strided.zig");
 pub const Strided = strided.Strided;
 const sparse = @import("array/sparse.zig");
 pub const Sparse = sparse.Sparse;
@@ -186,7 +186,7 @@ pub fn broadcastShapes(
         }
 
         if (shape.len > ndim) {
-            ndim = shape.len;
+            ndim = types.scast(u32, shape.len);
         }
     }
 

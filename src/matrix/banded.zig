@@ -64,6 +64,9 @@ const matrix = @import("../matrix.zig");
 const General = matrix.General;
 const Flags = matrix.Flags;
 
+const array = @import("../array.zig");
+const Dense = array.Dense;
+
 pub fn Banded(comptime T: type) type {
     if (!types.isNumeric(T))
         @compileError("Banded requires a numeric type, got " ++ @typeName(T));
@@ -263,6 +266,53 @@ pub fn Banded(comptime T: type) type {
 
         pub fn toGeneral(self: Banded(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
             var result: General(T) = try .init(allocator, self.rows, self.cols, .{ .order = self.flags.order });
+            errdefer result.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (self.flags.order == .col_major) {
+                    var j: u32 = 0;
+                    while (j < self.cols) : (j += 1) {
+                        var i: u32 = 0;
+                        while (i < if (j < self.upper) 0 else j - self.upper) : (i += 1) {
+                            result.data[i + j * result.strides[1]] = constants.zero(T, ctx) catch unreachable;
+                        }
+
+                        while (i <= int.min(self.rows - 1, j + self.lower)) : (i += 1) {
+                            result.data[i + j * result.strides[1]] = self.data[(self.upper + i - j) + j * self.strides[1]];
+                        }
+
+                        while (i < self.rows) : (i += 1) {
+                            result.data[i + j * result.strides[1]] = constants.zero(T, ctx) catch unreachable;
+                        }
+                    }
+                } else {
+                    var i: u32 = 0;
+                    while (i < self.rows) : (i += 1) {
+                        var j: u32 = 0;
+                        while (j < if (i < self.lower) 0 else i - self.lower) : (j += 1) {
+                            result.data[i * result.strides[0] + j] = constants.zero(T, ctx) catch unreachable;
+                        }
+
+                        while (j <= int.min(self.cols - 1, i + self.upper)) : (j += 1) {
+                            result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + (self.lower + j - i)];
+                        }
+
+                        while (j < self.cols) : (j += 1) {
+                            result.data[i * result.strides[0] + j] = constants.zero(T, ctx) catch unreachable;
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return result;
+        }
+
+        pub fn toDense(self: *const Banded(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+            var result: Dense(T) = try .init(allocator, &.{ self.rows, self.cols }, .{ .order = self.flags.order });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
