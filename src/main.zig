@@ -483,10 +483,10 @@ fn ask_user(default: u32) !u32 {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A_base: zml.array.Dense(f64) = try .init(a, &.{ 10, 5 }, .{ .order = .row_major });
+    var A_base: zml.array.Dense(f64) = try .init(a, &.{ 10, 8 }, .{ .order = .col_major });
     defer A_base.deinit(a);
-    //const A = try A_base.transpose(null);
-    const A = A_base;
+    const A = try A_base.transpose(null);
+    //const A = A_base;
 
     var i: u32 = 0;
     while (i < A_base.size) : (i += 1) {
@@ -515,7 +515,7 @@ fn perfTesting(a: std.mem.Allocator) !void {
     }
     std.debug.print("\n", .{});
 
-    var B_base: zml.array.Dense(f64) = try .init(a, &.{ 8, 10 }, .{ .order = .col_major });
+    var B_base: zml.array.Dense(f64) = try .init(a, &.{ 8, 10 }, .{ .order = .row_major });
     defer B_base.deinit(a);
 
     i = 0;
@@ -524,8 +524,8 @@ fn perfTesting(a: std.mem.Allocator) !void {
         //B_base.data[i] = zml.cf64.init(zml.scast(f64, i + 2), zml.scast(f64, i + 2));
     }
 
-    var B = try (try B_base.slice(&.{ try .init(1, 6, 1), .all_reverse })).transpose(null);
-    //var B = B_base;
+    //const B = try B_base.slice(&.{ try .init(2, 10, 1), .all_reverse });
+    const B = B_base;
 
     std.debug.print("Matrix B_base:\n", .{});
     i = 0;
@@ -550,12 +550,17 @@ fn perfTesting(a: std.mem.Allocator) !void {
     }
     std.debug.print("\n", .{});
 
-    const start_time = std.time.nanoTimestamp();
-    var C = try zml.array.apply2(a, B, A, zml.add, .{ .order = .col_major }, .{});
-    const end_time: i128 = std.time.nanoTimestamp();
-    defer C.deinit(a);
+    var C_base: zml.array.Dense(f64) = try .init(a, &.{ 16, 10 }, .{ .order = .row_major });
+    defer C_base.deinit(a);
 
-    std.debug.print("Took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9)});
+    //var C = C_base;
+    var C = try C_base.slice(&.{ try .init(0, 16, 2), .all_reverse });
+
+    const start_time = std.time.nanoTimestamp();
+    try zml.array.apply2_(&C, A, B, zml.add_, .{});
+    const end_time: i128 = std.time.nanoTimestamp();
+
+    std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
     std.debug.print("Resulting matrix C:\n", .{});
     i = 0;

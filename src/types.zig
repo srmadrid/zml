@@ -2495,7 +2495,7 @@ pub fn validateContext(comptime Ctx: type, comptime spec: anytype) void {
             const actual_type = @FieldType(Ctx, field.name);
             const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
                 const type_info = @typeInfo(expected_type);
-                break :blk type_info == .@"enum";
+                break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
             } else actual_type == expected_type;
 
             if (!types_match)

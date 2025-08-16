@@ -1,8 +1,8 @@
 const std = @import("std");
 
 pub const Integer = struct {
-    limbs: []usize,
-    size: usize,
+    limbs: []u32,
+    size: u32,
     positive: bool,
 
     pub const empty: Integer = .{

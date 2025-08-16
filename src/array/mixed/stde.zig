@@ -73,7 +73,6 @@ pub fn apply1_(
     comptime op_: anytype,
     ctx: anytype,
 ) !void {
-    std.debug.print("astade.apply1_\n", .{});
     const X: type = Numeric(@TypeOf(x));
 
     var xx: Dense(X) = undefined;

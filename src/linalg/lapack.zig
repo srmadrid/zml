@@ -3270,7 +3270,6 @@ pub inline fn potrs(
 
     //                 return;
     //             } else if (comptime A == f64) {
-    //                 std.debug.print("Calling LAPACKE_dpotrs with order: {}, uplo: {}, n: {}, nrhs: {}, lda: {}, ldb: {}\n", .{ order.toCInt(), uplo.toChar(), n, nrhs, lda, ldb });
     //                 _ = ci.LAPACKE_dpotrs(
     //                     order.toCInt(),
     //                     uplo.toChar(),
