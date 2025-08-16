@@ -1264,98 +1264,246 @@ pub fn apply1_(
     return;
 }
 
-// Apply2 outline:
-// 1. check for equality of shapes
-//     - if equal, check for order (either equal loop, or one loops backwards)
-// 2. if not equal, check for broadcasting
-//     - if broadcasting is possible, apply broadcasting (efficient inner loop, like in innerLoop2RLSS, maybe moove all these inner loop functions to a separate file?, instead of DD being here in dense, and DS and SS in strided)
-//     - if broadcasting is not possible, return error
-pub fn apply2(
-    allocator: std.mem.Allocator,
-    comptime X: type,
+fn loop2_left(
+    result: anytype,
     x: anytype,
-    comptime Y: type,
     y: anytype,
     comptime op: anytype,
-    order: Order,
+    depth: u32,
+    order: types.IterationOrder,
+    ir: u32,
+    iy: u32,
     ctx: anytype,
-) !Dense(ReturnType2(op, X, Y)) {
-    if (comptime !types.isDense(@TypeOf(x)) and !types.isSlice(@TypeOf(x))) {
-        var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, y.shape[0..y.ndim], order);
+) !void {
+    if (depth == 0) {
+        const opinfo = @typeInfo(@TypeOf(op));
+        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+
+        var jr: u32 = ir;
+        var jy: u32 = iy;
+        var j: u32 = 0;
+        while (j < y.shape[idx]) : (j += 1) {
+            if (comptime opinfo.@"fn".params.len == 2) {
+                result.data[jr] = op(x, y.data[jy]);
+            } else if (comptime opinfo.@"fn".params.len == 3) {
+                result.data[jr] = try op(x, y.data[jy], ctx);
+            }
+
+            jr += result.strides[idx];
+            jy += y.strides[idx];
+        }
+    } else {
+        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+
+        var jr: u32 = ir;
+        var jy: u32 = iy;
+        var j: u32 = 0;
+        while (j < y.shape[idx]) : (j += 1) {
+            try loop2_left(
+                result,
+                x,
+                y,
+                op,
+                depth - 1,
+                order,
+                jr,
+                jy,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+            jy += y.strides[idx];
+        }
+    }
+}
+
+fn loop2_right(
+    result: anytype,
+    x: anytype,
+    y: anytype,
+    comptime op: anytype,
+    depth: u32,
+    order: types.IterationOrder,
+    ir: u32,
+    ix: u32,
+    ctx: anytype,
+) !void {
+    if (depth == 0) {
+        const opinfo = @typeInfo(@TypeOf(op));
+        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            if (comptime opinfo.@"fn".params.len == 2) {
+                result.data[jr] = op(x.data[jx], y);
+            } else if (comptime opinfo.@"fn".params.len == 3) {
+                result.data[jr] = try op(x.data[jx], y, ctx);
+            }
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    } else {
+        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            try loop2_right(
+                result,
+                x,
+                y,
+                op,
+                depth - 1,
+                order,
+                jr,
+                jx,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+        }
+    }
+}
+
+fn loop2(
+    result: anytype,
+    x: anytype,
+    y: anytype,
+    comptime op: anytype,
+    depth: u32,
+    order: types.IterationOrder,
+    ir: u32,
+    ix: u32,
+    iy: u32,
+    ctx: anytype,
+) !void {
+    if (depth == 0) {
+        const opinfo = @typeInfo(@TypeOf(op));
+        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var jy: u32 = iy;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            if (comptime opinfo.@"fn".params.len == 2) {
+                result.data[jr] = op(x.data[jx], y.data[jy]);
+            } else if (comptime opinfo.@"fn".params.len == 3) {
+                result.data[jr] = try op(x.data[jx], y.data[jy], ctx);
+            }
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+            jy += y.strides[idx];
+        }
+    } else {
+        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+
+        var jr: u32 = ir;
+        var jx: u32 = ix;
+        var jy: u32 = iy;
+        var j: u32 = 0;
+        while (j < x.shape[idx]) : (j += 1) {
+            try loop2(
+                result,
+                x,
+                y,
+                op,
+                depth - 1,
+                order,
+                jr,
+                jx,
+                jy,
+                ctx,
+            );
+
+            jr += result.strides[idx];
+            jx += x.strides[idx];
+            jy += y.strides[idx];
+        }
+    }
+}
+
+pub fn apply2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    comptime op: anytype,
+    opts: struct {
+        order: ?Order = null,
+    },
+    ctx: anytype,
+) !Dense(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+    const X: type = Numeric(@TypeOf(x));
+    const Y: type = Numeric(@TypeOf(y));
+
+    if (comptime !types.isDenseArray(@TypeOf(x))) {
+        var result: Dense(ReturnType2(op, X, Y)) = try .init(allocator, y.shape[0..y.ndim], .{ .order = opts.order orelse y.flags.order });
         errdefer result.deinit(allocator);
 
-        var j: u32 = 0;
-        if (result.flags.order == y.flags.order) {
+        if (std.mem.eql(u32, result.strides[0..result.ndim], y.strides[0..y.ndim])) {
             // Trivial loop
             //errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
 
             const opinfo = @typeInfo(@TypeOf(op));
-            for (0..result.size) |i| {
+
+            var i: u32 = 0;
+            while (i < result.size) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i] = op(x, y.data[i]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
                     result.data[i] = try op(x, y.data[i], ctx);
                 }
-
-                j += 1;
             }
         } else {
-            const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
-            const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
-            errdefer strided.cleanup(ReturnType2(op, X, Y), &result, j, iteration_order, ctx);
-            var iterr: array.Iterator(ReturnType2(op, X, Y)) = .init(&result);
-            var itery: array.Iterator(Y) = .init(&y);
-            const opinfo = @typeInfo(@TypeOf(op));
-            for (0..result.size) |_| {
-                if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[iterr.index] = op(x, y.data[itery.index]);
-                } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[iterr.index] = try op(x, y.data[itery.index], ctx);
-                }
-
-                j += 1;
-                _ = iterr.nextAO(axis, iteration_order);
-                _ = itery.nextAO(axis, iteration_order);
-            }
+            try loop2_left(
+                &result,
+                x,
+                &y,
+                op,
+                result.ndim - 1,
+                result.flags.order.toIterationOrder(),
+                0,
+                0,
+                ctx,
+            );
         }
 
         return result;
-    } else if (comptime !types.isDense(@TypeOf(y)) and !types.isSlice(@TypeOf(y))) {
-        var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, x.shape[0..x.ndim], order);
+    } else if (comptime !types.isDenseArray(@TypeOf(y))) {
+        var result: Dense(ReturnType2(op, X, Y)) = try .init(allocator, x.shape[0..x.ndim], .{ .order = opts.order orelse x.flags.order });
         errdefer result.deinit(allocator);
 
-        var j: u32 = 0;
-        if (result.flags.order == x.flags.order) {
+        if (std.mem.eql(u32, result.strides[0..result.ndim], x.strides[0..x.ndim])) {
             //errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
 
             const opinfo = @typeInfo(@TypeOf(op));
-            for (0..result.size) |i| {
+
+            var i: u32 = 0;
+            while (i < result.size) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i] = op(x.data[i], y);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
                     result.data[i] = try op(x.data[i], y, ctx);
                 }
-
-                j += 1;
             }
         } else {
-            const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
-            const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
-            errdefer strided.cleanup(ReturnType2(op, X, Y), &result, j, iteration_order, ctx);
-            var iterr: array.Iterator(ReturnType2(op, X, Y)) = .init(&result);
-            var iterx: array.Iterator(X) = .init(&x);
-            const opinfo = @typeInfo(@TypeOf(op));
-            for (0..result.size) |_| {
-                if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[iterr.index] = op(x.data[iterx.index], y);
-                } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[iterr.index] = try op(x.data[iterx.index], y, ctx);
-                }
-
-                j += 1;
-                _ = iterr.nextAO(axis, iteration_order);
-                _ = iterx.nextAO(axis, iteration_order);
-            }
+            try loop2_right(
+                &result,
+                &x,
+                y,
+                op,
+                result.ndim - 1,
+                result.flags.order.toIterationOrder(),
+                0,
+                0,
+                ctx,
+            );
         }
 
         return result;
@@ -1364,22 +1512,22 @@ pub fn apply2(
     var xx: Dense(X) = undefined;
     var yy: Dense(Y) = undefined;
     if (std.mem.eql(u32, x.shape[0..x.ndim], y.shape[0..y.ndim])) {
-        if (order == x.flags.order and order == y.flags.order) {
+        if (std.mem.eql(u32, x.strides[0..x.ndim], y.strides[0..y.ndim])) {
             // Trivial loop
-            var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, x.shape[0..x.ndim], order);
+            var result: Dense(ReturnType2(op, X, Y)) = try .init(allocator, x.shape[0..x.ndim], .{ .order = opts.order orelse x.flags.order.resolve2(y.flags.order) });
             errdefer result.deinit(allocator);
 
-            var j: u32 = 0;
             //errdefer cleanup(ReturnType2(op, X, Y), result.data[0..j], ctx);
+
             const opinfo = @typeInfo(@TypeOf(op));
-            for (0..result.size) |i| {
+
+            var i: u32 = 0;
+            while (i < result.size) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i] = op(x.data[i], y.data[i]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
                     result.data[i] = try op(x.data[i], y.data[i], ctx);
                 }
-
-                j += 1;
             }
 
             return result;
@@ -1389,34 +1537,26 @@ pub fn apply2(
             yy = y;
         }
     } else {
-        //const bct = try array.broadcastShapes(&.{ x.shape[0..x.ndim], y.shape[0..y.ndim] });
-        //xx = try broadcast(X, &x, bct.shape[0..bct.ndim]);
-        //yy = try broadcast(Y, &y, bct.shape[0..bct.ndim]);
+        const bct = try array.broadcastShapes(&.{ x.shape[0..x.ndim], y.shape[0..y.ndim] });
+        xx = try @constCast(&x).broadcast(bct.shape[0..bct.ndim]);
+        yy = try @constCast(&y).broadcast(bct.shape[0..bct.ndim]);
     }
 
-    var result: Dense(ReturnType2(op, X, Y)) = try .init(ReturnType2(op, X, Y), allocator, xx.shape[0..xx.ndim], order);
+    var result: Dense(ReturnType2(op, X, Y)) = try .init(allocator, xx.shape[0..xx.ndim], .{ .order = opts.order orelse xx.flags.order.resolve2(yy.flags.order) });
     errdefer result.deinit(allocator);
 
-    var j: u32 = 0;
-    const iteration_order: array.IterationOrder = result.flags.order.toIterationOrder();
-    const axis: u32 = if (iteration_order == .right_to_left) result.ndim - 1 else 0;
-    errdefer strided.cleanup(ReturnType2(op, X, Y), &result, j, iteration_order, ctx);
-    var iterr: array.Iterator(ReturnType2(op, X, Y)) = .init(&result);
-    var iterx: array.Iterator(X) = .init(&xx);
-    var itery: array.Iterator(Y) = .init(&yy);
-    const opinfo = @typeInfo(@TypeOf(op));
-    for (0..result.size) |_| {
-        if (comptime opinfo.@"fn".params.len == 2) {
-            result.data[iterr.index] = op(x.data[iterx.index], y.data[itery.index]);
-        } else if (comptime opinfo.@"fn".params.len == 3) {
-            result.data[iterr.index] = try op(x.data[iterx.index], y.data[itery.index], ctx);
-        }
-
-        j += 1;
-        _ = iterr.nextAO(axis, iteration_order);
-        _ = iterx.nextAO(axis, iteration_order);
-        _ = itery.nextAO(axis, iteration_order);
-    }
+    try loop2(
+        &result,
+        &xx,
+        &yy,
+        op,
+        result.ndim - 1,
+        result.flags.order.resolve3(xx.flags.order, yy.flags.order).toIterationOrder(),
+        0,
+        0,
+        0,
+        ctx,
+    );
 
     return result;
 }

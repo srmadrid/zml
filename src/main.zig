@@ -450,7 +450,7 @@ pub fn main() !void {
 
     // try multiIterTesting(a);
 
-    // try perfTesting(a);
+    try perfTesting(a);
 
     // try typeTesting(a);
 
@@ -462,7 +462,7 @@ pub fn main() !void {
 
     // try lapackPerfTesting(a);
 
-    try matrixTesting(a);
+    // try matrixTesting(a);
 
     // coreTesting();
 }
@@ -482,16 +482,8 @@ fn ask_user(default: u32) !u32 {
     }
 }
 
-fn add1(a: f64) f64 {
-    return a + 1;
-}
-
-fn add1_(o: *f64, x: f64) void {
-    o.* = add1(x);
-}
-
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A_base: zml.array.Dense(f64) = try .init(a, &.{ 5, 10, 5, 10, 10, 5, 10, 5 }, .{ .order = .col_major });
+    var A_base: zml.array.Dense(f64) = try .init(a, &.{ 10, 5 }, .{ .order = .row_major });
     defer A_base.deinit(a);
     //const A = try A_base.transpose(null);
     const A = A_base;
@@ -506,7 +498,7 @@ fn perfTesting(a: std.mem.Allocator) !void {
     while (i < A_base.shape[0]) : (i += 1) {
         var j: u32 = 0;
         while (j < A_base.shape[1]) : (j += 1) {
-            std.debug.print("{d:2}  ", .{try A_base.get(&.{ i, j })});
+            std.debug.print("{d:3}  ", .{try A_base.get(&.{ i, j })});
         }
         std.debug.print("\n", .{});
     }
@@ -516,39 +508,64 @@ fn perfTesting(a: std.mem.Allocator) !void {
     while (i < A.shape[0]) : (i += 1) {
         var j: u32 = 0;
         while (j < A.shape[1]) : (j += 1) {
-            std.debug.print("{d:2}  ", .{try A.get(&.{ i, j })});
+            std.debug.print("{d:3}  ", .{try A.get(&.{ i, j })});
         }
 
         std.debug.print("\n", .{});
     }
-    //std.debug.print("Data of A: {any}\n", .{A.data[0..A.size]});
+    std.debug.print("\n", .{});
 
-    var B_base: zml.array.Dense(f64) = try .init(a, A.shape[0..A.ndim], .{ .order = .row_major });
+    var B_base: zml.array.Dense(f64) = try .init(a, &.{ 8, 10 }, .{ .order = .col_major });
     defer B_base.deinit(a);
-    var B = try B_base.slice(&.{ .all_reverse, .all_reverse, .all_reverse, .all, .all, .all, .all, .all });
+
+    i = 0;
+    while (i < B_base.size) : (i += 1) {
+        B_base.data[i] = zml.scast(f64, i + 2);
+        //B_base.data[i] = zml.cf64.init(zml.scast(f64, i + 2), zml.scast(f64, i + 2));
+    }
+
+    var B = try (try B_base.slice(&.{ try .init(1, 6, 1), .all_reverse })).transpose(null);
     //var B = B_base;
-    const start_time = std.time.nanoTimestamp();
-    try zml.array.apply1_(&B, A, add1_, .{});
-    const end_time: i128 = std.time.nanoTimestamp();
 
-    // std.debug.print("x: {}, {}; result: {}, {}\n", .{
-    //     A_base.uplo, A_base.flags.order,
-    //     B.uplo,      B.flags.order,
-    // });
+    std.debug.print("Matrix B_base:\n", .{});
+    i = 0;
+    while (i < B_base.shape[0]) : (i += 1) {
+        var j: u32 = 0;
+        while (j < B_base.shape[1]) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try B_base.get(&.{ i, j })});
+            //std.debug.print("{d:3} + {d:3}i  ", .{ (try B_base.get(&.{ i, j })).re, (try B_base.get(&.{ i, j })).im });
+        }
+        std.debug.print("\n", .{});
+    }
 
-    std.debug.print("Took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9)});
-
-    std.debug.print("Matrix B (add1(A)):\n", .{});
+    std.debug.print("Matrix B:\n", .{});
     i = 0;
     while (i < B.shape[0]) : (i += 1) {
         var j: u32 = 0;
         while (j < B.shape[1]) : (j += 1) {
-            std.debug.print("{d:2}  ", .{try B.get(&.{ i, j })});
+            std.debug.print("{d:3}  ", .{try B.get(&.{ i, j })});
         }
 
         std.debug.print("\n", .{});
     }
-    //std.debug.print("Data of B: {any}\n", .{B.data[0..B.size]});
+    std.debug.print("\n", .{});
+
+    const start_time = std.time.nanoTimestamp();
+    var C = try zml.array.apply2(a, B, A, zml.add, .{ .order = .col_major }, .{});
+    const end_time: i128 = std.time.nanoTimestamp();
+    defer C.deinit(a);
+
+    std.debug.print("Took: {d} seconds\n", .{zml.float.div(end_time - start_time, 1e9)});
+
+    std.debug.print("Resulting matrix C:\n", .{});
+    i = 0;
+    while (i < C.shape[0]) : (i += 1) {
+        var j: u32 = 0;
+        while (j < C.shape[1]) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try C.get(&.{ i, j })});
+        }
+        std.debug.print("\n", .{});
+    }
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

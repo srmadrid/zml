@@ -102,6 +102,10 @@ pub inline fn add(
     const C: type = types.Coerce(X, Y);
 
     if (comptime types.isArray(C)) {
+        if (comptime types.isMatrix(X) or types.isMatrix(Y))
+            @compileError("zml.add: if x or y is a matrix, the other must also be a matrix, got " ++
+                @typeName(X) ++ " and " ++ @typeName(Y));
+
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
             validateContext(
                 @TypeOf(ctx),

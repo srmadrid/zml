@@ -310,6 +310,7 @@ pub inline fn numericType(comptime T: type) NumericType {
     @setEvalBranchQuota(1000000);
 
     switch (@typeInfo(T)) {
+        .vector => return numericType(T.child),
         .bool => return .bool,
         .int, .comptime_int => {
             if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != c_uint and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != c_int and T != comptime_int)
@@ -409,11 +410,11 @@ pub inline fn arrayType(comptime T: type) ArrayType {
 pub inline fn domainType(comptime T: type) Domain {
     @setEvalBranchQuota(10000);
 
-    if (isNumeric(T)) {
+    if (comptime isNumeric(T)) {
         return .numeric;
-    } else if (isMatrix(T)) {
+    } else if (comptime isMatrix(T)) {
         return .matrix;
-    } else if (isArray(T)) {
+    } else if (comptime isArray(T)) {
         return .array;
     }
 
@@ -506,6 +507,22 @@ pub fn isSlice(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is a simd vector.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a simd vector, `false` otherwise.
+pub fn isSimdVector(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .vector => return true,
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a matrix, i.e., an instance of a
 /// `matrix.General`, `matrix.Symmetric`, `matrix.Hermitian`,
 /// `matrix.Triangular`, `matrix.Diagonal`, `matrix.Banded`,
@@ -527,10 +544,18 @@ pub fn isMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                const matrix_types: [8]type = .{
+                const matrix_types: [if (isComplex(numeric_type)) 8 else 7]type = if (isComplex(numeric_type)) .{
                     matrix.General(numeric_type),
                     matrix.Symmetric(numeric_type),
                     matrix.Hermitian(numeric_type),
+                    matrix.Triangular(numeric_type),
+                    matrix.Diagonal(numeric_type),
+                    matrix.Banded(numeric_type),
+                    matrix.Tridiagonal(numeric_type),
+                    matrix.Sparse(numeric_type),
+                } else .{
+                    matrix.General(numeric_type),
+                    matrix.Symmetric(numeric_type),
                     matrix.Triangular(numeric_type),
                     matrix.Diagonal(numeric_type),
                     matrix.Banded(numeric_type),
@@ -999,14 +1024,14 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
         return X;
     }
 
-    comptime switch (domainType(X)) {
-        .numeric => switch (domainType(Y)) {
+    switch (comptime domainType(X)) {
+        .numeric => switch (comptime domainType(Y)) {
             .numeric => {},
-            .matrix => switch (matrixType(Y)) {
+            .matrix => switch (comptime matrixType(Y)) {
                 .general => return matrix.General(Coerce(X, Numeric(Y))), // numeric + general
                 .symmetric => return matrix.Symmetric(Coerce(X, Numeric(Y))), // numeric + symmetric
                 .hermitian => {
-                    if (isComplex(X)) {
+                    if (comptime isComplex(X)) {
                         return matrix.General(Coerce(X, Numeric(Y))); // numeric (complex) + hermitian
                     } else {
                         return matrix.Hermitian(Coerce(X, Numeric(Y))); // numeric (real) + hermitian
@@ -1015,7 +1040,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 else => return matrix.General(Coerce(X, Numeric(Y))), // numeric + rest of matrices
                 .numeric => unreachable,
             },
-            .array => switch (arrayType(Y)) {
+            .array => switch (comptime arrayType(Y)) {
                 .dense => return array.Dense(Coerce(X, Numeric(Y))), // numeric + dense
                 .strided => return array.Dense(Coerce(X, Numeric(Y))), // numeric + strided
                 .sparse => return array.Sparse(Coerce(X, Numeric(Y))), // numeric + sparse
@@ -1023,42 +1048,42 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             },
         },
         .matrix => {
-            switch (matrixType(X)) {
-                .general => switch (domainType(Y)) {
+            switch (comptime matrixType(X)) {
+                .general => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y)), // general + numeric
                     .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // general + matrix
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // general + array
                 },
-                .symmetric => switch (domainType(Y)) {
+                .symmetric => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Symmetric(Coerce(Numeric(X), Y)), // symmetric + numeric
-                    .matrix => switch (matrixType(Y)) {
+                    .matrix => switch (comptime matrixType(Y)) {
                         .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y))), // symmetric + symmetric
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // symmetric + rest of matrices
                     },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // symmetric + array
                 },
-                .hermitian => switch (domainType(Y)) {
+                .hermitian => switch (comptime domainType(Y)) {
                     .numeric => {
-                        if (isComplex(X)) {
+                        if (comptime isComplex(X)) {
                             return matrix.General(Coerce(Numeric(X), Y)); // hermitian + numeric (complex)
                         } else {
                             return matrix.Hermitian(Coerce(Numeric(X), Y)); // hermitian + numeric (real)
                         }
                     },
-                    .matrix => switch (matrixType(Y)) {
+                    .matrix => switch (comptime matrixType(Y)) {
                         .hermitian => return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y))), // hermitian + hermitian
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // hermitian + rest of matrices
                     },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // hermitian + array
                 },
-                .triangular => switch (domainType(Y)) {
+                .triangular => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y)), // triangular + numeric
                     .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // triangular + matrix
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // triangular + array
                 },
-                .diagonal => switch (domainType(Y)) {
+                .diagonal => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y)), // diagonal + numeric
-                    .matrix => switch (matrixType(Y)) {
+                    .matrix => switch (comptime matrixType(Y)) {
                         .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + diagonal
                         .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // diagonal + banded
                         .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + tridiagonal
@@ -1066,18 +1091,18 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // diagonal + array
                 },
-                .banded => switch (domainType(Y)) {
+                .banded => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y)), // banded + numeric
-                    .matrix => switch (matrixType(Y)) {
+                    .matrix => switch (comptime matrixType(Y)) {
                         .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // banded + diagonal
                         .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // banded + banded
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // banded + rest of matrices
                     },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // banded + array
                 },
-                .tridiagonal => switch (domainType(Y)) {
+                .tridiagonal => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y)), // tridiagonal + numeric
-                    .matrix => switch (matrixType(Y)) {
+                    .matrix => switch (comptime matrixType(Y)) {
                         .diagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + diagonal
                         .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + banded
                         .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + tridiagonal
@@ -1085,13 +1110,13 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + array
                 },
-                .sparse => switch (domainType(Y)) {
+                .sparse => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Sparse(Coerce(Numeric(X), Y)), // sparse + numeric
-                    .matrix => switch (matrixType(Y)) {
+                    .matrix => switch (comptime matrixType(Y)) {
                         .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse + sparse
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // sparse + rest of matrices
                     },
-                    .array => switch (arrayType(Y)) {
+                    .array => switch (comptime arrayType(Y)) {
                         .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse (matrix) + sparse (array)
                         else => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse (matrix) + rest of arrays
                         .numeric => unreachable,
@@ -1101,21 +1126,21 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             }
         },
         .array => {
-            switch (arrayType(X)) {
-                .dense => switch (domainType(Y)) {
+            switch (comptime arrayType(X)) {
+                .dense => switch (comptime domainType(Y)) {
                     .numeric => return array.Dense(Coerce(Numeric(X), Y)), // dense + numeric
                     .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // dense + matrix
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // dense + array
                 },
-                .strided => switch (domainType(Y)) {
+                .strided => switch (comptime domainType(Y)) {
                     .numeric => return array.Dense(Coerce(Numeric(X), Y)), // strided + numeric
                     .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // strided + matrix
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // strided + array
                 },
-                .sparse => switch (domainType(Y)) {
+                .sparse => switch (comptime domainType(Y)) {
                     .numeric => return array.Sparse(Coerce(Numeric(X), Y)), // sparse + numeric
                     .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse + matrix
-                    .array => switch (arrayType(Y)) {
+                    .array => switch (comptime arrayType(Y)) {
                         .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse + sparse
                         else => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse + rest of arrays
                         .numeric => unreachable,
@@ -1124,7 +1149,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => unreachable,
             }
         },
-    };
+    }
 
     // Else two numeric types
     const xnumeric = numericType(X);
@@ -2332,6 +2357,9 @@ pub inline fn cast(
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         .pointer => |info| {
+            return info.child;
+        },
+        .vector => |info| {
             return info.child;
         },
         else => @compileError("Expected a pointer type, but got " ++ @typeName(T)),

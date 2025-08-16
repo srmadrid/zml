@@ -27,7 +27,6 @@ const sparse = @import("matrix/sparse.zig");
 pub const Sparse = sparse.Sparse;
 
 const matops = @import("matrix/ops.zig");
-pub const apply1 = matops.apply1;
 
 pub const Error = error{
     ZeroDimension,

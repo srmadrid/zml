@@ -80,12 +80,12 @@ pub fn apply1_(
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(X)) {
                 .dense => return dense.apply1_(o, x, op_, ctx), // (array) dense (array) dense apply1_
-                .strided => return mixed.adeast.apply1_(o, x, op_, ctx), // (array) dense (array) strided apply1_
+                .strided => return mixed.dest.apply1_(o, x, op_, ctx), // (array) dense (array) strided apply1_
                 .sparse => @compileError("apply1_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(X)) {
-                .dense => return mixed.astade.apply1_(o, x, op_, ctx), // (array) strided (array) dense apply1_
+                .dense => return mixed.stde.apply1_(o, x, op_, ctx), // (array) strided (array) dense apply1_
                 .strided => return strided.apply1_(o, x, op_, ctx), // (array) strided (array) strided apply1_
                 .sparse => @compileError("apply1_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -105,40 +105,47 @@ pub fn apply2(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isSlice(X) and
-        !types.isArray(Y) and !types.isSlice(Y))
-        @compileError("apply2: at least one of x or y must be an array or slice, got " ++
+    comptime if (!types.isArray(X) and !types.isArray(Y))
+        @compileError("apply2: at least one of x or y must be an array, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (@typeInfo(@TypeOf(op)) != .@"fn" or (@typeInfo(@TypeOf(op)).@"fn".params.len != 2 and @typeInfo(@TypeOf(op)).@"fn".params.len != 3))
         @compileError("apply2: op must be a function of two arguments, or a function of three arguments with the third argument being a context, got " ++ @typeName(@TypeOf(op)));
 
-    if (comptime !types.isArray(X) and !types.isSlice(X)) {
-        // x is a scalar, only consider y's storage
-        switch (y.flags.storage) {
-            .dense => return dense.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse y.flags.order, ctx),
-            .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse y.flags.order, ctx),
+    if (comptime !types.isArray(X)) {
+        switch (comptime types.arrayType(Y)) {
+            .dense => return dense.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .strided => return strided.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
+            .numeric => unreachable,
         }
-    } else if (comptime !types.isArray(Y) and !types.isSlice(Y)) {
-        // y is a scalar, only consider x's storage
-        switch (x.flags.storage) {
-            .dense => return dense.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse x.flags.order, ctx),
-            .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse x.flags.order, ctx),
+    } else if (comptime !types.isArray(Y)) {
+        switch (comptime types.arrayType(X)) {
+            .dense => return dense.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .strided => return strided.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
+            .numeric => unreachable,
         }
     } else {
-        switch (x.flags.storage) {
-            .dense => switch (y.flags.storage) {
-                .dense => return dense.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse x.flags.order.resolve2(y.flags.order), ctx),
-                .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse x.flags.order.resolve2(y.flags.order), ctx),
+        switch (comptime types.arrayType(X)) {
+            .dense => switch (comptime types.arrayType(Y)) {
+                .dense => return dense.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .strided => return mixed.dest.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
+                .numeric => unreachable,
             },
-            .strided => switch (y.flags.storage) {
-                .dense => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse x.flags.order.resolve2(y.flags.order), ctx),
-                .strided => return strided.apply2(allocator, Numeric(X), x, Numeric(Y), y, op, opts.order orelse x.flags.order.resolve2(y.flags.order), ctx),
+            .strided => switch (comptime types.arrayType(Y)) {
+                .dense => return mixed.stde.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .strided => return strided.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
+                .numeric => unreachable,
             },
+            .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
+            .numeric => unreachable,
         }
     }
 }
