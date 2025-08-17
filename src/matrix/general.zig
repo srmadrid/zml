@@ -159,7 +159,7 @@ pub fn General(comptime T: type) type {
             self.data[row * self.strides[0] + col * self.strides[1]] = value;
         }
 
-        pub fn toDense(self: *const General(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+        pub fn toDenseArray(self: *const General(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
             var result: Dense(T) = try .init(allocator, &.{ self.rows, self.cols }, .{ .order = self.flags.order });
             errdefer result.deinit(allocator);
 
@@ -217,7 +217,7 @@ pub fn General(comptime T: type) type {
             };
         }
 
-        pub fn asDense(self: *const General(T)) Dense(T) {
+        pub fn asDenseArray(self: *const General(T)) Dense(T) {
             return Dense(T){
                 .data = self.data,
                 .ndim = 2,
@@ -231,76 +231,4 @@ pub fn General(comptime T: type) type {
             };
         }
     };
-}
-
-pub fn apply1(
-    allocator: std.mem.Allocator,
-    x: anytype,
-    comptime op: anytype,
-    opts: struct {
-        order: ?Order = null,
-    },
-    ctx: anytype,
-) !General(ReturnType1(op, Numeric(@TypeOf(x)))) {
-    const X: type = Numeric(@TypeOf(x));
-
-    var result: General(ReturnType1(op, X)) = try .init(allocator, x.rows, x.cols, .{ .order = opts.order orelse x.flags.order });
-    errdefer result.deinit(allocator);
-
-    const opinfo = @typeInfo(@TypeOf(op));
-    if (result.flags.order == .col_major) {
-        if (x.flags.order == .col_major) {
-            var j: u32 = 0;
-            while (j < x.cols) : (j += 1) {
-                var i: u32 = 0;
-                while (i < x.rows) : (i += 1) {
-                    if (comptime opinfo.@"fn".params.len == 1) {
-                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]]);
-                    } else if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], ctx);
-                    }
-                }
-            }
-        } else {
-            var j: u32 = 0;
-            while (j < x.cols) : (j += 1) {
-                var i: u32 = 0;
-                while (i < x.rows) : (i += 1) {
-                    if (comptime opinfo.@"fn".params.len == 1) {
-                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j]);
-                    } else if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], ctx);
-                    }
-                }
-            }
-        }
-    } else {
-        if (x.flags.order == .col_major) {
-            var i: u32 = 0;
-            while (i < x.rows) : (i += 1) {
-                var j: u32 = 0;
-                while (j < x.cols) : (j += 1) {
-                    if (comptime opinfo.@"fn".params.len == 1) {
-                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]]);
-                    } else if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], ctx);
-                    }
-                }
-            }
-        } else {
-            var i: u32 = 0;
-            while (i < x.rows) : (i += 1) {
-                var j: u32 = 0;
-                while (j < x.cols) : (j += 1) {
-                    if (comptime opinfo.@"fn".params.len == 1) {
-                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j]);
-                    } else if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], ctx);
-                    }
-                }
-            }
-        }
-    }
-
-    return result;
 }

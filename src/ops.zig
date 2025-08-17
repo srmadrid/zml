@@ -9,11 +9,6 @@ const Coerce = types.Coerce;
 const EnsureMatrixOrArray = types.EnsureMatrixOrArray;
 const Child = types.Child;
 const EnsureFloat = types.EnsureFloat;
-const needsAllocator = types.needsAllocator;
-const validateContext = types.validateContext;
-const getFieldOrDefault = types.getFieldOrDefault;
-const mixStructs = types.mixStructs;
-const stripStruct = types.stripStruct;
 
 const int = @import("int.zig");
 const float = @import("float.zig");
@@ -107,7 +102,7 @@ pub inline fn add(
                 @typeName(X) ++ " and " ++ @typeName(Y));
 
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -117,7 +112,7 @@ pub inline fn add(
             );
         } else {
             if (types.numericType(Numeric(C)) == .int) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
@@ -126,7 +121,7 @@ pub inline fn add(
                     },
                 );
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -140,12 +135,12 @@ pub inline fn add(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     } else if (comptime types.isMatrix(C)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -155,7 +150,7 @@ pub inline fn add(
             );
         } else {
             if (types.numericType(Numeric(C)) == .int) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
@@ -164,7 +159,7 @@ pub inline fn add(
                     },
                 );
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -178,27 +173,27 @@ pub inline fn add(
             ctx.matrix_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
         );
     } else {
         switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .int => {
-                comptime validateContext(
+                comptime types.validateContext(
                     @TypeOf(ctx),
                     .{ .mode = .{ .type = int.Mode, .required = false } },
                 );
 
-                return int.add(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
+                return int.add(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 return float.add(x, y);
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 return cfloat.add(x, y);
             },
@@ -298,7 +293,7 @@ pub inline fn add_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -306,7 +301,7 @@ pub inline fn add_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -318,7 +313,7 @@ pub inline fn add_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
                 if (types.numericType(Numeric(C)) == .int) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -326,7 +321,7 @@ pub inline fn add_(
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -336,18 +331,18 @@ pub inline fn add_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
                 if (types.numericType(Numeric(C)) == .int) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .mode = .{ .type = int.Mode, .required = false } },
                     );
                 } else {
-                    validateContext(@TypeOf(ctx), .{});
+                    types.validateContext(@TypeOf(ctx), .{});
                 }
             }
         };
@@ -357,7 +352,7 @@ pub inline fn add_(
         @compileError("zml.add_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
     } else if (comptime types.isMatrix(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -367,7 +362,7 @@ pub inline fn add_(
             );
         } else {
             if (types.numericType(Numeric(C)) == .int) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
@@ -376,7 +371,7 @@ pub inline fn add_(
                     },
                 );
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -394,20 +389,20 @@ pub inline fn add_(
             .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
                 .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
                 .int => {
-                    comptime validateContext(
+                    comptime types.validateContext(
                         @TypeOf(ctx),
                         .{ .mode = .{ .type = int.Mode, .required = false } },
                     );
 
-                    o.* = scast(O, int.add(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default)));
+                    o.* = scast(O, int.add(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default)));
                 },
                 .float => {
-                    comptime validateContext(@TypeOf(ctx), .{});
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
                     o.* = scast(O, float.add(x, y));
                 },
                 .cfloat => {
-                    comptime validateContext(@TypeOf(ctx), .{});
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
                     o.* = scast(O, cfloat.add(x, y));
                 },
@@ -508,7 +503,7 @@ pub inline fn sub(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -518,7 +513,7 @@ pub inline fn sub(
             );
         } else {
             if (types.numericType(Numeric(C)) == .int) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
@@ -527,7 +522,7 @@ pub inline fn sub(
                     },
                 );
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -541,28 +536,28 @@ pub inline fn sub(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (comptime types.numericType(C)) {
         .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int => {
-            comptime validateContext(
+            comptime types.validateContext(
                 @TypeOf(ctx),
                 .{ .mode = .{ .type = int.Mode, .required = false } },
             );
 
-            return int.sub(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
+            return int.sub(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.sub(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.sub(x, y);
         },
@@ -654,7 +649,7 @@ pub inline fn sub_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -662,7 +657,7 @@ pub inline fn sub_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -674,7 +669,7 @@ pub inline fn sub_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
                 if (types.numericType(Numeric(C)) == .int) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -682,7 +677,7 @@ pub inline fn sub_(
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -692,18 +687,18 @@ pub inline fn sub_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
                 if (types.numericType(Numeric(C)) == .int) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .mode = .{ .type = int.Mode, .required = false } },
                     );
                 } else {
-                    validateContext(@TypeOf(ctx), .{});
+                    types.validateContext(@TypeOf(ctx), .{});
                 }
             }
         };
@@ -717,20 +712,20 @@ pub inline fn sub_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.sub_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
             .int => {
-                comptime validateContext(
+                comptime types.validateContext(
                     @TypeOf(ctx),
                     .{ .mode = .{ .type = int.Mode, .required = false } },
                 );
 
-                o.* = scast(O, int.sub(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default)));
+                o.* = scast(O, int.sub(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default)));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.sub(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.sub(x, y));
             },
@@ -829,7 +824,7 @@ pub inline fn mul(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -839,7 +834,7 @@ pub inline fn mul(
             );
         } else {
             if (types.numericType(Numeric(C)) == .int) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
@@ -848,7 +843,7 @@ pub inline fn mul(
                     },
                 );
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -862,28 +857,28 @@ pub inline fn mul(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (comptime types.numericType(C)) {
         .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int => {
-            comptime validateContext(
+            comptime types.validateContext(
                 @TypeOf(ctx),
                 .{ .mode = .{ .type = int.Mode, .required = false } },
             );
 
-            return int.mul(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
+            return int.mul(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.mul(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.mul(x, y);
         },
@@ -914,7 +909,7 @@ pub inline fn mul_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -922,7 +917,7 @@ pub inline fn mul_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -934,7 +929,7 @@ pub inline fn mul_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
                 if (types.numericType(Numeric(C)) == .int) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -942,7 +937,7 @@ pub inline fn mul_(
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -952,18 +947,18 @@ pub inline fn mul_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
                 if (types.numericType(Numeric(C)) == .int) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .mode = .{ .type = int.Mode, .required = false } },
                     );
                 } else {
-                    validateContext(@TypeOf(ctx), .{});
+                    types.validateContext(@TypeOf(ctx), .{});
                 }
             }
         };
@@ -977,20 +972,20 @@ pub inline fn mul_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.mul_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
             .int => {
-                comptime validateContext(
+                comptime types.validateContext(
                     @TypeOf(ctx),
                     .{ .mode = .{ .type = int.Mode, .required = false } },
                 );
 
-                o.* = scast(O, int.mul(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default)));
+                o.* = scast(O, int.mul(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default)));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.mul(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.mul(x, y));
             },
@@ -1086,7 +1081,7 @@ pub inline fn div(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1095,7 +1090,7 @@ pub inline fn div(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1108,25 +1103,25 @@ pub inline fn div(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (comptime types.numericType(C)) {
         .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.div(x, y, getFieldOrDefault(ctx, "mode", int.Mode, .default));
+            return int.div(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.div(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.div(x, y);
         },
@@ -1157,7 +1152,7 @@ pub inline fn div_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -1165,7 +1160,7 @@ pub inline fn div_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1177,7 +1172,7 @@ pub inline fn div_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
 
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
@@ -1186,12 +1181,12 @@ pub inline fn div_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -1204,17 +1199,17 @@ pub inline fn div_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.div_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.div(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.div(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.div(x, y));
             },
@@ -1236,7 +1231,7 @@ pub inline fn eq(
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
     {
-        comptime validateContext(
+        comptime types.validateContext(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1248,7 +1243,7 @@ pub inline fn eq(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1258,22 +1253,22 @@ pub inline fn eq(
 
     switch (comptime types.numericType(C)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x == y;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.eq(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.eq(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.eq(x, y);
         },
@@ -1299,12 +1294,12 @@ pub inline fn eq_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.eq_(o, x, y, ctx);
@@ -1319,22 +1314,22 @@ pub inline fn eq_(
     switch (comptime types.numericType(O)) {
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x == y);
             },
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.eq(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.eq(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.eq(x, y));
             },
@@ -1356,7 +1351,7 @@ pub inline fn ne(
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
     {
-        comptime validateContext(
+        comptime types.validateContext(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1368,7 +1363,7 @@ pub inline fn ne(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1378,22 +1373,22 @@ pub inline fn ne(
 
     switch (comptime types.numericType(C)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x == y;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.ne(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.ne(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.ne(x, y);
         },
@@ -1419,12 +1414,12 @@ pub inline fn ne_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.ne_(o, x, y, ctx);
@@ -1439,22 +1434,22 @@ pub inline fn ne_(
     switch (comptime types.numericType(O)) {
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x == y);
             },
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.ne(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.ne(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.ne(x, y));
             },
@@ -1476,7 +1471,7 @@ pub inline fn lt(
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
     {
-        comptime validateContext(
+        comptime types.validateContext(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1488,7 +1483,7 @@ pub inline fn lt(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1498,17 +1493,17 @@ pub inline fn lt(
     switch (comptime types.numericType(C)) {
         .bool => unreachable,
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.lt(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.lt(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.lt(x, y);
         },
@@ -1534,12 +1529,12 @@ pub inline fn lt_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.lt_(o, x, y, ctx);
@@ -1554,17 +1549,17 @@ pub inline fn lt_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => unreachable,
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.lt(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.lt(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.lt(x, y));
             },
@@ -1586,7 +1581,7 @@ pub inline fn le(
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
     {
-        comptime validateContext(
+        comptime types.validateContext(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1598,7 +1593,7 @@ pub inline fn le(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1608,17 +1603,17 @@ pub inline fn le(
     switch (comptime types.numericType(C)) {
         .bool => unreachable,
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.le(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.le(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.le(x, y);
         },
@@ -1644,12 +1639,12 @@ pub inline fn le_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.le_(o, x, y, ctx);
@@ -1664,17 +1659,17 @@ pub inline fn le_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => unreachable,
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.le(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.le(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.le(x, y));
             },
@@ -1696,7 +1691,7 @@ pub inline fn gt(
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
     {
-        comptime validateContext(
+        comptime types.validateContext(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1708,7 +1703,7 @@ pub inline fn gt(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1718,17 +1713,17 @@ pub inline fn gt(
     switch (comptime types.numericType(C)) {
         .bool => unreachable,
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.gt(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.gt(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.gt(x, y);
         },
@@ -1754,12 +1749,12 @@ pub inline fn gt_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.gt_(o, x, y, ctx);
@@ -1774,17 +1769,17 @@ pub inline fn gt_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => unreachable,
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.gt(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.gt(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.gt(x, y));
             },
@@ -1806,7 +1801,7 @@ pub inline fn ge(
     if (comptime types.isArray(X) or types.isSlice(X) or
         types.isArray(Y) or types.isSlice(Y))
     {
-        comptime validateContext(
+        comptime types.validateContext(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1818,7 +1813,7 @@ pub inline fn ge(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     }
 
@@ -1828,17 +1823,17 @@ pub inline fn ge(
     switch (comptime types.numericType(C)) {
         .bool => unreachable,
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.ge(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.ge(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.ge(x, y);
         },
@@ -1864,12 +1859,12 @@ pub inline fn ge_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.ge_(o, x, y, ctx);
@@ -1884,17 +1879,17 @@ pub inline fn ge_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => unreachable,
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.ge(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.ge(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.ge(x, y));
             },
@@ -1917,7 +1912,7 @@ pub inline fn max(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1926,7 +1921,7 @@ pub inline fn max(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -1939,8 +1934,8 @@ pub inline fn max(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
@@ -1950,17 +1945,17 @@ pub inline fn max(
 
     switch (comptime types.numericType(C)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x or y;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.max(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.max(x, y);
         },
@@ -1988,12 +1983,12 @@ pub inline fn max_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.max_(o, x, y, ctx);
@@ -2008,17 +2003,17 @@ pub inline fn max_(
     switch (comptime types.numericType(O)) {
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x or y);
             },
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.max(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.max(x, y));
             },
@@ -2043,7 +2038,7 @@ pub inline fn min(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2052,7 +2047,7 @@ pub inline fn min(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2065,8 +2060,8 @@ pub inline fn min(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
@@ -2076,17 +2071,17 @@ pub inline fn min(
 
     switch (comptime types.numericType(C)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x or y;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.min(x, y);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.min(x, y);
         },
@@ -2114,12 +2109,12 @@ pub inline fn min_(
 
     if (comptime types.isArray(O) or types.isSlice(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
             );
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.min_(o, x, y, ctx);
@@ -2134,17 +2129,17 @@ pub inline fn min_(
     switch (comptime types.numericType(O)) {
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x or y);
             },
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.min(x, y));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.min(x, y));
             },
@@ -2165,7 +2160,7 @@ pub inline fn abs(
 
     if (comptime types.isArray(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2175,7 +2170,7 @@ pub inline fn abs(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2187,8 +2182,8 @@ pub inline fn abs(
         return array.abs(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.abs not defined for matrices, got " ++ @typeName(X) ++ ", convert to an array first");
@@ -2196,17 +2191,17 @@ pub inline fn abs(
         switch (types.numericType(X)) {
             .bool => @compileError("zml.abs not defined for " ++ @typeName(X)),
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 return int.abs(x);
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 return float.abs(x);
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 return cfloat.abs(x);
             },
@@ -2232,7 +2227,7 @@ pub inline fn abs_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2240,7 +2235,7 @@ pub inline fn abs_(
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2249,19 +2244,19 @@ pub inline fn abs_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -2274,17 +2269,17 @@ pub inline fn abs_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.abs_ not defined for " ++ @typeName(X) ++ " input type"),
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.abs(x));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.abs(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.abs(x));
             },
@@ -2302,7 +2297,7 @@ pub inline fn abs2(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2311,7 +2306,7 @@ pub inline fn abs2(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2323,25 +2318,25 @@ pub inline fn abs2(
         return array.abs2(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.abs2 not defined for " ++ @typeName(X)),
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return int.mul(x, x, .default);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.pow(x, 2);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.abs2(x);
         },
@@ -2366,14 +2361,14 @@ pub inline fn abs2_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2382,19 +2377,19 @@ pub inline fn abs2_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -2407,17 +2402,17 @@ pub inline fn abs2_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.abs2_ not defined for " ++ @typeName(X) ++ " input type"),
             .int => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, int.mul(x, x, .default));
             },
             .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.pow(x, 2));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.abs2(x));
             },
@@ -2436,7 +2431,7 @@ pub inline fn exp(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2445,7 +2440,7 @@ pub inline fn exp(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2457,20 +2452,20 @@ pub inline fn exp(
         return array.exp(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.exp not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.exp(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.exp(x);
         },
@@ -2495,14 +2490,14 @@ pub inline fn exp_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2511,19 +2506,19 @@ pub inline fn exp_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -2536,12 +2531,12 @@ pub inline fn exp_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.exp_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.exp(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.exp(x));
             },
@@ -2559,7 +2554,7 @@ pub inline fn exp10(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2568,7 +2563,7 @@ pub inline fn exp10(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2580,15 +2575,15 @@ pub inline fn exp10(
         return array.exp10(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.exp10 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.exp10(x);
         },
@@ -2613,14 +2608,14 @@ pub inline fn exp10_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2629,19 +2624,19 @@ pub inline fn exp10_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -2654,7 +2649,7 @@ pub inline fn exp10_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.exp10_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.exp10(x));
             },
@@ -2672,7 +2667,7 @@ pub inline fn exp2(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2681,7 +2676,7 @@ pub inline fn exp2(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2693,15 +2688,15 @@ pub inline fn exp2(
         return array.exp2(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.exp2 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.exp2(x);
         },
@@ -2726,14 +2721,14 @@ pub inline fn exp2_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2742,19 +2737,19 @@ pub inline fn exp2_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -2767,7 +2762,7 @@ pub inline fn exp2_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.exp2_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.exp2(x));
             },
@@ -2785,7 +2780,7 @@ pub inline fn exp10m1(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2794,7 +2789,7 @@ pub inline fn exp10m1(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2806,15 +2801,15 @@ pub inline fn exp10m1(
         return array.exp10m1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.exp10m1 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.exp10m1(x);
         },
@@ -2839,14 +2834,14 @@ pub inline fn exp10m1_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2855,19 +2850,19 @@ pub inline fn exp10m1_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -2880,7 +2875,7 @@ pub inline fn exp10m1_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.exp10m1_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.exp10m1(x));
             },
@@ -2898,7 +2893,7 @@ pub inline fn exp2m1(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2907,7 +2902,7 @@ pub inline fn exp2m1(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2919,15 +2914,15 @@ pub inline fn exp2m1(
         return array.exp2m1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.exp2m1 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.exp2m1(x);
         },
@@ -2952,14 +2947,14 @@ pub inline fn exp2m1_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -2968,19 +2963,19 @@ pub inline fn exp2m1_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -2993,7 +2988,7 @@ pub inline fn exp2m1_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.exp2m1_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.exp2m1(x));
             },
@@ -3011,7 +3006,7 @@ pub inline fn expm1(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3020,7 +3015,7 @@ pub inline fn expm1(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3032,15 +3027,15 @@ pub inline fn expm1(
         return array.expm1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.expm1 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.expm1(x);
         },
@@ -3065,14 +3060,14 @@ pub inline fn expm1_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3081,19 +3076,19 @@ pub inline fn expm1_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3106,7 +3101,7 @@ pub inline fn expm1_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.expm1_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.expm1(x));
             },
@@ -3124,7 +3119,7 @@ pub inline fn log(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3133,7 +3128,7 @@ pub inline fn log(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3145,20 +3140,20 @@ pub inline fn log(
         return array.log(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.log not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.log(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.log(x);
         },
@@ -3183,14 +3178,14 @@ pub inline fn log_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3199,19 +3194,19 @@ pub inline fn log_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3224,12 +3219,12 @@ pub inline fn log_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.log_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.log(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.log(x));
             },
@@ -3247,7 +3242,7 @@ pub inline fn log10(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3256,7 +3251,7 @@ pub inline fn log10(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3268,15 +3263,15 @@ pub inline fn log10(
         return array.log10(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.log10 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.log10(x);
         },
@@ -3301,14 +3296,14 @@ pub inline fn log10_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3317,19 +3312,19 @@ pub inline fn log10_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3342,7 +3337,7 @@ pub inline fn log10_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.log10_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.log10(x));
             },
@@ -3360,7 +3355,7 @@ pub inline fn log2(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3369,7 +3364,7 @@ pub inline fn log2(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3381,15 +3376,15 @@ pub inline fn log2(
         return array.log2(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.log2 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.log2(x);
         },
@@ -3414,14 +3409,14 @@ pub inline fn log2_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3430,19 +3425,19 @@ pub inline fn log2_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3455,7 +3450,7 @@ pub inline fn log2_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.log2_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.log2(x));
             },
@@ -3473,7 +3468,7 @@ pub inline fn log10p1(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3482,7 +3477,7 @@ pub inline fn log10p1(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3494,15 +3489,15 @@ pub inline fn log10p1(
         return array.log10p1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.log10p1 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.log10p1(x);
         },
@@ -3527,14 +3522,14 @@ pub inline fn log10p1_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3543,19 +3538,19 @@ pub inline fn log10p1_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3568,7 +3563,7 @@ pub inline fn log10p1_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.log10p1_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.log10p1(x));
             },
@@ -3586,7 +3581,7 @@ pub inline fn log2p1(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3595,7 +3590,7 @@ pub inline fn log2p1(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3607,15 +3602,15 @@ pub inline fn log2p1(
         return array.log2p1(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.log2p1 not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.log2p1(x);
         },
@@ -3640,14 +3635,14 @@ pub inline fn log2p1_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3656,19 +3651,19 @@ pub inline fn log2p1_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3681,7 +3676,7 @@ pub inline fn log2p1_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.log2p1_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.log2p1(x));
             },
@@ -3699,7 +3694,7 @@ pub inline fn log1p(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3708,7 +3703,7 @@ pub inline fn log1p(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3720,15 +3715,15 @@ pub inline fn log1p(
         return array.log1p(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.log1p not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.log1p(x);
         },
@@ -3753,14 +3748,14 @@ pub inline fn log1p_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3769,19 +3764,19 @@ pub inline fn log1p_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3794,7 +3789,7 @@ pub inline fn log1p_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.log1p_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.log1p(x));
             },
@@ -3818,7 +3813,7 @@ pub inline fn pow(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3827,7 +3822,7 @@ pub inline fn pow(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3840,8 +3835,8 @@ pub inline fn pow(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
@@ -3849,12 +3844,12 @@ pub inline fn pow(
         .bool => @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int => @compileError("zml.pow between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.pow(x, y);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.pow(x, y);
         },
@@ -3885,7 +3880,7 @@ pub inline fn pow_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -3893,7 +3888,7 @@ pub inline fn pow_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3905,7 +3900,7 @@ pub inline fn pow_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
 
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
@@ -3914,12 +3909,12 @@ pub inline fn pow_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -3932,12 +3927,12 @@ pub inline fn pow_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.pow_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.pow(x, y));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.pow(x, y));
             },
@@ -3955,7 +3950,7 @@ pub inline fn sqrt(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3964,7 +3959,7 @@ pub inline fn sqrt(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -3976,20 +3971,20 @@ pub inline fn sqrt(
         return array.sqrt(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.sqrt not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.sqrt(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.sqrt(x);
         },
@@ -4014,14 +4009,14 @@ pub inline fn sqrt_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4030,19 +4025,19 @@ pub inline fn sqrt_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4055,12 +4050,12 @@ pub inline fn sqrt_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.sqrt_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.sqrt(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.sqrt(x));
             },
@@ -4078,7 +4073,7 @@ pub inline fn cbrt(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4087,7 +4082,7 @@ pub inline fn cbrt(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4099,15 +4094,15 @@ pub inline fn cbrt(
         return array.cbrt(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.cbrt not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.cbrt(x);
         },
@@ -4132,14 +4127,14 @@ pub inline fn cbrt_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4148,19 +4143,19 @@ pub inline fn cbrt_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4173,7 +4168,7 @@ pub inline fn cbrt_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.cbrt_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.cbrt(x));
             },
@@ -4196,7 +4191,7 @@ pub inline fn hypot(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4205,7 +4200,7 @@ pub inline fn hypot(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4218,15 +4213,15 @@ pub inline fn hypot(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (comptime types.numericType(C)) {
         .bool => @compileError("zml.hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.hypot(x, y);
         },
@@ -4257,7 +4252,7 @@ pub inline fn hypot_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -4265,7 +4260,7 @@ pub inline fn hypot_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4277,7 +4272,7 @@ pub inline fn hypot_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
 
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
@@ -4286,12 +4281,12 @@ pub inline fn hypot_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4304,7 +4299,7 @@ pub inline fn hypot_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.hypot_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.hypot(x, y));
             },
@@ -4323,7 +4318,7 @@ pub inline fn sin(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4332,7 +4327,7 @@ pub inline fn sin(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4344,20 +4339,20 @@ pub inline fn sin(
         return array.sin(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.sin not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.sin(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.sin(x);
         },
@@ -4382,14 +4377,14 @@ pub inline fn sin_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4398,19 +4393,19 @@ pub inline fn sin_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4423,12 +4418,12 @@ pub inline fn sin_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.sin_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.sin(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.sin(x));
             },
@@ -4446,7 +4441,7 @@ pub inline fn cos(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4455,7 +4450,7 @@ pub inline fn cos(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4467,20 +4462,20 @@ pub inline fn cos(
         return array.cos(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.cos not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.cos(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.cos(x);
         },
@@ -4505,14 +4500,14 @@ pub inline fn cos_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4521,19 +4516,19 @@ pub inline fn cos_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4546,12 +4541,12 @@ pub inline fn cos_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.cos_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.cos(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.cos(x));
             },
@@ -4569,7 +4564,7 @@ pub inline fn tan(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4578,7 +4573,7 @@ pub inline fn tan(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4590,20 +4585,20 @@ pub inline fn tan(
         return array.tan(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.tan not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.tan(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.tan(x);
         },
@@ -4628,14 +4623,14 @@ pub inline fn tan_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4644,19 +4639,19 @@ pub inline fn tan_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4669,12 +4664,12 @@ pub inline fn tan_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.tan_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.tan(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.tan(x));
             },
@@ -4692,7 +4687,7 @@ pub inline fn asin(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4701,7 +4696,7 @@ pub inline fn asin(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4713,20 +4708,20 @@ pub inline fn asin(
         return array.asin(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.asin not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.asin(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.asin(x);
         },
@@ -4751,14 +4746,14 @@ pub inline fn asin_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4767,19 +4762,19 @@ pub inline fn asin_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4792,12 +4787,12 @@ pub inline fn asin_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.asin_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.asin(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.asin(x));
             },
@@ -4815,7 +4810,7 @@ pub inline fn acos(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4824,7 +4819,7 @@ pub inline fn acos(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4836,20 +4831,20 @@ pub inline fn acos(
         return array.acos(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.acos not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.acos(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.acos(x);
         },
@@ -4874,14 +4869,14 @@ pub inline fn acos_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4890,19 +4885,19 @@ pub inline fn acos_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -4915,12 +4910,12 @@ pub inline fn acos_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.acos_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.acos(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.acos(x));
             },
@@ -4938,7 +4933,7 @@ pub inline fn atan(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4947,7 +4942,7 @@ pub inline fn atan(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -4959,20 +4954,20 @@ pub inline fn atan(
         return array.atan(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.atan not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.atan(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.atan(x);
         },
@@ -4997,14 +4992,14 @@ pub inline fn atan_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5013,19 +5008,19 @@ pub inline fn atan_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5038,12 +5033,12 @@ pub inline fn atan_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.atan_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.atan(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.atan(x));
             },
@@ -5066,7 +5061,7 @@ pub inline fn atan2(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5075,7 +5070,7 @@ pub inline fn atan2(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5088,15 +5083,15 @@ pub inline fn atan2(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (comptime types.numericType(C)) {
         .bool => @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.atan2(x, y);
         },
@@ -5127,7 +5122,7 @@ pub inline fn atan2_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -5135,7 +5130,7 @@ pub inline fn atan2_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5147,7 +5142,7 @@ pub inline fn atan2_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
 
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
@@ -5156,12 +5151,12 @@ pub inline fn atan2_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5174,7 +5169,7 @@ pub inline fn atan2_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.atan2_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.atan2(x, y));
             },
@@ -5192,7 +5187,7 @@ pub inline fn sinpi(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5201,7 +5196,7 @@ pub inline fn sinpi(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5213,15 +5208,15 @@ pub inline fn sinpi(
         return array.sinpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.sinpi not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.sinpi(x);
         },
@@ -5246,14 +5241,14 @@ pub inline fn sinpi_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5262,19 +5257,19 @@ pub inline fn sinpi_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5287,7 +5282,7 @@ pub inline fn sinpi_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.sinpi_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.sinpi(x));
             },
@@ -5305,7 +5300,7 @@ pub inline fn cospi(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5314,7 +5309,7 @@ pub inline fn cospi(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5326,15 +5321,15 @@ pub inline fn cospi(
         return array.cospi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.cospi not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.cospi(x);
         },
@@ -5359,14 +5354,14 @@ pub inline fn cospi_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5375,19 +5370,19 @@ pub inline fn cospi_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5400,7 +5395,7 @@ pub inline fn cospi_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.cospi_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.cospi(x));
             },
@@ -5418,7 +5413,7 @@ pub inline fn tanpi(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5427,7 +5422,7 @@ pub inline fn tanpi(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5439,15 +5434,15 @@ pub inline fn tanpi(
         return array.tanpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.tanpi not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.tanpi(x);
         },
@@ -5472,14 +5467,14 @@ pub inline fn tanpi_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5488,19 +5483,19 @@ pub inline fn tanpi_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5513,7 +5508,7 @@ pub inline fn tanpi_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.tanpi_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.tanpi(x));
             },
@@ -5531,7 +5526,7 @@ pub inline fn asinpi(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5540,7 +5535,7 @@ pub inline fn asinpi(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5552,15 +5547,15 @@ pub inline fn asinpi(
         return array.asinpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.asinpi not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.asinpi(x);
         },
@@ -5585,14 +5580,14 @@ pub inline fn asinpi_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5601,19 +5596,19 @@ pub inline fn asinpi_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5626,7 +5621,7 @@ pub inline fn asinpi_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.asinpi_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.asinpi(x));
             },
@@ -5644,7 +5639,7 @@ pub inline fn acospi(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5653,7 +5648,7 @@ pub inline fn acospi(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5665,15 +5660,15 @@ pub inline fn acospi(
         return array.acospi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.acospi not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.acospi(x);
         },
@@ -5698,14 +5693,14 @@ pub inline fn acospi_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5714,19 +5709,19 @@ pub inline fn acospi_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5739,7 +5734,7 @@ pub inline fn acospi_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.acospi_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.acospi(x));
             },
@@ -5757,7 +5752,7 @@ pub inline fn atanpi(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5766,7 +5761,7 @@ pub inline fn atanpi(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5778,15 +5773,15 @@ pub inline fn atanpi(
         return array.atanpi(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.atanpi not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.atanpi(x);
         },
@@ -5811,14 +5806,14 @@ pub inline fn atanpi_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5827,19 +5822,19 @@ pub inline fn atanpi_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5852,7 +5847,7 @@ pub inline fn atanpi_(
         .bool, .int, .float => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.atanpi_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.atanpi(x));
             },
@@ -5875,7 +5870,7 @@ pub inline fn atan2pi(
         types.isArray(Y) or types.isSlice(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5884,7 +5879,7 @@ pub inline fn atan2pi(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5897,15 +5892,15 @@ pub inline fn atan2pi(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (comptime types.numericType(C)) {
         .bool => @compileError("zml.atan2pi not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.atan2pi(x, y);
         },
@@ -5936,7 +5931,7 @@ pub inline fn atan2pi_(
                 if (Numeric(O) == Numeric(C)) {
                     // Equal types: output can be used for the operations, needing
                     // only the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                     );
@@ -5944,7 +5939,7 @@ pub inline fn atan2pi_(
                     // Different types: internal allocator is required to perform
                     // the operation at `x`'s precision, and then cast the result to
                     // the output with the output's allocator
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -5956,7 +5951,7 @@ pub inline fn atan2pi_(
                 // Only the output is arbitrary precision, so we need the output's
                 // allocator to perform the casting
 
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
@@ -5965,12 +5960,12 @@ pub inline fn atan2pi_(
             if (types.isArbitraryPrecision(Numeric(C))) {
                 // Only the input is arbitrary precision, so we need the internal
                 // allocator to perform the operation at `x`'s precision
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -5983,7 +5978,7 @@ pub inline fn atan2pi_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
             .bool => @compileError("zml.atan2pi_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.atan2pi(x, y));
             },
@@ -6002,7 +5997,7 @@ pub inline fn sinh(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6011,7 +6006,7 @@ pub inline fn sinh(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6023,20 +6018,20 @@ pub inline fn sinh(
         return array.sinh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.sinh not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.sinh(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.sinh(x);
         },
@@ -6061,14 +6056,14 @@ pub inline fn sinh_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6077,19 +6072,19 @@ pub inline fn sinh_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6102,12 +6097,12 @@ pub inline fn sinh_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.sinh_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.sinh(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.sinh(x));
             },
@@ -6125,7 +6120,7 @@ pub inline fn cosh(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6134,7 +6129,7 @@ pub inline fn cosh(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6146,20 +6141,20 @@ pub inline fn cosh(
         return array.cosh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.cosh not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.cosh(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.cosh(x);
         },
@@ -6184,14 +6179,14 @@ pub inline fn cosh_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6200,19 +6195,19 @@ pub inline fn cosh_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6225,12 +6220,12 @@ pub inline fn cosh_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.cosh_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.cosh(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.cosh(x));
             },
@@ -6248,7 +6243,7 @@ pub inline fn tanh(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6257,7 +6252,7 @@ pub inline fn tanh(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6269,20 +6264,20 @@ pub inline fn tanh(
         return array.tanh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.tanh not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.tanh(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.tanh(x);
         },
@@ -6307,14 +6302,14 @@ pub inline fn tanh_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6323,19 +6318,19 @@ pub inline fn tanh_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6348,12 +6343,12 @@ pub inline fn tanh_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.tanh_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.tanh(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.tanh(x));
             },
@@ -6371,7 +6366,7 @@ pub inline fn asinh(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6380,7 +6375,7 @@ pub inline fn asinh(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6392,20 +6387,20 @@ pub inline fn asinh(
         return array.asinh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.asinh not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.asinh(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.asinh(x);
         },
@@ -6430,14 +6425,14 @@ pub inline fn asinh_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6446,19 +6441,19 @@ pub inline fn asinh_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6471,12 +6466,12 @@ pub inline fn asinh_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.asinh_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.asinh(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.asinh(x));
             },
@@ -6494,7 +6489,7 @@ pub inline fn acosh(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6503,7 +6498,7 @@ pub inline fn acosh(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6515,20 +6510,20 @@ pub inline fn acosh(
         return array.acosh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.acosh not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.acosh(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.acosh(x);
         },
@@ -6553,14 +6548,14 @@ pub inline fn acosh_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6569,19 +6564,19 @@ pub inline fn acosh_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6594,12 +6589,12 @@ pub inline fn acosh_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.acosh_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.acosh(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.acosh(x));
             },
@@ -6617,7 +6612,7 @@ pub inline fn atanh(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6626,7 +6621,7 @@ pub inline fn atanh(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6638,20 +6633,20 @@ pub inline fn atanh(
         return array.atanh(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.atanh not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.atanh(x);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return cfloat.atanh(x);
         },
@@ -6676,14 +6671,14 @@ pub inline fn atanh_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6692,19 +6687,19 @@ pub inline fn atanh_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6717,12 +6712,12 @@ pub inline fn atanh_(
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.atanh_ not defined for " ++ @typeName(X) ++ " input type"),
             .int, .float => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, float.atanh(x));
             },
             .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, cfloat.atanh(x));
             },
@@ -6741,7 +6736,7 @@ pub inline fn erf(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6750,7 +6745,7 @@ pub inline fn erf(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6762,15 +6757,15 @@ pub inline fn erf(
         return array.erf(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.erf not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.erf(x);
         },
@@ -6795,14 +6790,14 @@ pub inline fn erf_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6811,19 +6806,19 @@ pub inline fn erf_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6835,7 +6830,7 @@ pub inline fn erf_(
     switch (comptime types.numericType(X)) {
         .bool => @compileError("zml.erf_ not defined for " ++ @typeName(X) ++ " input type"),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = scast(O, float.erf(x));
         },
@@ -6851,7 +6846,7 @@ pub inline fn erfc(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6860,7 +6855,7 @@ pub inline fn erfc(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6872,15 +6867,15 @@ pub inline fn erfc(
         return array.erfc(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.erfc not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.erfc(x);
         },
@@ -6905,14 +6900,14 @@ pub inline fn erfc_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6921,19 +6916,19 @@ pub inline fn erfc_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -6945,7 +6940,7 @@ pub inline fn erfc_(
     switch (comptime types.numericType(X)) {
         .bool => @compileError("zml.erfc_ not defined for " ++ @typeName(X) ++ " input type"),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = scast(O, float.erfc(x));
         },
@@ -6961,7 +6956,7 @@ pub inline fn gamma(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6970,7 +6965,7 @@ pub inline fn gamma(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -6982,15 +6977,15 @@ pub inline fn gamma(
         return array.gamma(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.gamma not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.gamma(x);
         },
@@ -7015,14 +7010,14 @@ pub inline fn gamma_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7031,19 +7026,19 @@ pub inline fn gamma_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -7055,7 +7050,7 @@ pub inline fn gamma_(
     switch (comptime types.numericType(X)) {
         .bool => @compileError("zml.gamma_ not defined for " ++ @typeName(X) ++ " input type"),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = scast(O, float.gamma(x));
         },
@@ -7071,7 +7066,7 @@ pub inline fn lgamma(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7080,7 +7075,7 @@ pub inline fn lgamma(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7092,15 +7087,15 @@ pub inline fn lgamma(
         return array.lgamma(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.lgamma not defined for " ++ @typeName(X)),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.lgamma(x);
         },
@@ -7125,14 +7120,14 @@ pub inline fn lgamma_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7141,19 +7136,19 @@ pub inline fn lgamma_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -7165,7 +7160,7 @@ pub inline fn lgamma_(
     switch (comptime types.numericType(X)) {
         .bool => @compileError("zml.lgamma_ not defined for " ++ @typeName(X) ++ " input type"),
         .int, .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = scast(O, float.lgamma(x));
         },
@@ -7181,7 +7176,7 @@ pub inline fn re(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7190,7 +7185,7 @@ pub inline fn re(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7202,25 +7197,25 @@ pub inline fn re(
         return array.re(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.re not defined for " ++ @typeName(X)),
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x;
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x;
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x.re;
         },
@@ -7236,7 +7231,7 @@ pub inline fn im(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7245,7 +7240,7 @@ pub inline fn im(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7257,25 +7252,25 @@ pub inline fn im(
         return array.im(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.im not defined for " ++ @typeName(X)),
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 0;
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 0;
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x.im;
         },
@@ -7291,7 +7286,7 @@ pub inline fn conjugate(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7301,7 +7296,7 @@ pub inline fn conjugate(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7313,25 +7308,25 @@ pub inline fn conjugate(
         return array.conjugate(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
     switch (types.numericType(X)) {
         .bool => @compileError("zml.conjugate not defined for " ++ @typeName(X)),
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x;
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x;
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x.conjugate();
         },
@@ -7356,14 +7351,14 @@ pub inline fn conjugate_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7372,19 +7367,19 @@ pub inline fn conjugate_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -7396,17 +7391,17 @@ pub inline fn conjugate_(
     switch (comptime types.numericType(X)) {
         .bool => @compileError("zml.conjugate_ not defined for " ++ @typeName(X) ++ " input type"),
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = try cast(O, x, ctx);
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = try cast(O, x, ctx);
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = try cast(O, x.conjugate(), ctx);
         },
@@ -7423,7 +7418,7 @@ pub inline fn ceil(
 
     if (comptime types.isArray(X) or types.isSlice(X)) {
         comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7432,7 +7427,7 @@ pub inline fn ceil(
                 },
             );
         } else {
-            validateContext(
+            types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7444,8 +7439,8 @@ pub inline fn ceil(
         return array.ceil(
             ctx.array_allocator,
             x,
-            .{ .order = getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            stripStruct(ctx, &.{ "array_allocator", "order" }),
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
     }
 
@@ -7453,7 +7448,7 @@ pub inline fn ceil(
         .bool => @compileError("zml.ceil not defined for " ++ @typeName(X)),
         .int => return x,
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return float.ceil(x);
         },
@@ -7479,14 +7474,14 @@ pub inline fn ceil_(
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
             if (types.isArbitraryPrecision(Numeric(X))) {
                 if (Numeric(O) == Numeric(X)) {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
                         },
                     );
                 } else {
-                    validateContext(
+                    types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .allocator = .{ .type = std.mem.Allocator, .required = true },
@@ -7495,19 +7490,19 @@ pub inline fn ceil_(
                     );
                 }
             } else {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             }
         } else {
             if (types.isArbitraryPrecision(Numeric(X))) {
-                validateContext(
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
                 );
             } else {
-                validateContext(@TypeOf(ctx), .{});
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
@@ -7520,7 +7515,7 @@ pub inline fn ceil_(
         .bool => @compileError("zml.ceil_ not defined for " ++ @typeName(X) ++ " input type"),
         .int => o.* = x,
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             o.* = scast(O, float.ceil(x));
         },
@@ -7538,22 +7533,22 @@ pub inline fn init(
 
     switch (comptime types.numericType(T)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return false;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 0;
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 0;
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return .{ .re = 0, .im = 0 };
         },
@@ -7585,7 +7580,7 @@ pub inline fn set(
     switch (comptime types.numericType(O)) {
         .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
             .bool, .int, .float, .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x);
             },
@@ -7593,7 +7588,7 @@ pub inline fn set(
         },
         .integer => switch (comptime types.numericType(X)) {
             .bool, .int, .float, .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x);
             },
@@ -7601,7 +7596,7 @@ pub inline fn set(
         },
         .rational => switch (comptime types.numericType(X)) {
             .bool, .int, .float, .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x);
             },
@@ -7609,7 +7604,7 @@ pub inline fn set(
         },
         .real => switch (comptime types.numericType(X)) {
             .bool, .int, .float, .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x);
             },
@@ -7617,7 +7612,7 @@ pub inline fn set(
         },
         .complex => switch (comptime types.numericType(X)) {
             .bool, .int, .float, .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x);
             },
@@ -7625,7 +7620,7 @@ pub inline fn set(
         },
         .expression => switch (comptime types.numericType(X)) {
             .bool, .int, .float, .cfloat => {
-                comptime validateContext(@TypeOf(ctx), .{});
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
                 o.* = scast(O, x);
             },
@@ -7648,7 +7643,7 @@ pub inline fn copy(
 
     switch (types.numericType(X)) {
         .bool, .int, .float, .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return x.*;
         },
@@ -7670,7 +7665,7 @@ pub inline fn deinit(
 
     switch (types.numericType(X)) {
         .bool, .int, .float, .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             // No deinitialization needed for fixed precision types, this is a no-op.
             return;

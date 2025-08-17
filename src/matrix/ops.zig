@@ -1,7 +1,5 @@
 const std = @import("std");
 
-// Maybe in place versions (_) also require allocator if the coerced type of the inputs is arbitrary precision
-
 const types = @import("../types.zig");
 const Coerce = types.Coerce;
 const Scalar = types.Scalar;

@@ -18,10 +18,12 @@ const array = @import("../array.zig");
 const Order = types.Order;
 const Flags = array.Flags;
 const Range = array.Range;
-const IterationOrder = array.IterationOrder;
 
 const strided = @import("strided.zig");
 const Strided = strided.Strided;
+
+const matrix = @import("../matrix.zig");
+const General = matrix.General;
 
 pub fn Dense(comptime T: type) type {
     if (!types.isNumeric(T))
@@ -754,6 +756,51 @@ pub fn Dense(comptime T: type) type {
         pub inline fn put(self: *const Dense(T), position: []const u32, value: T) void {
             // Unchecked version of set. Assumes position is valid.
             self.data[self._index(position)] = value;
+        }
+
+        pub fn asGeneralMatrix(self: *const Dense(T), axes: ?[2]u32, position: []const u32) !General(T) {
+            if (self.ndim < 2)
+                return array.Error.NotConvertible;
+
+            const axes_: [2]u32 = axes orelse if (self.flags.order == .col_major) .{ 0, 1 } else .{ self.ndim - 2, self.ndim - 1 };
+
+            if (axes_[0] >= self.ndim or axes_[1] >= self.ndim or axes_[0] == axes_[1])
+                return array.Error.InvalidAxes;
+
+            if (self.strides[axes_[0]] != 1 and self.strides[axes_[1]] != 1)
+                return array.Error.NotConvertible; // At least one of the axes must have a stride of 1.
+
+            if (position.len > self.ndim - 2)
+                return array.Error.TooManyDimensions;
+
+            const position_: [8]u32 = blk: {
+                var pos: [8]u32 = .{0} ** 8;
+                var passed: u32 = 0;
+                var i: u32 = 0;
+                while (i < self.ndim) : (i += 1) {
+                    if (i == axes_[0] or i == axes_[1]) {
+                        pos[i] = 0;
+                        passed += 1;
+                    } else {
+                        pos[i] = position[i - passed];
+                    }
+                }
+
+                break :blk pos;
+            };
+
+            try self._checkPosition(position_[0..self.ndim]);
+
+            return General(T){
+                .data = self.data + self._index(position_[0..self.ndim]),
+                .rows = self.shape[axes_[0]],
+                .cols = self.shape[axes_[1]],
+                .strides = .{ self.strides[axes_[0]], self.strides[axes_[1]] },
+                .flags = .{
+                    .order = self.flags.order,
+                    .owns_data = false,
+                },
+            };
         }
 
         pub fn reshape(self: *Dense(T), shape: []const u32) !Dense(T) {

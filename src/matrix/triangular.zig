@@ -436,7 +436,7 @@ pub fn Triangular(comptime T: type) type {
             return result;
         }
 
-        pub fn toDense(self: *const Triangular(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+        pub fn toDenseArray(self: *const Triangular(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
             var result: Dense(T) = try .init(allocator, &.{ self.rows, self.cols }, .{ .order = self.flags.order });
             errdefer result.deinit(allocator);
 

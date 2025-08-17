@@ -319,7 +319,7 @@ pub fn Symmetric(comptime T: type) type {
             return result;
         }
 
-        pub fn toDense(self: *const Symmetric(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
+        pub fn toDenseArray(self: *const Symmetric(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
             var result: Dense(T) = try .init(allocator, &.{ self.size, self.size }, .{ .order = self.flags.order });
             errdefer result.deinit(allocator);
 

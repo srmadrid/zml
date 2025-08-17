@@ -2587,7 +2587,7 @@ fn formatSpecCtxMismatch(
 pub fn getFieldOrDefault(ctx: anytype, comptime field_name: []const u8, comptime FieldType: type, default_value: FieldType) FieldType {
     const T = @TypeOf(ctx);
     if (@hasField(T, field_name)) {
-        if (@FieldType(T, field_name) != FieldType)
+        if (@FieldType(T, field_name) != FieldType and @FieldType(T, field_name) != @TypeOf(.enum_literal))
             @compileError("Field '" ++ field_name ++ "' has type " ++ @typeName(@FieldType(T, field_name)) ++ ", expected " ++ @typeName(FieldType));
 
         return @field(ctx, field_name);

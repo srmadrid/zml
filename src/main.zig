@@ -515,7 +515,7 @@ fn perfTesting(a: std.mem.Allocator) !void {
     }
     std.debug.print("\n", .{});
 
-    var B_base: zml.array.Dense(f64) = try .init(a, &.{ 8, 10 }, .{ .order = .row_major });
+    var B_base: zml.array.Dense(f64) = try .init(a, &.{ 8, 10 }, .{ .order = .col_major });
     defer B_base.deinit(a);
 
     i = 0;
@@ -550,15 +550,16 @@ fn perfTesting(a: std.mem.Allocator) !void {
     }
     std.debug.print("\n", .{});
 
-    var C_base: zml.array.Dense(f64) = try .init(a, &.{ 16, 10 }, .{ .order = .row_major });
-    defer C_base.deinit(a);
+    //var C_base: zml.array.Dense(bool) = try .init(a, &.{ 16, 10 }, .{ .order = .row_major });
+    //defer C_base.deinit(a);
 
     //var C = C_base;
-    var C = try C_base.slice(&.{ try .init(0, 16, 2), .all_reverse });
+    //var C = try C_base.slice(&.{ try .init(0, 16, 2), .all_reverse });
 
     const start_time = std.time.nanoTimestamp();
-    try zml.array.apply2_(&C, A, B, zml.add_, .{});
+    var C: zml.array.Dense(f64) = try zml.add(A, B, .{ .array_allocator = a, .order = .col_major });
     const end_time: i128 = std.time.nanoTimestamp();
+    defer C.deinit(a);
 
     std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
@@ -571,46 +572,46 @@ fn perfTesting(a: std.mem.Allocator) !void {
         }
         std.debug.print("\n", .{});
     }
+
+    std.debug.print("C order = {}\n", .{C.flags.order});
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.Tridiagonal(f64) = try .init(a, 7);
+    var A: zml.array.Dense(f64) = try .init(a, &.{ 10, 5, 8, 9 }, .{ .order = .col_major });
     defer A.deinit(a);
 
     var i: u32 = 0;
-    while (i < A.size * A.size) : (i += 1) {
+    while (i < A.size) : (i += 1) {
         A.data[i] = zml.scast(f64, i + 1);
         //A.data[i] = zml.cf64.init(zml.scast(f64, i + 1), zml.scast(f64, i + 1));
     }
 
-    std.debug.print("Matrix A:\n", .{});
+    std.debug.print("Matrix A (as Dense):\n", .{});
     i = 0;
-    while (i < A.size) : (i += 1) {
+    while (i < A.shape[0]) : (i += 1) {
         var j: u32 = 0;
-        while (j < A.size) : (j += 1) {
-            std.debug.print("{d:2}  ", .{try A.get(i, j)});
+        while (j < A.shape[1]) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try A.get(&.{ i, j, 1 })});
             //std.debug.print("{d:3} + {d:3}i  ", .{ (try A.get(i, j)).re, (try A.get(i, j)).im });
         }
 
         std.debug.print("\n", .{});
     }
 
-    var AD: zml.array.Dense(f64) = try A.toDense(a, .{});
-    defer AD.deinit(a);
+    var AG: zml.matrix.General(f64) = try A.asGeneralMatrix(null, &.{ 1, 0 });
+    defer AG.deinit(a);
 
-    std.debug.print("Transposed A:\n", .{});
+    std.debug.print("Matrix A:\n", .{});
     i = 0;
-    while (i < AD.shape[0]) : (i += 1) {
+    while (i < AG.rows) : (i += 1) {
         var j: u32 = 0;
-        while (j < AD.shape[1]) : (j += 1) {
-            std.debug.print("{d:2}  ", .{try AD.get(&.{ i, j })});
+        while (j < AG.cols) : (j += 1) {
+            std.debug.print("{d:2}  ", .{try AG.get(i, j)});
             //std.debug.print("{d:3} + {d:3}i  ", .{ (try AD.get(&.{ i, j })).re, (try AD.get(&.{ i, j })).im });
         }
 
         std.debug.print("\n", .{});
     }
-
-    std.debug.print("Same data: {}\n", .{A.data == AD.data});
 }
 
 fn lapackTesting(a: std.mem.Allocator) !void {

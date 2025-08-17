@@ -342,6 +342,7 @@ pub const Error = error{
     ZeroDimension,
     NotImplemented,
     NotBroadcastable,
+    NotConvertible,
     DimensionMismatch,
     PositionOutOfBounds,
     InvalidRange,

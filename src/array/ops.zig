@@ -1,7 +1,5 @@
 const std = @import("std");
 
-// Maybe in place versions (_) also require allocator if the coerced type of the inputs is arbitrary precision
-
 const types = @import("../types.zig");
 const Coerce = types.Coerce;
 const Scalar = types.Scalar;
@@ -16,12 +14,25 @@ const int = @import("../int.zig");
 const ops = @import("../ops.zig");
 
 const array = @import("../array.zig");
-const Array = array.Array;
 
 const dense = @import("dense.zig");
 const strided = @import("strided.zig");
 const sparse = @import("sparse.zig");
-const mixed = @import("mixed.zig");
+
+const dest = @import("ops/dest.zig");
+const stde = @import("ops/stde.zig");
+
+const descst = @import("ops/descst.zig");
+const destsc = @import("ops/destsc.zig");
+const stscde = @import("ops/stscde.zig");
+const stdesc = @import("ops/stdesc.zig");
+
+const dedest = @import("ops/dedest.zig");
+const destde = @import("ops/destde.zig");
+const destst = @import("ops/destst.zig");
+const stdede = @import("ops/stdede.zig");
+const stdest = @import("ops/stdest.zig");
+const ststde = @import("ops/ststde.zig");
 
 pub fn apply1(
     allocator: std.mem.Allocator,
@@ -80,12 +91,12 @@ pub fn apply1_(
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(X)) {
                 .dense => return dense.apply1_(o, x, op_, ctx), // (array) dense (array) dense apply1_
-                .strided => return mixed.dest.apply1_(o, x, op_, ctx), // (array) dense (array) strided apply1_
+                .strided => return dest.apply1_(o, x, op_, ctx), // (array) dense (array) strided apply1_
                 .sparse => @compileError("apply1_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(X)) {
-                .dense => return mixed.stde.apply1_(o, x, op_, ctx), // (array) strided (array) dense apply1_
+                .dense => return stde.apply1_(o, x, op_, ctx), // (array) strided (array) dense apply1_
                 .strided => return strided.apply1_(o, x, op_, ctx), // (array) strided (array) strided apply1_
                 .sparse => @compileError("apply1_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -134,12 +145,12 @@ pub fn apply2(
         switch (comptime types.arrayType(X)) {
             .dense => switch (comptime types.arrayType(Y)) {
                 .dense => return dense.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                .strided => return mixed.dest.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .strided => return dest.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(Y)) {
-                .dense => return mixed.stde.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .dense => return stde.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 .strided => return strided.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -185,12 +196,12 @@ pub fn apply2_(
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(Y)) {
                 .dense => return dense.apply2_(o, x, y, op_, ctx),
-                .strided => return mixed.descst.apply2_(o, x, y, op_, ctx),
+                .strided => return descst.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(Y)) {
-                .dense => return mixed.stscde.apply2_(o, x, y, op_, ctx),
+                .dense => return stscde.apply2_(o, x, y, op_, ctx),
                 .strided => return strided.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -202,12 +213,12 @@ pub fn apply2_(
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(X)) {
                 .dense => return dense.apply2_(o, x, y, op_, ctx),
-                .strided => return mixed.destsc.apply2_(o, x, y, op_, ctx),
+                .strided => return destsc.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(X)) {
-                .dense => return mixed.stdesc.apply2_(o, x, y, op_, ctx),
+                .dense => return stdesc.apply2_(o, x, y, op_, ctx),
                 .strided => return strided.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -220,13 +231,13 @@ pub fn apply2_(
             .dense => switch (comptime types.arrayType(X)) {
                 .dense => switch (comptime types.arrayType(Y)) {
                     .dense => return dense.apply2_(o, x, y, op_, ctx),
-                    .strided => return mixed.dedest.apply2_(o, x, y, op_, ctx),
+                    .strided => return dedest.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,
                 },
                 .strided => switch (comptime types.arrayType(Y)) {
-                    .dense => return mixed.destde.apply2_(o, x, y, op_, ctx),
-                    .strided => return mixed.destst.apply2_(o, x, y, op_, ctx),
+                    .dense => return destde.apply2_(o, x, y, op_, ctx),
+                    .strided => return destst.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,
                 },
@@ -235,13 +246,13 @@ pub fn apply2_(
             },
             .strided => switch (comptime types.arrayType(X)) {
                 .dense => switch (comptime types.arrayType(Y)) {
-                    .dense => return mixed.stdede.apply2_(o, x, y, op_, ctx),
-                    .strided => return mixed.stdest.apply2_(o, x, y, op_, ctx),
+                    .dense => return stdede.apply2_(o, x, y, op_, ctx),
+                    .strided => return stdest.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,
                 },
                 .strided => switch (comptime types.arrayType(Y)) {
-                    .dense => return mixed.ststde.apply2_(o, x, y, op_, ctx),
+                    .dense => return ststde.apply2_(o, x, y, op_, ctx),
                     .strided => return strided.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,
@@ -263,7 +274,7 @@ pub inline fn abs(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Scalar(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -354,7 +365,7 @@ pub inline fn abs2(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Scalar(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -383,50 +394,10 @@ pub inline fn abs2_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.abs2_, ctx);
@@ -440,7 +411,7 @@ pub inline fn exp(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -469,50 +440,10 @@ pub inline fn exp_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.exp_, ctx);
@@ -525,7 +456,7 @@ pub inline fn exp10(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -554,50 +485,10 @@ pub inline fn exp10_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.exp10_, ctx);
@@ -610,7 +501,7 @@ pub inline fn exp2(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -639,50 +530,10 @@ pub inline fn exp2_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.exp2_, ctx);
@@ -695,7 +546,7 @@ pub inline fn exp10m1(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -724,50 +575,10 @@ pub inline fn exp10m1_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.exp10m1_, ctx);
@@ -780,7 +591,7 @@ pub inline fn exp2m1(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -809,50 +620,10 @@ pub inline fn exp2m1_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.exp2m1_, ctx);
@@ -865,7 +636,7 @@ pub inline fn expm1(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -894,50 +665,10 @@ pub inline fn expm1_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.expm1_, ctx);
@@ -950,7 +681,7 @@ pub inline fn log(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -979,50 +710,10 @@ pub inline fn log_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.log_, ctx);
@@ -1035,7 +726,7 @@ pub inline fn log10(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1064,50 +755,10 @@ pub inline fn log10_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.log10_, ctx);
@@ -1120,7 +771,7 @@ pub inline fn log2(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1149,50 +800,10 @@ pub inline fn log2_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.log2_, ctx);
@@ -1205,7 +816,7 @@ pub inline fn log10p1(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1234,50 +845,10 @@ pub inline fn log10p1_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.log10p1_, ctx);
@@ -1290,7 +861,7 @@ pub inline fn log2p1(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1319,50 +890,10 @@ pub inline fn log2p1_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.log2p1_, ctx);
@@ -1375,7 +906,7 @@ pub inline fn log1p(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1404,50 +935,10 @@ pub inline fn log1p_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.log1p_, ctx);
@@ -1462,7 +953,7 @@ pub inline fn pow(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -1549,7 +1040,7 @@ pub inline fn sqrt(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1578,50 +1069,10 @@ pub inline fn sqrt_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.sqrt_, ctx);
@@ -1634,7 +1085,7 @@ pub inline fn cbrt(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1663,50 +1114,10 @@ pub inline fn cbrt_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.cbrt_, ctx);
@@ -1720,7 +1131,7 @@ pub inline fn hypot(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -1808,7 +1219,7 @@ pub inline fn sin(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1837,50 +1248,10 @@ pub inline fn sin_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.sin_, ctx);
@@ -1893,7 +1264,7 @@ pub inline fn cos(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -1922,50 +1293,10 @@ pub inline fn cos_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.cos_, ctx);
@@ -1978,7 +1309,7 @@ pub inline fn tan(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2007,50 +1338,10 @@ pub inline fn tan_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.tan_, ctx);
@@ -2063,7 +1354,7 @@ pub inline fn asin(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2092,50 +1383,10 @@ pub inline fn asin_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.asin_, ctx);
@@ -2148,7 +1399,7 @@ pub inline fn acos(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2177,50 +1428,10 @@ pub inline fn acos_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.acos_, ctx);
@@ -2233,7 +1444,7 @@ pub inline fn atan(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2262,50 +1473,10 @@ pub inline fn atan_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.atan_, ctx);
@@ -2319,7 +1490,7 @@ pub inline fn atan2(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -2406,7 +1577,7 @@ pub inline fn sinpi(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2435,50 +1606,10 @@ pub inline fn sinpi_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.sinpi_, ctx);
@@ -2491,7 +1622,7 @@ pub inline fn cospi(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2520,50 +1651,10 @@ pub inline fn cospi_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.cospi_, ctx);
@@ -2576,7 +1667,7 @@ pub inline fn tanpi(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2605,50 +1696,10 @@ pub inline fn tanpi_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.tanpi_, ctx);
@@ -2661,7 +1712,7 @@ pub inline fn asinpi(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2690,50 +1741,10 @@ pub inline fn asinpi_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.asinpi_, ctx);
@@ -2746,7 +1757,7 @@ pub inline fn acospi(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2775,50 +1786,10 @@ pub inline fn acospi_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.acospi_, ctx);
@@ -2831,7 +1802,7 @@ pub inline fn atanpi(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -2860,50 +1831,10 @@ pub inline fn atanpi_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.atanpi_, ctx);
@@ -2917,7 +1848,7 @@ pub inline fn atan2pi(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -3005,7 +1936,7 @@ pub inline fn sinh(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3034,50 +1965,10 @@ pub inline fn sinh_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.sinh_, ctx);
@@ -3090,7 +1981,7 @@ pub inline fn cosh(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3119,50 +2010,10 @@ pub inline fn cosh_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.cosh_, ctx);
@@ -3175,7 +2026,7 @@ pub inline fn tanh(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3204,50 +2055,10 @@ pub inline fn tanh_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.tanh_, ctx);
@@ -3260,7 +2071,7 @@ pub inline fn asinh(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3289,50 +2100,10 @@ pub inline fn asinh_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.asinh_, ctx);
@@ -3345,7 +2116,7 @@ pub inline fn acosh(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3374,50 +2145,10 @@ pub inline fn acosh_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.acosh_, ctx);
@@ -3430,7 +2161,7 @@ pub inline fn atanh(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3459,50 +2190,10 @@ pub inline fn atanh_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.atanh_, ctx);
@@ -3516,7 +2207,7 @@ pub inline fn erf(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3545,50 +2236,10 @@ pub inline fn erf_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.erf_, ctx);
@@ -3601,7 +2252,7 @@ pub inline fn erfc(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3630,50 +2281,10 @@ pub inline fn erfc_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.erfc_, ctx);
@@ -3686,7 +2297,7 @@ pub inline fn gamma(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3715,50 +2326,10 @@ pub inline fn gamma_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.gamma_, ctx);
@@ -3771,7 +2342,7 @@ pub inline fn lgamma(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(EnsureFloat(Numeric(@TypeOf(x)))) {
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3800,50 +2371,10 @@ pub inline fn lgamma_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.lgamma_, ctx);
@@ -3857,7 +2388,7 @@ pub inline fn ceil(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !@TypeOf(x) {
+) !EnsureArray(@TypeOf(x), Numeric(@TypeOf(x))) {
     const X: type = Numeric(@TypeOf(x));
 
     comptime if (types.isArbitraryPrecision(X)) {
@@ -3886,50 +2417,10 @@ pub inline fn ceil_(
     const O: type = Numeric(Child(@TypeOf(o)));
     const X: type = Numeric(@TypeOf(x));
 
-    comptime if (types.isArbitraryPrecision(O)) {
-        if (types.isArbitraryPrecision(X)) {
-            // Both types are arbitrary precision
-            if (O == X) {
-                // Equal types: output can be used for the operations, needing
-                // only the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                // Different types: internal allocator is required to perform
-                // the operation at `x`'s precision, and then cast the result to
-                // the output with the output's allocator
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            }
-        } else {
-            // Only the output is arbitrary precision, so we need the output's
-            // allocator to perform the casting
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
-        }
+    comptime if (types.isArbitraryPrecision(O) or types.isArbitraryPrecision(X)) {
+        @compileError("arbitrary precision types not implemented yet");
     } else {
-        if (types.isArbitraryPrecision(X)) {
-            // Only the input is arbitrary precision, so we need the internal
-            // allocator to perform the operation at `x`'s precision
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        } else {
-            // Both types are fixed precision, no special requirements
-            types.validateContext(@TypeOf(ctx), .{});
-        }
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     return apply1_(o, x, ops.ceil_, ctx);
@@ -3943,7 +2434,7 @@ pub inline fn add(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -4054,7 +2545,7 @@ pub inline fn sub(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -4165,7 +2656,7 @@ pub inline fn mul(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -4276,7 +2767,7 @@ pub inline fn div(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -4363,7 +2854,7 @@ pub inline fn eq(
     opts: struct {
         order: ?types.Order = null,
     },
-) !Array(bool) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     return apply2(allocator, x, y, ops.eq, .{ .order = opts.order }, .{});
 }
 
@@ -4394,7 +2885,7 @@ pub inline fn ne(
     opts: struct {
         order: ?types.Order = null,
     },
-) !Array(bool) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     return apply2(allocator, x, y, ops.ne, .{ .order = opts.order }, .{});
 }
 
@@ -4425,7 +2916,7 @@ pub inline fn lt(
     opts: struct {
         order: ?types.Order = null,
     },
-) !Array(bool) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     return apply2(allocator, x, y, ops.lt, .{ .order = opts.order }, .{});
 }
 
@@ -4456,7 +2947,7 @@ pub inline fn le(
     opts: struct {
         order: ?types.Order = null,
     },
-) !Array(bool) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     return apply2(allocator, x, y, ops.le, .{ .order = opts.order }, .{});
 }
 
@@ -4487,7 +2978,7 @@ pub inline fn gt(
     opts: struct {
         order: ?types.Order = null,
     },
-) !Array(bool) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     return apply2(allocator, x, y, ops.gt, .{ .order = opts.order }, .{});
 }
 
@@ -4518,7 +3009,7 @@ pub inline fn ge(
     opts: struct {
         order: ?types.Order = null,
     },
-) !Array(bool) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
     return apply2(allocator, x, y, ops.ge, .{ .order = opts.order }, .{});
 }
 
@@ -4550,7 +3041,7 @@ pub inline fn max(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
@@ -4600,7 +3091,7 @@ pub inline fn min(
         order: ?types.Order = null,
     },
     ctx: anytype,
-) !Array(Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
     const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
 
     comptime if (types.isArbitraryPrecision(C)) {
