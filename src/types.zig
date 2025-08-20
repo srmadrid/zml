@@ -300,10 +300,6 @@ fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usi
 /// Returns
 /// -------
 /// `NumericType`: The corresponding `NumericType` enum value.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is not supported.
 pub inline fn numericType(comptime T: type) NumericType {
     // Without inline functions calling this fail miserably. I have no idea why.
 
@@ -908,10 +904,6 @@ pub fn isSparseArray(comptime T: type) bool {
 /// Returns
 /// -------
 /// `bool`: `true` if the type is of fixed precision, `false` otherwise.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is not a supported numeric type.
 pub fn isFixedPrecision(comptime T: type) bool {
     switch (numericType(T)) {
         .bool => return true,
@@ -935,10 +927,6 @@ pub fn isFixedPrecision(comptime T: type) bool {
 /// Returns
 /// -------
 /// `bool`: `true` if the type is of arbitrary precision, `false` otherwise.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is not a supported numeric type.
 pub fn isArbitraryPrecision(comptime T: type) bool {
     switch (numericType(T)) {
         .integer => return true,
@@ -962,10 +950,6 @@ pub fn isArbitraryPrecision(comptime T: type) bool {
 /// Returns
 /// -------
 /// `bool`: `true` if the type is complex, `false` otherwise.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is not a supported numeric type.
 pub fn isComplex(comptime T: type) bool {
     switch (numericType(T)) {
         .cfloat => return true,
@@ -987,11 +971,6 @@ pub fn isComplex(comptime T: type) bool {
 /// Returns
 /// -------
 /// `bool`: `true` if the type needs an allocator, `false` otherwise.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is neither an `Array` nor a supported numeric
-/// type.
 pub fn needsAllocator(comptime T: type) bool {
     return isArray(T) or isArbitraryPrecision(T);
 }
@@ -1014,11 +993,6 @@ pub fn needsAllocator(comptime T: type) bool {
 /// Returns
 /// -------
 /// `type`: The coerced type that can represent both `X` and `Y`.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the types cannot be coerced, or if either type is not an
-/// `Array`, a slice, or a supported numeric type.
 pub fn Coerce(comptime X: type, comptime Y: type) type {
     if (X == Y) {
         return X;
@@ -1616,10 +1590,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
 /// Returns
 /// -------
 /// `type`: The coerced type.
-///
-/// Raises
-/// ------
-/// `@compileError`: If `Y` is not a supported numeric type.
 pub fn EnsureMatrixOrArray(comptime X: type, comptime Y: type) type {
     if (isArray(X)) {
         switch (arrayType(X)) {
@@ -1665,6 +1635,22 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
     }
 }
 
+/// Coerces the second type to an array type based on the first type.
+///
+/// This function is useful for ensuring that the second type is always an array
+/// when the first is. If the first type is a strided array, the second type
+/// will be coerced to a dense array type.
+///
+/// Parameters
+/// ----------
+/// comptime X (`type`): The type to check. Must be a supported numeric type or
+/// an array.
+///
+/// comptime Y (`type`): The type to coerce. Must be a supported numeric type.
+///
+/// Returns
+/// -------
+/// `type`: The coerced type.
 pub fn EnsureArray(comptime X: type, comptime Y: type) type {
     if (isArray(X)) {
         switch (arrayType(X)) {
@@ -1701,10 +1687,6 @@ pub fn EnsureArray(comptime X: type, comptime Y: type) type {
 /// Returns
 /// -------
 /// `bool`: `true` if the cast is safe, `false` otherwise.
-///
-/// Raises
-/// ------
-/// `@compileError`: If either type is not a supported numeric type.
 pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
     if (X == Y) {
         return true;
@@ -1947,11 +1929,6 @@ pub fn EnsureFloat(comptime T: type) type {
 /// Returns
 /// -------
 /// `type`: The scalar type of the input type.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is not a supported numeric type, slice, or
-/// `Array`.
 pub fn Scalar(comptime T: type) type {
     if (isArray(T) or isMatrix(T)) {
         const t: T = .empty;
@@ -2011,11 +1988,6 @@ pub fn Scalar(comptime T: type) type {
 /// Returns
 /// -------
 /// `type`: The underlying numeric type of the input type.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is not a supported numeric type, slice, or
-/// `Array`.
 pub fn Numeric(comptime T: type) type {
     if (isArray(T) or isMatrix(T)) {
         const t: T = .empty;
@@ -2049,11 +2021,6 @@ pub fn Numeric(comptime T: type) type {
 /// Returns
 /// -------
 /// `T`: The value casted to the type `T`.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type `T` is not a fixed precision numeric type or if
-/// the type of `value` is not a supported numeric type.
 ///
 /// Notes
 /// -----
@@ -2143,11 +2110,6 @@ pub inline fn scast(
 /// ------
 /// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
 /// memory for the output value.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type `T` is not a supported numeric type or if the
-/// type of `value` is not a supported numeric type.
 ///
 /// Notes
 /// -----
@@ -2350,10 +2312,6 @@ pub inline fn cast(
 /// Returns
 /// -------
 /// `type`: The child type of the input pointer type.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the type is not a pointer type.
 pub fn Child(comptime T: type) type {
     switch (@typeInfo(T)) {
         .pointer => |info| {
@@ -2464,10 +2422,6 @@ pub fn ReturnType2(comptime op: anytype, comptime X: type, comptime Y: type) typ
 /// Returns
 /// -------
 /// `void`: If the context struct is valid according to the specification.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the context struct does not match the specification.
 ///
 /// Notes
 /// -----
