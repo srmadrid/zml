@@ -483,69 +483,42 @@ fn ask_user(default: u32) !u32 {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A_base: zml.array.Dense(f64) = try .init(a, &.{ 10, 8 }, .{ .order = .col_major });
-    defer A_base.deinit(a);
-    const A = try A_base.transpose(null);
-    //const A = A_base;
+    var A: zml.matrix.Symmetric(f64) = try .init(a, 8, .{ .uplo = .lower, .order = .row_major });
+    defer A.deinit(a);
 
     var i: u32 = 0;
-    while (i < A_base.size) : (i += 1) {
-        A_base.data[i] = zml.scast(f64, i + 1);
-    }
-
-    std.debug.print("Matrix A_base:\n", .{});
-    i = 0;
-    while (i < A_base.shape[0]) : (i += 1) {
-        var j: u32 = 0;
-        while (j < A_base.shape[1]) : (j += 1) {
-            std.debug.print("{d:3}  ", .{try A_base.get(&.{ i, j })});
-        }
-        std.debug.print("\n", .{});
+    while (i < A.size * A.size) : (i += 1) {
+        A.data[i] = zml.scast(f64, i + 1);
     }
 
     std.debug.print("Matrix A:\n", .{});
     i = 0;
-    while (i < A.shape[0]) : (i += 1) {
+    while (i < A.size) : (i += 1) {
         var j: u32 = 0;
-        while (j < A.shape[1]) : (j += 1) {
-            std.debug.print("{d:3}  ", .{try A.get(&.{ i, j })});
+        while (j < A.size) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try A.get(i, j)});
         }
-
         std.debug.print("\n", .{});
     }
     std.debug.print("\n", .{});
 
-    var B_base: zml.array.Dense(f64) = try .init(a, &.{ 8, 10 }, .{ .order = .col_major });
-    defer B_base.deinit(a);
+    var B: zml.matrix.Symmetric(f64) = try .init(a, 8, .{ .uplo = .lower, .order = .row_major });
+    defer B.deinit(a);
 
     i = 0;
-    while (i < B_base.size) : (i += 1) {
-        B_base.data[i] = zml.scast(f64, i + 2);
+    while (i < B.size * B.size) : (i += 1) {
+        B.data[i] = zml.scast(f64, i + 2);
         //B_base.data[i] = zml.cf64.init(zml.scast(f64, i + 2), zml.scast(f64, i + 2));
-    }
-
-    //const B = try B_base.slice(&.{ try .init(2, 10, 1), .all_reverse });
-    const B = B_base;
-
-    std.debug.print("Matrix B_base:\n", .{});
-    i = 0;
-    while (i < B_base.shape[0]) : (i += 1) {
-        var j: u32 = 0;
-        while (j < B_base.shape[1]) : (j += 1) {
-            std.debug.print("{d:3}  ", .{try B_base.get(&.{ i, j })});
-            //std.debug.print("{d:3} + {d:3}i  ", .{ (try B_base.get(&.{ i, j })).re, (try B_base.get(&.{ i, j })).im });
-        }
-        std.debug.print("\n", .{});
     }
 
     std.debug.print("Matrix B:\n", .{});
     i = 0;
-    while (i < B.shape[0]) : (i += 1) {
+    while (i < B.size) : (i += 1) {
         var j: u32 = 0;
-        while (j < B.shape[1]) : (j += 1) {
-            std.debug.print("{d:3}  ", .{try B.get(&.{ i, j })});
+        while (j < B.size) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try B.get(i, j)});
+            //std.debug.print("{d:3} + {d:3}i  ", .{ (try B_base.get(&.{ i, j })).re, (try B_base.get(&.{ i, j })).im });
         }
-
         std.debug.print("\n", .{});
     }
     std.debug.print("\n", .{});
@@ -557,7 +530,7 @@ fn perfTesting(a: std.mem.Allocator) !void {
     //var C = try C_base.slice(&.{ try .init(0, 16, 2), .all_reverse });
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.array.Dense(f64) = try zml.add(A, B, .{ .array_allocator = a, .order = .col_major });
+    var C: zml.matrix.Symmetric(f64) = try zml.matrix.apply2(a, A, B, zml.add, .{ .order = .row_major }, .{ .uplo = .lower });
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 
@@ -565,15 +538,13 @@ fn perfTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("Resulting matrix C:\n", .{});
     i = 0;
-    while (i < C.shape[0]) : (i += 1) {
+    while (i < C.size) : (i += 1) {
         var j: u32 = 0;
-        while (j < C.shape[1]) : (j += 1) {
-            std.debug.print("{d:3}  ", .{try C.get(&.{ i, j })});
+        while (j < C.size) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try C.get(i, j)});
         }
         std.debug.print("\n", .{});
     }
-
-    std.debug.print("C order = {}\n", .{C.flags.order});
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

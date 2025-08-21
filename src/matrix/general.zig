@@ -232,3 +232,258 @@ pub fn General(comptime T: type) type {
         }
     };
 }
+
+pub fn apply2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    comptime op: anytype,
+    opts: struct {
+        order: ?Order = null,
+    },
+    ctx: anytype,
+) !General(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+    const X: type = Numeric(@TypeOf(x));
+    const Y: type = Numeric(@TypeOf(y));
+
+    if (comptime !types.isGeneralMatrix(@TypeOf(x))) {
+        var result: General(ReturnType2(op, X, Y)) = try .init(allocator, y.rows, y.cols, .{ .order = opts.order orelse y.flags.order });
+        errdefer result.deinit(allocator);
+
+        const opinfo = @typeInfo(@TypeOf(op));
+        if (result.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x, y.data[i + j * y.strides[1]]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                        }
+                    }
+                }
+            } else {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x, y.data[i * y.strides[0] + j]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x, y.data[i + j * y.strides[1]]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                        }
+                    }
+                }
+            } else {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x, y.data[i * y.strides[0] + j]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    } else if (comptime !types.isGeneralMatrix(@TypeOf(y))) {
+        var result: General(ReturnType2(op, X, Y)) = try .init(allocator, x.rows, x.cols, .{ .order = opts.order orelse x.flags.order });
+        errdefer result.deinit(allocator);
+
+        const opinfo = @typeInfo(@TypeOf(op));
+        if (result.flags.order == .col_major) {
+            if (x.flags.order == .col_major) {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                        }
+                    }
+                }
+            } else {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                        }
+                    }
+                }
+            }
+        } else {
+            if (x.flags.order == .col_major) {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                        }
+                    }
+                }
+            } else {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    if (x.rows != y.rows or x.cols != y.cols)
+        return matrix.Error.DimensionMismatch;
+
+    var result: General(ReturnType2(op, X, Y)) = try .init(allocator, x.rows, x.cols, .{ .order = opts.order orelse x.flags.order.resolve2(y.flags.order) });
+    errdefer result.deinit(allocator);
+
+    const opinfo = @typeInfo(@TypeOf(op));
+    if (result.flags.order == .col_major) {
+        if (x.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                        }
+                    }
+                }
+            } else {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                        }
+                    }
+                }
+            } else {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        if (x.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                var j: u32 = 0;
+                while (j < result.cols) : (j += 1) {
+                    var i: u32 = 0;
+                    while (i < result.rows) : (i += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                        }
+                    }
+                }
+            } else {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                        }
+                    }
+                }
+            } else {
+                var i: u32 = 0;
+                while (i < result.rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < result.cols) : (j += 1) {
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+}

@@ -418,3 +418,1388 @@ pub fn Symmetric(comptime T: type) type {
         }
     };
 }
+
+pub fn apply2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    comptime op: anytype,
+    opts: struct {
+        uplo: ?Uplo = null,
+        order: ?Order = null,
+    },
+    ctx: anytype,
+) !Symmetric(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+    const X: type = Numeric(@TypeOf(x));
+    const Y: type = Numeric(@TypeOf(y));
+
+    if (comptime !types.isSymmetricMatrix(@TypeOf(x))) {
+        var result: Symmetric(ReturnType2(op, X, Y)) = try .init(allocator, y.size, .{
+            .uplo = opts.uplo orelse y.uplo,
+            .order = opts.order orelse y.flags.order,
+        });
+        errdefer result.deinit(allocator);
+
+        const opinfo = @typeInfo(@TypeOf(op));
+        if (result.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (y.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[j + i * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[j + i * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (y.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + i]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + i]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (y.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[j + i * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[j + i * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (y.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[j * y.strides[0] + i]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[j * y.strides[0] + i]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    } else if (comptime !types.isSymmetricMatrix(@TypeOf(y))) {
+        var result: Symmetric(ReturnType2(op, X, Y)) = try .init(allocator, x.size, .{
+            .uplo = opts.uplo orelse x.uplo,
+            .order = opts.order orelse x.flags.order,
+        });
+        errdefer result.deinit(allocator);
+
+        const opinfo = @typeInfo(@TypeOf(op));
+        if (result.flags.order == .col_major) {
+            if (x.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i <= j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = j;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (x.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = i;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                }
+                            }
+                        }
+                    } else {
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j <= i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    if (x.size != y.size)
+        return matrix.Error.DimensionMismatch;
+
+    var result: Symmetric(ReturnType2(op, X, Y)) = try .init(allocator, x.size, .{
+        .uplo = opts.uplo orelse x.uplo.resolve2(y.uplo),
+        .order = opts.order orelse x.flags.order.resolve2(y.flags.order),
+    });
+    errdefer result.deinit(allocator);
+
+    const opinfo = @typeInfo(@TypeOf(op));
+    if (result.flags.order == .col_major) {
+        if (x.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu cu ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu cu rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu cl ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu cl rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl cu ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl cu rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl cl ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl cl rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu ru cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu ru cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu rl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu rl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl ru cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl ru cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl rl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl rl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cl rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        if (x.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru cu ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru cu rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru cl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru cl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl cu ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl cu rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl cl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl cl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru ru cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru ru cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru rl cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru rl cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl ru cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl ru cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl rl cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl rl cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        } else { // rl rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
+}

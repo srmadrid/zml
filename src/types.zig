@@ -109,6 +109,14 @@ pub const Uplo = enum(u1) {
             .lower => .upper,
         };
     }
+
+    pub inline fn resolve2(self: Uplo, other: Uplo) Uplo {
+        if (self == other) {
+            return self;
+        }
+
+        return .upper; // default uplo
+    }
 };
 
 pub const Diag = enum(u1) {
@@ -1032,6 +1040,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .numeric => return matrix.Symmetric(Coerce(Numeric(X), Y)), // symmetric + numeric
                     .matrix => switch (comptime matrixType(Y)) {
                         .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y))), // symmetric + symmetric
+                        .diagonal => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y))), // symmetric + diagonal
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // symmetric + rest of matrices
                     },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // symmetric + array
@@ -1046,18 +1055,29 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     },
                     .matrix => switch (comptime matrixType(Y)) {
                         .hermitian => return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y))), // hermitian + hermitian
+                        .diagonal => {
+                            if (comptime isComplex(Numeric(Y))) {
+                                return matrix.General(Coerce(Numeric(X), Numeric(Y))); // hermitian + diagonal (complex)
+                            } else {
+                                return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y))); // hermitian + diagonal (real)
+                            }
+                        },
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // hermitian + rest of matrices
                     },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // hermitian + array
                 },
                 .triangular => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y)), // triangular + numeric
-                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // triangular + matrix
+                    .matrix => switch (comptime matrixType(Y)) {
+                        .diagonal => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y))), // triangular + diagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // triangular + matrix
+                    },
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // triangular + array
                 },
                 .diagonal => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y)), // diagonal + numeric
                     .matrix => switch (comptime matrixType(Y)) {
+                        .triangular => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y))), // diagonal + triangular
                         .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + diagonal
                         .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // diagonal + banded
                         .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + tridiagonal
@@ -2447,10 +2467,13 @@ pub fn validateContext(comptime Ctx: type, comptime spec: anytype) void {
 
         if (@hasField(Ctx, field.name)) {
             const actual_type = @FieldType(Ctx, field.name);
+            const type_info = @typeInfo(expected_type);
             const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
-                const type_info = @typeInfo(expected_type);
                 break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
-            } else actual_type == expected_type;
+            } else if (actual_type == @TypeOf(null))
+                type_info == .optional
+            else
+                actual_type == expected_type;
 
             if (!types_match)
                 @compileError(formatSpecCtxMismatch(Ctx, spec));
@@ -2536,6 +2559,154 @@ fn formatSpecCtxMismatch(
         "Context struct must have the following structure:\n{s}\nGot:\n{s}",
         .{ spec_str, ctx_str },
     );
+}
+
+/// Validates that a context struct contains all required fields as defined
+/// by a specification struct.
+///
+/// This function differs from `validateContext` in that it does not raise
+/// a compile error if the context struct contains unexpected fields.
+///
+/// Parameters
+/// ----------
+/// ctx (`anytype`): The context struct to validate. Must be a struct type.
+/// spec (`anytype`): The specification struct that defines the expected fields
+/// and their types. Must have the following structure:
+/// ```zig
+/// .{
+///     .field_name = .{ .type = type, .required = bool },
+///     ...
+/// }
+/// ```
+/// where `field_name` is the name of the field, `type` is the expected type of
+/// the field, and `required` is a boolean indicating whether the field is
+/// required or not.
+///
+/// Returns
+/// -------
+/// `void`: If the context struct is valid according to the specification.
+pub fn partialValidateContext(comptime Ctx: type, comptime spec: anytype) void {
+    const ctxinfo = @typeInfo(Ctx);
+
+    const SpecType = @TypeOf(spec);
+    const specinfo = @typeInfo(SpecType);
+
+    if (specinfo.@"struct".fields.len == 0 and Ctx == void)
+        return; // No context needed, nothing to validate
+
+    if (ctxinfo != .@"struct")
+        @compileError("Expected struct for context, got " ++ @typeName(Ctx));
+
+    // Check that all required fields exist and types match
+    inline for (specinfo.@"struct".fields) |field| {
+        const field_spec = @field(spec, field.name);
+        const required = @hasField(@TypeOf(field_spec), "required") and field_spec.required;
+        const expected_type = field_spec.type;
+
+        if (@hasField(Ctx, field.name)) {
+            const actual_type = @FieldType(Ctx, field.name);
+            const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
+                const type_info = @typeInfo(expected_type);
+                break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
+            } else actual_type == expected_type;
+
+            if (!types_match)
+                @compileError(formatCtxRequiredFields(Ctx, spec));
+        } else if (required) {
+            @compileError(formatCtxRequiredFields(Ctx, spec));
+        }
+    }
+}
+
+fn formatCtxRequiredFields(
+    comptime Ctx: type,
+    comptime spec: anytype,
+) []const u8 {
+    const ctxinfo = @typeInfo(Ctx);
+
+    const SpecType = @TypeOf(spec);
+    const specinfo = @typeInfo(SpecType);
+
+    comptime var spec_str: []const u8 = "";
+    if (specinfo.@"struct".fields.len == 0) {
+        spec_str = ".{}\n";
+    } else {
+        comptime var max_name_len: usize = 0;
+        comptime var max_type_len: usize = 0;
+        inline for (specinfo.@"struct".fields) |field| {
+            const field_type = @typeName(@field(@field(spec, field.name), "type"));
+            if (field.name.len > max_name_len) max_name_len = field.name.len;
+            if (field_type.len > max_type_len) max_type_len = field_type.len;
+        }
+
+        spec_str = spec_str ++ ".{\n";
+        inline for (specinfo.@"struct".fields) |field| {
+            const field_type = @typeName(@field(@field(spec, field.name), "type"));
+            const required = @hasField(@TypeOf(@field(spec, field.name)), "required") and @field(@field(spec, field.name), "required");
+            spec_str = spec_str ++ std.fmt.comptimePrint(
+                "    .{s}: {s}",
+                .{
+                    field.name,
+                    field_type,
+                },
+            );
+
+            for (0..((max_name_len + max_type_len) - field.name.len - field_type.len)) |_| {
+                spec_str = spec_str ++ " ";
+            }
+
+            spec_str = spec_str ++ std.fmt.comptimePrint(
+                "    ({s})\n",
+                .{
+                    if (required) "required" else "optional",
+                },
+            );
+        }
+        spec_str = spec_str ++ "}\n";
+    }
+
+    comptime var ctx_str: []const u8 = "";
+    if (ctxinfo.@"struct".fields.len == 0) {
+        ctx_str = ".{}\n";
+    } else {
+        ctx_str = ctx_str ++ ".{\n";
+        inline for (ctxinfo.@"struct".fields) |field| {
+            const field_type = @typeName(@FieldType(Ctx, field.name));
+            ctx_str = ctx_str ++ std.fmt.comptimePrint(
+                "    .{s}: {s}\n",
+                .{
+                    field.name,
+                    field_type,
+                },
+            );
+        }
+        ctx_str = ctx_str ++ "}\n";
+    }
+
+    return std.fmt.comptimePrint(
+        "Context struct must contain at least the following fields:\n{s}\nGot:\n{s}",
+        .{ spec_str, ctx_str },
+    );
+}
+
+pub fn ctxHasField(
+    comptime T: type,
+    comptime field_name: []const u8,
+    comptime FieldType: type,
+) bool {
+    const has_field: bool = @hasField(T, field_name);
+
+    if (has_field) {
+        if (@FieldType(T, field_name) == FieldType or
+            (@FieldType(T, field_name) == @TypeOf(.enum_literal) and
+                (@typeInfo(FieldType) == .@"enum" or
+                    (@typeInfo(FieldType) == .optional and @typeInfo(@typeInfo(FieldType).optional.child) == .@"enum"))) or
+            (@FieldType(T, field_name) == @TypeOf(null) and
+                @typeInfo(FieldType) == .optional))
+            return true;
+    }
+
+    return false;
 }
 
 pub fn getFieldOrDefault(ctx: anytype, comptime field_name: []const u8, comptime FieldType: type, default_value: FieldType) FieldType {

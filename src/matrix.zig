@@ -27,12 +27,14 @@ const sparse = @import("matrix/sparse.zig");
 pub const Sparse = sparse.Sparse;
 
 const matops = @import("matrix/ops.zig");
+pub const apply2 = matops.apply2;
 
 pub const Error = error{
     ZeroDimension,
     PositionOutOfBounds,
     InvalidRange,
     BreaksStructure,
+    DimensionMismatch,
 };
 
 pub const Flags = packed struct {
