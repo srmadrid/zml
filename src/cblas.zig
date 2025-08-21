@@ -15,7 +15,7 @@ const CBLAS_ORDER = enum(c_int) {
     CblasRowMajor = 101,
     CblasColMajor = 102,
 
-    fn to_zml(self: CBLAS_ORDER) zml.linalg.Order {
+    fn to_zml(self: CBLAS_ORDER) zml.types.Order {
         return switch (self) {
             .CblasRowMajor => .row_major,
             .CblasColMajor => .col_major,
@@ -43,7 +43,7 @@ const CBLAS_UPLO = enum(c_int) {
     CblasUpper = 121,
     CblasLower = 122,
 
-    fn to_zml(self: CBLAS_UPLO) zml.linalg.Uplo {
+    fn to_zml(self: CBLAS_UPLO) zml.types.Uplo {
         return switch (self) {
             .CblasUpper => .upper,
             .CblasLower => .lower,
@@ -55,7 +55,7 @@ const CBLAS_DIAG = enum(c_int) {
     CblasNonUnit = 131,
     CblasUnit = 132,
 
-    fn to_zml(self: CBLAS_DIAG) zml.linalg.Diag {
+    fn to_zml(self: CBLAS_DIAG) zml.types.Diag {
         return switch (self) {
             .CblasNonUnit => .non_unit,
             .CblasUnit => .unit,

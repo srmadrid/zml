@@ -39,10 +39,10 @@ const array = @import("array.zig");
 /// Parameters
 /// ----------
 /// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The left-hand side operand.
+/// `complex`, `expression`, array): The left-hand side operand.
 ///
 /// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The right-hand side operand.
+/// `complex`, `expression`, array): The right-hand side operand.
 ///
 /// ctx (`anytype`): Context for the addition operation.
 ///
@@ -82,7 +82,7 @@ const array = @import("array.zig");
 /// `expression.add`: For addition of an `expression` and another  `expression`,
 /// `complex`, `real`, `rational`, `integer`, `float`, `int` or `bool`.
 ///
-/// `array.add`: For addition of two arrays or slices.
+/// `array.add`: For addition of two arrayss.
 ///
 /// Notes
 /// -----
@@ -222,15 +222,15 @@ pub inline fn add(
 /// Parameters
 /// ----------
 /// o (pointer to `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The output pointer where the
+/// `complex`, `expression`, array): The output pointer where the
 /// result of the addition operation will be stored. If the output type is of
 /// arbitrary precision or an array, it must be initialized.
 ///
 /// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The left-hand side operand.
+/// `complex`, `expression`, array): The left-hand side operand.
 ///
 /// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The right-hand side operand.
+/// `complex`, `expression`, array): The right-hand side operand.
 ///
 /// options (`struct`): Options for the addition operation.
 /// - `mode` (`int.Mode`): The mode of the addition operation. Only needed when
@@ -257,7 +257,7 @@ pub inline fn add(
 /// the inputs, if the types of the inputs cannot be coerced to a common type,
 /// if the types of the inputs are not supported numeric types, arrays or
 /// slices, if the output pointer is not a mutable pointer, if the output's
-/// child type is not a supported numeric type, array or slice, or if the
+/// child type is not a supported numeric type, array, or if the
 /// coerced type is an array and the output's child type is not an array.
 ///
 /// See Also
@@ -351,40 +351,23 @@ pub inline fn add_(
         return array.add_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
         @compileError("zml.add_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    } else if (comptime types.isMatrix(O)) {
-        comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
-                },
-            );
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             if (types.numericType(Numeric(C)) == .int) {
                 types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
-                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
-                    },
-                );
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
         return matrix.add_(o, x, y, ctx);
-    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
-        @compileError("zml.add_: o must be a matrix or an array if x or y is a matrix, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
     } else {
         switch (comptime types.numericType(O)) {
             .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
@@ -426,10 +409,10 @@ pub inline fn add_(
 /// Parameters
 /// ----------
 /// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The left-hand side operand.
+/// `complex`, `expression`, array): The left-hand side operand.
 ///
 /// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The right-hand side operand.
+/// `complex`, `expression`, array): The right-hand side operand.
 ///
 /// options (`struct`): Options for the subtraction operation.
 /// - `mode` (`int.Mode`): The mode of the subtraction operation. Only needed
@@ -455,7 +438,7 @@ pub inline fn add_(
 /// `@compileError`: If the subtraction operation is not defined for the types
 /// of the inputs, if the types of the inputs cannot be coerced to a common
 /// type, or if the types of the inputs are not supported numeric types,
-/// arrays or slices.
+/// arrayss.
 ///
 /// See Also
 /// --------
@@ -485,7 +468,7 @@ pub inline fn add_(
 /// `expression`, `complex`, `real`, `rational`, `integer`, `float`, `int` or
 /// `bool`.
 ///
-/// `array.sub`: For subtraction of two arrays or slices.
+/// `array.sub`: For subtraction of two arrayss.
 ///
 /// Notes
 /// -----
@@ -504,14 +487,7 @@ pub inline fn sub(
         types.isArray(Y))
     {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
-                },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             if (types.numericType(Numeric(C)) == .int) {
                 types.validateContext(
@@ -540,29 +516,60 @@ pub inline fn sub(
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
             types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
+                );
+            } else {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
+                );
+            }
+        };
 
-    switch (comptime types.numericType(C)) {
-        .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .int => {
-            comptime types.validateContext(
-                @TypeOf(ctx),
-                .{ .mode = .{ .type = int.Mode, .required = false } },
-            );
+        return matrix.sub(
+            ctx.matrix_allocator,
+            x,
+            y,
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+        );
+    } else {
+        switch (comptime types.numericType(C)) {
+            .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .int => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{ .mode = .{ .type = int.Mode, .required = false } },
+                );
 
-            return int.sub(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.sub(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.sub(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.sub(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return cfloat.sub(x, y);
-        },
-        else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.sub(x, y);
+            },
+            else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -579,15 +586,15 @@ pub inline fn sub(
 /// Parameters
 /// ----------
 /// o (pointer to `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The output pointer where the
+/// `complex`, `expression`, array): The output pointer where the
 /// result of the subtraction operation will be stored. If the output type is of
 /// arbitrary precision, an array or a slice, it must be initialized.
 ///
 /// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The left-hand side operand.
+/// `complex`, `expression`, array): The left-hand side operand.
 ///
 /// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The right-hand side operand.
+/// `complex`, `expression`, array): The right-hand side operand.
 ///
 /// options (`struct`): Options for the subtraction operation.
 /// - `mode` (`int.Mode`): The mode of the subtraction operation. Only needed
@@ -608,15 +615,6 @@ pub inline fn sub(
 /// memory for the output value. Only occurs if the output type is of arbitrary
 /// precision.
 /// `array.Error.Bla`: Put errors when `array.add_` is implemented.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the addition operation is not defined for the types of
-/// the inputs, if the types of the inputs cannot be coerced to a common type,
-/// if the types of the inputs are not supported numeric types, arrays or
-/// slices, if the output pointer is not a mutable pointer, if the output's
-/// child type is not a supported numeric type, array or slice, or if the
-/// coerced type is an array and the output's child type is not an array.
 ///
 /// See Also
 /// --------
@@ -644,95 +642,67 @@ pub inline fn sub_(
     O = types.Child(O);
 
     if (comptime types.isArray(O)) {
-        comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            if (types.isArbitraryPrecision(Numeric(C))) {
-                // Both types are arbitrary precision
-                if (Numeric(O) == Numeric(C)) {
-                    // Equal types: output can be used for the operations, needing
-                    // only the output's allocator
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                    );
-                } else {
-                    // Different types: internal allocator is required to perform
-                    // the operation at `x`'s precision, and then cast the result to
-                    // the output with the output's allocator
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                }
-            } else {
-                // Only the output is arbitrary precision, so we need the output's
-                // allocator to perform the casting
-                if (types.numericType(Numeric(C)) == .int) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .mode = .{ .type = int.Mode, .required = false },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                    );
-                }
-            }
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
-            if (types.isArbitraryPrecision(Numeric(C))) {
-                // Only the input is arbitrary precision, so we need the internal
-                // allocator to perform the operation at `x`'s precision
+            if (types.numericType(Numeric(C)) == .int) {
                 types.validateContext(
                     @TypeOf(ctx),
-                    .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                    },
                 );
             } else {
-                if (types.numericType(Numeric(C)) == .int) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{ .mode = .{ .type = int.Mode, .required = false } },
-                    );
-                } else {
-                    types.validateContext(@TypeOf(ctx), .{});
-                }
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
         return array.sub_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.sub_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
-
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => @compileError("zml.sub_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => {
-                comptime types.validateContext(
+        @compileError("zml.sub_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                types.validateContext(
                     @TypeOf(ctx),
-                    .{ .mode = .{ .type = int.Mode, .required = false } },
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                    },
                 );
+            } else {
+                types.validateContext(@TypeOf(ctx), .{});
+            }
+        };
 
-                o.* = scast(O, int.sub(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default)));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+        return matrix.sub_(o, x, y, ctx);
+    } else {
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => @compileError("zml.sub_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+                .int => {
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{ .mode = .{ .type = int.Mode, .required = false } },
+                    );
 
-                o.* = scast(O, float.sub(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.sub(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default)));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, cfloat.sub(x, y));
+                    o.* = scast(O, float.sub(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, cfloat.sub(x, y));
+                },
+                else => @compileError("zml.sub_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.sub_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.sub_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -748,10 +718,10 @@ pub inline fn sub_(
 /// Parameters
 /// ----------
 /// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The left-hand side operand.
+/// `complex`, `expression`, array): The left-hand side operand.
 ///
 /// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The right-hand side operand.
+/// `complex`, `expression`, array): The right-hand side operand.
 ///
 /// options (`struct`): Options for the multiplication operation.
 /// - `mode` (`int.Mode`): The mode of the multiplication operation. Only needed
@@ -776,7 +746,7 @@ pub inline fn sub_(
 /// `@compileError`: If the multiplication operation is not defined for the
 /// types of the inputs, if the types of the inputs cannot be coerced to a
 /// common type, or if the types of the inputs are not supported numeric types,
-/// arrays or slices.
+/// arrayss.
 ///
 /// See Also
 /// --------
@@ -806,7 +776,7 @@ pub inline fn sub_(
 /// `expression`, `complex`, `real`, `rational`, `integer`, `float`, `int` or
 /// `bool`.
 ///
-/// `array.mul`: For multiplication of two arrays or slices.
+/// `array.mul`: For multiplication of two arrayss.
 ///
 /// Notes
 /// -----
@@ -821,18 +791,9 @@ pub inline fn mul(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
-                },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             if (types.numericType(Numeric(C)) == .int) {
                 types.validateContext(
@@ -861,29 +822,60 @@ pub inline fn mul(
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
             types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
+                );
+            } else {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .order = .{ .type = ?types.Order, .required = false },
+                    },
+                );
+            }
+        };
 
-    switch (comptime types.numericType(C)) {
-        .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .int => {
-            comptime types.validateContext(
-                @TypeOf(ctx),
-                .{ .mode = .{ .type = int.Mode, .required = false } },
-            );
+        return matrix.mul(
+            ctx.matrix_allocator,
+            x,
+            y,
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+        );
+    } else {
+        switch (comptime types.numericType(C)) {
+            .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .int => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{ .mode = .{ .type = int.Mode, .required = false } },
+                );
 
-            return int.mul(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.mul(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.mul(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.mul(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return cfloat.mul(x, y);
-        },
-        else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.mul(x, y);
+            },
+            else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -904,95 +896,63 @@ pub inline fn mul_(
     O = types.Child(O);
 
     if (comptime types.isArray(O)) {
-        comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            if (types.isArbitraryPrecision(Numeric(C))) {
-                // Both types are arbitrary precision
-                if (Numeric(O) == Numeric(C)) {
-                    // Equal types: output can be used for the operations, needing
-                    // only the output's allocator
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                    );
-                } else {
-                    // Different types: internal allocator is required to perform
-                    // the operation at `x`'s precision, and then cast the result to
-                    // the output with the output's allocator
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                }
-            } else {
-                // Only the output is arbitrary precision, so we need the output's
-                // allocator to perform the casting
-                if (types.numericType(Numeric(C)) == .int) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .mode = .{ .type = int.Mode, .required = false },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                    );
-                }
-            }
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
-            if (types.isArbitraryPrecision(Numeric(C))) {
-                // Only the input is arbitrary precision, so we need the internal
-                // allocator to perform the operation at `x`'s precision
+            if (types.numericType(Numeric(C)) == .int) {
                 types.validateContext(
                     @TypeOf(ctx),
-                    .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
+                    .{ .mode = .{ .type = int.Mode, .required = false } },
                 );
             } else {
-                if (types.numericType(Numeric(C)) == .int) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{ .mode = .{ .type = int.Mode, .required = false } },
-                    );
-                } else {
-                    types.validateContext(@TypeOf(ctx), .{});
-                }
+                types.validateContext(@TypeOf(ctx), .{});
             }
         };
 
         return array.mul_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.mul_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
-
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => @compileError("zml.mul_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => {
-                comptime types.validateContext(
+        @compileError("zml.mul_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                types.validateContext(
                     @TypeOf(ctx),
                     .{ .mode = .{ .type = int.Mode, .required = false } },
                 );
+            } else {
+                types.validateContext(@TypeOf(ctx), .{});
+            }
+        };
 
-                o.* = scast(O, int.mul(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default)));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+        return matrix.mul_(o, x, y, ctx);
+    } else {
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => @compileError("zml.mul_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+                .int => {
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{ .mode = .{ .type = int.Mode, .required = false } },
+                    );
 
-                o.* = scast(O, float.mul(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.mul(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default)));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, cfloat.mul(x, y));
+                    o.* = scast(O, float.mul(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, cfloat.mul(x, y));
+                },
+                else => @compileError("zml.mul_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.mul_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.mul_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1008,10 +968,10 @@ pub inline fn mul_(
 /// Parameters
 /// ----------
 /// x (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The left-hand side operand.
+/// `complex`, `expression`, array): The left-hand side operand.
 ///
 /// y (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`, `expression`, array or slice): The right-hand side operand.
+/// `complex`, `expression`, array): The right-hand side operand.
 ///
 /// options (`struct`): Options for the division operation.
 /// - `mode` (`int.Mode`): The mode of the division operation. Only needed when
@@ -1029,13 +989,6 @@ pub inline fn mul_(
 /// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
 /// memory for the output value. Only occurs if the output type is of arbitrary
 /// precision.
-///
-/// Raises
-/// ------
-/// `@compileError`: If the division operation is not defined for the types of
-/// the inputs, if the types of the inputs cannot be coerced to a common type,
-/// or if the types of the inputs are not supported numeric types, arrays or
-/// slices.
 ///
 /// See Also
 /// --------
@@ -1063,7 +1016,7 @@ pub inline fn mul_(
 /// `expression.div`: For division of an `expression` and another  `expression`,
 /// `complex`, `real`, `rational`, `integer`, `float`, `int` or `bool`.
 ///
-/// `array.div`: For division of two arrays or slices.
+/// `array.div`: For division of two arrayss.
 ///
 /// Notes
 /// -----
@@ -1078,18 +1031,9 @@ pub inline fn div(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
-                },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(
                 @TypeOf(ctx),
@@ -1106,6 +1050,26 @@ pub inline fn div(
             y,
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
             types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+        );
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .order = .{ .type = ?types.Order, .required = false },
+                },
+            );
+        };
+
+        return matrix.div(
+            ctx.matrix_allocator,
+            x,
+            y,
+            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
+            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
         );
     }
 
@@ -1147,76 +1111,46 @@ pub inline fn div_(
     O = types.Child(O);
 
     if (comptime types.isArray(O)) {
-        comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            if (types.isArbitraryPrecision(Numeric(C))) {
-                // Both types are arbitrary precision
-                if (Numeric(O) == Numeric(C)) {
-                    // Equal types: output can be used for the operations, needing
-                    // only the output's allocator
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                    );
-                } else {
-                    // Different types: internal allocator is required to perform
-                    // the operation at `x`'s precision, and then cast the result to
-                    // the output with the output's allocator
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                }
-            } else {
-                // Only the output is arbitrary precision, so we need the output's
-                // allocator to perform the casting
-
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            }
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
-            if (types.isArbitraryPrecision(Numeric(C))) {
-                // Only the input is arbitrary precision, so we need the internal
-                // allocator to perform the operation at `x`'s precision
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
-                );
-            } else {
-                types.validateContext(@TypeOf(ctx), .{});
-            }
+            types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.div_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.div_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.div_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            types.validateContext(@TypeOf(ctx), .{});
+        };
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => @compileError("zml.div_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+        return matrix.div_(o, x, y, ctx);
+    } else {
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => @compileError("zml.div_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types"),
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, int.div(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.div(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.div(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, float.div(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, cfloat.div(x, y));
+                    o.* = scast(O, cfloat.div(x, y));
+                },
+                else => @compileError("zml.div_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.div_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.div_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1229,9 +1163,7 @@ pub inline fn eq(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime types.validateContext(
             @TypeOf(ctx),
             .{
@@ -1246,34 +1178,36 @@ pub inline fn eq(
             y,
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.eq not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.eq does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.eq does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return x == y;
+            },
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return x == y;
-        },
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.eq(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.eq(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.eq(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.eq(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return cfloat.eq(x, y);
-        },
-        else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.eq(x, y);
+            },
+            else => @compileError("zml.eq between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1295,48 +1229,47 @@ pub inline fn eq_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.eq_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.eq_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.eq_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.eq_ not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.eq_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.eq_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, x == y);
+                },
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, x == y);
-            },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.eq(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, int.eq(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, float.eq(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.eq(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, cfloat.eq(x, y));
+                    o.* = scast(O, cfloat.eq(x, y));
+                },
+                else => @compileError("zml.eq_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.eq_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.eq_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1349,9 +1282,7 @@ pub inline fn ne(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime types.validateContext(
             @TypeOf(ctx),
             .{
@@ -1366,34 +1297,36 @@ pub inline fn ne(
             y,
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.ne not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.ne does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.ne does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return x == y;
+            },
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return x == y;
-        },
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.ne(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.ne(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.ne(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.ne(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return cfloat.ne(x, y);
-        },
-        else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.ne(x, y);
+            },
+            else => @compileError("zml.ne between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1415,48 +1348,47 @@ pub inline fn ne_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.ne_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.ne_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.ne_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.ne_ not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.ne_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.ne_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, x == y);
+                },
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, x == y);
-            },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.ne(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, int.ne(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, float.ne(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.ne(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, cfloat.ne(x, y));
+                    o.* = scast(O, cfloat.ne(x, y));
+                },
+                else => @compileError("zml.ne_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.ne_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.ne_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1469,9 +1401,7 @@ pub inline fn lt(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime types.validateContext(
             @TypeOf(ctx),
             .{
@@ -1486,29 +1416,31 @@ pub inline fn lt(
             y,
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.lt not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => unreachable,
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => unreachable,
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.lt(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.lt(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.lt(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.lt(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return cfloat.lt(x, y);
-        },
-        else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.lt(x, y);
+            },
+            else => @compileError("zml.lt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1530,43 +1462,42 @@ pub inline fn lt_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.lt_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.lt_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.lt_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.lt_ not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.lt_ is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.lt_ is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => unreachable,
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => unreachable,
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.lt(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, int.lt(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, float.lt(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.lt(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, cfloat.lt(x, y));
+                    o.* = scast(O, cfloat.lt(x, y));
+                },
+                else => @compileError("zml.lt_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.lt_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.lt_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1579,9 +1510,7 @@ pub inline fn le(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime types.validateContext(
             @TypeOf(ctx),
             .{
@@ -1596,29 +1525,31 @@ pub inline fn le(
             y,
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.le not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.le is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.le is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => unreachable,
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => unreachable,
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.le(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.le(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.le(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.le(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return cfloat.le(x, y);
-        },
-        else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.le(x, y);
+            },
+            else => @compileError("zml.le between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1640,43 +1571,42 @@ pub inline fn le_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.le_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.le_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.le_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.le_ not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.le_ is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.le_ is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => unreachable,
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => unreachable,
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.le(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, int.le(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, float.le(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.le(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, cfloat.le(x, y));
+                    o.* = scast(O, cfloat.le(x, y));
+                },
+                else => @compileError("zml.le_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.le_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.le_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1689,9 +1619,7 @@ pub inline fn gt(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime types.validateContext(
             @TypeOf(ctx),
             .{
@@ -1706,29 +1634,31 @@ pub inline fn gt(
             y,
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.gt not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.gt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.gt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => unreachable,
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => unreachable,
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.gt(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.gt(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.gt(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.gt(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return cfloat.gt(x, y);
-        },
-        else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.gt(x, y);
+            },
+            else => @compileError("zml.gt between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1750,43 +1680,42 @@ pub inline fn gt_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.gt_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.gt_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.gt_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.gt_ not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => unreachable,
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => unreachable,
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.gt(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, int.gt(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, float.gt(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.gt(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, cfloat.gt(x, y));
+                    o.* = scast(O, cfloat.gt(x, y));
+                },
+                else => @compileError("zml.gt_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.gt_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.gt_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1799,9 +1728,7 @@ pub inline fn ge(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime types.validateContext(
             @TypeOf(ctx),
             .{
@@ -1816,29 +1743,31 @@ pub inline fn ge(
             y,
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.ge not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => unreachable,
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => unreachable,
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.ge(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.ge(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.ge(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.ge(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return cfloat.ge(x, y);
-        },
-        else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.ge(x, y);
+            },
+            else => @compileError("zml.ge between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1860,43 +1789,42 @@ pub inline fn ge_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.ge_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.ge_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.ge_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.ge_ not defined for matrices, convert to array first");
+    } else {
+        comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
+            @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if (types.numericType(X) == .bool or types.numericType(Y) == .bool)
-        @compileError("zml.lt is not defined for `bool` types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => unreachable,
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => unreachable,
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, int.ge(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, int.ge(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, float.ge(x, y));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.ge(x, y));
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, cfloat.ge(x, y));
+                    o.* = scast(O, cfloat.ge(x, y));
+                },
+                else => @compileError("zml.ge_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
             },
             else => @compileError("zml.ge_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
-        },
-        else => @compileError("zml.ge_ not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
     }
 }
 
@@ -1909,18 +1837,9 @@ pub inline fn max(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
-                },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(
                 @TypeOf(ctx),
@@ -1938,31 +1857,33 @@ pub inline fn max(
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
             types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.max not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.max does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.max does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return x or y;
+            },
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return x or y;
-        },
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.max(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.max(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return float.max(x, y);
-        },
-        .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return float.max(x, y);
+            },
+            .cfloat => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .complex => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            else => @compileError("zml.max between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1984,45 +1905,44 @@ pub inline fn max_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.max_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.max_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.max_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.max_ not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.max_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.max_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, x or y);
+                },
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, x or y);
+                    o.* = scast(O, int.max(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, float.max(x, y));
+                },
+                .cfloat => @compileError("zml.max_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                .complex => @compileError("zml.max_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                else => @compileError("zml.max_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, int.max(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, float.max(x, y));
-            },
-            .cfloat => @compileError("zml.max_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-            .complex => @compileError("zml.max_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             else => @compileError("zml.max_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
-        },
-        else => @compileError("zml.max_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -2035,18 +1955,9 @@ pub inline fn min(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{
-                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
-                },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(
                 @TypeOf(ctx),
@@ -2064,31 +1975,33 @@ pub inline fn min(
             .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
             types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
-    }
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.min not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.min does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.min does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(C)) {
+            .bool => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(C)) {
-        .bool => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return x or y;
+            },
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return x or y;
-        },
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.min(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.min(x, y);
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
-
-            return float.min(x, y);
-        },
-        .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return float.min(x, y);
+            },
+            .cfloat => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .complex => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            else => @compileError("zml.min between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -2110,45 +2023,44 @@ pub inline fn min_(
 
     if (comptime types.isArray(O)) {
         comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            types.validateContext(
-                @TypeOf(ctx),
-                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-            );
+            @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
         return array.min_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.min_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-    }
+        @compileError("zml.min_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.min_ not defined for matrices, convert to array first");
+    } else {
+        comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
+            (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
+            @compileError("zml.min_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
-    comptime if ((types.numericType(X) == .bool and !types.numericType(Y) == .bool) or
-        (types.numericType(Y) == .bool and !types.numericType(X) == .bool))
-        @compileError("zml.min_ does not support comparing `bool` with other numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                .bool => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-    switch (comptime types.numericType(O)) {
-        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
-            .bool => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                    o.* = scast(O, x or y);
+                },
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, x or y);
+                    o.* = scast(O, int.min(x, y));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, float.min(x, y));
+                },
+                .cfloat => @compileError("zml.min_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                .complex => @compileError("zml.min_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                else => @compileError("zml.min_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, int.min(x, y));
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                o.* = scast(O, float.min(x, y));
-            },
-            .cfloat => @compileError("zml.min_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-            .complex => @compileError("zml.min_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             else => @compileError("zml.min_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
-        },
-        else => @compileError("zml.min_ between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -2263,7 +2175,7 @@ pub inline fn abs_(
 
         return array.abs_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.abs_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.abs_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.abs_ not defined for matrices, convert to array first");
     } else {
@@ -2371,7 +2283,7 @@ pub inline fn abs2_(
 
         return array.abs2_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.abs2_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.abs2_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.abs2_ not defined for matrices, convert to array first");
     } else {
@@ -2475,7 +2387,7 @@ pub inline fn exp_(
 
         return array.exp_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.exp_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.exp_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.exp_ not defined for matrices, convert to array first");
     } else {
@@ -2568,7 +2480,7 @@ pub inline fn exp10_(
 
         return array.exp10_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.exp10_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.exp10_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.exp10_ not defined for matrices, convert to array first");
     } else {
@@ -2656,7 +2568,7 @@ pub inline fn exp2_(
 
         return array.exp2_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.exp2_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.exp2_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.exp2_ not defined for matrices, convert to array first");
     } else {
@@ -2744,7 +2656,7 @@ pub inline fn exp10m1_(
 
         return array.exp10m1_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.exp10m1_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.exp10m1_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.exp10m1_ not defined for matrices, convert to array first");
     } else {
@@ -2832,7 +2744,7 @@ pub inline fn exp2m1_(
 
         return array.exp2m1_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.exp2m1_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.exp2m1_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.exp2m1_ not defined for matrices, convert to array first");
     } else {
@@ -2920,7 +2832,7 @@ pub inline fn expm1_(
 
         return array.expm1_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.expm1_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.expm1_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.expm1_ not defined for matrices, convert to array first");
     } else {
@@ -3013,7 +2925,7 @@ pub inline fn log_(
 
         return array.log_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.log_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.log_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.log_ not defined for matrices, convert to array first");
     } else {
@@ -3106,7 +3018,7 @@ pub inline fn log10_(
 
         return array.log10_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.log10_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.log10_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.log10_ not defined for matrices, convert to array first");
     } else {
@@ -3194,7 +3106,7 @@ pub inline fn log2_(
 
         return array.log2_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.log2_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.log2_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.log2_ not defined for matrices, convert to array first");
     } else {
@@ -3282,7 +3194,7 @@ pub inline fn log10p1_(
 
         return array.log10p1_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.log10p1_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.log10p1_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.log10p1_ not defined for matrices, convert to array first");
     } else {
@@ -3370,7 +3282,7 @@ pub inline fn log2p1_(
 
         return array.log2p1_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.log2p1_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.log2p1_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.log2p1_ not defined for matrices, convert to array first");
     } else {
@@ -3458,7 +3370,7 @@ pub inline fn log1p_(
 
         return array.log1p_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.log1p_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.log1p_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.log1p_ not defined for matrices, convert to array first");
     } else {
@@ -3553,7 +3465,7 @@ pub inline fn pow_(
 
         return array.pow_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.pow_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.pow_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.pow_ not defined for matrices, convert to array first");
     } else {
@@ -3651,7 +3563,7 @@ pub inline fn sqrt_(
 
         return array.sqrt_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.sqrt_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.sqrt_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.sqrt_ not defined for matrices, convert to array first");
     } else {
@@ -3737,7 +3649,7 @@ pub inline fn cbrt_(
 
         return array.cbrt_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.cbrt_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.cbrt_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.cbrt_ not defined for matrices, convert to array first");
     } else {
@@ -3825,7 +3737,7 @@ pub inline fn hypot_(
 
         return array.hypot_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.hypot_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.hypot_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.hypot_ not defined for matrices, convert to array first");
     } else {
@@ -3912,7 +3824,7 @@ pub inline fn sin_(
 
         return array.sin_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.sin_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.sin_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.sin_ not defined for matrices, convert to array first");
     } else {
@@ -4003,7 +3915,7 @@ pub inline fn cos_(
 
         return array.cos_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.cos_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.cos_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.cos_ not defined for matrices, convert to array first");
     } else {
@@ -4101,7 +4013,7 @@ pub inline fn tan_(
 
         return array.tan_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.tan_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.tan_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.tan_ not defined for matrices, convert to array first");
     } else {
@@ -4192,7 +4104,7 @@ pub inline fn asin_(
 
         return array.asin_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.asin_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.asin_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.asin_ not defined for matrices, convert to array first");
     } else {
@@ -4283,7 +4195,7 @@ pub inline fn acos_(
 
         return array.acos_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.acos_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.acos_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.acos_ not defined for matrices, convert to array first");
     } else {
@@ -4381,7 +4293,7 @@ pub inline fn atan_(
 
         return array.atan_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.atan_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.atan_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.atan_ not defined for matrices, convert to array first");
     } else {
@@ -4476,7 +4388,7 @@ pub inline fn atan2_(
 
         return array.atan2_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.atan2_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.atan2_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.atan2_ not defined for matrices, convert to array first");
     } else {
@@ -4564,7 +4476,7 @@ pub inline fn sinpi_(
 
         return array.sinpi_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.sinpi_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.sinpi_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.sinpi_ not defined for matrices, convert to array first");
     } else {
@@ -4652,7 +4564,7 @@ pub inline fn cospi_(
 
         return array.cospi_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.cospi_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.cospi_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.cospi_ not defined for matrices, convert to array first");
     } else {
@@ -4740,7 +4652,7 @@ pub inline fn tanpi_(
 
         return array.tanpi_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.tanpi_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.tanpi_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.tanpi_ not defined for matrices, convert to array first");
     } else {
@@ -4821,7 +4733,7 @@ pub inline fn asinpi_(
 
         return array.asinpi_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.asinpi_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.asinpi_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.asinpi_ not defined for matrices, convert to array first");
     } else {
@@ -4902,7 +4814,7 @@ pub inline fn acospi_(
 
         return array.acospi_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.acospi_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.acospi_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.acospi_ not defined for matrices, convert to array first");
     } else {
@@ -4983,7 +4895,7 @@ pub inline fn atanpi_(
 
         return array.atanpi_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.atanpi_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.atanpi_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.atanpi_ not defined for matrices, convert to array first");
     } else {
@@ -5071,7 +4983,7 @@ pub inline fn atan2pi_(
 
         return array.atan2pi_(o, x, y, ctx);
     } else if (comptime types.isArray(X) or types.isArray(Y)) {
-        @compileError("zml.atan2pi_: o must be an array or slice if x or y is an array or slice, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.atan2pi_: o must be an array if x or y is an array, got " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.atan2pi_ not defined for matrices, convert to array first");
     } else {
@@ -5158,7 +5070,7 @@ pub inline fn sinh_(
 
         return array.sinh_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.sinh_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.sinh_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.sinh_ not defined for matrices, convert to array first");
     } else {
@@ -5249,7 +5161,7 @@ pub inline fn cosh_(
 
         return array.cosh_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.cosh_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.cosh_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.cosh_ not defined for matrices, convert to array first");
     } else {
@@ -5340,7 +5252,7 @@ pub inline fn tanh_(
 
         return array.tanh_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.tanh_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.tanh_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.tanh_ not defined for matrices, convert to array first");
     } else {
@@ -5431,7 +5343,7 @@ pub inline fn asinh_(
 
         return array.asinh_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.asinh_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.asinh_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.asinh_ not defined for matrices, convert to array first");
     } else {
@@ -5522,7 +5434,7 @@ pub inline fn acosh_(
 
         return array.acosh_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.acosh_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.acosh_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.acosh_ not defined for matrices, convert to array first");
     } else {
@@ -5613,7 +5525,7 @@ pub inline fn atanh_(
 
         return array.atanh_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.atanh_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.atanh_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.atanh_ not defined for matrices, convert to array first");
     } else {
@@ -5700,7 +5612,7 @@ pub inline fn erf_(
 
         return array.erf_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.erf_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.erf_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.erf_ not defined for matrices, convert to array first");
     } else {
@@ -5778,7 +5690,7 @@ pub inline fn erfc_(
 
         return array.erfc_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.erfc_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.erfc_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.erfc_ not defined for matrices, convert to array first");
     } else {
@@ -5856,7 +5768,7 @@ pub inline fn gamma_(
 
         return array.gamma_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.gamma_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.gamma_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.gamma_ not defined for matrices, convert to array first");
     } else {
@@ -5934,7 +5846,7 @@ pub inline fn lgamma_(
 
         return array.lgamma_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.lgamma_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.lgamma_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.lgamma_ not defined for matrices, convert to array first");
     } else {
@@ -6125,7 +6037,7 @@ pub inline fn conjugate_(
 
         return array.conjugate_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.conjugate_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.conjugate_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.conjugate_ not defined for matrices, convert to array first");
     } else {
@@ -6266,7 +6178,7 @@ pub inline fn ceil_(
 
         return array.ceil_(o, x, ctx);
     } else if (comptime types.isArray(X)) {
-        @compileError("zml.ceil_: o must be an array or slice if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+        @compileError("zml.ceil_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
     } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
         @compileError("zml.ceil_ not defined for matrices, convert to array first");
     } else {
@@ -6293,7 +6205,7 @@ pub inline fn init(
     ctx: anytype,
 ) !T {
     if (comptime types.isArray(T))
-        @compileError("zml.init not implemented for arrays or slices yet.");
+        @compileError("zml.init not implemented for arrayss yet.");
 
     if (comptime types.isMatrix(T))
         @compileError("zml.init not implemented for matrices yet.");
@@ -6409,7 +6321,7 @@ pub inline fn copy(
     const X: type = Child(@TypeOf(x));
 
     if (comptime types.isArray(X))
-        @compileError("zml.copy not implemented for arrays or slices yet.");
+        @compileError("zml.copy not implemented for arrayss yet.");
 
     if (comptime types.isMatrix(X))
         @compileError("zml.copy not implemented for matrices yet.");

@@ -17,15 +17,19 @@ pub fn build(b: *std.Build) void {
 
     const module = b.addModule("zml", .{
         .root_source_file = b.path("src/zml.zig"),
+        .target = target,
+        .optimize = optimize,
     });
     module.addOptions("options", options);
 
     // Executable (for testing)
     const exe = b.addExecutable(.{
         .name = "main",
-        .root_source_file = b.path("src/main.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     exe.root_module.addImport("zml", module);
@@ -48,11 +52,14 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 
     // Compile only CBLAS
-    const cblas_lib = b.addSharedLibrary(.{
+    const cblas_lib = b.addLibrary(.{
+        .linkage = .dynamic,
         .name = "blas",
-        .root_source_file = b.path("src/cblas.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/cblas.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     cblas_lib.root_module.addImport("zml", module);
@@ -64,9 +71,11 @@ pub fn build(b: *std.Build) void {
 
     // Tests
     const lib_unit_tests = b.addTest(.{
-        .root_source_file = b.path("test/zml.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("test/zml.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     lib_unit_tests.root_module.addImport("zml", module);
@@ -86,11 +95,9 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_lib_unit_tests.step);
 
     // Documentation
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "zml",
-        .root_source_file = b.path("src/zml.zig"),
-        .target = target,
-        .optimize = optimize,
+        .root_module = module,
     });
 
     const install_docs = b.addInstallDirectory(.{

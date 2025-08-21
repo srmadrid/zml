@@ -178,7 +178,7 @@ pub fn apply2_(
     O = types.Child(O);
 
     comptime if (!types.isArray(O))
-        @compileError("apply2_: o must be an array or slice, got " ++ @typeName(O));
+        @compileError("apply2_: o must be an array, got " ++ @typeName(O));
 
     comptime if (@typeInfo(@TypeOf(op_)) != .@"fn" or (@typeInfo(@TypeOf(op_)).@"fn".params.len != 3 and @typeInfo(@TypeOf(op_)).@"fn".params.len != 4))
         @compileError("apply2_: op must be a function of three arguments, or a function of four arguments with the fourth argument being a context, got " ++ @typeName(@TypeOf(op_)));

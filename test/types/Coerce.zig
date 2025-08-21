@@ -4,7 +4,7 @@ const Coerce = zml.types.Coerce;
 
 test Coerce {
     comptime {
-        const data: [96][3]type = .{
+        const data: [135][3]type = .{
             .{ u8, u8, u8 },
             .{ u8, u16, u16 },
             .{ u8, u32, u32 },
