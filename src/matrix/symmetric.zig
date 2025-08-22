@@ -6,7 +6,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const ReturnType1 = types.ReturnType1;
 const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
 const Order = types.Order;

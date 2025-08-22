@@ -220,6 +220,14 @@ const supported_numeric_types: [34]type = .{
     Complex(Rational), Complex(Real),
 };
 
+const supported_complex_types: [9]type = .{
+    cf16,             cf32,
+    cf64,             cf80,
+    cf128,            comptime_complex,
+    Complex(Integer), Complex(Rational),
+    Complex(Real),
+};
+
 pub const MatrixType = enum {
     general,
     symmetric,
@@ -646,7 +654,7 @@ pub fn isHermitianMatrix(comptime T: type) bool {
                 return false;
             }
 
-            inline for (supported_numeric_types) |numeric_type| {
+            inline for (supported_complex_types) |numeric_type| {
                 if (T == matrix.Hermitian(numeric_type)) return true;
             }
 
@@ -1047,7 +1055,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 },
                 .hermitian => switch (comptime domainType(Y)) {
                     .numeric => {
-                        if (comptime isComplex(X)) {
+                        if (comptime isComplex(Y)) {
                             return matrix.General(Coerce(Numeric(X), Y)); // hermitian + numeric (complex)
                         } else {
                             return matrix.Hermitian(Coerce(Numeric(X), Y)); // hermitian + numeric (real)

@@ -110,7 +110,29 @@ pub fn apply2(
                     types.stripStruct(ctx, &.{"uplo"}),
                 );
             },
-            .hermitian => return hermitian.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .hermitian => {
+                types.partialValidateContext(
+                    @TypeOf(ctx),
+                    .{ .uplo = .{ .type = types.Uplo, .required = false } },
+                );
+
+                return hermitian.apply2(
+                    allocator,
+                    x,
+                    y,
+                    op,
+                    if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
+                        .{
+                            .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
+                            .order = opts.order,
+                        }
+                    else
+                        .{
+                            .order = opts.order,
+                        },
+                    types.stripStruct(ctx, &.{"uplo"}),
+                );
+            },
             .triangular => return triangular.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
             .diagonal => return diagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
             .banded => return banded.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
@@ -139,7 +161,29 @@ pub fn apply2(
                     types.stripStruct(ctx, &.{"uplo"}),
                 );
             },
-            .hermitian => return hermitian.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .hermitian => {
+                types.partialValidateContext(
+                    @TypeOf(ctx),
+                    .{ .uplo = .{ .type = types.Uplo, .required = false } },
+                );
+
+                return hermitian.apply2(
+                    allocator,
+                    x,
+                    y,
+                    op,
+                    if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
+                        .{
+                            .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
+                            .order = opts.order,
+                        }
+                    else
+                        .{
+                            .order = opts.order,
+                        },
+                    types.stripStruct(ctx, &.{"uplo"}),
+                );
+            },
             .triangular => return triangular.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
             .diagonal => return diagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
             .banded => return banded.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
@@ -193,7 +237,24 @@ pub fn apply2(
             .hermitian => switch (comptime types.matrixType(Y)) {
                 // .general => return hege.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
                 // .symmetric => return hesy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .hermitian => return hermitian.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .hermitian => {
+                    types.partialValidateContext(
+                        @TypeOf(ctx),
+                        .{ .uplo = .{ .type = types.Uplo, .required = false } },
+                    );
+
+                    return hermitian.apply2(
+                        allocator,
+                        x,
+                        y,
+                        op,
+                        .{
+                            .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
+                            .order = opts.order,
+                        },
+                        types.stripStruct(ctx, &.{"uplo"}),
+                    );
+                },
                 // .triangular => return hetr.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 // .diagonal => return hedi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 // .banded => return heba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),

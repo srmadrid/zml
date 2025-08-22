@@ -6,6 +6,10 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const ReturnType2 = types.ReturnType2;
+const Numeric = types.Numeric;
+const Coerce = types.Coerce;
+const EnsureMatrix = types.EnsureMatrix;
 const Order = types.Order;
 const Uplo = types.Uplo;
 const ops = @import("../ops.zig");
@@ -430,4 +434,2322 @@ pub fn Hermitian(comptime T: type) type {
             };
         }
     };
+}
+
+pub fn apply2(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    comptime op: anytype,
+    opts: if (types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
+        struct {
+            uplo: ?Uplo = null,
+            order: ?Order = null,
+        }
+    else
+        struct {
+            order: ?Order = null,
+        },
+    ctx: anytype,
+) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+    const X: type = Numeric(@TypeOf(x));
+    const Y: type = Numeric(@TypeOf(y));
+
+    if (comptime !types.isHermitianMatrix(@TypeOf(x))) {
+        const ruplo: Uplo = if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
+            opts.uplo orelse y.uplo
+        else
+            y.uplo;
+        var result: Coerce(@TypeOf(x), @TypeOf(y)) = if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
+            try .init( // Hermitian
+                allocator,
+                y.size,
+                .{
+                    .uplo = ruplo,
+                    .order = opts.order orelse y.flags.order,
+                },
+            )
+        else
+            try .init( // General
+                allocator,
+                y.size,
+                y.size,
+                .{ .order = opts.order orelse y.flags.order },
+            );
+        errdefer result.deinit(allocator);
+
+        const opinfo = @typeInfo(@TypeOf(op));
+        if (result.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                if (ruplo == .upper) {
+                    if (y.uplo == .upper) { // cu cu
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) { // Result is a general matrix
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j + j * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j + j * y.strides[1]], ctx);
+                            }
+                        }
+                    } else { // cu cl
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x, y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j + j * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j + j * y.strides[1]], ctx);
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) { // cl cu
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j + j * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j + j * y.strides[1]], ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x, y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else { // cl cl
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j + j * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j + j * y.strides[1]], ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (ruplo == .upper) {
+                    if (y.uplo == .upper) { // cu ru
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + j]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + j], ctx);
+                            }
+                        }
+                    } else { // cu rl
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x, y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + j]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + j], ctx);
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) { // cl ru
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + j]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + j], ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x, y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else { // cl rl
+                        var j: u32 = 0;
+                        while (j < y.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + j]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + j], ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < y.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                if (ruplo == .upper) {
+                    if (y.uplo == .upper) { // ru cu
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i + i * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i + i * y.strides[1]], ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else { // ru cl
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i + i * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i + i * y.strides[1]], ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x, y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) { // rl cu
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x, y.data[j + i * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i + i * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i + i * y.strides[1]], ctx);
+                            }
+                        }
+                    } else { // rl cl
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i + j * y.strides[1]]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i + j * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i + i * y.strides[1]]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i + i * y.strides[1]], ctx);
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (ruplo == .upper) {
+                    if (y.uplo == .upper) { // ru ru
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i * y.strides[0] + i]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i * y.strides[0] + i], ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else { // ru rl
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i * y.strides[0] + i]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i * y.strides[0] + i], ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < y.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x, y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (y.uplo == .upper) { // rl ru
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        x,
+                                        ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x, y.data[j * y.strides[0] + i]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i * y.strides[0] + i]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i * y.strides[0] + i], ctx);
+                            }
+                        }
+                    } else { // rl rl
+                        var i: u32 = 0;
+                        while (i < y.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x, y.data[i * y.strides[0] + j]);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            x,
+                                            ops.conjugate(y.data[i * y.strides[0] + j], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x, y.data[i * y.strides[0] + i]);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x, y.data[i * y.strides[0] + i], ctx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    } else if (comptime !types.isHermitianMatrix(@TypeOf(y))) {
+        const ruplo: Uplo = if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
+            opts.uplo orelse x.uplo
+        else
+            x.uplo;
+        var result: Coerce(@TypeOf(x), @TypeOf(y)) = if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
+            try .init( // Hermitian
+                allocator,
+                x.size,
+                .{
+                    .uplo = ruplo,
+                    .order = opts.order orelse x.flags.order,
+                },
+            )
+        else
+            try .init( // General
+                allocator,
+                x.size,
+                x.size,
+                .{ .order = opts.order orelse x.flags.order },
+            );
+        errdefer result.deinit(allocator);
+
+        const opinfo = @typeInfo(@TypeOf(op));
+        if (result.flags.order == .col_major) {
+            if (x.flags.order == .col_major) {
+                if (ruplo == .upper) {
+                    if (x.uplo == .upper) { // cu cu
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) { // Result is a general matrix
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j + j * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j + j * x.strides[1]], y, ctx);
+                            }
+                        }
+                    } else { // cu cl
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[j + i * x.strides[1]], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j + j * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j + j * x.strides[1]], y, ctx);
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) { // cl cu
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j + j * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j + j * x.strides[1]], y, ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[j + i * x.strides[1]], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else { // cl cl
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j + j * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j + j * x.strides[1]], y, ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (ruplo == .upper) {
+                    if (x.uplo == .upper) { // cu ru
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j * x.strides[0] + j], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j * x.strides[0] + j], y, ctx);
+                            }
+                        }
+                    } else { // cu rl
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[j * x.strides[0] + i], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j * x.strides[0] + j], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j * x.strides[0] + j], y, ctx);
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) { // cl ru
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j * x.strides[0] + j], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j * x.strides[0] + j], y, ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(x.data[j * x.strides[0] + i], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    }
+                                }
+                            }
+                        }
+                    } else { // cl rl
+                        var j: u32 = 0;
+                        while (j < x.size) : (j += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[j + j * result.strides[1]] = op(x.data[j * x.strides[0] + j], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[j + j * result.strides[1]] = try op(x.data[j * x.strides[0] + j], y, ctx);
+                            }
+
+                            var i: u32 = j + 1;
+                            while (i < x.size) : (i += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (x.flags.order == .col_major) {
+                if (ruplo == .upper) {
+                    if (x.uplo == .upper) { // ru cu
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i + i * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i + i * x.strides[1]], y, ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else { // ru cl
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i + i * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i + i * x.strides[1]], y, ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[j + i * x.strides[1]], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) { // rl cu
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[j + i * x.strides[1]], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i + i * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i + i * x.strides[1]], y, ctx);
+                            }
+                        }
+                    } else { // rl cl
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            ops.conjugate(x.data[i + j * x.strides[1]], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i + i * x.strides[1]], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i + i * x.strides[1]], y, ctx);
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (ruplo == .upper) {
+                    if (x.uplo == .upper) { // ru ru
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i * x.strides[0] + i], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i * x.strides[0] + i], y, ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else { // ru rl
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i * x.strides[0] + i], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i * x.strides[0] + i], y, ctx);
+                            }
+
+                            var j: u32 = i + 1;
+                            while (j < x.size) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[j * x.strides[0] + i], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) { // rl ru
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                    );
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(
+                                        ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                        y,
+                                        ctx,
+                                    );
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(x.data[j * x.strides[0] + i], y);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i * x.strides[0] + i], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i * x.strides[0] + i], y, ctx);
+                            }
+                        }
+                    } else { // rl rl
+                        var i: u32 = 0;
+                        while (i < x.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                if (comptime opinfo.@"fn".params.len == 2) {
+                                    result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y);
+                                } else if (comptime opinfo.@"fn".params.len == 3) {
+                                    result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                }
+
+                                if (comptime types.isComplex(X)) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = try op(
+                                            ops.conjugate(x.data[i * x.strides[0] + j], .{}) catch unreachable,
+                                            y,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+
+                            if (comptime opinfo.@"fn".params.len == 2) {
+                                result.data[i * result.strides[0] + i] = op(x.data[i * x.strides[0] + i], y);
+                            } else if (comptime opinfo.@"fn".params.len == 3) {
+                                result.data[i * result.strides[0] + i] = try op(x.data[i * x.strides[0] + i], y, ctx);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
+    if (x.size != y.size)
+        return matrix.Error.DimensionMismatch;
+
+    var result: Hermitian(ReturnType2(op, X, Y)) = try .init(allocator, x.size, .{
+        .uplo = opts.uplo orelse x.uplo.resolve2(y.uplo),
+        .order = opts.order orelse x.flags.order.resolve2(y.flags.order),
+    });
+    errdefer result.deinit(allocator);
+
+    const opinfo = @typeInfo(@TypeOf(op));
+    if (result.flags.order == .col_major) {
+        if (x.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cu cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // cl cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cl cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu cu ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu cu rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu cl ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cu cl rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl cu ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // cl cu rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl cl ru
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cl cl rl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu ru cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu ru cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu rl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cu rl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl ru cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // cl ru cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl rl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cl rl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cu ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // cu ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cu rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cu rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // cl ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j + i * result.strides[1]] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // cl ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // cl rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // cl rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        if (x.flags.order == .col_major) {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // ru cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl cu cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = 0;
+                                while (i <= j) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // rl cu cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl cl cu
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // rl cl cl
+                            var j: u32 = 0;
+                            while (j < y.size) : (j += 1) {
+                                var i: u32 = j;
+                                while (i < y.size) : (i += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru cu ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru cu rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru cl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // ru cl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl cu ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // rl cu rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j + i * x.strides[1]], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl cl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i + j * x.strides[1]],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // rl cl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            if (y.flags.order == .col_major) {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru ru cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru ru cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru rl cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // ru rl cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl ru cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // rl ru cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i + j * y.strides[1]],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl rl cu
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j + i * y.strides[1]], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // rl rl cl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (result.uplo == .upper) {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // ru ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        } else { // ru ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // ru rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // ru rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (x.uplo == .upper) {
+                        if (y.uplo == .upper) { // rl ru ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = i;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]), .{}) catch unreachable;
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[j * result.strides[0] + i] = ops.conjugate(try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx), .{}) catch unreachable;
+                                    }
+                                }
+                            }
+                        } else { // rl ru rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            ops.conjugate(x.data[j * x.strides[0] + i], .{}) catch unreachable,
+                                            y.data[i * y.strides[0] + j],
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        if (y.uplo == .upper) { // rl rl ru
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                        );
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(
+                                            x.data[i * x.strides[0] + j],
+                                            ops.conjugate(y.data[j * y.strides[0] + i], .{}) catch unreachable,
+                                            ctx,
+                                        );
+                                    }
+                                }
+                            }
+                        } else { // rl rl rl
+                            var i: u32 = 0;
+                            while (i < x.size) : (i += 1) {
+                                var j: u32 = 0;
+                                while (j < x.size) : (j += 1) {
+                                    if (comptime opinfo.@"fn".params.len == 2) {
+                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return result;
 }
