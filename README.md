@@ -15,12 +15,28 @@ This library is in the early stages of development and is not yet ready for use.
     - Complex floats
     - Arbitrary precision integers, rationals, reals, and complex numbers: not implemented yet
 - Numerical System:
+  - Matrices:
+    - Diverse storage formats:
+      - `General`
+      - `Symmetric`
+      - `Hermitian`
+      - `Triangular`
+      - `Diagonal`
+      - `Banded`
+      - `Tridiagonal`
+      - `Sparse` (CSR, CSC): not implemented yet
+    - Matrix addition/subtraction and scalar multiplication/division (in current development, only for select combinations)
+    - Views
   - N-dimensional arrays:
+    - Two storage formats:
+      - `Dense` (plus `Strided` for views)
+      - `Strided` (CSF)
     - Broadcasting
     - Element-wise operations
     - Views
   - Linear Algebra:
     - BLAS routines
+    - Select LAPACK routines
 - Symbolic System:
   - Nothing implemented yet
 
