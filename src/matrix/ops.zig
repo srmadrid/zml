@@ -267,7 +267,7 @@ pub fn apply2(
                 // .general => return trge.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
                 // .symmetric => return trsy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 // .hermitian => return trhe.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .triangular => return triangular.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .triangular => return triangular.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 // .diagonal => return trdi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 // .banded => return trba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 // .tridiagonal => return trgt.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),

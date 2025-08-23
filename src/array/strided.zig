@@ -3,7 +3,10 @@ const std = @import("std");
 const types = @import("../types.zig");
 const ReturnType1 = types.ReturnType1;
 const ReturnType2 = types.ReturnType2;
+const EnsureArray = types.EnsureArray;
+const Coerce = types.Coerce;
 const Numeric = types.Numeric;
+const orderOf = types.orderOf;
 
 const ops = @import("../ops.zig");
 const int = @import("../int.zig");
@@ -16,7 +19,7 @@ const Range = array.Range;
 const dense = @import("dense.zig");
 const Dense = dense.Dense;
 
-pub fn Strided(comptime T: type) type {
+pub fn Strided(T: type, base_order: Order) type {
     if (!types.isNumeric(T))
         @compileError("Strided requires a numeric type, got " ++ @typeName(T));
 
@@ -27,83 +30,41 @@ pub fn Strided(comptime T: type) type {
         strides: [array.max_dimensions]i32,
         size: u64,
         offset: u32,
-        base: ?*const anyopaque,
         flags: Flags = .{},
 
-        pub const empty: Strided(T) = .{
+        pub const empty: Strided(T, base_order) = .{
             .data = &.{},
             .ndim = 0,
             .shape = .{0} ** array.max_dimensions,
             .strides = .{0} ** array.max_dimensions,
             .size = 0,
             .offset = 0,
-            .base = null,
             .flags = .{},
         };
 
-        pub fn get(self: *const Strided(T), position: []const u32) !T {
+        pub fn get(self: *const Strided(T, base_order), position: []const u32) !T {
             try self._checkPosition(position);
 
             return self.data[self._index(position)];
         }
 
-        pub inline fn at(self: *const Strided(T), position: []const u32) T {
+        pub inline fn at(self: *const Strided(T, base_order), position: []const u32) T {
             // Unchecked version of get. Assumes position is valid.
             return self.data[self._index(position)];
         }
 
-        pub fn set(self: *const Strided(T), position: []const u32, value: T) !void {
+        pub fn set(self: *const Strided(T, base_order), position: []const u32, value: T) !void {
             try self._checkPosition(position);
 
             self.data[self._index(position)] = value;
         }
 
-        pub inline fn put(self: *const Strided(T), position: []const u32, value: T) void {
+        pub inline fn put(self: *const Strided(T, base_order), position: []const u32, value: T) void {
             // Unchecked version of set. Assumes position is valid.
             self.data[self._index(position)] = value;
         }
 
-        pub inline fn reshape(self: *const Strided(T), shape: []const u32) !Strided(T) {
-            if (shape.len > array.max_dimensions)
-                return array.Error.TooManyDimensions;
-
-            if (shape.len == 0)
-                return array.Error.ZeroDimension;
-
-            var new_size: u32 = 1;
-            var new_shape: [array.max_dimensions]u32 = .{0} ** array.max_dimensions;
-            var new_strides: [array.max_dimensions]i32 = .{0} ** array.max_dimensions;
-            if (shape.len > 0) {
-                for (0..shape.len) |i| {
-                    const idx: u32 = if (self.flags.order == .row_major) shape.len - i - 1 else i;
-
-                    new_strides[idx] = types.scast(i32, new_size);
-                    new_size *= shape[idx];
-
-                    new_shape[i] = shape[i];
-                }
-            }
-
-            if (new_size != self.size) {
-                return error.DimensionMismatch;
-            }
-
-            return Strided(T){
-                .data = self.data,
-                .ndim = shape.len,
-                .shape = new_shape,
-                .strides = new_strides,
-                .size = new_size,
-                .offset = self.offset,
-                .base = if (self.flags.owns_data) self else self.base,
-                .flags = .{
-                    .order = self.flags.order,
-                    .owns_data = false,
-                },
-            };
-        }
-
-        pub fn transpose(self: *const Strided(T), axes: ?[]const u32) !Strided(T) {
+        pub fn transpose(self: *const Strided(T, base_order), axes: ?[]const u32) !Strided(T, base_order) {
             const axes_: []const u32 =
                 axes orelse
                 array.trivialReversePermutation(self.ndim)[0..self.ndim];
@@ -130,22 +91,20 @@ pub fn Strided(comptime T: type) type {
                 size *= new_shape[i];
             }
 
-            return Strided(T){
+            return Strided(T, base_order){
                 .data = self.data,
                 .ndim = self.ndim,
                 .shape = new_shape,
                 .strides = new_strides,
                 .size = size,
                 .offset = self.offset,
-                .base = if (self.flags.owns_data) self else self.base,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };
         }
 
-        pub inline fn broadcast(self: *const Strided(T), shape: []const u32) !Strided(T) {
+        pub fn broadcast(self: *const Strided(T, base_order), shape: []const u32) !Strided(T, base_order) {
             if (shape.len > array.max_dimensions)
                 return array.Error.TooManyDimensions;
 
@@ -170,22 +129,20 @@ pub fn Strided(comptime T: type) type {
                 size *= new_shape[types.scast(u32, i)];
             }
 
-            return Strided(T){
+            return Strided(T, base_order){
                 .data = self.data,
                 .ndim = types.scast(u32, shape.len),
                 .shape = new_shape,
                 .strides = strides,
                 .size = size,
                 .offset = self.offset,
-                .base = if (self.flags.owns_data) self else self.base,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };
         }
 
-        pub fn slice(self: *const Strided(T), ranges: []const Range) !Strided(T) {
+        pub fn slice(self: *const Strided(T, base_order), ranges: []const Range) !Strided(T, base_order) {
             if (ranges.len == 0 or ranges.len > self.ndim)
                 return error.DimensionMismatch;
 
@@ -261,23 +218,21 @@ pub fn Strided(comptime T: type) type {
                 i += 1;
             }
 
-            return Strided(T){
+            return Strided(T, base_order){
                 .data = self.data,
                 .ndim = ndim,
                 .shape = shape,
                 .strides = strides,
                 .size = size,
                 .offset = offset,
-                .base = if (self.flags.owns_data) self else self.base,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };
         }
 
         inline fn _index(
-            self: *const Strided(T),
+            self: *const Strided(T, base_order),
             position: []const u32,
         ) u32 {
             var idx: u32 = self.offset;
@@ -294,7 +249,7 @@ pub fn Strided(comptime T: type) type {
             return idx;
         }
 
-        inline fn _checkPosition(self: *const Strided(T), position: []const u32) !void {
+        inline fn _checkPosition(self: *const Strided(T, base_order), position: []const u32) !void {
             if (position.len > self.ndim)
                 return array.Error.DimensionMismatch;
 
@@ -308,75 +263,85 @@ pub fn Strided(comptime T: type) type {
     };
 }
 
-pub inline fn cleanup(
-    comptime T: type,
-    arr: *const Strided(T),
-    num_elements: u32,
-    iteration_order: array.IterationOrder,
-    ctx: anytype,
-) void {
-    comptime if (types.isArbitraryPrecision(T)) {
-        types.validateContext(
-            @TypeOf(ctx),
-            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-        );
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
+// pub inline fn cleanup(
+//     comptime T: type,
+//     arr: *const Strided(T, base_order),
+//     num_elements: u32,
+//     iteration_order: array.IterationOrder,
+//     ctx: anytype,
+// ) void {
+//     comptime if (types.isArbitraryPrecision(T)) {
+//         types.validateContext(
+//             @TypeOf(ctx),
+//             .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+//         );
+//     } else {
+//         types.validateContext(@TypeOf(ctx), .{});
+//     };
 
-    comptime if (!types.needsAllocator(T))
-        return;
+//     comptime if (!types.needsAllocator(T))
+//         return;
 
-    var iter: array.Iterator(T) = .init(arr);
-    var axis: u32 = 0;
-    if (iteration_order == .right_to_left) {
-        axis = arr.ndim - 1;
-    }
-    for (0..num_elements) |_| {
-        ops.deinit(arr.data[iter.index], ctx);
+//     var iter: array.Iterator(T) = .init(arr);
+//     var axis: u32 = 0;
+//     if (iteration_order == .right_to_left) {
+//         axis = arr.ndim - 1;
+//     }
+//     for (0..num_elements) |_| {
+//         ops.deinit(arr.data[iter.index], ctx);
 
-        _ = iter.nextAO(axis, iteration_order);
-    }
-}
+//         _ = iter.nextAO(axis, iteration_order);
+//     }
+// }
 
 fn loop1(
     result: anytype,
     x: anytype,
     comptime op: anytype,
+    comptime @"inline": bool,
     depth: u32,
-    order: types.IterationOrder,
-    ir: u32,
-    ix: i32,
+    comptime order: types.IterationOrder,
+    ir: if (types.isStridedArray(@TypeOf(result))) i32 else u32,
+    ix: if (types.isStridedArray(@TypeOf(x))) i32 else u32,
     ctx: anytype,
 ) !void {
     if (depth == 0) {
         const opinfo = @typeInfo(@TypeOf(op));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+        const idx: u32 = if (comptime order == .left_to_right) 0 else result.ndim - 1;
 
-        var jr: u32 = ir;
-        var jx: i32 = ix;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jx: if (types.isStridedArray(@TypeOf(x))) i32 else u32 = ix;
         var j: u32 = 0;
         while (j < x.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 1) {
-                result.data[jr] = op(x.data[types.scast(u32, jx)]);
-            } else if (comptime opinfo.@"fn".params.len == 2) {
-                result.data[jr] = try op(x.data[types.scast(u32, jx)], ctx);
+            if (comptime !@"inline") {
+                if (comptime opinfo.@"fn".params.len == 1) {
+                    result.data[types.scast(u32, jr)] = op(x.data[types.scast(u32, jx)]);
+                } else if (comptime opinfo.@"fn".params.len == 2) {
+                    result.data[types.scast(u32, jr)] = try op(x.data[types.scast(u32, jx)], ctx);
+                }
+            } else {
+                if (comptime opinfo.@"fn".params.len == 2) {
+                    op(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)]);
+                } else if (comptime opinfo.@"fn".params.len == 3) {
+                    try op(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], ctx);
+                }
             }
 
             jr += result.strides[idx];
             jx += x.strides[idx];
         }
     } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+        const idx: u32 = if (comptime order == .left_to_right) depth else result.ndim - depth - 1;
 
-        var jr: u32 = ir;
-        var jx: i32 = ix;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jx: if (types.isStridedArray(@TypeOf(x))) i32 else u32 = ix;
         var j: u32 = 0;
         while (j < x.shape[idx]) : (j += 1) {
             try loop1(
                 result,
                 x,
                 op,
+                @"inline",
                 depth - 1,
                 order,
                 jr,
@@ -394,22 +359,20 @@ pub fn apply1(
     allocator: std.mem.Allocator,
     x: anytype,
     comptime op: anytype,
-    opts: struct {
-        order: ?Order = null,
-    },
     ctx: anytype,
-) !Dense(ReturnType1(op, Numeric(@TypeOf(x)))) {
+) !Dense(ReturnType1(op, Numeric(@TypeOf(x))), orderOf(@TypeOf(x))) {
     const X: type = Numeric(@TypeOf(x));
 
-    var result: Dense(ReturnType1(op, X)) = try .init(allocator, x.shape[0..x.ndim], .{ .order = opts.order orelse x.flags.order });
+    var result: Dense(ReturnType1(op, X), orderOf(@TypeOf(x))) = try .init(allocator, x.shape[0..x.ndim]);
     errdefer result.deinit(allocator);
 
     try loop1(
         &result,
         &x,
         op,
+        false,
         result.ndim - 1,
-        result.flags.order.toIterationOrder(),
+        comptime orderOf(@TypeOf(x)).toIterationOrder(),
         0,
         types.scast(i32, x.offset),
         ctx,
@@ -422,13 +385,13 @@ fn set_loop(
     result: anytype,
     x: anytype,
     depth: u32,
-    order: types.IterationOrder,
+    comptime order: types.IterationOrder,
     ir: i32,
     first: *bool,
     ctx: anytype,
 ) !void {
     if (depth == 0) {
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+        const idx: u32 = if (comptime order == .left_to_right) 0 else result.ndim - 1;
 
         var jr: i32 = ir + if (first.*) result.strides[idx] else 0; // Skip the first element if first is true.
         var j: u32 = if (first.*) 1 else 0;
@@ -444,7 +407,7 @@ fn set_loop(
 
         first.* = false; // Set first to false after the first iteration.
     } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+        const idx: u32 = if (comptime order == .left_to_right) depth else result.ndim - depth - 1;
 
         var jr: i32 = ir;
         var j: u32 = 0;
@@ -464,57 +427,6 @@ fn set_loop(
     }
 }
 
-fn loop1_(
-    result: anytype,
-    x: anytype,
-    comptime op_: anytype,
-    depth: u32,
-    order: types.IterationOrder,
-    ir: i32,
-    ix: i32,
-    ctx: anytype,
-) !void {
-    if (depth == 0) {
-        const opinfo = @typeInfo(@TypeOf(op_));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
-
-        var jr: i32 = ir;
-        var jx: i32 = ix;
-        var j: u32 = 0;
-        while (j < x.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 2) {
-                op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)]);
-            } else if (comptime opinfo.@"fn".params.len == 3) {
-                try op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], ctx);
-            }
-
-            jr += result.strides[idx];
-            jx += x.strides[idx];
-        }
-    } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
-
-        var jr: i32 = ir;
-        var jx: i32 = ix;
-        var j: u32 = 0;
-        while (j < x.shape[idx]) : (j += 1) {
-            try loop1_(
-                result,
-                x,
-                op_,
-                depth - 1,
-                order,
-                jr,
-                jx,
-                ctx,
-            );
-
-            jr += result.strides[idx];
-            jx += x.strides[idx];
-        }
-    }
-}
-
 pub fn apply1_(
     o: anytype,
     x: anytype,
@@ -526,21 +438,36 @@ pub fn apply1_(
     if (comptime !types.isStridedArray(@TypeOf(x))) {
         const opinfo = @typeInfo(@TypeOf(op_));
         if (comptime opinfo.@"fn".params.len == 2) {
-            op_(&o.data[o.offset], x);
+            if (comptime types.isStridedArray(@TypeOf(o))) {
+                op_(&o.data[o.offset], x);
+            } else {
+                op_(&o.data[0], x);
+            }
         } else if (comptime opinfo.@"fn".params.len == 3) {
-            try op_(&o.data[o.offset], x, ctx);
+            if (comptime types.isStridedArray(@TypeOf(o))) {
+                try op_(&o.data[o.offset], x, ctx);
+            } else {
+                try op_(&o.data[0], x, ctx);
+            }
         }
 
-        var first: bool = true;
-        try set_loop(
-            o,
-            o.data[o.offset],
-            o.ndim - 1,
-            o.flags.order.toIterationOrder(),
-            types.scast(i32, o.offset),
-            &first,
-            ctx,
-        );
+        if (comptime types.isStridedArray(@TypeOf(o))) {
+            var first: bool = true;
+            try set_loop(
+                o,
+                o.data[o.offset],
+                o.ndim - 1,
+                comptime orderOf(@TypeOf(o)).toIterationOrder(),
+                types.scast(i32, o.offset),
+                &first,
+                ctx,
+            );
+        } else {
+            var i: u32 = 1;
+            while (i < o.size) : (i += 1) {
+                try ops.set(&o.data[i], o.data[0], ctx);
+            }
+        }
 
         return;
     }
@@ -555,17 +482,18 @@ pub fn apply1_(
         if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim]))
             return array.Error.NotBroadcastable;
 
-        xx = try @constCast(&x).broadcast(bct.shape[0..bct.ndim]);
+        xx = try x.broadcast(bct.shape[0..bct.ndim]);
     }
 
-    try loop1_(
+    try loop1(
         o,
         &xx,
         op_,
+        true,
         o.ndim - 1,
-        o.flags.order.toIterationOrder(),
-        types.scast(i32, o.offset),
-        types.scast(i32, xx.offset),
+        comptime orderOf(@TypeOf(o)).toIterationOrder(),
+        if (comptime types.isStridedArray(@TypeOf(o))) types.scast(i32, o.offset) else 0,
+        if (comptime types.isStridedArray(@TypeOf(xx))) types.scast(i32, xx.offset) else 0,
         ctx,
     );
 
@@ -577,34 +505,43 @@ fn loop2_left(
     x: anytype,
     y: anytype,
     comptime op: anytype,
+    comptime @"inline": bool,
     depth: u32,
-    order: types.IterationOrder,
-    ir: u32,
-    iy: i32,
+    comptime order: types.IterationOrder,
+    ir: if (types.isStridedArray(@TypeOf(result))) i32 else u32,
+    iy: if (types.isStridedArray(@TypeOf(y))) i32 else u32,
     ctx: anytype,
 ) !void {
     if (depth == 0) {
         const opinfo = @typeInfo(@TypeOf(op));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+        const idx: u32 = if (comptime order == .left_to_right) 0 else result.ndim - 1;
 
-        var jr: u32 = ir;
-        var jy: i32 = iy;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jy: if (types.isStridedArray(@TypeOf(y))) i32 else u32 = iy;
         var j: u32 = 0;
         while (j < y.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 2) {
-                result.data[jr] = op(x, y.data[types.scast(u32, jy)]);
-            } else if (comptime opinfo.@"fn".params.len == 3) {
-                result.data[jr] = try op(x, y.data[types.scast(u32, jy)], ctx);
+            if (comptime !@"inline") {
+                if (comptime opinfo.@"fn".params.len == 2) {
+                    result.data[types.scast(u32, jr)] = op(x, y.data[types.scast(u32, jy)]);
+                } else if (comptime opinfo.@"fn".params.len == 3) {
+                    result.data[types.scast(u32, jr)] = try op(x, y.data[types.scast(u32, jy)], ctx);
+                }
+            } else {
+                if (comptime opinfo.@"fn".params.len == 3) {
+                    op(&result.data[types.scast(u32, jr)], x, y.data[types.scast(u32, jy)]);
+                } else if (comptime opinfo.@"fn".params.len == 4) {
+                    try op(&result.data[types.scast(u32, jr)], x, y.data[types.scast(u32, jy)], ctx);
+                }
             }
 
             jr += result.strides[idx];
             jy += y.strides[idx];
         }
     } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+        const idx: u32 = if (comptime order == .left_to_right) depth else result.ndim - depth - 1;
 
-        var jr: u32 = ir;
-        var jy: i32 = iy;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jy: if (types.isStridedArray(@TypeOf(y))) i32 else u32 = iy;
         var j: u32 = 0;
         while (j < y.shape[idx]) : (j += 1) {
             try loop2_left(
@@ -612,6 +549,7 @@ fn loop2_left(
                 x,
                 y,
                 op,
+                @"inline",
                 depth - 1,
                 order,
                 jr,
@@ -630,34 +568,43 @@ fn loop2_right(
     x: anytype,
     y: anytype,
     comptime op: anytype,
+    comptime @"inline": bool,
     depth: u32,
-    order: types.IterationOrder,
-    ir: u32,
-    ix: i32,
+    comptime order: types.IterationOrder,
+    ir: if (types.isStridedArray(@TypeOf(result))) i32 else u32,
+    ix: if (types.isStridedArray(@TypeOf(x))) i32 else u32,
     ctx: anytype,
 ) !void {
     if (depth == 0) {
         const opinfo = @typeInfo(@TypeOf(op));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+        const idx: u32 = if (comptime order == .left_to_right) 0 else result.ndim - 1;
 
-        var jr: u32 = ir;
-        var jx: i32 = ix;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jx: if (types.isStridedArray(@TypeOf(x))) i32 else u32 = ix;
         var j: u32 = 0;
         while (j < x.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 2) {
-                result.data[jr] = op(x.data[types.scast(u32, jx)], y);
-            } else if (comptime opinfo.@"fn".params.len == 3) {
-                result.data[jr] = try op(x.data[types.scast(u32, jx)], y, ctx);
+            if (comptime !@"inline") {
+                if (comptime opinfo.@"fn".params.len == 2) {
+                    result.data[types.scast(u32, jr)] = op(x.data[types.scast(u32, jx)], y);
+                } else if (comptime opinfo.@"fn".params.len == 3) {
+                    result.data[types.scast(u32, jr)] = try op(x.data[types.scast(u32, jx)], y, ctx);
+                }
+            } else {
+                if (comptime opinfo.@"fn".params.len == 3) {
+                    op(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y);
+                } else if (comptime opinfo.@"fn".params.len == 4) {
+                    try op(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y, ctx);
+                }
             }
 
             jr += result.strides[idx];
             jx += x.strides[idx];
         }
     } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+        const idx: u32 = if (comptime order == .left_to_right) depth else result.ndim - depth - 1;
 
-        var jr: u32 = ir;
-        var jx: i32 = ix;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jx: if (types.isStridedArray(@TypeOf(x))) i32 else u32 = ix;
         var j: u32 = 0;
         while (j < x.shape[idx]) : (j += 1) {
             try loop2_right(
@@ -665,6 +612,7 @@ fn loop2_right(
                 x,
                 y,
                 op,
+                @"inline",
                 depth - 1,
                 order,
                 jr,
@@ -683,26 +631,35 @@ fn loop2(
     x: anytype,
     y: anytype,
     comptime op: anytype,
+    comptime @"inline": bool,
     depth: u32,
-    order: types.IterationOrder,
-    ir: u32,
-    ix: i32,
-    iy: i32,
+    comptime order: types.IterationOrder,
+    ir: if (types.isStridedArray(@TypeOf(result))) i32 else u32,
+    ix: if (types.isStridedArray(@TypeOf(x))) i32 else u32,
+    iy: if (types.isStridedArray(@TypeOf(y))) i32 else u32,
     ctx: anytype,
 ) !void {
     if (depth == 0) {
         const opinfo = @typeInfo(@TypeOf(op));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
+        const idx: u32 = if (comptime order == .left_to_right) 0 else result.ndim - 1;
 
-        var jr: u32 = ir;
-        var jx: i32 = ix;
-        var jy: i32 = iy;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jx: if (types.isStridedArray(@TypeOf(x))) i32 else u32 = ix;
+        var jy: if (types.isStridedArray(@TypeOf(y))) i32 else u32 = iy;
         var j: u32 = 0;
         while (j < x.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 2) {
-                result.data[jr] = op(x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)]);
-            } else if (comptime opinfo.@"fn".params.len == 3) {
-                result.data[jr] = try op(x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)], ctx);
+            if (comptime !@"inline") {
+                if (comptime opinfo.@"fn".params.len == 2) {
+                    result.data[types.scast(u32, jr)] = op(x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)]);
+                } else if (comptime opinfo.@"fn".params.len == 3) {
+                    result.data[types.scast(u32, jr)] = try op(x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)], ctx);
+                }
+            } else {
+                if (comptime opinfo.@"fn".params.len == 3) {
+                    op(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)]);
+                } else if (comptime opinfo.@"fn".params.len == 4) {
+                    try op(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)], ctx);
+                }
             }
 
             jr += result.strides[idx];
@@ -710,11 +667,11 @@ fn loop2(
             jy += y.strides[idx];
         }
     } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
+        const idx: u32 = if (comptime order == .left_to_right) depth else result.ndim - depth - 1;
 
-        var jr: u32 = ir;
-        var jx: i32 = ix;
-        var jy: i32 = iy;
+        var jr: if (types.isStridedArray(@TypeOf(result))) i32 else u32 = ir;
+        var jx: if (types.isStridedArray(@TypeOf(x))) i32 else u32 = ix;
+        var jy: if (types.isStridedArray(@TypeOf(y))) i32 else u32 = iy;
         var j: u32 = 0;
         while (j < x.shape[idx]) : (j += 1) {
             try loop2(
@@ -722,6 +679,7 @@ fn loop2(
                 x,
                 y,
                 op,
+                @"inline",
                 depth - 1,
                 order,
                 jr,
@@ -742,16 +700,13 @@ pub fn apply2(
     x: anytype,
     y: anytype,
     comptime op: anytype,
-    opts: struct {
-        order: ?Order = null,
-    },
     ctx: anytype,
-) !Dense(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
     const X: type = Numeric(@TypeOf(x));
     const Y: type = Numeric(@TypeOf(y));
 
     if (comptime !types.isStridedArray(@TypeOf(x))) {
-        var result: Dense(ReturnType2(op, X, Y)) = try .init(allocator, y.shape[0..y.ndim], .{ .order = opts.order orelse y.flags.order });
+        var result: EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y)) = try .init(allocator, y.shape[0..y.ndim]);
         errdefer result.deinit(allocator);
 
         try loop2_left(
@@ -759,16 +714,17 @@ pub fn apply2(
             x,
             &y,
             op,
+            false,
             result.ndim - 1,
-            result.flags.order.toIterationOrder(),
+            comptime orderOf(@TypeOf(result)).toIterationOrder(),
             0,
-            types.scast(i32, y.offset),
+            if (comptime types.isStridedArray(@TypeOf(y))) types.scast(i32, y.offset) else 0,
             ctx,
         );
 
         return result;
     } else if (comptime !types.isStridedArray(@TypeOf(y))) {
-        var result: Dense(ReturnType2(op, X, Y)) = try .init(allocator, x.shape[0..x.ndim], .{ .order = opts.order orelse x.flags.order });
+        var result: EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y)) = try .init(allocator, x.shape[0..x.ndim]);
         errdefer result.deinit(allocator);
 
         try loop2_right(
@@ -776,10 +732,11 @@ pub fn apply2(
             &x,
             y,
             op,
+            false,
             result.ndim - 1,
-            result.flags.order.toIterationOrder(),
+            comptime orderOf(@TypeOf(result)).toIterationOrder(),
             0,
-            types.scast(i32, x.offset),
+            if (comptime types.isStridedArray(@TypeOf(x))) types.scast(i32, x.offset) else 0,
             ctx,
         );
 
@@ -794,11 +751,11 @@ pub fn apply2(
         yy = y;
     } else {
         const bct = try array.broadcastShapes(&.{ x.shape[0..x.ndim], y.shape[0..y.ndim] });
-        xx = try @constCast(&x).broadcast(bct.shape[0..bct.ndim]);
-        yy = try @constCast(&y).broadcast(bct.shape[0..bct.ndim]);
+        xx = try x.broadcast(bct.shape[0..bct.ndim]);
+        yy = try y.broadcast(bct.shape[0..bct.ndim]);
     }
 
-    var result: Dense(ReturnType2(op, X, Y)) = try .init(allocator, xx.shape[0..xx.ndim], .{ .order = opts.order orelse xx.flags.order.resolve2(yy.flags.order) });
+    var result: EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y)) = try .init(allocator, xx.shape[0..xx.ndim]);
     errdefer result.deinit(allocator);
 
     try loop2(
@@ -806,180 +763,16 @@ pub fn apply2(
         &xx,
         &yy,
         op,
+        false,
         result.ndim - 1,
-        result.flags.order.resolve3(xx.flags.order, yy.flags.order).toIterationOrder(),
+        comptime Order.resolve3(orderOf(@TypeOf(x)), orderOf(@TypeOf(y)), orderOf(@TypeOf(result))).toIterationOrder(),
         0,
-        types.scast(i32, xx.offset),
-        types.scast(i32, yy.offset),
+        if (comptime types.isStridedArray(@TypeOf(xx))) types.scast(i32, xx.offset) else 0,
+        if (comptime types.isStridedArray(@TypeOf(yy))) types.scast(i32, yy.offset) else 0,
         ctx,
     );
 
     return result;
-}
-
-fn loop2_left_(
-    result: anytype,
-    x: anytype,
-    y: anytype,
-    comptime op_: anytype,
-    depth: u32,
-    order: types.IterationOrder,
-    ir: i32,
-    iy: i32,
-    ctx: anytype,
-) !void {
-    if (depth == 0) {
-        const opinfo = @typeInfo(@TypeOf(op_));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
-
-        var jr: i32 = ir;
-        var jy: i32 = iy;
-        var j: u32 = 0;
-        while (j < y.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 3) {
-                op_(&result.data[types.scast(u32, jr)], x, y.data[types.scast(u32, jy)]);
-            } else if (comptime opinfo.@"fn".params.len == 4) {
-                try op_(&result.data[types.scast(u32, jr)], x, y.data[types.scast(u32, jy)], ctx);
-            }
-
-            jr += result.strides[idx];
-            jy += y.strides[idx];
-        }
-    } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
-
-        var jr: i32 = ir;
-        var jy: i32 = iy;
-        var j: u32 = 0;
-        while (j < y.shape[idx]) : (j += 1) {
-            try loop2_left_(
-                result,
-                x,
-                y,
-                op_,
-                depth - 1,
-                order,
-                jr,
-                jy,
-                ctx,
-            );
-
-            jr += result.strides[idx];
-            jy += y.strides[idx];
-        }
-    }
-}
-
-fn loop2_right_(
-    result: anytype,
-    x: anytype,
-    y: anytype,
-    comptime op_: anytype,
-    depth: u32,
-    order: types.IterationOrder,
-    ir: i32,
-    ix: i32,
-    ctx: anytype,
-) !void {
-    if (depth == 0) {
-        const opinfo = @typeInfo(@TypeOf(op_));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
-
-        var jr: i32 = ir;
-        var jx: i32 = ix;
-        var j: u32 = 0;
-        while (j < x.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 3) {
-                op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y);
-            } else if (comptime opinfo.@"fn".params.len == 4) {
-                try op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y, ctx);
-            }
-
-            jr += result.strides[idx];
-            jx += x.strides[idx];
-        }
-    } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
-
-        var jr: i32 = ir;
-        var jx: i32 = ix;
-        var j: u32 = 0;
-        while (j < x.shape[idx]) : (j += 1) {
-            try loop2_right_(
-                result,
-                x,
-                y,
-                op_,
-                depth - 1,
-                order,
-                jr,
-                jx,
-                ctx,
-            );
-
-            jr += result.strides[idx];
-            jx += x.strides[idx];
-        }
-    }
-}
-
-fn loop2_(
-    result: anytype,
-    x: anytype,
-    y: anytype,
-    comptime op_: anytype,
-    depth: u32,
-    order: types.IterationOrder,
-    ir: i32,
-    ix: i32,
-    iy: i32,
-    ctx: anytype,
-) !void {
-    if (depth == 0) {
-        const opinfo = @typeInfo(@TypeOf(op_));
-        const idx: u32 = if (order == .left_to_right) 0 else result.ndim - 1;
-
-        var jr: i32 = ir;
-        var jx: i32 = ix;
-        var jy: i32 = iy;
-        var j: u32 = 0;
-        while (j < x.shape[idx]) : (j += 1) {
-            if (comptime opinfo.@"fn".params.len == 3) {
-                op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)]);
-            } else if (comptime opinfo.@"fn".params.len == 4) {
-                try op_(&result.data[types.scast(u32, jr)], x.data[types.scast(u32, jx)], y.data[types.scast(u32, jy)], ctx);
-            }
-
-            jr += result.strides[idx];
-            jx += x.strides[idx];
-            jy += y.strides[idx];
-        }
-    } else {
-        const idx: u32 = if (order == .left_to_right) depth else result.ndim - depth - 1;
-
-        var jr: i32 = ir;
-        var jx: i32 = ix;
-        var jy: i32 = iy;
-        var j: u32 = 0;
-        while (j < x.shape[idx]) : (j += 1) {
-            try loop2_(
-                result,
-                x,
-                y,
-                op_,
-                depth - 1,
-                order,
-                jr,
-                jx,
-                jy,
-                ctx,
-            );
-
-            jr += result.strides[idx];
-            jx += x.strides[idx];
-            jy += y.strides[idx];
-        }
-    }
 }
 
 pub fn apply2_(
@@ -995,21 +788,36 @@ pub fn apply2_(
     if (comptime !types.isStridedArray(@TypeOf(x)) and !types.isStridedArray(@TypeOf(y))) {
         const opinfo = @typeInfo(@TypeOf(op_));
         if (comptime opinfo.@"fn".params.len == 3) {
-            op_(&o.data[o.offset], x, y);
+            if (comptime types.isStridedArray(@TypeOf(o))) {
+                op_(&o.data[o.offset], x, y);
+            } else {
+                op_(&o.data[0], x, y);
+            }
         } else if (comptime opinfo.@"fn".params.len == 4) {
-            try op_(&o.data[o.offset], x, y, ctx);
+            if (comptime types.isStridedArray(@TypeOf(o))) {
+                try op_(&o.data[o.offset], x, y, ctx);
+            } else {
+                try op_(&o.data[0], x, y, ctx);
+            }
         }
 
-        var first: bool = true;
-        try set_loop(
-            o,
-            o.data[o.offset],
-            o.ndim - 1,
-            o.flags.order.toIterationOrder(),
-            types.scast(i32, o.offset),
-            &first,
-            ctx,
-        );
+        if (comptime types.isStridedArray(@TypeOf(o))) {
+            var first: bool = true;
+            try set_loop(
+                o,
+                o.data[o.offset],
+                o.ndim - 1,
+                comptime orderOf(@TypeOf(o)).toIterationOrder(),
+                types.scast(i32, o.offset),
+                &first,
+                ctx,
+            );
+        } else {
+            var i: u32 = 1;
+            while (i < o.size) : (i += 1) {
+                try ops.set(&o.data[i], o.data[0], ctx);
+            }
+        }
 
         return;
     } else if (comptime !types.isStridedArray(@TypeOf(x))) {
@@ -1022,18 +830,19 @@ pub fn apply2_(
                 return array.Error.NotBroadcastable;
             }
 
-            yy = try @constCast(&y).broadcast(bct.shape[0..bct.ndim]);
+            yy = try y.broadcast(bct.shape[0..bct.ndim]);
         }
 
-        try loop2_left_(
+        try loop2_left(
             o,
             x,
             &yy,
             op_,
+            true,
             o.ndim - 1,
-            o.flags.order.toIterationOrder(),
-            types.scast(i32, o.offset),
-            types.scast(i32, yy.offset),
+            comptime orderOf(@TypeOf(o)).toIterationOrder(),
+            if (comptime types.isStridedArray(@TypeOf(o))) types.scast(i32, o.offset) else 0,
+            if (comptime types.isStridedArray(@TypeOf(yy))) types.scast(i32, yy.offset) else 0,
             ctx,
         );
 
@@ -1048,18 +857,19 @@ pub fn apply2_(
                 return array.Error.NotBroadcastable;
             }
 
-            xx = try @constCast(&x).broadcast(bct.shape[0..bct.ndim]);
+            xx = try x.broadcast(bct.shape[0..bct.ndim]);
         }
 
-        try loop2_right_(
+        try loop2_right(
             o,
             &xx,
             y,
             op_,
+            true,
             o.ndim - 1,
-            o.flags.order.resolve2(xx.flags.order).toIterationOrder(),
-            types.scast(i32, o.offset),
-            types.scast(i32, xx.offset),
+            comptime orderOf(@TypeOf(o)).toIterationOrder(),
+            if (comptime types.isStridedArray(@TypeOf(o))) types.scast(i32, o.offset) else 0,
+            if (comptime types.isStridedArray(@TypeOf(xx))) types.scast(i32, xx.offset) else 0,
             ctx,
         );
 
@@ -1079,20 +889,21 @@ pub fn apply2_(
         if (!std.mem.eql(u32, bct.shape[0..bct.ndim], o.shape[0..o.ndim]))
             return array.Error.NotBroadcastable;
 
-        xx = try @constCast(&x).broadcast(bct.shape[0..bct.ndim]);
-        yy = try @constCast(&y).broadcast(bct.shape[0..bct.ndim]);
+        xx = try x.broadcast(bct.shape[0..bct.ndim]);
+        yy = try y.broadcast(bct.shape[0..bct.ndim]);
     }
 
-    try loop2_(
+    try loop2(
         o,
         &xx,
         &yy,
         op_,
+        true,
         o.ndim - 1,
-        o.flags.order.resolve3(xx.flags.order, yy.flags.order).toIterationOrder(),
-        types.scast(i32, o.offset),
-        types.scast(i32, xx.offset),
-        types.scast(i32, yy.offset),
+        comptime Order.resolve3(orderOf(@TypeOf(x)), orderOf(@TypeOf(y)), orderOf(@TypeOf(o))).toIterationOrder(),
+        if (comptime types.isStridedArray(@TypeOf(o))) types.scast(i32, o.offset) else 0,
+        if (comptime types.isStridedArray(@TypeOf(xx))) types.scast(i32, xx.offset) else 0,
+        if (comptime types.isStridedArray(@TypeOf(yy))) types.scast(i32, yy.offset) else 0,
         ctx,
     );
 

@@ -483,51 +483,51 @@ fn ask_user(default: u32) !u32 {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.Hermitian(zml.cf64) = try .init(a, 8, .{ .uplo = .lower, .order = .col_major });
+    var A: zml.matrix.Triangular(f64) = try .init(a, 6, 8, .{ .uplo = .upper, .diag = .unit, .order = .col_major });
     defer A.deinit(a);
 
     var i: u32 = 0;
-    while (i < A.size * A.size) : (i += 1) {
-        //A.data[i] = zml.scast(f64, i + 1);
-        if (i % (A.size + 1) == 0) {
-            A.data[i] = zml.cf64.init(zml.scast(f64, i + 1), 0);
-        } else {
-            A.data[i] = zml.cf64.init(zml.scast(f64, i + 1), zml.scast(f64, i + 1));
-        }
+    while (i < A.rows * A.cols) : (i += 1) {
+        A.data[i] = zml.scast(f64, i + 1);
+        // if (i % (A.size + 1) == 0) {
+        //     A.data[i] = zml.cf64.init(zml.scast(f64, i + 1), 0);
+        // } else {
+        //     A.data[i] = zml.cf64.init(zml.scast(f64, i + 1), zml.scast(f64, i + 1));
+        // }
     }
 
     std.debug.print("Matrix A:\n", .{});
     i = 0;
-    while (i < A.size) : (i += 1) {
+    while (i < A.rows) : (i += 1) {
         var j: u32 = 0;
-        while (j < A.size) : (j += 1) {
-            //std.debug.print("{d:3}  ", .{try A.get(i, j)});
-            std.debug.print("{d:3} + {d:3}i  ", .{ (try A.get(i, j)).re, (try A.get(i, j)).im });
+        while (j < A.cols) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try A.get(i, j)});
+            // std.debug.print("{d:3} + {d:3}i  ", .{ (try A.get(i, j)).re, (try A.get(i, j)).im });
         }
         std.debug.print("\n", .{});
     }
     std.debug.print("\n", .{});
 
-    var B: zml.matrix.Hermitian(zml.cf64) = try .init(a, 8, .{ .uplo = .lower, .order = .row_major });
+    var B: zml.matrix.Triangular(f64) = try .init(a, 6, 8, .{ .uplo = .upper, .diag = .unit, .order = .col_major });
     defer B.deinit(a);
 
     i = 0;
-    while (i < B.size * B.size) : (i += 1) {
-        //B.data[i] = zml.scast(f64, i + 2);
-        if (i % (B.size + 1) == 0) {
-            B.data[i] = zml.cf64.init(zml.scast(f64, i + 2), 0);
-        } else {
-            B.data[i] = zml.cf64.init(zml.scast(f64, i + 2), zml.scast(f64, i + 2));
-        }
+    while (i < B.rows * B.cols) : (i += 1) {
+        B.data[i] = zml.scast(f64, i + 2);
+        // if (i % (B.size + 1) == 0) {
+        //     B.data[i] = zml.cf64.init(zml.scast(f64, i + 2), 0);
+        // } else {
+        //     B.data[i] = zml.cf64.init(zml.scast(f64, i + 2), zml.scast(f64, i + 2));
+        // }
     }
 
     std.debug.print("Matrix B:\n", .{});
     i = 0;
-    while (i < B.size) : (i += 1) {
+    while (i < B.rows) : (i += 1) {
         var j: u32 = 0;
-        while (j < B.size) : (j += 1) {
-            //std.debug.print("{d:3}  ", .{try B.get(i, j)});
-            std.debug.print("{d:3} + {d:3}i  ", .{ (try B.get(i, j)).re, (try B.get(i, j)).im });
+        while (j < B.cols) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try B.get(i, j)});
+            // std.debug.print("{d:3} + {d:3}i  ", .{ (try B.get(i, j)).re, (try B.get(i, j)).im });
         }
         std.debug.print("\n", .{});
     }
@@ -540,7 +540,7 @@ fn perfTesting(a: std.mem.Allocator) !void {
     //var C = try C_base.slice(&.{ try .init(0, 16, 2), .all_reverse });
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.matrix.Hermitian(zml.cf64) = try zml.matrix.apply2(a, A, B, zml.add, .{ .order = .row_major }, .{ .uplo = .upper });
+    var C: zml.matrix.General(f64) = try zml.matrix.apply2(a, A, B, zml.add, .{ .order = .col_major }, .{});
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 
@@ -548,11 +548,11 @@ fn perfTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("Resulting matrix C:\n", .{});
     i = 0;
-    while (i < C.size) : (i += 1) {
+    while (i < C.rows) : (i += 1) {
         var j: u32 = 0;
-        while (j < C.size) : (j += 1) {
-            //std.debug.print("{d:3}  ", .{try C.get(i, j)});
-            std.debug.print("{d:4} + {d:4}i  ", .{ (try C.get(i, j)).re, (try C.get(i, j)).im });
+        while (j < C.cols) : (j += 1) {
+            std.debug.print("{d:3}  ", .{try C.get(i, j)});
+            // std.debug.print("{d:4} + {d:4}i  ", .{ (try C.get(i, j)).re, (try C.get(i, j)).im });
         }
         std.debug.print("\n", .{});
     }

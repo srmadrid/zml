@@ -21,14 +21,14 @@ const Range = array.Range;
 const dense = @import("dense.zig");
 const Dense = dense.Dense;
 
-pub fn Sparse(comptime T: type) type {
+pub fn Sparse(T: type, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("Strided requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         nnz: usize,
 
-        pub const empty: Dense(T) = .{
+        pub const empty: Dense(T, order) = .{
             .nnz = 0,
         };
     };

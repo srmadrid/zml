@@ -353,6 +353,5 @@ pub const Error = error{
 
 // Flags common between Dense, Strided, and Sparse arrays.
 pub const Flags = packed struct {
-    order: Order = .col_major,
     owns_data: bool = true,
 };

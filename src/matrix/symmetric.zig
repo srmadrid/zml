@@ -7,6 +7,8 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const ReturnType2 = types.ReturnType2;
+const EnsureMatrix = types.EnsureMatrix;
+const Coerce = types.Coerce;
 const Numeric = types.Numeric;
 const Order = types.Order;
 const Uplo = types.Uplo;
@@ -21,42 +23,35 @@ const Flags = matrix.Flags;
 const array = @import("../array.zig");
 const Dense = array.Dense;
 
-pub fn Symmetric(comptime T: type) type {
+pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("Symmetric requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]T,
         size: u32,
-        strides: [2]u32,
-        uplo: Uplo,
+        ld: u32, // leading dimension
         flags: Flags = .{},
 
-        pub const empty: Symmetric(T) = .{
+        pub const empty: Symmetric(T, uplo, order) = .{
             .data = &.{},
             .size = 0,
-            .strides = .{ 0, 0 },
-            .uplo = .upper,
-            .flags = .{ .order = .col_major, .owns_data = false },
+            .ld = 0,
+            .flags = .{ .owns_data = false },
         };
 
         pub fn init(
             allocator: std.mem.Allocator,
             size: u32,
-            opts: struct {
-                uplo: Uplo = .upper,
-                order: Order = .col_major,
-            },
-        ) !Symmetric(T) {
+        ) !Symmetric(T, uplo, order) {
             if (size == 0)
                 return matrix.Error.ZeroDimension;
 
-            return Symmetric(T){
+            return .{
                 .data = (try allocator.alloc(T, size * size)).ptr,
                 .size = size,
-                .strides = if (opts.order == .col_major) .{ 1, size } else .{ size, 1 },
-                .uplo = opts.uplo,
-                .flags = .{ .order = opts.order, .owns_data = true },
+                .ld = size,
+                .flags = .{ .owns_data = true },
             };
         }
 
@@ -64,13 +59,9 @@ pub fn Symmetric(comptime T: type) type {
             allocator: std.mem.Allocator,
             size: u32,
             value: anytype,
-            opts: struct {
-                uplo: Uplo = .upper,
-                order: Order = .col_major,
-            },
             ctx: anytype,
-        ) !Symmetric(T) {
-            const mat: Symmetric(T) = try .init(allocator, size, opts.uplo, .{ .order = opts.order });
+        ) !Symmetric(T, uplo, order) {
+            const mat: Symmetric(T, uplo, order) = try .init(allocator, size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -78,8 +69,8 @@ pub fn Symmetric(comptime T: type) type {
 
                 const value_casted: T = types.scast(T, value);
 
-                if (opts.order == .col_major) {
-                    if (opts.uplo == .upper) {
+                if (comptime order == .col_major) {
+                    if (comptime uplo == .upper) { // cu
                         var j: u32 = 0;
                         while (j < size) : (j += 1) {
                             var i: u32 = 0;
@@ -87,7 +78,7 @@ pub fn Symmetric(comptime T: type) type {
                                 mat.data[i + j * size] = value_casted;
                             }
                         }
-                    } else {
+                    } else { // cl
                         var j: u32 = 0;
                         while (j < size) : (j += 1) {
                             var i: u32 = j;
@@ -97,7 +88,7 @@ pub fn Symmetric(comptime T: type) type {
                         }
                     }
                 } else {
-                    if (opts.uplo == .upper) {
+                    if (comptime uplo == .upper) { // ru
                         var i: u32 = 0;
                         while (i < size) : (i += 1) {
                             var j: u32 = i;
@@ -105,7 +96,7 @@ pub fn Symmetric(comptime T: type) type {
                                 mat.data[i * size + j] = value_casted;
                             }
                         }
-                    } else {
+                    } else { // rl
                         var i: u32 = 0;
                         while (i < size) : (i += 1) {
                             var j: u32 = 0;
@@ -125,20 +116,16 @@ pub fn Symmetric(comptime T: type) type {
         pub fn eye(
             allocator: std.mem.Allocator,
             size: u32,
-            opts: struct {
-                uplo: Uplo = .upper,
-                order: Order = .col_major,
-            },
             ctx: anytype,
-        ) !Symmetric(T) {
-            const mat: Symmetric(T) = try .init(allocator, size, opts.uplo, .{ .order = opts.order });
+        ) !Symmetric(T, uplo, order) {
+            const mat: Symmetric(T, uplo, order) = try .init(allocator, size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (opts.order == .col_major) {
-                    if (opts.uplo == .upper) {
+                if (comptime order == .col_major) {
+                    if (comptime uplo == .upper) { // cu
                         var j: u32 = 0;
                         while (j < size) : (j += 1) {
                             var i: u32 = 0;
@@ -148,7 +135,7 @@ pub fn Symmetric(comptime T: type) type {
 
                             mat.data[j + j * size] = constants.one(T, ctx) catch unreachable;
                         }
-                    } else {
+                    } else { // cl
                         var j: u32 = 0;
                         while (j < size) : (j += 1) {
                             mat.data[j + j * size] = constants.one(T, ctx) catch unreachable;
@@ -160,7 +147,7 @@ pub fn Symmetric(comptime T: type) type {
                         }
                     }
                 } else {
-                    if (opts.uplo == .upper) {
+                    if (comptime uplo == .upper) { // ru
                         var i: u32 = 0;
                         while (i < size) : (i += 1) {
                             mat.data[i * size + i] = constants.one(T, ctx) catch unreachable;
@@ -170,7 +157,7 @@ pub fn Symmetric(comptime T: type) type {
                                 mat.data[i * size + j] = constants.zero(T, ctx) catch unreachable;
                             }
                         }
-                    } else {
+                    } else { // rl
                         var i: u32 = 0;
                         while (i < size) : (i += 1) {
                             var j: u32 = 0;
@@ -189,7 +176,7 @@ pub fn Symmetric(comptime T: type) type {
             return mat;
         }
 
-        pub fn deinit(self: *Symmetric(T), allocator: ?std.mem.Allocator) void {
+        pub fn deinit(self: *Symmetric(T, uplo, order), allocator: ?std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.?.free(self.data[0 .. self.size * self.size]);
             }
@@ -197,13 +184,13 @@ pub fn Symmetric(comptime T: type) type {
             self.* = undefined;
         }
 
-        pub fn get(self: *const Symmetric(T), row: u32, col: u32) !T {
+        pub fn get(self: *const Symmetric(T, uplo, order), row: u32, col: u32) !T {
             if (row >= self.size or col >= self.size)
                 return matrix.Error.PositionOutOfBounds;
 
             var i: u32 = row;
             var j: u32 = col;
-            if (self.uplo == .upper) {
+            if (comptime uplo == .upper) {
                 if (i > j) {
                     const temp: u32 = i;
                     i = j;
@@ -217,22 +204,28 @@ pub fn Symmetric(comptime T: type) type {
                 }
             }
 
-            return self.data[i * self.strides[0] + j * self.strides[1]];
+            return if (comptime order == .col_major)
+                self.data[i + j * self.ld]
+            else
+                self.data[i * self.ld + j];
         }
 
-        pub inline fn at(self: *const Symmetric(T), row: u32, col: u32) T {
+        pub inline fn at(self: *const Symmetric(T, uplo, order), row: u32, col: u32) T {
             // Unchecked version of get. Assumes row and col are valid and on
             // the correct triangular part.
-            return self.data[row * self.strides[0] + col * self.strides[1]];
+            return if (comptime order == .col_major)
+                self.data[row + col * self.ld]
+            else
+                self.data[row * self.ld + col];
         }
 
-        pub fn set(self: *Symmetric(T), row: u32, col: u32, value: T) !void {
+        pub fn set(self: *Symmetric(T, uplo, order), row: u32, col: u32, value: T) !void {
             if (row >= self.size or col >= self.size)
                 return matrix.Error.PositionOutOfBounds;
 
             var i: u32 = row;
             var j: u32 = col;
-            if (self.uplo == .upper) {
+            if (comptime self.uplo == .upper) {
                 if (i > j) {
                     const temp: u32 = i;
                     i = j;
@@ -246,68 +239,76 @@ pub fn Symmetric(comptime T: type) type {
                 }
             }
 
-            self.data[i * self.strides[0] + j * self.strides[1]] = value;
+            if (comptime self.order == .col_major) {
+                self.data[i + j * self.ld] = value;
+            } else {
+                self.data[i * self.ld + j] = value;
+            }
         }
 
-        pub inline fn put(self: *Symmetric(T), row: u32, col: u32, value: T) void {
+        pub inline fn put(self: *Symmetric(T, uplo, order), row: u32, col: u32, value: T) void {
             // Unchecked version of set. Assumes row and col are valid and on
             // the correct triangular part.
-            self.data[row * self.strides[0] + col * self.strides[1]] = value;
+            if (comptime self.order == .col_major) {
+                self.data[row + col * self.ld] = value;
+            } else {
+                self.data[row * self.ld + col] = value;
+            }
         }
 
-        pub fn toGeneral(self: Symmetric(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
-            var result: General(T) = try .init(allocator, self.size, self.size, .{ .order = self.flags.order });
+        pub fn toGeneral(self: Symmetric(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {
+            var result: General(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (self.flags.order == .col_major) {
-                    if (self.uplo == .upper) {
+                if (comptime order == .col_major) {
+                    if (comptime uplo == .upper) { // cu
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
                             var i: u32 = 0;
                             while (i < j) : (i += 1) {
-                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
-                                result.data[j + i * result.strides[1]] = self.data[i + j * self.strides[1]];
+                                result.data[i + j * result.ld] = self.data[i + j * self.ld];
+                                result.data[j + i * result.ld] = self.data[i + j * self.ld];
                             }
 
-                            result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+                            result.data[j + j * result.ld] = self.data[j + j * self.ld];
                         }
-                    } else {
+                    } else { // cl
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
-                            result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+                            result.data[j + j * result.ld] = self.data[j + j * self.ld];
 
                             var i: u32 = j + 1;
                             while (i < self.size) : (i += 1) {
-                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
-                                result.data[j + i * result.strides[1]] = self.data[i + j * self.strides[1]];
+                                result.data[i + j * result.ld] = self.data[i + j * self.ld];
+                                result.data[j + i * result.ld] = self.data[i + j * self.ld];
                             }
                         }
                     }
                 } else {
-                    if (self.uplo == .upper) {
+                    if (comptime uplo == .upper) { // ru
                         var i: u32 = 0;
                         while (i < self.size) : (i += 1) {
-                            result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+                            result.data[i * result.ld + i] = self.data[i * self.ld + i];
 
                             var j: u32 = i + 1;
                             while (j < self.size) : (j += 1) {
-                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
-                                result.data[j * result.strides[0] + i] = self.data[i * self.strides[0] + j];
+                                result.data[i * result.ld + j] = self.data[i * self.ld + j];
+                                result.data[j * result.ld + i] = self.data[i * self.ld + j];
                             }
                         }
-                    } else {
+                    } else { // rl
                         var i: u32 = 0;
                         while (i < self.size) : (i += 1) {
                             var j: u32 = 0;
                             while (j < i) : (j += 1) {
-                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
-                                result.data[j * result.strides[0] + i] = self.data[i * self.strides[0] + j];
+                                result.data[i * result.ld + j] = self.data[i * self.ld + j];
+                                result.data[j * result.ld + i] = self.data[i * self.ld + j];
                             }
 
-                            result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+                            result.data[i * result.ld + i] = self.data[i * self.ld + i];
                         }
                     }
                 }
@@ -318,59 +319,59 @@ pub fn Symmetric(comptime T: type) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Symmetric(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
-            var result: Dense(T) = try .init(allocator, &.{ self.size, self.size }, .{ .order = self.flags.order });
+        pub fn toDenseArray(self: *const Symmetric(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, order) {
+            var result: Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (self.flags.order == .col_major) {
-                    if (self.uplo == .upper) {
+                if (comptime order == .col_major) {
+                    if (comptime uplo == .upper) { // cu
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
                             var i: u32 = 0;
                             while (i < j) : (i += 1) {
-                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
-                                result.data[j + i * result.strides[1]] = self.data[i + j * self.strides[1]];
+                                result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
+                                result.data[j + i * result.strides[1]] = self.data[i + j * self.ld];
                             }
 
-                            result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+                            result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
                         }
-                    } else {
+                    } else { // cl
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
-                            result.data[j + j * result.strides[1]] = self.data[j + j * self.strides[1]];
+                            result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
 
                             var i: u32 = j + 1;
                             while (i < self.size) : (i += 1) {
-                                result.data[i + j * result.strides[1]] = self.data[i + j * self.strides[1]];
-                                result.data[j + i * result.strides[1]] = self.data[i + j * self.strides[1]];
+                                result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
+                                result.data[j + i * result.strides[1]] = self.data[i + j * self.ld];
                             }
                         }
                     }
                 } else {
-                    if (self.uplo == .upper) {
+                    if (comptime uplo == .upper) { // ru
                         var i: u32 = 0;
                         while (i < self.size) : (i += 1) {
-                            result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+                            result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];
 
                             var j: u32 = i + 1;
                             while (j < self.size) : (j += 1) {
-                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
-                                result.data[j * result.strides[0] + i] = self.data[i * self.strides[0] + j];
+                                result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
+                                result.data[j * result.strides[0] + i] = self.data[i * self.ld + j];
                             }
                         }
-                    } else {
+                    } else { // rl
                         var i: u32 = 0;
                         while (i < self.size) : (i += 1) {
                             var j: u32 = 0;
                             while (j < i) : (j += 1) {
-                                result.data[i * result.strides[0] + j] = self.data[i * self.strides[0] + j];
-                                result.data[j * result.strides[0] + i] = self.data[i * self.strides[0] + j];
+                                result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
+                                result.data[j * result.strides[0] + i] = self.data[i * self.ld + j];
                             }
 
-                            result.data[i * result.strides[0] + i] = self.data[i * self.strides[0] + i];
+                            result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];
                         }
                     }
                 }
@@ -381,36 +382,32 @@ pub fn Symmetric(comptime T: type) type {
             return result;
         }
 
-        pub fn transpose(self: Symmetric(T)) Symmetric(T) {
-            return Symmetric(T){
+        pub fn transpose(self: Symmetric(T, uplo, order)) Symmetric(T, uplo.invert(), order.invert()) {
+            return .{
                 .data = self.data,
                 .size = self.size,
-                .strides = .{ self.strides[1], self.strides[0] },
-                .uplo = self.uplo.invert(),
+                .ld = self.ld,
                 .flags = .{
-                    .order = self.flags.order.invert(),
                     .owns_data = false,
                 },
             };
         }
 
         pub fn submatrix(
-            self: *const Symmetric(T),
+            self: *const Symmetric(T, uplo, order),
             start: u32,
             end: u32,
-        ) !Symmetric(T) {
+        ) !Symmetric(T, uplo, order) {
             if (start >= self.size or end > self.size or start >= end)
                 return matrix.Error.InvalidRange;
 
-            const sub_size = end - start;
+            const sub_size: u32 = end - start;
 
-            return Symmetric(T){
-                .data = self.data + (start * self.strides[0] + start * self.strides[1]),
+            return .{
+                .data = self.data + (start + start * self.ld),
                 .size = sub_size,
-                .strides = self.strides,
-                .uplo = self.uplo,
+                .ld = self.ld,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };
@@ -423,35 +420,29 @@ pub fn apply2(
     x: anytype,
     y: anytype,
     comptime op: anytype,
-    opts: struct {
-        uplo: ?Uplo = null,
-        order: ?Order = null,
-    },
     ctx: anytype,
-) !Symmetric(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
     const X: type = Numeric(@TypeOf(x));
     const Y: type = Numeric(@TypeOf(y));
+    const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
 
     if (comptime !types.isSymmetricMatrix(@TypeOf(x))) {
-        var result: Symmetric(ReturnType2(op, X, Y)) = try .init(allocator, y.size, .{
-            .uplo = opts.uplo orelse y.uplo,
-            .order = opts.order orelse y.flags.order,
-        });
+        var result: R = try .init(allocator, y.size);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
-        if (result.flags.order == .col_major) {
-            if (y.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (y.uplo == .upper) {
+        if (comptime types.orderOf(@TypeOf(result)) == .col_major) {
+            if (comptime types.orderOf(@TypeOf(y)) == .col_major) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var j: u32 = 0;
                         while (j < y.size) : (j += 1) {
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[i + j * y.strides[1]]);
+                                    result.data[i + j * result.ld] = op(x, y.data[i + j * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[i + j * y.ld], ctx);
                                 }
                             }
                         }
@@ -461,23 +452,23 @@ pub fn apply2(
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[j + i * y.strides[1]]);
+                                    result.data[i + j * result.ld] = op(x, y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[j + i * y.ld], ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (y.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var j: u32 = 0;
                         while (j < y.size) : (j += 1) {
                             var i: u32 = j;
                             while (i < y.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[j + i * y.strides[1]]);
+                                    result.data[i + j * result.ld] = op(x, y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[j + i * y.ld], ctx);
                                 }
                             }
                         }
@@ -487,25 +478,25 @@ pub fn apply2(
                             var i: u32 = j;
                             while (i < y.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[i + j * y.strides[1]]);
+                                    result.data[i + j * result.ld] = op(x, y.data[i + j * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[i + j * y.ld], ctx);
                                 }
                             }
                         }
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (y.uplo == .upper) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var j: u32 = 0;
                         while (j < y.size) : (j += 1) {
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[i * y.strides[0] + j]);
+                                    result.data[i + j * result.ld] = op(x, y.data[i * y.ld + j]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[i * y.ld + j], ctx);
                                 }
                             }
                         }
@@ -515,23 +506,23 @@ pub fn apply2(
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + i]);
+                                    result.data[i + j * result.ld] = op(x, y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[j * y.ld + i], ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (y.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var j: u32 = 0;
                         while (j < y.size) : (j += 1) {
                             var i: u32 = j;
                             while (i < y.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[j * y.strides[0] + i]);
+                                    result.data[i + j * result.ld] = op(x, y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[j * y.ld + i], ctx);
                                 }
                             }
                         }
@@ -541,9 +532,9 @@ pub fn apply2(
                             var i: u32 = j;
                             while (i < y.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x, y.data[i * y.strides[0] + j]);
+                                    result.data[i + j * result.ld] = op(x, y.data[i * y.ld + j]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                    result.data[i + j * result.ld] = try op(x, y.data[i * y.ld + j], ctx);
                                 }
                             }
                         }
@@ -551,17 +542,17 @@ pub fn apply2(
                 }
             }
         } else {
-            if (y.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (y.uplo == .upper) {
+            if (comptime types.orderOf(@TypeOf(y))) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var i: u32 = 0;
                         while (i < y.size) : (i += 1) {
                             var j: u32 = i;
                             while (j < y.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[i + j * y.strides[1]]);
+                                    result.data[i * result.ld + j] = op(x, y.data[i + j * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[i + j * y.ld], ctx);
                                 }
                             }
                         }
@@ -571,23 +562,23 @@ pub fn apply2(
                             var j: u32 = i;
                             while (j < y.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[j + i * y.strides[1]]);
+                                    result.data[i * result.ld + j] = op(x, y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[j + i * y.ld], ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (y.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var i: u32 = 0;
                         while (i < y.size) : (i += 1) {
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[j + i * y.strides[1]]);
+                                    result.data[i * result.ld + j] = op(x, y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j + i * y.strides[1]], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[j + i * y.ld], ctx);
                                 }
                             }
                         }
@@ -597,25 +588,25 @@ pub fn apply2(
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[i + j * y.strides[1]]);
+                                    result.data[i * result.ld + j] = op(x, y.data[i + j * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i + j * y.strides[1]], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[i + j * y.ld], ctx);
                                 }
                             }
                         }
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (y.uplo == .upper) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var i: u32 = 0;
                         while (i < y.size) : (i += 1) {
                             var j: u32 = i;
                             while (j < y.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[i * y.strides[0] + j]);
+                                    result.data[i * result.ld + j] = op(x, y.data[i * y.ld + j]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[i * y.ld + j], ctx);
                                 }
                             }
                         }
@@ -625,23 +616,23 @@ pub fn apply2(
                             var j: u32 = i;
                             while (j < y.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[j * y.strides[0] + i]);
+                                    result.data[i * result.ld + j] = op(x, y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[j * y.ld + i], ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (y.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(y))) {
                         var i: u32 = 0;
                         while (i < y.size) : (i += 1) {
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[j * y.strides[0] + i]);
+                                    result.data[i * result.ld + j] = op(x, y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[j * y.strides[0] + i], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[j * y.ld + i], ctx);
                                 }
                             }
                         }
@@ -651,9 +642,9 @@ pub fn apply2(
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x, y.data[i * y.strides[0] + j]);
+                                    result.data[i * result.ld + j] = op(x, y.data[i * y.ld + j]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x, y.data[i * y.strides[0] + j], ctx);
+                                    result.data[i * result.ld + j] = try op(x, y.data[i * y.ld + j], ctx);
                                 }
                             }
                         }
@@ -664,25 +655,22 @@ pub fn apply2(
 
         return result;
     } else if (comptime !types.isSymmetricMatrix(@TypeOf(y))) {
-        var result: Symmetric(ReturnType2(op, X, Y)) = try .init(allocator, x.size, .{
-            .uplo = opts.uplo orelse x.uplo,
-            .order = opts.order orelse x.flags.order,
-        });
+        var result: R = try .init(allocator, x.size);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
-        if (result.flags.order == .col_major) {
-            if (x.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
+        if (comptime types.orderOf(@TypeOf(result)) == .col_major) {
+            if (comptime types.orderOf(@TypeOf(x)) == .col_major) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var j: u32 = 0;
                         while (j < x.size) : (j += 1) {
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y);
+                                    result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y, ctx);
                                 }
                             }
                         }
@@ -692,23 +680,23 @@ pub fn apply2(
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y);
+                                    result.data[i + j * result.ld] = op(x.data[j + i * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[j + i * x.ld], y, ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var j: u32 = 0;
                         while (j < x.size) : (j += 1) {
                             var i: u32 = j;
                             while (i < x.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y);
+                                    result.data[i + j * result.ld] = op(x.data[j + i * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[j + i * x.ld], y, ctx);
                                 }
                             }
                         }
@@ -718,25 +706,25 @@ pub fn apply2(
                             var i: u32 = j;
                             while (i < x.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y);
+                                    result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y, ctx);
                                 }
                             }
                         }
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var j: u32 = 0;
                         while (j < x.size) : (j += 1) {
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y);
+                                    result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y, ctx);
                                 }
                             }
                         }
@@ -746,23 +734,23 @@ pub fn apply2(
                             var i: u32 = 0;
                             while (i <= j) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y);
+                                    result.data[i + j * result.ld] = op(x.data[j * x.ld + i], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[j * x.ld + i], y, ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var j: u32 = 0;
                         while (j < x.size) : (j += 1) {
                             var i: u32 = j;
                             while (i < x.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y);
+                                    result.data[i + j * result.ld] = op(x.data[j * x.ld + i], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[j * x.ld + i], y, ctx);
                                 }
                             }
                         }
@@ -772,9 +760,9 @@ pub fn apply2(
                             var i: u32 = j;
                             while (i < x.size) : (i += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y);
+                                    result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                    result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y, ctx);
                                 }
                             }
                         }
@@ -782,17 +770,17 @@ pub fn apply2(
                 }
             }
         } else {
-            if (x.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
+            if (comptime types.orderOf(@TypeOf(x)) == .col_major) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var i: u32 = 0;
                         while (i < x.size) : (i += 1) {
                             var j: u32 = i;
                             while (j < x.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y);
+                                    result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y, ctx);
                                 }
                             }
                         }
@@ -802,23 +790,23 @@ pub fn apply2(
                             var j: u32 = i;
                             while (j < x.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y);
+                                    result.data[i * result.ld + j] = op(x.data[j + i * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[j + i * x.ld], y, ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var i: u32 = 0;
                         while (i < x.size) : (i += 1) {
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y);
+                                    result.data[i * result.ld + j] = op(x.data[j + i * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[j + i * x.ld], y, ctx);
                                 }
                             }
                         }
@@ -828,25 +816,25 @@ pub fn apply2(
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y);
+                                    result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y, ctx);
                                 }
                             }
                         }
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var i: u32 = 0;
                         while (i < x.size) : (i += 1) {
                             var j: u32 = i;
                             while (j < x.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y);
+                                    result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y, ctx);
                                 }
                             }
                         }
@@ -856,23 +844,23 @@ pub fn apply2(
                             var j: u32 = i;
                             while (j < x.size) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y);
+                                    result.data[i * result.ld + j] = op(x.data[j * x.ld + i], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[j * x.ld + i], y, ctx);
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
                         var i: u32 = 0;
                         while (i < x.size) : (i += 1) {
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y);
+                                    result.data[i * result.ld + j] = op(x.data[j * x.ld + i], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[j * x.ld + i], y, ctx);
                                 }
                             }
                         }
@@ -882,9 +870,9 @@ pub fn apply2(
                             var j: u32 = 0;
                             while (j <= i) : (j += 1) {
                                 if (comptime opinfo.@"fn".params.len == 2) {
-                                    result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y);
+                                    result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                                    result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y, ctx);
+                                    result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y, ctx);
                                 }
                             }
                         }
@@ -899,27 +887,24 @@ pub fn apply2(
     if (x.size != y.size)
         return matrix.Error.DimensionMismatch;
 
-    var result: Symmetric(ReturnType2(op, X, Y)) = try .init(allocator, x.size, .{
-        .uplo = opts.uplo orelse x.uplo.resolve2(y.uplo),
-        .order = opts.order orelse x.flags.order.resolve2(y.flags.order),
-    });
+    var result: R = try .init(allocator, x.size);
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));
-    if (result.flags.order == .col_major) {
-        if (x.flags.order == .col_major) {
-            if (y.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cu cu cu
+    if (comptime types.orderOf(@TypeOf(result)) == .col_major) {
+        if (comptime types.orderOf(@TypeOf(x)) == .col_major) {
+            if (comptime types.orderOf(@TypeOf(y))) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu cu cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -929,23 +914,23 @@ pub fn apply2(
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cu cl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu cl cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[j + i * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j + i * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -955,25 +940,25 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cl cu cu
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl cu cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -983,23 +968,23 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[j + i * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j + i * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cl cl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl cl cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1009,9 +994,9 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1019,17 +1004,17 @@ pub fn apply2(
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cu cu ru
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu cu ru
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1039,23 +1024,23 @@ pub fn apply2(
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cu cl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu cl ru
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[j + i * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j + i * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1065,25 +1050,25 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cl cu ru
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl cu ru
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1093,23 +1078,23 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[j + i * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j + i * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cl cl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl cl ru
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
@@ -1119,9 +1104,9 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1130,18 +1115,18 @@ pub fn apply2(
                 }
             }
         } else {
-            if (y.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cu ru cu
+            if (comptime types.orderOf(@TypeOf(y))) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu ru cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1151,23 +1136,23 @@ pub fn apply2(
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cu rl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu rl cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[j * x.ld + i], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j * x.ld + i], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1177,25 +1162,25 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[j + i * result.ld] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cl ru cu
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl ru cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[j + i * result.ld] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1205,23 +1190,23 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[j * x.ld + i], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j * x.ld + i], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cl rl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl rl cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1231,9 +1216,9 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1241,17 +1226,17 @@ pub fn apply2(
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cu ru ru
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu ru ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1261,23 +1246,23 @@ pub fn apply2(
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cu rl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // cu rl ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[j * x.ld + i], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j * x.ld + i], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1287,25 +1272,25 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[j + i * result.ld] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // cl ru ru
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl ru ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j + i * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[j + i * result.ld] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j + i * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j + i * result.ld] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1315,23 +1300,23 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[j * x.ld + i], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[j * x.ld + i], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // cl rl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // cl rl ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
@@ -1341,9 +1326,9 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i + j * result.strides[1]] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[i + j * result.ld] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i + j * result.strides[1]] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i + j * result.ld] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1353,19 +1338,19 @@ pub fn apply2(
             }
         }
     } else {
-        if (x.flags.order == .col_major) {
-            if (y.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // ru cu cu
+        if (comptime types.orderOf(@TypeOf(x)) == .col_major) {
+            if (comptime types.orderOf(@TypeOf(y))) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru cu cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1375,23 +1360,23 @@ pub fn apply2(
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // ru cl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru cl cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[j + i * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j + i * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1401,25 +1386,25 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[j * result.ld + i] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // rl cu cu
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl cu cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = 0;
                                 while (i <= j) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[j * result.ld + i] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1429,23 +1414,23 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[j + i * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j + i * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // rl cl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl cl cu
                             var j: u32 = 0;
                             while (j < y.size) : (j += 1) {
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1455,9 +1440,9 @@ pub fn apply2(
                                 var i: u32 = j;
                                 while (i < y.size) : (i += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1465,17 +1450,17 @@ pub fn apply2(
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // ru cu ru
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru cu ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1485,23 +1470,23 @@ pub fn apply2(
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // ru cl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru cl ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[j + i * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j + i * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1511,25 +1496,25 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[j * result.ld + i] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // rl cu ru
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl cu ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[j * result.ld + i] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1539,23 +1524,23 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[j + i * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j + i * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j + i * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // rl cl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl cl ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
@@ -1565,9 +1550,9 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[i + j * x.ld], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i + j * x.strides[1]], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1576,18 +1561,18 @@ pub fn apply2(
                 }
             }
         } else {
-            if (y.flags.order == .col_major) {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // ru ru cu
+            if (comptime types.orderOf(@TypeOf(y))) {
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru ru cu
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1597,23 +1582,23 @@ pub fn apply2(
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // ru rl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru rl cu
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[j * x.ld + i], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j * x.ld + i], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1623,25 +1608,25 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // rl ru cu
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl ru cu
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1651,23 +1636,23 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[j * x.ld + i], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j * x.ld + i], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // rl rl cu
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl rl cu
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j + i * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[j + i * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1677,9 +1662,9 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[i + j * y.ld]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i + j * y.strides[1]], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                                     }
                                 }
                             }
@@ -1687,17 +1672,17 @@ pub fn apply2(
                     }
                 }
             } else {
-                if (result.uplo == .upper) {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // ru ru ru
+                if (comptime types.uploOf(@TypeOf(result))) {
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru ru ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1707,23 +1692,23 @@ pub fn apply2(
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // ru rl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // ru rl ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[j * x.ld + i], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j * x.ld + i], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1733,25 +1718,25 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    if (x.uplo == .upper) {
-                        if (y.uplo == .upper) { // rl ru ru
+                    if (comptime types.uploOf(@TypeOf(x))) {
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl ru ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = i;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[j * result.strides[0] + i] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[j * result.strides[0] + i] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[j * result.ld + i] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
@@ -1761,23 +1746,23 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[j * x.ld + i], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[j * x.strides[0] + i], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[j * x.ld + i], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }
                         }
                     } else {
-                        if (y.uplo == .upper) { // rl rl ru
+                        if (comptime types.uploOf(@TypeOf(y))) { // rl rl ru
                             var i: u32 = 0;
                             while (i < x.size) : (i += 1) {
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[j * y.ld + i]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[j * y.strides[0] + i], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[j * y.ld + i], ctx);
                                     }
                                 }
                             }
@@ -1787,9 +1772,9 @@ pub fn apply2(
                                 var j: u32 = 0;
                                 while (j < x.size) : (j += 1) {
                                     if (comptime opinfo.@"fn".params.len == 2) {
-                                        result.data[i * result.strides[0] + j] = op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j]);
+                                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
                                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                                        result.data[i * result.strides[0] + j] = try op(x.data[i * x.strides[0] + j], y.data[i * y.strides[0] + j], ctx);
+                                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                                     }
                                 }
                             }

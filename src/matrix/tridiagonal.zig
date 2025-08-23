@@ -20,7 +20,7 @@ const Flags = matrix.Flags;
 const array = @import("../array.zig");
 const Dense = array.Dense;
 
-pub fn Tridiagonal(comptime T: type) type {
+pub fn Tridiagonal(T: type) type {
     if (!types.isNumeric(T))
         @compileError("Tridiagonal requires a numeric type, got " ++ @typeName(T));
 
@@ -38,7 +38,7 @@ pub fn Tridiagonal(comptime T: type) type {
             .osize = 0,
             .offset = 0,
             .sdoffset = 0,
-            .flags = .{ .order = .col_major, .owns_data = false },
+            .flags = .{ .owns_data = false },
         };
 
         pub fn init(
@@ -48,13 +48,13 @@ pub fn Tridiagonal(comptime T: type) type {
             if (size == 0)
                 return matrix.Error.ZeroDimension;
 
-            return Tridiagonal(T){
+            return .{
                 .data = (try allocator.alloc(T, 3 * size - 2)).ptr,
                 .size = size,
                 .osize = size,
                 .offset = 0,
                 .sdoffset = (size - 1) + size,
-                .flags = .{ .order = .col_major, .owns_data = true },
+                .flags = .{ .owns_data = true },
             };
         }
 
@@ -113,7 +113,7 @@ pub fn Tridiagonal(comptime T: type) type {
 
         pub fn deinit(self: *Tridiagonal(T), allocator: ?std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.?.free(self.data[0 .. 3 * self.size - 2]);
+                allocator.?.free(self.data[0..(3 * self.size - 2)]);
             }
 
             self.* = undefined;
@@ -183,25 +183,43 @@ pub fn Tridiagonal(comptime T: type) type {
             self.data[idx] = value;
         }
 
-        pub fn toGeneral(self: Tridiagonal(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
-            var result: General(T) = try .init(allocator, self.size, self.size, .{ .order = self.flags.order });
+        pub fn toGeneral(self: Tridiagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !General(T, order) {
+            var result: General(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                var j: u32 = 0;
-                while (j < self.size) : (j += 1) {
+                if (comptime order == .col_major) {
+                    var j: u32 = 0;
+                    while (j < self.size) : (j += 1) {
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            if (i == j) { // Diagonal
+                                result.data[j + j * result.ld] = self.data[self.offset + j + (self.osize - 1)];
+                            } else if (i == j + 1) { // Subdiagonal
+                                result.data[i + j * result.ld] = self.data[self.offset + i + self.osize + (self.osize - 1) - self.sdoffset - 1];
+                            } else if (i + 1 == j) { // Superdiagonal
+                                result.data[i + j * result.ld] = self.data[self.offset + j + self.sdoffset - 1];
+                            } else {
+                                result.data[i + j * result.ld] = constants.zero(T, .{}) catch unreachable;
+                            }
+                        }
+                    }
+                } else {
                     var i: u32 = 0;
                     while (i < self.size) : (i += 1) {
-                        if (i == j) { // Diagonal
-                            result.data[j + j * result.strides[1]] = self.data[self.offset + j + (self.osize - 1)];
-                        } else if (i == j + 1) { // Subdiagonal
-                            result.data[i + j * result.strides[1]] = self.data[self.offset + i + self.osize + (self.osize - 1) - self.sdoffset - 1];
-                        } else if (i + 1 == j) { // Superdiagonal
-                            result.data[i + j * result.strides[1]] = self.data[self.offset + j + self.sdoffset - 1];
-                        } else {
-                            result.data[i + j * result.strides[1]] = constants.zero(T, .{}) catch unreachable;
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            if (i == j) { // Diagonal
+                                result.data[i * result.ld + i] = self.data[self.offset + i + (self.osize - 1)];
+                            } else if (i == j + 1) { // Subdiagonal
+                                result.data[i * result.ld + j] = self.data[self.offset + i + self.osize + (self.osize - 1) - self.sdoffset - 1];
+                            } else if (i + 1 == j) { // Superdiagonal
+                                result.data[i * result.ld + j] = self.data[self.offset + j + self.sdoffset - 1];
+                            } else {
+                                result.data[i * result.ld + j] = constants.zero(T, .{}) catch unreachable;
+                            }
                         }
                     }
                 }
@@ -212,25 +230,43 @@ pub fn Tridiagonal(comptime T: type) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Tridiagonal(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
-            var result: Dense(T) = try .init(allocator, &.{ self.size, self.size }, .{ .order = self.flags.order });
+        pub fn toDenseArray(self: *const Tridiagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !Dense(T, order) {
+            var result: Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                var j: u32 = 0;
-                while (j < self.size) : (j += 1) {
+                if (comptime order == .col_major) {
+                    var j: u32 = 0;
+                    while (j < self.size) : (j += 1) {
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            if (i == j) { // Diagonal
+                                result.data[j + j * result.strides[1]] = self.data[self.offset + j + (self.osize - 1)];
+                            } else if (i == j + 1) { // Subdiagonal
+                                result.data[i + j * result.strides[1]] = self.data[self.offset + i + self.osize + (self.osize - 1) - self.sdoffset - 1];
+                            } else if (i + 1 == j) { // Superdiagonal
+                                result.data[i + j * result.strides[1]] = self.data[self.offset + j + self.sdoffset - 1];
+                            } else {
+                                result.data[i + j * result.strides[1]] = constants.zero(T, .{}) catch unreachable;
+                            }
+                        }
+                    }
+                } else {
                     var i: u32 = 0;
                     while (i < self.size) : (i += 1) {
-                        if (i == j) { // Diagonal
-                            result.data[j + j * result.strides[1]] = self.data[self.offset + j + (self.osize - 1)];
-                        } else if (i == j + 1) { // Subdiagonal
-                            result.data[i + j * result.strides[1]] = self.data[self.offset + i + self.osize + (self.osize - 1) - self.sdoffset - 1];
-                        } else if (i + 1 == j) { // Superdiagonal
-                            result.data[i + j * result.strides[1]] = self.data[self.offset + j + self.sdoffset - 1];
-                        } else {
-                            result.data[i + j * result.strides[1]] = constants.zero(T, .{}) catch unreachable;
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            if (i == j) { // Diagonal
+                                result.data[i * result.strides[0] + i] = self.data[self.offset + i + (self.osize - 1)];
+                            } else if (i == j + 1) { // Subdiagonal
+                                result.data[i * result.strides[0] + j] = self.data[self.offset + i + self.osize + (self.osize - 1) - self.sdoffset - 1];
+                            } else if (i + 1 == j) { // Superdiagonal
+                                result.data[i * result.strides[0] + j] = self.data[self.offset + j + self.sdoffset - 1];
+                            } else {
+                                result.data[i * result.strides[0] + j] = constants.zero(T, .{}) catch unreachable;
+                            }
                         }
                     }
                 }
@@ -242,14 +278,13 @@ pub fn Tridiagonal(comptime T: type) type {
         }
 
         pub fn transpose(self: Tridiagonal(T)) Tridiagonal(T) {
-            return Tridiagonal(T){
+            return .{
                 .data = self.data,
                 .size = self.size,
                 .osize = self.osize,
                 .offset = self.offset,
                 .sdoffset = self.size + (self.size - 1) - self.sdoffset,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };
@@ -265,14 +300,13 @@ pub fn Tridiagonal(comptime T: type) type {
 
             const sub_size = end - start;
 
-            return Tridiagonal(T){
+            return .{
                 .data = self.data,
                 .size = sub_size,
                 .osize = self.osize,
                 .offset = self.offset + start,
                 .sdoffset = self.sdoffset,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };

@@ -3,7 +3,6 @@ const std = @import("std");
 const opts = @import("options");
 
 const types = @import("types.zig");
-const Order = types.Order;
 
 const ops = @import("ops.zig");
 
@@ -35,9 +34,9 @@ pub const Error = error{
     InvalidRange,
     BreaksStructure,
     DimensionMismatch,
+    InvalidBandwidth,
 };
 
 pub const Flags = packed struct {
-    order: Order = .col_major,
     owns_data: bool = true,
 };

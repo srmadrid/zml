@@ -1027,6 +1027,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                         return matrix.Hermitian(Coerce(X, Numeric(Y))); // numeric (real) + hermitian
                     }
                 },
+                .triangular => return matrix.Triangular(Coerce(X, Numeric(Y))), // numeric + triangular
                 else => return matrix.General(Coerce(X, Numeric(Y))), // numeric + rest of matrices
                 .numeric => unreachable,
             },
@@ -1075,7 +1076,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // hermitian + array
                 },
                 .triangular => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // triangular + numeric
+                    .numeric => return matrix.Triangular(Coerce(Numeric(X), Y)), // triangular + numeric
                     .matrix => switch (comptime matrixType(Y)) {
                         .diagonal => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y))), // triangular + diagonal
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // triangular + matrix
@@ -1682,9 +1683,9 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
 pub fn EnsureArray(comptime X: type, comptime Y: type) type {
     if (isArray(X)) {
         switch (arrayType(X)) {
-            .dense => return array.Dense(Y),
-            .strided => return array.Dense(Y),
-            .sparse => return array.Sparse(Y),
+            .dense => return array.Dense(Y, orderOf(X)),
+            .strided => return array.Dense(Y, orderOf(X)),
+            .sparse => return array.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
     } else {
@@ -2031,6 +2032,88 @@ pub fn Numeric(comptime T: type) type {
     }
 
     return T;
+}
+
+pub fn orderOf(comptime T: type) Order {
+    if (isArray(T)) {
+        if (T == array.Dense(Numeric(T), .col_major) or
+            T == array.Strided(Numeric(T), .col_major) or
+            T == array.Sparse(Numeric(T), .col_major))
+            return .col_major
+        else
+            return .row_major;
+    } else if (isMatrix(T)) {
+        if (isComplex(Numeric(T))) {
+            if (T == matrix.General(Numeric(T), .col_major) or
+                T == matrix.Symmetric(Numeric(T), .upper, .col_major) or
+                T == matrix.Symmetric(Numeric(T), .lower, .col_major) or
+                T == matrix.Hermitian(Numeric(T), .upper, .col_major) or
+                T == matrix.Hermitian(Numeric(T), .lower, .col_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .non_unit, .col_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .unit, .col_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .non_unit, .col_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .unit, .col_major) or
+                T == matrix.Banded(Numeric(T), .col_major) or
+                T == matrix.Sparse(Numeric(T), .col_major))
+                return .col_major
+            else
+                return .row_major;
+        } else {
+            if (T == matrix.General(Numeric(T), .col_major) or
+                T == matrix.Symmetric(Numeric(T), .upper, .col_major) or
+                T == matrix.Symmetric(Numeric(T), .lower, .col_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .non_unit, .col_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .unit, .col_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .non_unit, .col_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .unit, .col_major) or
+                T == matrix.Banded(Numeric(T), .col_major) or
+                T == matrix.Sparse(Numeric(T), .col_major))
+                return .col_major
+            else
+                return .row_major;
+        }
+    }
+}
+
+pub fn uploOf(comptime T: type) Uplo {
+    if (isMatrix(T)) {
+        if (isComplex(Numeric(T))) {
+            if (T == matrix.Symmetric(Numeric(T), .upper, orderOf(T)) or
+                T == matrix.Hermitian(Numeric(T), .upper, orderOf(T)) or
+                T == matrix.Triangular(Numeric(T), .upper, .non_unit, orderOf(T)) or
+                T == matrix.Triangular(Numeric(T), .upper, .unit, orderOf(T)))
+                return .upper
+            else
+                return .lower;
+        } else {
+            if (T == matrix.Symmetric(Numeric(T), .upper, orderOf(T)) or
+                T == matrix.Triangular(Numeric(T), .upper, .non_unit, orderOf(T)) or
+                T == matrix.Triangular(Numeric(T), .upper, .unit, orderOf(T)))
+                return .upper
+            else
+                return .lower;
+        }
+    } else {
+        @compileError("Cannot get uplo of a non-matrix type. Use `uploOf` only with matrix types.");
+    }
+}
+
+pub fn diagOf(comptime T: type) Diag {
+    if (isMatrix(T)) {
+        if (isComplex(Numeric(T))) {
+            if (T == matrix.Triangular(Numeric(T), uploOf(T), .unit, orderOf(T)))
+                return .unit
+            else
+                return .non_unit;
+        } else {
+            if (T == matrix.Triangular(Numeric(T), uploOf(T), .unit, orderOf(T)))
+                return .unit
+            else
+                return .non_unit;
+        }
+    } else {
+        @compileError("Cannot get diag of a non-matrix type. Use `diagOf` only with matrix types.");
+    }
 }
 
 /// Casts a value of any numeric type to any fixed precision numeric type.

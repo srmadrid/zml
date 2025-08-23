@@ -19,21 +19,6 @@ const dense = @import("dense.zig");
 const strided = @import("strided.zig");
 const sparse = @import("sparse.zig");
 
-const dest = @import("ops/dest.zig");
-const stde = @import("ops/stde.zig");
-
-const descst = @import("ops/descst.zig");
-const destsc = @import("ops/destsc.zig");
-const stscde = @import("ops/stscde.zig");
-const stdesc = @import("ops/stdesc.zig");
-
-const dedest = @import("ops/dedest.zig");
-const destde = @import("ops/destde.zig");
-const destst = @import("ops/destst.zig");
-const stdede = @import("ops/stdede.zig");
-const stdest = @import("ops/stdest.zig");
-const ststde = @import("ops/ststde.zig");
-
 pub fn apply1(
     allocator: std.mem.Allocator,
     x: anytype,
@@ -90,14 +75,14 @@ pub fn apply1_(
     } else {
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(X)) {
-                .dense => return dense.apply1_(o, x, op_, ctx), // (array) dense (array) dense apply1_
-                .strided => return dest.apply1_(o, x, op_, ctx), // (array) dense (array) strided apply1_
+                .dense => return dense.apply1_(o, x, op_, ctx), // dense dense apply1_
+                .strided => return strided.apply1_(o, x, op_, ctx), // dense strided apply1_
                 .sparse => @compileError("apply1_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(X)) {
-                .dense => return stde.apply1_(o, x, op_, ctx), // (array) strided (array) dense apply1_
-                .strided => return strided.apply1_(o, x, op_, ctx), // (array) strided (array) strided apply1_
+                .dense => return strided.apply1_(o, x, op_, ctx), // strided dense apply1_
+                .strided => return strided.apply1_(o, x, op_, ctx), // strided strided apply1_
                 .sparse => @compileError("apply1_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
@@ -145,12 +130,12 @@ pub fn apply2(
         switch (comptime types.arrayType(X)) {
             .dense => switch (comptime types.arrayType(Y)) {
                 .dense => return dense.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                .strided => return dest.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .strided => return strided.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(Y)) {
-                .dense => return stde.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .dense => return strided.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 .strided => return strided.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -196,12 +181,12 @@ pub fn apply2_(
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(Y)) {
                 .dense => return dense.apply2_(o, x, y, op_, ctx),
-                .strided => return descst.apply2_(o, x, y, op_, ctx),
+                .strided => return strided.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(Y)) {
-                .dense => return stscde.apply2_(o, x, y, op_, ctx),
+                .dense => return strided.apply2_(o, x, y, op_, ctx),
                 .strided => return strided.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -213,12 +198,12 @@ pub fn apply2_(
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(X)) {
                 .dense => return dense.apply2_(o, x, y, op_, ctx),
-                .strided => return destsc.apply2_(o, x, y, op_, ctx),
+                .strided => return strided.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
             },
             .strided => switch (comptime types.arrayType(X)) {
-                .dense => return stdesc.apply2_(o, x, y, op_, ctx),
+                .dense => return strided.apply2_(o, x, y, op_, ctx),
                 .strided => return strided.apply2_(o, x, y, op_, ctx),
                 .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                 .numeric => unreachable,
@@ -231,13 +216,13 @@ pub fn apply2_(
             .dense => switch (comptime types.arrayType(X)) {
                 .dense => switch (comptime types.arrayType(Y)) {
                     .dense => return dense.apply2_(o, x, y, op_, ctx),
-                    .strided => return dedest.apply2_(o, x, y, op_, ctx),
+                    .strided => return strided.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,
                 },
                 .strided => switch (comptime types.arrayType(Y)) {
-                    .dense => return destde.apply2_(o, x, y, op_, ctx),
-                    .strided => return destst.apply2_(o, x, y, op_, ctx),
+                    .dense => return strided.apply2_(o, x, y, op_, ctx),
+                    .strided => return strided.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,
                 },
@@ -246,13 +231,13 @@ pub fn apply2_(
             },
             .strided => switch (comptime types.arrayType(X)) {
                 .dense => switch (comptime types.arrayType(Y)) {
-                    .dense => return stdede.apply2_(o, x, y, op_, ctx),
-                    .strided => return stdest.apply2_(o, x, y, op_, ctx),
+                    .dense => return strided.apply2_(o, x, y, op_, ctx),
+                    .strided => return strided.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,
                 },
                 .strided => switch (comptime types.arrayType(Y)) {
-                    .dense => return ststde.apply2_(o, x, y, op_, ctx),
+                    .dense => return strided.apply2_(o, x, y, op_, ctx),
                     .strided => return strided.apply2_(o, x, y, op_, ctx),
                     .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
                     .numeric => unreachable,

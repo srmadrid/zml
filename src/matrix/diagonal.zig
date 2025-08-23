@@ -17,33 +17,36 @@ const Flags = matrix.Flags;
 const array = @import("../array.zig");
 const Dense = array.Dense;
 
-pub fn Diagonal(comptime T: type) type {
+pub fn Diagonal(T: type) type {
     if (!types.isNumeric(T))
         @compileError("Diagonal requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]T,
-        size: u32,
+        rows: u32,
+        cols: u32,
         flags: Flags = .{},
 
         pub const empty: Diagonal(T) = .{
             .data = &.{},
-            .size = 0,
-            .flags = .{ .order = .col_major, .owns_data = false },
+            .rows = 0,
+            .cols = 0,
+            .flags = .{ .owns_data = false },
         };
 
         pub fn init(
             allocator: std.mem.Allocator,
-            size: u32,
+            rows: u32,
+            cols: u32,
         ) !Diagonal(T) {
-            if (size == 0)
+            if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
 
             return Diagonal(T){
-                .data = (try allocator.alloc(T, size)).ptr,
-                .size = size,
+                .data = (try allocator.alloc(T, int.min(rows, cols))),
+                .rows = rows,
+                .cols = cols,
                 .flags = .{
-                    .order = .col_major,
                     .owns_data = true,
                 },
             };
@@ -51,11 +54,12 @@ pub fn Diagonal(comptime T: type) type {
 
         pub fn full(
             allocator: std.mem.Allocator,
-            size: u32,
+            rows: u32,
+            cols: u32,
             value: anytype,
             ctx: anytype,
         ) !Diagonal(T) {
-            const mat: Diagonal(T) = try .init(allocator, size);
+            const mat: Diagonal(T) = try .init(allocator, rows, cols);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -64,7 +68,7 @@ pub fn Diagonal(comptime T: type) type {
                 const value_casted: T = types.scast(T, value);
 
                 var i: u32 = 0;
-                while (i < size) : (i += 1) {
+                while (i < int.min(rows, cols)) : (i += 1) {
                     mat.data[i] = value_casted;
                 }
             } else {
@@ -79,7 +83,7 @@ pub fn Diagonal(comptime T: type) type {
             size: u32,
             ctx: anytype,
         ) !Diagonal(T) {
-            const mat: Diagonal(T) = try .init(allocator, size);
+            const mat: Diagonal(T) = try .init(allocator, size, size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -98,14 +102,14 @@ pub fn Diagonal(comptime T: type) type {
 
         pub fn deinit(self: *Diagonal(T), allocator: ?std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.?.free(self.data[0..self.size]);
+                allocator.?.free(self.data[0..(int.min(self.rows, self.cols))]);
             }
 
             self.* = undefined;
         }
 
         pub fn get(self: *const Diagonal(T), row: u32, col: u32) !T {
-            if (row >= self.size or col >= self.size)
+            if (row >= self.rows or col >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
             if (row != col)
@@ -122,7 +126,7 @@ pub fn Diagonal(comptime T: type) type {
         }
 
         pub fn set(self: *Diagonal(T), row: u32, col: u32, value: T) !void {
-            if (row >= self.size or col >= self.size)
+            if (row >= self.rows or col >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
             if (row != col)
@@ -138,25 +142,46 @@ pub fn Diagonal(comptime T: type) type {
             self.data[row] = value;
         }
 
-        pub fn toGeneral(self: Diagonal(T), allocator: std.mem.Allocator, ctx: anytype) !General(T) {
-            var result: General(T) = try .init(allocator, self.size, self.size, .{ .order = self.flags.order });
+        pub fn toGeneral(self: Diagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !General(T, order) {
+            var result: General(T, order) = try .init(allocator, self.rows, self.cols);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                var j: u32 = 0;
-                while (j < self.size) : (j += 1) {
-                    var i: u32 = 0;
-                    while (i < j) : (i += 1) {
-                        result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                if (comptime order == .col_major) {
+                    var j: u32 = 0;
+                    while (j < self.cols) : (j += 1) {
+                        var i: u32 = 0;
+                        while (i < j and i < self.rows) : (i += 1) {
+                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        }
+
+                        if (j < int.min(self.rows, self.cols)) {
+                            result.data[j * self.size + j] = self.data[j];
+                        }
+
+                        i = j + 1;
+                        while (i < self.rows) : (i += 1) {
+                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        }
                     }
+                } else {
+                    var i: u32 = 0;
+                    while (i < self.rows) : (i += 1) {
+                        var j: u32 = 0;
+                        while (j < i and j < self.cols) : (j += 1) {
+                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                        }
 
-                    result.data[j * self.size + j] = self.data[j];
+                        if (i < int.min(self.rows, self.cols)) {
+                            result.data[i * self.size + i] = self.data[i];
+                        }
 
-                    i = j + 1;
-                    while (i < self.size) : (i += 1) {
-                        result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        j = i + 1;
+                        while (j < self.cols) : (j += 1) {
+                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                        }
                     }
                 }
             } else {
@@ -166,25 +191,46 @@ pub fn Diagonal(comptime T: type) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Diagonal(T), allocator: std.mem.Allocator, ctx: anytype) !Dense(T) {
-            var result: Dense(T) = try .init(allocator, &.{ self.size, self.size }, .{ .order = self.flags.order });
+        pub fn toDenseArray(self: *const Diagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !Dense(T, order) {
+            var result: Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                var j: u32 = 0;
-                while (j < self.size) : (j += 1) {
-                    var i: u32 = 0;
-                    while (i < j) : (i += 1) {
-                        result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                if (comptime order == .col_major) {
+                    var j: u32 = 0;
+                    while (j < self.size) : (j += 1) {
+                        var i: u32 = 0;
+                        while (i < j and i < self.rows) : (i += 1) {
+                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        }
+
+                        if (j < int.min(self.rows, self.cols)) {
+                            result.data[j * self.size + j] = self.data[j];
+                        }
+
+                        i = j + 1;
+                        while (i < self.size) : (i += 1) {
+                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        }
                     }
+                } else {
+                    var i: u32 = 0;
+                    while (i < self.rows) : (i += 1) {
+                        var j: u32 = 0;
+                        while (j < i and j < self.cols) : (j += 1) {
+                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                        }
 
-                    result.data[j * self.size + j] = self.data[j];
+                        if (i < int.min(self.rows, self.cols)) {
+                            result.data[i * self.size + i] = self.data[i];
+                        }
 
-                    i = j + 1;
-                    while (i < self.size) : (i += 1) {
-                        result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        j = i + 1;
+                        while (j < self.cols) : (j += 1) {
+                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                        }
                     }
                 }
             } else {
@@ -197,9 +243,9 @@ pub fn Diagonal(comptime T: type) type {
         pub fn transpose(self: Diagonal(T)) Diagonal(T) {
             return Diagonal(T){
                 .data = self.data,
-                .size = self.size,
+                .rows = self.cols,
+                .cols = self.rows,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };
@@ -208,18 +254,22 @@ pub fn Diagonal(comptime T: type) type {
         pub fn submatrix(
             self: *const Diagonal(T),
             start: u32,
-            end: u32,
+            row_end: u32,
+            col_end: u32,
         ) !Diagonal(T) {
-            if (start >= self.size or end > self.size or start >= end)
+            if (start >= int.min(self.rows, self.cols) or
+                row_end > self.rows or col_end > self.cols or
+                row_end < start or col_end < start)
                 return matrix.Error.InvalidRange;
 
-            const sub_size = end - start;
+            const sub_rows = row_end - start;
+            const sub_cols = col_end - start;
 
             return Diagonal(T){
                 .data = self.data + start,
-                .size = sub_size,
+                .rows = sub_rows,
+                .cols = sub_cols,
                 .flags = .{
-                    .order = self.flags.order,
                     .owns_data = false,
                 },
             };
