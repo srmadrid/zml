@@ -24,8 +24,8 @@ const banded = @import("banded.zig");
 const tridiagonal = @import("tridiagonal.zig");
 const sparse = @import("sparse.zig");
 
-// const gesy = @import("ops/gesy.zig");
-// const gehe = @import("ops/gehe.zig");
+const gesy = @import("ops/gesy.zig");
+const gehe = @import("ops/gehe.zig");
 // const getr = @import("ops/getr.zig");
 // const gedi = @import("ops/gedi.zig");
 // const geba = @import("ops/geba.zig");
@@ -114,8 +114,8 @@ pub fn apply2(
         switch (comptime types.matrixType(X)) {
             .general => switch (comptime types.matrixType(Y)) {
                 .general => return general.apply2(allocator, x, y, op, ctx), // Done
-                // .symmetric => return gesy.apply2(allocator, x, y, op,  ctx),
-                // .hermitian => return gehe.apply2(allocator, x, y, op,  ctx),
+                .symmetric => return gesy.apply2(allocator, x, y, op, ctx),
+                .hermitian => return gehe.apply2(allocator, x, y, op, ctx),
                 // .triangular => return getr.apply2(allocator, x, y, op,  ctx),
                 // .diagonal => return gedi.apply2(allocator, x, y, op,  ctx),
                 // .banded => return geba.apply2(allocator, x, y, op,  ctx),

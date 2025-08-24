@@ -214,9 +214,9 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                     self.data[i * self.ld + j]
             else
                 return if (comptime order == .col_major)
-                    ops.conjugate(self.data[j + i * self.ld], .{}) catch unreachable
+                    ops.conjugate(self.data[i + j * self.ld], .{}) catch unreachable
                 else
-                    ops.conjugate(self.data[j * self.ld + i], .{}) catch unreachable;
+                    ops.conjugate(self.data[i * self.ld + j], .{}) catch unreachable;
         }
 
         pub inline fn at(self: *const Hermitian(T, uplo, order), row: u32, col: u32) T {
