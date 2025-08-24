@@ -7,7 +7,7 @@ const Real = @import("real.zig").Real;
 
 pub fn Complex(comptime T: type) type {
     if (T != Integer and T != Rational and T != Real)
-        @compileError("Unsupported type for ComplexUnmanaged: " ++ @typeName(T));
+        @compileError("Unsupported type for Complex: " ++ @typeName(T));
 
     return struct {
         re: T,

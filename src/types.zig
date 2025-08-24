@@ -21,6 +21,7 @@ const complex = @import("complex.zig");
 const Complex = complex.Complex;
 //pub const Expression = @import("../expression/expression.zig").Expression;
 
+const vector = @import("vector.zig");
 const matrix = @import("matrix.zig");
 const array = @import("array.zig");
 
@@ -54,14 +55,6 @@ pub const Order = enum(u1) {
             .row_major => .col_major,
             .col_major => .row_major,
         };
-    }
-
-    pub fn resolve2(self: Order, other: Order) Order {
-        if (self == other) {
-            return self;
-        }
-
-        return .col_major; // default order
     }
 
     pub fn resolve3(self: Order, other1: Order, other2: Order) Order {
@@ -108,14 +101,6 @@ pub const Uplo = enum(u1) {
             .upper => .lower,
             .lower => .upper,
         };
-    }
-
-    pub inline fn resolve2(self: Uplo, other: Uplo) Uplo {
-        if (self == other) {
-            return self;
-        }
-
-        return .upper; // default uplo
     }
 };
 
@@ -217,7 +202,9 @@ const supported_numeric_types: [34]type = .{
     cf128,             comptime_complex,
     Integer,           Rational,
     Real,              Complex(Integer),
-    Complex(Rational), Complex(Real),
+    Complex(Rational),
+    Complex(Real),
+    // Expression,
 };
 
 const supported_complex_types: [9]type = .{
@@ -225,7 +212,7 @@ const supported_complex_types: [9]type = .{
     cf64,             cf80,
     cf128,            comptime_complex,
     Complex(Integer), Complex(Rational),
-    Complex(Real),
+    Complex(Real), // Expression,
 };
 
 pub const MatrixType = enum {
@@ -249,6 +236,7 @@ pub const ArrayType = enum {
 
 pub const Domain = enum {
     numeric,
+    vector,
     matrix,
     array,
 };
@@ -322,7 +310,6 @@ pub inline fn numericType(comptime T: type) NumericType {
     @setEvalBranchQuota(1000000);
 
     switch (@typeInfo(T)) {
-        .vector => return numericType(T.child),
         .bool => return .bool,
         .int, .comptime_int => {
             if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != c_uint and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != c_int and T != comptime_int)
@@ -332,7 +319,10 @@ pub inline fn numericType(comptime T: type) NumericType {
         },
         .float, .comptime_float => return .float,
         else => {
-            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float)) {
+            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or
+                T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
+                T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
+            {
                 return .cfloat;
             } else if (T == Integer) {
                 return .integer;
@@ -342,7 +332,7 @@ pub inline fn numericType(comptime T: type) NumericType {
                 return .real;
             } else if (T == Complex(Integer) or T == Complex(Rational) or T == Complex(Real)) {
                 return .complex;
-                //} else if (T == Expression or T == Expression) {
+                //} else if (T == Expression) {
                 //    return .expression;
             } else {
                 @compileError("Unsupported numeric type: " ++ @typeName(T));
@@ -362,7 +352,10 @@ pub fn isNumeric(comptime T: type) bool {
         },
         .float, .comptime_float => return true,
         else => {
-            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float)) {
+            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or
+                T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
+                T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
+            {
                 return true;
             } else if (T == Integer) {
                 return true;
@@ -372,7 +365,7 @@ pub fn isNumeric(comptime T: type) bool {
                 return true;
             } else if (T == Complex(Integer) or T == Complex(Rational) or T == Complex(Real)) {
                 return true;
-                //} else if (T == Expression or T == Expression) {
+                //} else if (T == Expression) {
                 //    return .expression;
             } else {
                 return false;
@@ -424,6 +417,8 @@ pub inline fn domainType(comptime T: type) Domain {
 
     if (comptime isNumeric(T)) {
         return .numeric;
+    } else if (comptime isVector(T)) {
+        return .vector;
     } else if (comptime isMatrix(T)) {
         return .matrix;
     } else if (comptime isArray(T)) {
@@ -535,6 +530,33 @@ pub fn isSimdVector(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a vector.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a vector, `false` otherwise.
+pub fn isVector(comptime T: type) bool {
+    @setEvalBranchQuota(10000);
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == vector.Vector(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a matrix, i.e., an instance of a
 /// `matrix.General`, `matrix.Symmetric`, `matrix.Hermitian`,
 /// `matrix.Triangular`, `matrix.Diagonal`, `matrix.Banded`,
@@ -556,23 +578,52 @@ pub fn isMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                const matrix_types: [if (isComplex(numeric_type)) 8 else 7]type = if (isComplex(numeric_type)) .{
-                    matrix.General(numeric_type),
-                    matrix.Symmetric(numeric_type),
-                    matrix.Hermitian(numeric_type),
-                    matrix.Triangular(numeric_type),
+                const matrix_types: [if (isComplex(numeric_type)) 24 else 20]type = if (isComplex(numeric_type)) .{
+                    matrix.General(numeric_type, .col_major),
+                    matrix.General(numeric_type, .row_major),
+                    matrix.Symmetric(numeric_type, .upper, .col_major),
+                    matrix.Symmetric(numeric_type, .lower, .col_major),
+                    matrix.Symmetric(numeric_type, .upper, .row_major),
+                    matrix.Symmetric(numeric_type, .lower, .row_major),
+                    matrix.Hermitian(numeric_type, .upper, .col_major),
+                    matrix.Hermitian(numeric_type, .lower, .col_major),
+                    matrix.Hermitian(numeric_type, .upper, .row_major),
+                    matrix.Hermitian(numeric_type, .lower, .row_major),
+                    matrix.Triangular(numeric_type, .upper, .non_unit, .col_major),
+                    matrix.Triangular(numeric_type, .upper, .unit, .col_major),
+                    matrix.Triangular(numeric_type, .lower, .non_unit, .col_major),
+                    matrix.Triangular(numeric_type, .lower, .unit, .col_major),
+                    matrix.Triangular(numeric_type, .upper, .non_unit, .row_major),
+                    matrix.Triangular(numeric_type, .upper, .unit, .row_major),
+                    matrix.Triangular(numeric_type, .lower, .non_unit, .row_major),
+                    matrix.Triangular(numeric_type, .lower, .unit, .row_major),
                     matrix.Diagonal(numeric_type),
-                    matrix.Banded(numeric_type),
+                    matrix.Banded(numeric_type, .col_major),
+                    matrix.Banded(numeric_type, .row_major),
                     matrix.Tridiagonal(numeric_type),
-                    matrix.Sparse(numeric_type),
+                    matrix.Sparse(numeric_type, .col_major),
+                    matrix.Sparse(numeric_type, .row_major),
                 } else .{
-                    matrix.General(numeric_type),
-                    matrix.Symmetric(numeric_type),
-                    matrix.Triangular(numeric_type),
+                    matrix.General(numeric_type, .col_major),
+                    matrix.General(numeric_type, .row_major),
+                    matrix.Symmetric(numeric_type, .upper, .col_major),
+                    matrix.Symmetric(numeric_type, .lower, .col_major),
+                    matrix.Symmetric(numeric_type, .upper, .row_major),
+                    matrix.Symmetric(numeric_type, .lower, .row_major),
+                    matrix.Triangular(numeric_type, .upper, .non_unit, .col_major),
+                    matrix.Triangular(numeric_type, .upper, .unit, .col_major),
+                    matrix.Triangular(numeric_type, .lower, .non_unit, .col_major),
+                    matrix.Triangular(numeric_type, .lower, .unit, .col_major),
+                    matrix.Triangular(numeric_type, .upper, .non_unit, .row_major),
+                    matrix.Triangular(numeric_type, .upper, .unit, .row_major),
+                    matrix.Triangular(numeric_type, .lower, .non_unit, .row_major),
+                    matrix.Triangular(numeric_type, .lower, .unit, .row_major),
                     matrix.Diagonal(numeric_type),
-                    matrix.Banded(numeric_type),
+                    matrix.Banded(numeric_type, .col_major),
+                    matrix.Banded(numeric_type, .row_major),
                     matrix.Tridiagonal(numeric_type),
-                    matrix.Sparse(numeric_type),
+                    matrix.Sparse(numeric_type, .col_major),
+                    matrix.Sparse(numeric_type, .row_major),
                 };
 
                 inline for (matrix_types) |matrix_type| {
@@ -603,7 +654,8 @@ pub fn isGeneralMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.General(numeric_type)) return true;
+                if (T == matrix.General(numeric_type, .col_major) or
+                    T == matrix.General(numeric_type, .row_major)) return true;
             }
 
             return false;
@@ -629,7 +681,10 @@ pub fn isSymmetricMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Symmetric(numeric_type)) return true;
+                if (T == matrix.Symmetric(numeric_type, .upper, .col_major) or
+                    T == matrix.Symmetric(numeric_type, .lower, .col_major) or
+                    T == matrix.Symmetric(numeric_type, .upper, .row_major) or
+                    T == matrix.Symmetric(numeric_type, .lower, .row_major)) return true;
             }
 
             return false;
@@ -655,7 +710,10 @@ pub fn isHermitianMatrix(comptime T: type) bool {
             }
 
             inline for (supported_complex_types) |numeric_type| {
-                if (T == matrix.Hermitian(numeric_type)) return true;
+                if (T == matrix.Hermitian(numeric_type, .upper, .col_major) or
+                    T == matrix.Hermitian(numeric_type, .lower, .col_major) or
+                    T == matrix.Hermitian(numeric_type, .upper, .row_major) or
+                    T == matrix.Hermitian(numeric_type, .lower, .row_major)) return true;
             }
 
             return false;
@@ -681,7 +739,14 @@ pub fn isTriangularMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Triangular(numeric_type)) return true;
+                if (T == matrix.Triangular(numeric_type, .upper, .non_unit, .col_major) or
+                    T == matrix.Triangular(numeric_type, .upper, .unit, .col_major) or
+                    T == matrix.Triangular(numeric_type, .lower, .non_unit, .col_major) or
+                    T == matrix.Triangular(numeric_type, .lower, .unit, .col_major) or
+                    T == matrix.Triangular(numeric_type, .upper, .non_unit, .row_major) or
+                    T == matrix.Triangular(numeric_type, .upper, .unit, .row_major) or
+                    T == matrix.Triangular(numeric_type, .lower, .non_unit, .row_major) or
+                    T == matrix.Triangular(numeric_type, .lower, .unit, .row_major)) return true;
             }
 
             return false;
@@ -733,7 +798,8 @@ pub fn isBandedMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Banded(numeric_type)) return true;
+                if (T == matrix.Banded(numeric_type, .col_major) or
+                    T == matrix.Banded(numeric_type, .row_major)) return true;
             }
 
             return false;
@@ -785,7 +851,8 @@ pub fn isSparseMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Sparse(numeric_type)) return true;
+                if (T == matrix.Sparse(numeric_type, .col_major) or
+                    T == matrix.Sparse(numeric_type, .row_major)) return true;
             }
 
             return false;
@@ -813,10 +880,13 @@ pub fn isArray(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                const array_types: [3]type = .{
-                    array.Dense(numeric_type),
-                    array.Strided(numeric_type),
-                    array.Sparse(numeric_type),
+                const array_types: [6]type = .{
+                    array.Dense(numeric_type, .col_major),
+                    array.Dense(numeric_type, .row_major),
+                    array.Strided(numeric_type, .col_major),
+                    array.Strided(numeric_type, .row_major),
+                    array.Sparse(numeric_type, .col_major),
+                    array.Sparse(numeric_type, .row_major),
                 };
 
                 inline for (array_types) |array_type| {
@@ -847,7 +917,8 @@ pub fn isDenseArray(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == array.Dense(numeric_type)) return true;
+                if (T == array.Dense(numeric_type, .col_major) or
+                    T == array.Dense(numeric_type, .row_major)) return true;
             }
 
             return false;
@@ -873,7 +944,8 @@ pub fn isStridedArray(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == array.Strided(numeric_type)) return true;
+                if (T == array.Strided(numeric_type, .col_major) or
+                    T == array.Strided(numeric_type, .row_major)) return true;
             }
 
             return false;
@@ -899,7 +971,8 @@ pub fn isSparseArray(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == array.Sparse(numeric_type)) return true;
+                if (T == array.Sparse(numeric_type, .col_major) or
+                    T == array.Sparse(numeric_type, .row_major)) return true;
             }
 
             return false;
@@ -974,37 +1047,19 @@ pub fn isComplex(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type needs allocation for its data.
-///
-/// This function checks if the input type requires an allocator for its data,
-/// which inludes `Array`s and arbitrary precision types.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check. Must be a supported numeric type or
-/// an `Array`.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type needs an allocator, `false` otherwise.
-pub fn needsAllocator(comptime T: type) bool {
-    return isArray(T) or isArbitraryPrecision(T);
-}
-
 /// Coerces the input types to the smallest type that can represent both types.
 ///
 /// This function takes two types `X` and `Y` and returns the smallest type that
-/// can represent both types without loss of information. If at least one of the
-/// types is an `Array` or a slice, the result will be an `Array` of the coerced
-/// `Numeric` types.
+/// can represent both types without loss of information.
+///
 ///
 /// Parameters
 /// ----------
 /// comptime X (`type`): The first type to coerce. Must be a supported numeric
-/// type, an `Array`, or a slice.
+/// type, a vector, a matrix, or an array.
 ///
 /// comptime Y (`type`): The second type to coerce. Must be a supported numeric
-/// type, an `Array`, or a slice.
+/// type, a vector, a matrix, or an array.
 ///
 /// Returns
 /// -------
@@ -1017,113 +1072,136 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
     switch (comptime domainType(X)) {
         .numeric => switch (comptime domainType(Y)) {
             .numeric => {},
+            .vector => return vector.Vector(Coerce(X, Numeric(Y))), // numeric + vector
             .matrix => switch (comptime matrixType(Y)) {
-                .general => return matrix.General(Coerce(X, Numeric(Y))), // numeric + general
-                .symmetric => return matrix.Symmetric(Coerce(X, Numeric(Y))), // numeric + symmetric
+                .general => return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + general
+                .symmetric => return matrix.Symmetric(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)), // numeric + symmetric
                 .hermitian => {
                     if (comptime isComplex(X)) {
-                        return matrix.General(Coerce(X, Numeric(Y))); // numeric (complex) + hermitian
+                        return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)); // numeric (complex) + hermitian
                     } else {
-                        return matrix.Hermitian(Coerce(X, Numeric(Y))); // numeric (real) + hermitian
+                        return matrix.Hermitian(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)); // numeric (real) + hermitian
                     }
                 },
-                .triangular => return matrix.Triangular(Coerce(X, Numeric(Y))), // numeric + triangular
-                else => return matrix.General(Coerce(X, Numeric(Y))), // numeric + rest of matrices
+                .triangular => return matrix.Triangular(Coerce(X, Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // numeric + triangular
+                .diagonal => return matrix.Diagonal(Coerce(X, Numeric(Y))), // numeric + diagonal
+                .banded => return matrix.Banded(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + banded
+                .tridiagonal => return matrix.Tridiagonal(Coerce(X, Numeric(Y))), // numeric + tridiagonal
+                .sparse => return matrix.Sparse(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + sparse
                 .numeric => unreachable,
             },
             .array => switch (comptime arrayType(Y)) {
-                .dense => return array.Dense(Coerce(X, Numeric(Y))), // numeric + dense
-                .strided => return array.Dense(Coerce(X, Numeric(Y))), // numeric + strided
-                .sparse => return array.Sparse(Coerce(X, Numeric(Y))), // numeric + sparse
+                .dense => return array.Dense(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + dense
+                .strided => return array.Dense(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + strided
+                .sparse => return array.Sparse(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + sparse
                 .numeric => unreachable,
             },
+        },
+        .vector => switch (comptime domainType(Y)) {
+            .numeric => return vector.Vector(Coerce(Numeric(X), Y)), // vector + numeric
+            .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // vector + vector
+            .matrix => @compileError("Cannot coerce vector and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // vector + matrix
+            .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // vector + array
         },
         .matrix => {
             switch (comptime matrixType(X)) {
                 .general => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // general + numeric
-                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // general + matrix
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // general + array
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y), orderOf(X)), // general + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // general + vector
+                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // general + matrix
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // general + array
                 },
                 .symmetric => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.Symmetric(Coerce(Numeric(X), Y)), // symmetric + numeric
+                    .numeric => return matrix.Symmetric(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)), // symmetric + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // symmetric + vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y))), // symmetric + symmetric
-                        .diagonal => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y))), // symmetric + diagonal
-                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // symmetric + rest of matrices
+                        .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // symmetric + symmetric
+                        .diagonal => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // symmetric + diagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // symmetric + rest of matrices
                     },
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // symmetric + array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // symmetric + array
                 },
                 .hermitian => switch (comptime domainType(Y)) {
                     .numeric => {
                         if (comptime isComplex(Y)) {
-                            return matrix.General(Coerce(Numeric(X), Y)); // hermitian + numeric (complex)
+                            return matrix.General(Coerce(Numeric(X), Y), orderOf(X)); // hermitian + numeric (complex)
                         } else {
-                            return matrix.Hermitian(Coerce(Numeric(X), Y)); // hermitian + numeric (real)
+                            return matrix.Hermitian(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)); // hermitian + numeric (real)
                         }
                     },
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // hermitian + vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .hermitian => return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y))), // hermitian + hermitian
+                        .hermitian => return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // hermitian + hermitian
                         .diagonal => {
                             if (comptime isComplex(Numeric(Y))) {
-                                return matrix.General(Coerce(Numeric(X), Numeric(Y))); // hermitian + diagonal (complex)
+                                return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // hermitian + diagonal (complex)
                             } else {
-                                return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y))); // hermitian + diagonal (real)
+                                return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // hermitian + diagonal (real)
                             }
                         },
-                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // hermitian + rest of matrices
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // hermitian + rest of matrices
                     },
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // hermitian + array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // hermitian + array
                 },
                 .triangular => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.Triangular(Coerce(Numeric(X), Y)), // triangular + numeric
+                    .numeric => return matrix.Triangular(Coerce(Numeric(X), Y), uploOf(X), .non_unit, orderOf(X)), // triangular + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // triangular + vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .diagonal => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y))), // triangular + diagonal
-                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // triangular + matrix
+                        .triangular => {
+                            if (uploOf(X) == uploOf(Y)) {
+                                return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)); // triangular + triangular (same uplo)
+                            } else {
+                                return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // triangular + triangular (different uplo)
+                            }
+                        },
+                        .diagonal => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // triangular + diagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular + rest of matrices
                     },
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // triangular + array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // triangular + array
                 },
                 .diagonal => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // diagonal + numeric
+                    .numeric => return matrix.Diagonal(Coerce(Numeric(X), Y)), // diagonal + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal + vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .triangular => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y))), // diagonal + triangular
+                        .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // diagonal + symmetric
+                        .triangular => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal + triangular
                         .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + diagonal
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // diagonal + banded
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal + banded
                         .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + tridiagonal
-                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // diagonal + rest of matrices
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal + rest of matrices
                     },
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // diagonal + array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal + array
                 },
                 .banded => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // banded + numeric
+                    .numeric => return matrix.Banded(Coerce(Numeric(X), Y), orderOf(X)), // banded + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded + vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // banded + diagonal
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // banded + banded
-                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // banded + rest of matrices
+                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded + diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded + banded
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded + tridiagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded + rest of matrices
                     },
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // banded + array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded + array
                 },
                 .tridiagonal => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.General(Coerce(Numeric(X), Y)), // tridiagonal + numeric
+                    .numeric => return matrix.Tridiagonal(Coerce(Numeric(X), Y)), // tridiagonal + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal + vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .diagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + diagonal
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + banded
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal + banded
                         .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + tridiagonal
-                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + rest of matrices
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal + rest of matrices
                     },
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // tridiagonal + array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal + array
                 },
                 .sparse => switch (comptime domainType(Y)) {
-                    .numeric => return matrix.Sparse(Coerce(Numeric(X), Y)), // sparse + numeric
+                    .numeric => return matrix.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse + vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse + sparse
-                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y))), // sparse + rest of matrices
+                        .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse + sparse
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse + rest of matrices
                     },
-                    .array => switch (comptime arrayType(Y)) {
-                        .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse (matrix) + sparse (array)
-                        else => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse (matrix) + rest of arrays
-                        .numeric => unreachable,
-                    },
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse + array
                 },
                 .numeric => unreachable,
             }
@@ -1131,22 +1209,24 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
         .array => {
             switch (comptime arrayType(X)) {
                 .dense => switch (comptime domainType(Y)) {
-                    .numeric => return array.Dense(Coerce(Numeric(X), Y)), // dense + numeric
-                    .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // dense + matrix
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // dense + array
+                    .numeric => return array.Dense(Coerce(Numeric(X), Y), orderOf(X)), // dense + numeric
+                    .vector => @compileError("Cannot coerce array and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense + vector
+                    .matrix => @compileError("Cannot coerce array and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense + matrix
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense + array
                 },
                 .strided => switch (comptime domainType(Y)) {
-                    .numeric => return array.Dense(Coerce(Numeric(X), Y)), // strided + numeric
-                    .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // strided + matrix
-                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // strided + array
+                    .numeric => return array.Dense(Coerce(Numeric(X), Y), orderOf(X)), // strided + numeric
+                    .vector => @compileError("Cannot coerce array and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // strided + vector
+                    .matrix => @compileError("Cannot coerce array and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // strided + matrix
+                    .array => return array.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // strided + array
                 },
                 .sparse => switch (comptime domainType(Y)) {
-                    .numeric => return array.Sparse(Coerce(Numeric(X), Y)), // sparse + numeric
-                    .matrix => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse + matrix
+                    .numeric => return array.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse + numeric
+                    .vector => @compileError("Cannot coerce array and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse + vector
+                    .matrix => @compileError("Cannot coerce array and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse + matrix
                     .array => switch (comptime arrayType(Y)) {
-                        .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse + sparse
-                        else => return array.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse + rest of arrays
-                        .numeric => unreachable,
+                        .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse + sparse
+                        else => return array.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse + rest of arrays
                     },
                 },
                 .numeric => unreachable,
@@ -1386,8 +1466,11 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
 ///
 /// Unused right now, kept for possible future use.
 pub fn canCoerce(comptime K: type, comptime V: type) bool {
-    comptime if (isArray(K) or isArray(V) or isMatrix(K) or isMatrix(V)) {
-        @compileError("Cannot use `canCoerce` with arrays or matrices");
+    comptime if (isArray(K) or isArray(V) or
+        isMatrix(K) or isMatrix(V) or
+        isVector(K) or isVector(V))
+    {
+        @compileError("Cannot use `canCoerce` with arrays, matrices or vectors.");
     };
 
     const T1: type = K;
@@ -1604,61 +1687,78 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
     return T2 == T3;
 }
 
-/// Coerces the second type to a matrix or array type based on the first type.
+/// Coerces the second type to a vector, matrix or array type based on the first
+/// type.
 ///
-/// This function is useful for ensuring that the second type is always a matrix
-/// or an array when the first is.
+/// This function is useful for ensuring that the second type is always a
+/// vector, matrix or an array when the first is.
 ///
 /// Parameters
 /// ----------
 /// comptime X (`type`): The type to check. Must be a supported numeric type, a
-/// matrix, or an array.
+/// vector, a matrix, or an array.
 ///
 /// comptime Y (`type`): The type to coerce. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `type`: The coerced type.
-pub fn EnsureMatrixOrArray(comptime X: type, comptime Y: type) type {
+pub fn EnsureDomain(comptime X: type, comptime Y: type) type {
     if (isArray(X)) {
         switch (arrayType(X)) {
-            .dense => return array.Dense(Y),
-            .strided => return array.Dense(Y),
-            .sparse => return array.Sparse(Y),
+            .dense => return array.Dense(Y, orderOf(X)),
+            .strided => return array.Dense(Y, orderOf(X)),
+            .sparse => return array.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
     } else if (isMatrix(X)) {
         switch (matrixType(X)) {
-            .general => return matrix.General(Y),
-            .symmetric => return matrix.Symmetric(Y),
-            .hermitian => return matrix.Hermitian(Y),
-            .triangular => return matrix.Triangular(Y),
+            .general => return matrix.General(Y, orderOf(X)),
+            .symmetric => return matrix.Symmetric(Y, uploOf(X), orderOf(X)),
+            .hermitian => return matrix.Hermitian(Y, uploOf(X), orderOf(X)),
+            .triangular => return matrix.Triangular(Y, uploOf(X), diagOf(X), orderOf(X)),
             .diagonal => return matrix.Diagonal(Y),
-            .banded => return matrix.Banded(Y),
+            .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
-            .sparse => return matrix.Sparse(Y),
+            .sparse => return matrix.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
+    } else if (isVector(X)) {
+        return vector.Vector(Y);
+    } else {
+        return Y;
+    }
+}
+
+pub fn EnsureVector(comptime X: type, comptime Y: type) type {
+    if (isVector(X)) {
+        return vector.Vector(Y);
+    } else if (isMatrix(X)) {
+        @compileError("Cannot ensure vector type from a matrix type. Use `EnsureDomain` or `EnsureMatrix` instead.");
+    } else if (isArray(X)) {
+        @compileError("Cannot ensure vector type from an array type. Use `EnsureDomain` or `EnsureArray` instead.");
     } else {
         return Y;
     }
 }
 
 pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
-    if (isMatrix(X)) {
+    if (isVector(X)) {
+        @compileError("Cannot ensure matrix type from a vector type. Use `EnsureDomain` or `EnsureVector` instead.");
+    } else if (isMatrix(X)) {
         switch (matrixType(X)) {
-            .general => return matrix.General(Y),
-            .symmetric => return matrix.Symmetric(Y),
-            .hermitian => return matrix.Hermitian(Y),
-            .triangular => return matrix.Triangular(Y),
+            .general => return matrix.General(Y, orderOf(X)),
+            .symmetric => return matrix.Symmetric(Y, uploOf(X), orderOf(X)),
+            .hermitian => return matrix.Hermitian(Y, uploOf(X), orderOf(X)),
+            .triangular => return matrix.Triangular(Y, uploOf(X), diagOf(X), orderOf(X)),
             .diagonal => return matrix.Diagonal(Y),
-            .banded => return matrix.Banded(Y),
+            .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
-            .sparse => return matrix.Sparse(Y),
+            .sparse => return matrix.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
     } else if (isArray(X)) {
-        @compileError("Cannot ensure matrix type from an array type. Use `EnsureMatrixOrArray` or `EnsureArray` instead.");
+        @compileError("Cannot ensure matrix type from an array type. Use `EnsureDomain` or `EnsureArray` instead.");
     } else {
         return Y;
     }
@@ -1681,7 +1781,11 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
 /// -------
 /// `type`: The coerced type.
 pub fn EnsureArray(comptime X: type, comptime Y: type) type {
-    if (isArray(X)) {
+    if (isVector(X)) {
+        @compileError("Cannot ensure array type from a vector type. Use `EnsureDomain` or `EnsureVector` instead.");
+    } else if (isMatrix(X)) {
+        @compileError("Cannot ensure array type from a matrix type. Use `EnsureDomain` or `EnsureMatrix` instead.");
+    } else if (isArray(X)) {
         switch (arrayType(X)) {
             .dense => return array.Dense(Y, orderOf(X)),
             .strided => return array.Dense(Y, orderOf(X)),
@@ -1910,23 +2014,25 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
 pub fn EnsureFloat(comptime T: type) type {
     if (isArray(T)) {
         switch (arrayType(T)) {
-            .dense => return array.Dense(EnsureFloat(Numeric(T))),
-            .strided => return array.Strided(EnsureFloat(Numeric(T))),
-            .sparse => return array.Sparse(EnsureFloat(Numeric(T))),
+            .dense => return array.Dense(EnsureFloat(Numeric(T)), orderOf(T)),
+            .strided => return array.Strided(EnsureFloat(Numeric(T)), orderOf(T)),
+            .sparse => return array.Sparse(EnsureFloat(Numeric(T)), orderOf(T)),
             .numeric => unreachable,
         }
     } else if (isMatrix(T)) {
         switch (matrixType(T)) {
-            .general => return matrix.General(EnsureFloat(Numeric(T))),
-            .symmetric => return matrix.Symmetric(EnsureFloat(Numeric(T))),
-            .hermitian => return matrix.Hermitian(EnsureFloat(Numeric(T))),
-            .triangular => return matrix.Triangular(EnsureFloat(Numeric(T))),
+            .general => return matrix.General(EnsureFloat(Numeric(T)), orderOf(T)),
+            .symmetric => return matrix.Symmetric(EnsureFloat(Numeric(T)), uploOf(T), orderOf(T)),
+            .hermitian => return matrix.Hermitian(EnsureFloat(Numeric(T)), uploOf(T), orderOf(T)),
+            .triangular => return matrix.Triangular(EnsureFloat(Numeric(T)), uploOf(T), diagOf(T), orderOf(T)),
             .diagonal => return matrix.Diagonal(EnsureFloat(Numeric(T))),
-            .banded => return matrix.Banded(EnsureFloat(Numeric(T))),
+            .banded => return matrix.Banded(EnsureFloat(Numeric(T)), orderOf(T)),
             .tridiagonal => return matrix.Tridiagonal(EnsureFloat(Numeric(T))),
-            .sparse => return matrix.Sparse(EnsureFloat(Numeric(T))),
+            .sparse => return matrix.Sparse(EnsureFloat(Numeric(T)), orderOf(T)),
             .numeric => unreachable,
         }
+    } else if (isVector(T)) {
+        return vector.Vector(EnsureFloat(Numeric(T)));
     }
 
     switch (numericType(T)) {
@@ -1942,33 +2048,31 @@ pub fn EnsureFloat(comptime T: type) type {
     }
 }
 
-/// Returns the scalar type of a given numeric type, slice, or `Array`.
+/// Returns the scalar type of a given numeric type, vector, matrix or array.
 ///
-/// This function returns the scalar type of a given numeric type, slice, or
-/// `Array`. If the input type is an `Array` or a slice, it returns the element
-/// type. If the input type is a numeric type, it returns the type itself,
-/// unless it is a complex type, in which case it returns the scalar type of the
-/// complex type.
+/// This function returns the scalar type of a given numeric type, vector,
+/// matrix, or array. If the input type is a vector, a matrix or an array, it
+/// returns the element type (equivalent to `Numeric`). If the input type is a
+/// numeric type, it returns the type itself, unless it is a complex type, in
+/// which case it returns the scalar type of the complex type.
 ///
 /// Parameters
 /// ----------
 /// comptime T (`type`): The type to get the scalar type of. Must be a supported
-/// numeric type, slice, or `Array`.
+/// numeric type, vector, matrix, or array.
 ///
 /// Returns
 /// -------
 /// `type`: The scalar type of the input type.
 pub fn Scalar(comptime T: type) type {
-    if (isArray(T) or isMatrix(T)) {
+    if (isArray(T) or isMatrix(T) or isVector(T)) {
         const t: T = .empty;
         return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
-    } else if (isSlice(T)) {
-        return @typeInfo(T).pointer.child;
     }
 
     const numeric = numericType(T);
 
-    switch (numeric) {
+    switch (comptime numeric) {
         .int => return T,
         .float => return T,
         .bool => return T,
@@ -2001,30 +2105,26 @@ pub fn Scalar(comptime T: type) type {
     }
 }
 
-/// Returns the underlying numeric type of a given numeric type, slice, or
-/// `Array`.
+/// Returns the underlying numeric type of a given numeric type, vector, matrix
+/// or array.
 ///
 /// This function returns the underlying numeric type of a given numeric type,
-/// slice, or `Array`. If the input type is an `Array` or a slice, it returns
-/// the element type. If the input type is a numeric type, it returns the type
-/// itself.
+/// vector, matrix or array. If the input type is a vector, matrix or array, it
+/// returns the element type. If the input type is a numeric type, it returns
+/// the type itself.
 ///
 /// Parameters
 /// ----------
 /// comptime T (`type`): The type to get the numeric type of. Must be a
-/// supported numeric type, slice, or `Array`.
+/// supported numeric type, vector, matrix, or array.
 ///
 /// Returns
 /// -------
 /// `type`: The underlying numeric type of the input type.
 pub fn Numeric(comptime T: type) type {
-    if (isArray(T) or isMatrix(T)) {
+    if (isArray(T) or isMatrix(T) or isVector(T)) {
         const t: T = .empty;
         return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
-    } else if (isSlice(T)) {
-        const K = @typeInfo(T).pointer.child;
-        _ = numericType(K); // Will raise compile error if K is not a supported numeric type
-        return K;
     }
 
     if (!isNumeric(T)) {
@@ -2457,7 +2557,7 @@ pub fn ReturnType1(comptime op: anytype, comptime X: type) type {
     const result_type: type = if (opinfo.@"fn".params.len == 1)
         @TypeOf(op(val))
     else // We must pass an allocator, although it is not used
-        if (needsAllocator(X))
+        if (isArbitraryPrecision(X))
             @TypeOf(op(val, .{ .allocator = useless_allocator }))
         else
             @TypeOf(op(val, .{}));
@@ -2497,7 +2597,7 @@ pub fn ReturnType2(comptime op: anytype, comptime X: type, comptime Y: type) typ
     const result_type: type = if (opinfo.@"fn".params.len == 2)
         @TypeOf(op(val1, val2))
     else // We must pass an allocator, although it is not used
-        if (needsAllocator(X) or needsAllocator(Y))
+        if (isArbitraryPrecision(X) or isArbitraryPrecision(Y))
             @TypeOf(op(val1, val2, .{ .allocator = useless_allocator }))
         else
             @TypeOf(op(val1, val2, .{}));

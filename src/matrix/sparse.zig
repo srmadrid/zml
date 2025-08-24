@@ -15,7 +15,7 @@ const int = @import("../int.zig");
 const matrix = @import("../matrix.zig");
 const Flags = matrix.Flags;
 
-pub fn Sparse(comptime T: type) type {
+pub fn Sparse(T: type, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("Sparse requires a numeric type, got " ++ @typeName(T));
 
@@ -23,9 +23,9 @@ pub fn Sparse(comptime T: type) type {
         data: [*]T,
         nnz: u32,
 
-        pub const empty: Sparse(T) = Sparse(.{
+        pub const empty: Sparse(T, order) = .{
             .data = &.{},
             .nnz = 0,
-        });
+        };
     };
 }

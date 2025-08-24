@@ -4,7 +4,6 @@ const types = @import("../types.zig");
 const Scalar = types.Scalar;
 const ReturnType1 = types.ReturnType1;
 const ReturnType2 = types.ReturnType2;
-const needsAllocator = types.needsAllocator;
 const scast = types.scast;
 const cast = types.cast;
 const validateContext = types.validateContext;
@@ -14,7 +13,7 @@ const int = @import("../int.zig");
 
 const array = @import("../array.zig");
 const max_dimensions = array.max_dimensions;
-const Order = array.Order;
+const Order = types.Order;
 const Flags = array.Flags;
 const Range = array.Range;
 

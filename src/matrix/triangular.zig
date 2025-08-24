@@ -1046,6 +1046,7 @@ pub fn apply2(
     // - Result is triangular
     // - Result is general
     const opinfo = @typeInfo(@TypeOf(op));
+    _ = opinfo;
     if (comptime types.isTriangularMatrix(@TypeOf(result))) { // uploOf(x) == uploOf(y)
         if (comptime types.orderOf(@TypeOf(result)) == .col_major) {
             if (comptime types.orderOf(@TypeOf(x)) == .col_major) {

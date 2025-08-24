@@ -18,6 +18,7 @@ const integer = @import("integer.zig");
 const rational = @import("rational.zig");
 const real = @import("real.zig");
 const complex = @import("complex.zig");
+const vector = @import("vector.zig");
 const matrix = @import("matrix.zig");
 const array = @import("array.zig");
 
@@ -97,7 +98,7 @@ pub inline fn add(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(C)) {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         if (comptime types.isMatrix(X) or types.isMatrix(Y))
             @compileError("zml.add: if x or y is a matrix, the other must also be a matrix, got " ++
                 @typeName(X) ++ " and " ++ @typeName(Y));
@@ -108,7 +109,6 @@ pub inline fn add(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -118,7 +118,6 @@ pub inline fn add(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -126,7 +125,6 @@ pub inline fn add(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -136,17 +134,19 @@ pub inline fn add(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
             types.stripStruct(ctx, &.{ "array_allocator", "order" }),
         );
-    } else if (comptime types.isMatrix(C)) {
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        if (comptime types.isVector(X) or types.isVector(Y))
+            @compileError("zml.add: if x or y is a vector, the other must also be a vector, got " ++
+                @typeName(X) ++ " and " ++ @typeName(Y));
+
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
             types.validateContext(
                 @TypeOf(ctx),
                 .{
                     .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         } else {
@@ -156,7 +156,6 @@ pub inline fn add(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -164,7 +163,6 @@ pub inline fn add(
                     @TypeOf(ctx),
                     .{
                         .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -174,8 +172,41 @@ pub inline fn add(
             ctx.matrix_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+            types.stripStruct(ctx, &.{"matrix_allocator"}),
+        );
+    } else if (comptime types.isVector(X) or types.isVector(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(C))) {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+            } else {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+            }
+        };
+
+        return vector.add(
+            ctx.vector_allocator,
+            x,
+            y,
+            types.stripStruct(ctx, &.{"vector_allocator"}),
         );
     } else {
         switch (comptime types.numericType(C)) {

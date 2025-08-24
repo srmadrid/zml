@@ -279,7 +279,7 @@ pub fn Strided(T: type, base_order: Order) type {
 //         types.validateContext(@TypeOf(ctx), .{});
 //     };
 
-//     comptime if (!types.needsAllocator(T))
+//     comptime if (!types.isArbitraryPrecision(T))
 //         return;
 
 //     var iter: array.Iterator(T) = .init(arr);

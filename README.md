@@ -30,7 +30,7 @@ This library is in the early stages of development and is not yet ready for use.
   - N-dimensional arrays:
     - Two storage formats:
       - `Dense` (plus `Strided` for views)
-      - `Strided` (CSF)
+      - `Strided` (CSF): not implemented yet
     - Broadcasting
     - Element-wise operations
     - Views
