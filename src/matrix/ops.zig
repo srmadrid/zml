@@ -74,9 +74,6 @@ pub fn apply2(
     x: anytype,
     y: anytype,
     comptime op: anytype,
-    opts: struct {
-        order: ?types.Order = null,
-    },
     ctx: anytype,
 ) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
     const X: type = @TypeOf(x);
@@ -91,222 +88,110 @@ pub fn apply2(
 
     if (comptime !types.isMatrix(X)) {
         switch (comptime types.matrixType(Y)) {
-            .general => return general.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .symmetric => {
-                types.partialValidateContext(
-                    @TypeOf(ctx),
-                    .{ .uplo = .{ .type = types.Uplo, .required = false } },
-                );
-
-                return symmetric.apply2(
-                    allocator,
-                    x,
-                    y,
-                    op,
-                    .{
-                        .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
-                        .order = opts.order,
-                    },
-                    types.stripStruct(ctx, &.{"uplo"}),
-                );
-            },
-            .hermitian => {
-                types.partialValidateContext(
-                    @TypeOf(ctx),
-                    .{ .uplo = .{ .type = types.Uplo, .required = false } },
-                );
-
-                return hermitian.apply2(
-                    allocator,
-                    x,
-                    y,
-                    op,
-                    if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
-                        .{
-                            .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
-                            .order = opts.order,
-                        }
-                    else
-                        .{
-                            .order = opts.order,
-                        },
-                    types.stripStruct(ctx, &.{"uplo"}),
-                );
-            },
-            .triangular => return triangular.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .diagonal => return diagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .banded => return banded.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .general => return general.apply2(allocator, x, y, op, ctx),
+            .symmetric => return symmetric.apply2(allocator, x, y, op, ctx),
+            .hermitian => return hermitian.apply2(allocator, x, y, op, ctx),
+            .triangular => return triangular.apply2(allocator, x, y, op, ctx),
+            .diagonal => return diagonal.apply2(allocator, x, y, op, ctx),
+            .banded => return banded.apply2(allocator, x, y, op, ctx),
+            .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, ctx),
             .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
             .numeric => unreachable,
         }
     } else if (comptime !types.isMatrix(Y)) {
         switch (comptime types.matrixType(X)) {
-            .general => return general.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .symmetric => {
-                types.partialValidateContext(
-                    @TypeOf(ctx),
-                    .{ .uplo = .{ .type = types.Uplo, .required = false } },
-                );
-
-                return symmetric.apply2(
-                    allocator,
-                    x,
-                    y,
-                    op,
-                    .{
-                        .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
-                        .order = opts.order,
-                    },
-                    types.stripStruct(ctx, &.{"uplo"}),
-                );
-            },
-            .hermitian => {
-                types.partialValidateContext(
-                    @TypeOf(ctx),
-                    .{ .uplo = .{ .type = types.Uplo, .required = false } },
-                );
-
-                return hermitian.apply2(
-                    allocator,
-                    x,
-                    y,
-                    op,
-                    if (comptime types.isHermitianMatrix(Coerce(@TypeOf(x), @TypeOf(y))))
-                        .{
-                            .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
-                            .order = opts.order,
-                        }
-                    else
-                        .{
-                            .order = opts.order,
-                        },
-                    types.stripStruct(ctx, &.{"uplo"}),
-                );
-            },
-            .triangular => return triangular.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .diagonal => return diagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .banded => return banded.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-            .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+            .general => return general.apply2(allocator, x, y, op, ctx),
+            .symmetric => return symmetric.apply2(allocator, x, y, op, ctx),
+            .hermitian => return hermitian.apply2(allocator, x, y, op, ctx),
+            .triangular => return triangular.apply2(allocator, x, y, op, ctx),
+            .diagonal => return diagonal.apply2(allocator, x, y, op, ctx),
+            .banded => return banded.apply2(allocator, x, y, op, ctx),
+            .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, ctx),
             .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
             .numeric => unreachable,
         }
     } else {
         switch (comptime types.matrixType(X)) {
             .general => switch (comptime types.matrixType(Y)) {
-                .general => return general.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx), // Done
-                // .symmetric => return gesy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .hermitian => return gehe.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .triangular => return getr.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .diagonal => return gedi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .banded => return geba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .tridiagonal => return gegt.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                .general => return general.apply2(allocator, x, y, op, ctx), // Done
+                // .symmetric => return gesy.apply2(allocator, x, y, op,  ctx),
+                // .hermitian => return gehe.apply2(allocator, x, y, op,  ctx),
+                // .triangular => return getr.apply2(allocator, x, y, op,  ctx),
+                // .diagonal => return gedi.apply2(allocator, x, y, op,  ctx),
+                // .banded => return geba.apply2(allocator, x, y, op,  ctx),
+                // .tridiagonal => return gegt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 // .numeric => unreachable,
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .symmetric => switch (comptime types.matrixType(Y)) {
-                // .general => return gesy.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
-                .symmetric => {
-                    types.partialValidateContext(
-                        @TypeOf(ctx),
-                        .{ .uplo = .{ .type = types.Uplo, .required = false } },
-                    );
-
-                    return symmetric.apply2(
-                        allocator,
-                        x,
-                        y,
-                        op,
-                        .{
-                            .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
-                            .order = opts.order,
-                        },
-                        types.stripStruct(ctx, &.{"uplo"}),
-                    );
-                },
-                // .hermitian => return syhe.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .triangular => return sytr.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .diagonal => return sydi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .banded => return syba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .tridiagonal => return sygt.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                // .general => return syge.apply2(allocator, y, x, op,  ctx),
+                .symmetric => return symmetric.apply2(allocator, x, y, op, ctx),
+                // .hermitian => return syhe.apply2(allocator, x, y, op,  ctx),
+                // .triangular => return sytr.apply2(allocator, x, y, op,  ctx),
+                // .diagonal => return sydi.apply2(allocator, x, y, op,  ctx),
+                // .banded => return syba.apply2(allocator, x, y, op,  ctx),
+                // .tridiagonal => return sygt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 // .numeric => unreachable,
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .hermitian => switch (comptime types.matrixType(Y)) {
-                // .general => return hege.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
-                // .symmetric => return hesy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                .hermitian => {
-                    types.partialValidateContext(
-                        @TypeOf(ctx),
-                        .{ .uplo = .{ .type = types.Uplo, .required = false } },
-                    );
-
-                    return hermitian.apply2(
-                        allocator,
-                        x,
-                        y,
-                        op,
-                        .{
-                            .uplo = if (comptime types.ctxHasField(@TypeOf(ctx), "uplo", ?types.Uplo)) ctx.uplo else null,
-                            .order = opts.order,
-                        },
-                        types.stripStruct(ctx, &.{"uplo"}),
-                    );
-                },
-                // .triangular => return hetr.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .diagonal => return hedi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .banded => return heba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .tridiagonal => return hegt.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                // .general => return hege.apply2(allocator, y, x, op,  ctx),
+                // .symmetric => return hesy.apply2(allocator, x, y, op,  ctx),
+                .hermitian => return hermitian.apply2(allocator, x, y, op, ctx),
+                // .triangular => return hetr.apply2(allocator, x, y, op,  ctx),
+                // .diagonal => return hedi.apply2(allocator, x, y, op,  ctx),
+                // .banded => return heba.apply2(allocator, x, y, op,  ctx),
+                // .tridiagonal => return hegt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 // .numeric => unreachable,
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .triangular => switch (comptime types.matrixType(Y)) {
-                // .general => return trge.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
-                // .symmetric => return trsy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .hermitian => return trhe.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                .triangular => return triangular.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .diagonal => return trdi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .banded => return trba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .tridiagonal => return trgt.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                // .general => return trge.apply2(allocator, y, x, op,  ctx),
+                // .symmetric => return trsy.apply2(allocator, x, y, op,  ctx),
+                // .hermitian => return trhe.apply2(allocator, x, y, op,  ctx),
+                .triangular => return triangular.apply2(allocator, x, y, op, ctx),
+                // .diagonal => return trdi.apply2(allocator, x, y, op,  ctx),
+                // .banded => return trba.apply2(allocator, x, y, op,  ctx),
+                // .tridiagonal => return trgt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 // .numeric => unreachable,
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .diagonal => switch (comptime types.matrixType(Y)) {
-                // .general => return dige.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
-                // .symmetric => return disy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .hermitian => return dihe.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .triangular => return ditr.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .diagonal => return diagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .banded => return diba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .tridiagonal => return digt.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                // .general => return dige.apply2(allocator, y, x, op,  ctx),
+                // .symmetric => return disy.apply2(allocator, x, y, op,  ctx),
+                // .hermitian => return dihe.apply2(allocator, x, y, op,  ctx),
+                // .triangular => return ditr.apply2(allocator, x, y, op,  ctx),
+                .diagonal => return diagonal.apply2(allocator, x, y, op, ctx),
+                // .banded => return diba.apply2(allocator, x, y, op,  ctx),
+                // .tridiagonal => return digt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 // .numeric => unreachable,
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .banded => switch (comptime types.matrixType(Y)) {
-                // .general => return bage.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
-                // .symmetric => return basy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .hermitian => return bahe.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .triangular => return batr.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .diagonal => return badi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .banded => return banded.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .tridiagonal => return bagt.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                // .general => return bage.apply2(allocator, y, x, op,  ctx),
+                // .symmetric => return basy.apply2(allocator, x, y, op,  ctx),
+                // .hermitian => return bahe.apply2(allocator, x, y, op,  ctx),
+                // .triangular => return batr.apply2(allocator, x, y, op,  ctx),
+                // .diagonal => return badi.apply2(allocator, x, y, op,  ctx),
+                .banded => return banded.apply2(allocator, x, y, op, ctx),
+                // .tridiagonal => return bagt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 // .numeric => unreachable,
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .tridiagonal => switch (comptime types.matrixType(Y)) {
-                // .general => return gtge.apply2(allocator, y, x, op, .{ .order = opts.order }, ctx),
-                // .symmetric => return gtsy.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .hermitian => return gthe.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .triangular => return gttr.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .diagonal => return gtdi.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .banded => return gtba.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
-                // .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, .{ .order = opts.order }, ctx),
+                // .general => return gtge.apply2(allocator, y, x, op,  ctx),
+                // .symmetric => return gtsy.apply2(allocator, x, y, op,  ctx),
+                // .hermitian => return gthe.apply2(allocator, x, y, op,  ctx),
+                // .triangular => return gttr.apply2(allocator, x, y, op,  ctx),
+                // .diagonal => return gtdi.apply2(allocator, x, y, op,  ctx),
+                // .banded => return gtba.apply2(allocator, x, y, op,  ctx),
+                .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 // .numeric => unreachable,
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
@@ -322,13 +207,9 @@ pub inline fn mul(
     allocator: std.mem.Allocator,
     x: anytype,
     y: anytype,
-    opts: struct {
-        order: ?types.Order = null,
-    },
     ctx: anytype,
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
     _ = allocator;
-    _ = opts;
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = Coerce(Numeric(X), Numeric(Y));

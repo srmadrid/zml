@@ -4,6 +4,9 @@ const types = @import("types.zig");
 const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
 
+const matrix = @import("matrix.zig");
+const Diagonal = matrix.Diagonal;
+
 pub const Flags = packed struct {
     owns_data: bool = true,
 };
@@ -65,6 +68,19 @@ pub fn Vector(T: type) type {
             // Unchecked version of set. Assumes index is valid.
             self.data[index] = value;
         }
+
+        pub fn asDiagonal(self: *const Vector(T), rows: u32, cols: u32) !Diagonal(T) {
+            if (rows == 0 or cols == 0 or
+                (rows > self.len and cols > self.len))
+                return Error.ZeroDimension;
+
+            return .{
+                .data = self.data,
+                .rows = rows,
+                .cols = cols,
+                .flags = .{ .owns_data = false },
+            };
+        }
     };
 }
 
@@ -78,6 +94,13 @@ pub fn apply2(
     const X: type = Numeric(@TypeOf(x));
     const Y: type = Numeric(@TypeOf(y));
     const R: type = Vector(ReturnType2(op, X, Y));
+
+    comptime if (!types.isVector(X) and !types.isVector(Y))
+        @compileError("apply2: at least one of x or y must be a vector, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    comptime if (@typeInfo(@TypeOf(op)) != .@"fn" or (@typeInfo(@TypeOf(op)).@"fn".params.len != 2 and @typeInfo(@TypeOf(op)).@"fn".params.len != 3))
+        @compileError("apply2: op must be a function of two arguments, or a function of three arguments with the third argument being a context, got " ++ @typeName(@TypeOf(op)));
 
     if (comptime !types.isGeneralMatrix(@TypeOf(x))) {
         var result: R = try .init(allocator, y.len);

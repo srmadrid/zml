@@ -578,7 +578,7 @@ pub fn isMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                const matrix_types: [if (isComplex(numeric_type)) 24 else 20]type = if (isComplex(numeric_type)) .{
+                const matrix_types: [if (isComplex(numeric_type)) 24 else 20]type = if (comptime isComplex(numeric_type)) .{
                     matrix.General(numeric_type, .col_major),
                     matrix.General(numeric_type, .row_major),
                     matrix.Symmetric(numeric_type, .upper, .col_major),
@@ -1065,7 +1065,7 @@ pub fn isComplex(comptime T: type) bool {
 /// -------
 /// `type`: The coerced type that can represent both `X` and `Y`.
 pub fn Coerce(comptime X: type, comptime Y: type) type {
-    if (X == Y) {
+    if (comptime X == Y and !(isTriangularMatrix(X) or isTriangularMatrix(Y))) {
         return X;
     }
 
@@ -1148,7 +1148,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // triangular + vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .triangular => {
-                            if (uploOf(X) == uploOf(Y)) {
+                            if (comptime uploOf(X) == uploOf(Y)) {
                                 return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)); // triangular + triangular (same uplo)
                             } else {
                                 return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // triangular + triangular (different uplo)
