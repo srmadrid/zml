@@ -30,13 +30,13 @@ const getr = @import("ops/getr.zig");
 const gedi = @import("ops/gedi.zig");
 // const geba = @import("ops/geba.zig");
 // const gegt = @import("ops/gegt.zig");
-// const syge = @import("ops/syge.zig");
+const syge = @import("ops/syge.zig");
 // const syhe = @import("ops/syhe.zig");
 // const sytr = @import("ops/sytr.zig");
 // const sydi = @import("ops/sydi.zig");
 // const syba = @import("ops/syba.zig");
 // const sygt = @import("ops/sygt.zig");
-// const hege = @import("ops/hege.zig");
+const hege = @import("ops/hege.zig");
 // const hesy = @import("ops/hesy.zig");
 // const hetr = @import("ops/hetr.zig");
 // const hedi = @import("ops/hedi.zig");
@@ -48,7 +48,7 @@ const gedi = @import("ops/gedi.zig");
 // const trdi = @import("ops/trdi.zig");
 // const trba = @import("ops/trba.zig");
 // const trgt = @import("ops/trgt.zig");
-// const dige = @import("ops/dige.zig");
+const dige = @import("ops/dige.zig");
 // const disy = @import("ops/disy.zig");
 // const dihe = @import("ops/dihe.zig");
 // const ditr = @import("ops/ditr.zig");
@@ -113,7 +113,7 @@ pub fn apply2(
     } else {
         switch (comptime types.matrixType(X)) {
             .general => switch (comptime types.matrixType(Y)) {
-                .general => return general.apply2(allocator, x, y, op, ctx), // Done
+                .general => return general.apply2(allocator, x, y, op, ctx),
                 .symmetric => return gesy.apply2(allocator, x, y, op, ctx),
                 .hermitian => return gehe.apply2(allocator, x, y, op, ctx),
                 .triangular => return getr.apply2(allocator, x, y, op, ctx),
@@ -125,7 +125,7 @@ pub fn apply2(
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .symmetric => switch (comptime types.matrixType(Y)) {
-                // .general => return syge.apply2(allocator, y, x, op,  ctx),
+                .general => return syge.apply2(allocator, x, y, op, ctx),
                 .symmetric => return symmetric.apply2(allocator, x, y, op, ctx),
                 // .hermitian => return syhe.apply2(allocator, x, y, op,  ctx),
                 // .triangular => return sytr.apply2(allocator, x, y, op,  ctx),
@@ -137,7 +137,7 @@ pub fn apply2(
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .hermitian => switch (comptime types.matrixType(Y)) {
-                // .general => return hege.apply2(allocator, y, x, op,  ctx),
+                .general => return hege.apply2(allocator, x, y, op, ctx),
                 // .symmetric => return hesy.apply2(allocator, x, y, op,  ctx),
                 .hermitian => return hermitian.apply2(allocator, x, y, op, ctx),
                 // .triangular => return hetr.apply2(allocator, x, y, op,  ctx),
@@ -149,7 +149,7 @@ pub fn apply2(
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .triangular => switch (comptime types.matrixType(Y)) {
-                // .general => return trge.apply2(allocator, y, x, op,  ctx),
+                // .general => return trge.apply2(allocator, x, y, op,  ctx),
                 // .symmetric => return trsy.apply2(allocator, x, y, op,  ctx),
                 // .hermitian => return trhe.apply2(allocator, x, y, op,  ctx),
                 .triangular => return triangular.apply2(allocator, x, y, op, ctx),
@@ -161,7 +161,7 @@ pub fn apply2(
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .diagonal => switch (comptime types.matrixType(Y)) {
-                // .general => return dige.apply2(allocator, y, x, op,  ctx),
+                .general => return dige.apply2(allocator, x, y, op, ctx),
                 // .symmetric => return disy.apply2(allocator, x, y, op,  ctx),
                 // .hermitian => return dihe.apply2(allocator, x, y, op,  ctx),
                 // .triangular => return ditr.apply2(allocator, x, y, op,  ctx),
@@ -173,7 +173,7 @@ pub fn apply2(
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .banded => switch (comptime types.matrixType(Y)) {
-                // .general => return bage.apply2(allocator, y, x, op,  ctx),
+                // .general => return bage.apply2(allocator, x, y, op,  ctx),
                 // .symmetric => return basy.apply2(allocator, x, y, op,  ctx),
                 // .hermitian => return bahe.apply2(allocator, x, y, op,  ctx),
                 // .triangular => return batr.apply2(allocator, x, y, op,  ctx),
@@ -185,7 +185,7 @@ pub fn apply2(
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .tridiagonal => switch (comptime types.matrixType(Y)) {
-                // .general => return gtge.apply2(allocator, y, x, op,  ctx),
+                // .general => return gtge.apply2(allocator, x, y, op,  ctx),
                 // .symmetric => return gtsy.apply2(allocator, x, y, op,  ctx),
                 // .hermitian => return gthe.apply2(allocator, x, y, op,  ctx),
                 // .triangular => return gttr.apply2(allocator, x, y, op,  ctx),
