@@ -206,7 +206,6 @@ pub fn apply2(
             }
         } else {
             if (comptime types.uploOf(@TypeOf(x)) == .upper) { // r ru r
-                std.debug.print("r ru r\n", .{});
                 var i: u32 = 0;
                 while (i < x.size) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {

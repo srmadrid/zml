@@ -31,7 +31,7 @@ const gedi = @import("ops/gedi.zig");
 // const geba = @import("ops/geba.zig");
 // const gegt = @import("ops/gegt.zig");
 const syge = @import("ops/syge.zig");
-// const syhe = @import("ops/syhe.zig");
+const syhe = @import("ops/syhe.zig");
 // const sytr = @import("ops/sytr.zig");
 // const sydi = @import("ops/sydi.zig");
 // const syba = @import("ops/syba.zig");
@@ -127,7 +127,7 @@ pub fn apply2(
             .symmetric => switch (comptime types.matrixType(Y)) {
                 .general => return syge.apply2(allocator, x, y, op, ctx),
                 .symmetric => return symmetric.apply2(allocator, x, y, op, ctx),
-                // .hermitian => return syhe.apply2(allocator, x, y, op,  ctx),
+                .hermitian => return syhe.apply2(allocator, x, y, op, ctx),
                 // .triangular => return sytr.apply2(allocator, x, y, op,  ctx),
                 // .diagonal => return sydi.apply2(allocator, x, y, op,  ctx),
                 // .banded => return syba.apply2(allocator, x, y, op,  ctx),

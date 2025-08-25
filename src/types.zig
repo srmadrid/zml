@@ -1116,6 +1116,13 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // symmetric + vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // symmetric + symmetric
+                        .hermitian => {
+                            if (comptime isComplex(Numeric(X))) {
+                                return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // symmetric (complex) + hermitian
+                            } else {
+                                return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // symmetric (real) + hermitian
+                            }
+                        },
                         .diagonal => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // symmetric + diagonal
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // symmetric + rest of matrices
                     },
@@ -1131,6 +1138,13 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     },
                     .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // hermitian + vector
                     .matrix => switch (comptime matrixType(Y)) {
+                        .symmetric => {
+                            if (comptime isComplex(Numeric(Y))) {
+                                return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // hermitian + symmetric (complex)
+                            } else {
+                                return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // hermitian + symmetric (real)
+                            }
+                        },
                         .hermitian => return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // hermitian + hermitian
                         .diagonal => {
                             if (comptime isComplex(Numeric(Y))) {
