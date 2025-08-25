@@ -26,8 +26,8 @@ const sparse = @import("sparse.zig");
 
 const gesy = @import("ops/gesy.zig");
 const gehe = @import("ops/gehe.zig");
-// const getr = @import("ops/getr.zig");
-// const gedi = @import("ops/gedi.zig");
+const getr = @import("ops/getr.zig");
+const gedi = @import("ops/gedi.zig");
 // const geba = @import("ops/geba.zig");
 // const gegt = @import("ops/gegt.zig");
 // const syge = @import("ops/syge.zig");
@@ -116,8 +116,8 @@ pub fn apply2(
                 .general => return general.apply2(allocator, x, y, op, ctx), // Done
                 .symmetric => return gesy.apply2(allocator, x, y, op, ctx),
                 .hermitian => return gehe.apply2(allocator, x, y, op, ctx),
-                // .triangular => return getr.apply2(allocator, x, y, op,  ctx),
-                // .diagonal => return gedi.apply2(allocator, x, y, op,  ctx),
+                .triangular => return getr.apply2(allocator, x, y, op, ctx),
+                .diagonal => return gedi.apply2(allocator, x, y, op, ctx),
                 // .banded => return geba.apply2(allocator, x, y, op,  ctx),
                 // .tridiagonal => return gegt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),

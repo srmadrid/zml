@@ -34,9 +34,9 @@ pub fn apply2(
     if (comptime types.orderOf(@TypeOf(x)) == .col_major) { // orderOf(result) == orderOf(x)
         if (comptime types.orderOf(@TypeOf(y)) == .col_major) {
             if (comptime types.uploOf(@TypeOf(y)) == .upper) { // c c cu
-                var j: usize = 0;
+                var j: u32 = 0;
                 while (j < x.cols) : (j += 1) {
-                    var i: usize = 0;
+                    var i: u32 = 0;
                     while (i < j) : (i += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
@@ -54,7 +54,7 @@ pub fn apply2(
                     }
                 }
             } else { // c c cl
-                var j: usize = 0;
+                var j: u32 = 0;
                 while (j < x.cols) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
                         result.data[j + j * result.ld] = op(x.data[j + j * x.ld], y.data[j + j * y.ld]);
@@ -62,7 +62,7 @@ pub fn apply2(
                         result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], y.data[j + j * y.ld], ctx);
                     }
 
-                    var i: usize = j + 1;
+                    var i: u32 = j + 1;
                     while (i < x.rows) : (i += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[i + j * y.ld]);
@@ -76,7 +76,7 @@ pub fn apply2(
             }
         } else {
             if (comptime types.uploOf(@TypeOf(y)) == .upper) { // c c ru
-                var j: usize = 0;
+                var j: u32 = 0;
                 while (j < x.cols) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
                         result.data[j + j * result.ld] = op(x.data[j + j * x.ld], y.data[j * y.ld + j]);
@@ -84,7 +84,7 @@ pub fn apply2(
                         result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], y.data[j * y.ld + j], ctx);
                     }
 
-                    var i: usize = j + 1;
+                    var i: u32 = j + 1;
                     while (i < x.rows) : (i += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
@@ -96,9 +96,9 @@ pub fn apply2(
                     }
                 }
             } else { // c c rl
-                var j: usize = 0;
+                var j: u32 = 0;
                 while (j < x.cols) : (j += 1) {
-                    var i: usize = 0;
+                    var i: u32 = 0;
                     while (i < j) : (i += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
@@ -120,9 +120,9 @@ pub fn apply2(
     } else {
         if (comptime types.orderOf(@TypeOf(y)) == .col_major) {
             if (comptime types.uploOf(@TypeOf(y)) == .upper) { // r r cu
-                var i: usize = 0;
+                var i: u32 = 0;
                 while (i < x.rows) : (i += 1) {
-                    var j: usize = 0;
+                    var j: u32 = 0;
                     while (j < i) : (j += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
@@ -140,7 +140,7 @@ pub fn apply2(
                     }
                 }
             } else { // r r cl
-                var i: usize = 0;
+                var i: u32 = 0;
                 while (i < x.rows) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
                         result.data[i * result.ld + i] = op(x.data[i * x.ld + i], y.data[i + i * y.ld]);
@@ -148,7 +148,7 @@ pub fn apply2(
                         result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], y.data[i + i * y.ld], ctx);
                     }
 
-                    var j: usize = i + 1;
+                    var j: u32 = i + 1;
                     while (j < x.cols) : (j += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
@@ -162,7 +162,7 @@ pub fn apply2(
             }
         } else {
             if (comptime types.uploOf(@TypeOf(y)) == .upper) { // r r ru
-                var i: usize = 0;
+                var i: u32 = 0;
                 while (i < x.rows) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
                         result.data[i * result.ld + i] = op(x.data[i * x.ld + i], y.data[i * y.ld + i]);
@@ -170,7 +170,7 @@ pub fn apply2(
                         result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], y.data[i * y.ld + i], ctx);
                     }
 
-                    var j: usize = i + 1;
+                    var j: u32 = i + 1;
                     while (j < x.cols) : (j += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);
@@ -182,9 +182,9 @@ pub fn apply2(
                     }
                 }
             } else { // r r rl
-                var i: usize = 0;
+                var i: u32 = 0;
                 while (i < x.rows) : (i += 1) {
-                    var j: usize = 0;
+                    var j: u32 = 0;
                     while (j < i) : (j += 1) {
                         if (comptime opinfo.@"fn".params.len == 2) {
                             result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[i * y.ld + j]);

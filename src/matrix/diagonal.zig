@@ -157,34 +157,34 @@ pub fn Diagonal(T: type) type {
                     var j: u32 = 0;
                     while (j < self.cols) : (j += 1) {
                         var i: u32 = 0;
-                        while (i < j and i < self.rows) : (i += 1) {
-                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        while (i < int.min(j, self.rows)) : (i += 1) {
+                            result.data[i + j * result.ld] = constants.zero(T, ctx) catch unreachable;
                         }
 
                         if (j < int.min(self.rows, self.cols)) {
-                            result.data[j * self.size + j] = self.data[j];
+                            result.data[j * result.ld + j] = self.data[j];
                         }
 
                         i = j + 1;
                         while (i < self.rows) : (i += 1) {
-                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                            result.data[i + j * result.ld] = constants.zero(T, ctx) catch unreachable;
                         }
                     }
                 } else {
                     var i: u32 = 0;
                     while (i < self.rows) : (i += 1) {
                         var j: u32 = 0;
-                        while (j < i and j < self.cols) : (j += 1) {
-                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                        while (j < int.min(i, self.cols)) : (j += 1) {
+                            result.data[i * result.ld + j] = constants.zero(T, ctx) catch unreachable;
                         }
 
                         if (i < int.min(self.rows, self.cols)) {
-                            result.data[i * self.size + i] = self.data[i];
+                            result.data[i * result.ld + i] = self.data[i];
                         }
 
                         j = i + 1;
                         while (j < self.cols) : (j += 1) {
-                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                            result.data[i * result.ld + j] = constants.zero(T, ctx) catch unreachable;
                         }
                     }
                 }
@@ -204,36 +204,36 @@ pub fn Diagonal(T: type) type {
 
                 if (comptime order == .col_major) {
                     var j: u32 = 0;
-                    while (j < self.size) : (j += 1) {
+                    while (j < self.cols) : (j += 1) {
                         var i: u32 = 0;
-                        while (i < j and i < self.rows) : (i += 1) {
-                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        while (i < int.min(j, self.rows)) : (i += 1) {
+                            result.data[i + j * result.ld] = constants.zero(T, ctx) catch unreachable;
                         }
 
                         if (j < int.min(self.rows, self.cols)) {
-                            result.data[j * self.size + j] = self.data[j];
+                            result.data[j * result.ld + j] = self.data[j];
                         }
 
                         i = j + 1;
-                        while (i < self.size) : (i += 1) {
-                            result.data[i + j * self.size] = constants.zero(T, ctx) catch unreachable;
+                        while (i < self.rows) : (i += 1) {
+                            result.data[i + j * result.ld] = constants.zero(T, ctx) catch unreachable;
                         }
                     }
                 } else {
                     var i: u32 = 0;
                     while (i < self.rows) : (i += 1) {
                         var j: u32 = 0;
-                        while (j < i and j < self.cols) : (j += 1) {
-                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                        while (j < int.min(i, self.cols)) : (j += 1) {
+                            result.data[i * result.ld + j] = constants.zero(T, ctx) catch unreachable;
                         }
 
                         if (i < int.min(self.rows, self.cols)) {
-                            result.data[i * self.size + i] = self.data[i];
+                            result.data[i * result.ld + i] = self.data[i];
                         }
 
                         j = i + 1;
                         while (j < self.cols) : (j += 1) {
-                            result.data[i * self.size + j] = constants.zero(T, ctx) catch unreachable;
+                            result.data[i * result.ld + j] = constants.zero(T, ctx) catch unreachable;
                         }
                     }
                 }
