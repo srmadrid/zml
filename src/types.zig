@@ -1178,6 +1178,13 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal + vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .symmetric => return matrix.Symmetric(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // diagonal + symmetric
+                        .hermitian => {
+                            if (comptime isComplex(Numeric(X))) {
+                                return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // diagonal (complex) + hermitian
+                            } else {
+                                return matrix.Hermitian(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // diagonal (real) + hermitian
+                            }
+                        },
                         .triangular => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal + triangular
                         .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal + diagonal
                         .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal + banded

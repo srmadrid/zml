@@ -33,7 +33,7 @@ const gedi = @import("ops/gedi.zig");
 const syge = @import("ops/syge.zig");
 const syhe = @import("ops/syhe.zig");
 // const sytr = @import("ops/sytr.zig");
-// const sydi = @import("ops/sydi.zig");
+const sydi = @import("ops/sydi.zig");
 // const syba = @import("ops/syba.zig");
 // const sygt = @import("ops/sygt.zig");
 const hege = @import("ops/hege.zig");
@@ -129,7 +129,7 @@ pub fn apply2(
                 .symmetric => return symmetric.apply2(allocator, x, y, op, ctx),
                 .hermitian => return syhe.apply2(allocator, x, y, op, ctx),
                 // .triangular => return sytr.apply2(allocator, x, y, op,  ctx),
-                // .diagonal => return sydi.apply2(allocator, x, y, op,  ctx),
+                .diagonal => return sydi.apply2(allocator, x, y, op, ctx),
                 // .banded => return syba.apply2(allocator, x, y, op,  ctx),
                 // .tridiagonal => return sygt.apply2(allocator, x, y, op,  ctx),
                 // .sparse => @compileError("apply2 not implemented for sparse matrices yet"),

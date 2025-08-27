@@ -515,7 +515,7 @@ fn fillMatrix(a: anytype, factor: u32) void {
         },
         .diagonal => {
             var i: u32 = 0;
-            while (i < a.size) : (i += 1) {
+            while (i < zml.int.min(a.rows, a.cols)) : (i += 1) {
                 if (comptime zml.types.isComplex(A)) {
                     a.data[i] = A.init(zml.scast(zml.types.Scalar(A), i + factor), zml.scast(zml.types.Scalar(A), i + factor));
                 } else {
@@ -581,20 +581,20 @@ fn printMatrix(name: []const u8, a: anytype) void {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.Symmetric(zml.cf64, .lower, .row_major) = try .init(a, 5);
+    var A: zml.matrix.Symmetric(f64, .lower, .row_major) = try .init(a, 5);
     defer A.deinit(a);
 
     fillMatrix(A, 1);
     printMatrix("A", A);
 
-    var B: zml.matrix.Hermitian(zml.cf64, .lower, .row_major) = try .init(a, 5);
+    var B: zml.matrix.Diagonal(f64) = try .init(a, 5, 5);
     defer B.deinit(a);
 
     fillMatrix(B, 2);
     printMatrix("B", B);
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.matrix.General(zml.cf64, .row_major) = try zml.matrix.apply2(a, A, B, zml.add, .{});
+    var C: zml.matrix.Symmetric(f64, .lower, .row_major) = try zml.matrix.apply2(a, A, B, zml.add, .{});
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 
