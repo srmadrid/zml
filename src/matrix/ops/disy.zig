@@ -24,86 +24,86 @@ pub fn apply2(
     const Y: type = Numeric(@TypeOf(y));
     const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
 
-    if (x.size != y.rows or x.size != y.cols)
+    if (x.rows != y.size or x.cols != y.size)
         return matrix.Error.DimensionMismatch;
 
-    var result: R = try .init(allocator, x.size);
+    var result: R = try .init(allocator, x.rows);
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));
-    if (comptime types.orderOf(@TypeOf(x)) == .col_major) { // orderOf(result) == orderOf(x)
-        if (comptime types.uploOf(@TypeOf(x)) == .upper) { // cu cu d
+    if (comptime types.orderOf(@TypeOf(y)) == .col_major) { // orderOf(result) == orderOf(y)
+        if (comptime types.uploOf(@TypeOf(y)) == .upper) { // cu d cu
             var j: u32 = 0;
-            while (j < x.size) : (j += 1) {
+            while (j < x.cols) : (j += 1) {
                 var i: u32 = 0;
                 while (i < j) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i + j * result.ld] = op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i + j * result.ld] = try op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld], ctx);
                     }
                 }
 
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[j + j * result.ld] = op(x.data[j + j * x.ld], y.data[j]);
+                    result.data[j + j * result.ld] = op(x.data[j], y.data[j + j * y.ld]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], y.data[j], ctx);
+                    result.data[j + j * result.ld] = try op(x.data[j], y.data[j + j * y.ld], ctx);
                 }
             }
-        } else { // cl cl d
+        } else { // cl d cl
             var j: u32 = 0;
-            while (j < x.size) : (j += 1) {
+            while (j < x.cols) : (j += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[j + j * result.ld] = op(x.data[j + j * x.ld], y.data[j]);
+                    result.data[j + j * result.ld] = op(x.data[j], y.data[j + j * y.ld]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], y.data[j], ctx);
+                    result.data[j + j * result.ld] = try op(x.data[j], y.data[j + j * y.ld], ctx);
                 }
 
                 var i: u32 = j + 1;
-                while (i < x.size) : (i += 1) {
+                while (i < x.rows) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i + j * result.ld] = op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i + j * result.ld] = try op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld], ctx);
                     }
                 }
             }
         }
     } else {
-        if (comptime types.uploOf(@TypeOf(x)) == .upper) { // ru ru d
+        if (comptime types.uploOf(@TypeOf(y)) == .upper) { // ru d ru
             var i: u32 = 0;
-            while (i < x.size) : (i += 1) {
+            while (i < x.rows) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[i * result.ld + i] = op(x.data[i * x.ld + i], y.data[i]);
+                    result.data[i * result.ld + i] = op(x.data[i], y.data[i * y.ld + i]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], y.data[i], ctx);
+                    result.data[i * result.ld + i] = try op(x.data[i], y.data[i * y.ld + i], ctx);
                 }
 
                 var j: u32 = i + 1;
-                while (j < x.size) : (j += 1) {
+                while (j < x.cols) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i * result.ld + j] = op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i * result.ld + j] = try op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j], ctx);
                     }
                 }
             }
-        } else { // rl rl c
+        } else { // r rl c
             var i: u32 = 0;
-            while (i < x.size) : (i += 1) {
+            while (i < x.rows) : (i += 1) {
                 var j: u32 = 0;
                 while (j < i) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i * result.ld + j] = op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i * result.ld + j] = try op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j], ctx);
                     }
                 }
 
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[i * result.ld + i] = op(x.data[i * x.ld + i], y.data[i]);
+                    result.data[i * result.ld + i] = op(x.data[i], y.data[i * y.ld + i]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], y.data[i], ctx);
+                    result.data[i * result.ld + i] = try op(x.data[i], y.data[i * y.ld + i], ctx);
                 }
             }
         }
