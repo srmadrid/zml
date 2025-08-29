@@ -7,7 +7,7 @@ const EnsureMatrix = types.EnsureMatrix;
 const Coerce = types.Coerce;
 const Numeric = types.Numeric;
 const Order = types.Order;
-const ops = @import("../ops.zig");
+const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
 
@@ -27,7 +27,17 @@ pub fn apply2(
     if (x.size != y.rows or x.size != y.cols)
         return matrix.Error.DimensionMismatch;
 
-    var result: R = try .init(allocator, x.size);
+    var result: R = if (comptime types.isHermitianMatrix(R))
+        try .init( // Hermitian
+            allocator,
+            x.size,
+        )
+    else
+        try .init( // General
+            allocator,
+            x.size,
+            x.size,
+        );
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));
@@ -41,6 +51,21 @@ pub fn apply2(
                         result.data[i + j * result.ld] = op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
                         result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
+                    }
+
+                    if (comptime types.isComplex(Y)) { // Result is a general matrix
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[j + i * result.ld] = op(
+                                ops.conjugate(x.data[i + j * x.ld], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                            );
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[j + i * result.ld] = try op(
+                                ops.conjugate(x.data[i + j * x.ld], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                                ctx,
+                            );
+                        }
                     }
                 }
 
@@ -66,6 +91,21 @@ pub fn apply2(
                     } else if (comptime opinfo.@"fn".params.len == 3) {
                         result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
                     }
+
+                    if (comptime types.isComplex(Y)) { // Result is a general matrix
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[j + i * result.ld] = op(
+                                ops.conjugate(x.data[i + j * x.ld], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                            );
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[j + i * result.ld] = try op(
+                                ops.conjugate(x.data[i + j * x.ld], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                                ctx,
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -86,6 +126,21 @@ pub fn apply2(
                     } else if (comptime opinfo.@"fn".params.len == 3) {
                         result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
                     }
+
+                    if (comptime types.isComplex(Y)) { // Result is a general matrix
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[j * result.ld + i] = op(
+                                ops.conjugate(x.data[i * x.ld + j], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                            );
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[j * result.ld + i] = try op(
+                                ops.conjugate(x.data[i * x.ld + j], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                                ctx,
+                            );
+                        }
+                    }
                 }
             }
         } else { // rl rl d
@@ -97,6 +152,21 @@ pub fn apply2(
                         result.data[i * result.ld + j] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
                         result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                    }
+
+                    if (comptime types.isComplex(Y)) { // Result is a general matrix
+                        if (comptime opinfo.@"fn".params.len == 2) {
+                            result.data[j * result.ld + i] = op(
+                                ops.conjugate(x.data[i * x.ld + j], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                            );
+                        } else if (comptime opinfo.@"fn".params.len == 3) {
+                            result.data[j * result.ld + i] = try op(
+                                ops.conjugate(x.data[i * x.ld + j], ctx) catch unreachable,
+                                constants.zero(Y, ctx) catch unreachable,
+                                ctx,
+                            );
+                        }
                     }
                 }
 

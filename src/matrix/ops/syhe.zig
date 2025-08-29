@@ -55,7 +55,7 @@ pub fn apply2(
                                 result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(
                                         x.data[i + j * x.ld],
@@ -95,7 +95,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -136,7 +136,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -162,7 +162,7 @@ pub fn apply2(
                                 result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i + j * y.ld], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(
                                         x.data[i + j * x.ld],
@@ -193,7 +193,7 @@ pub fn apply2(
                                 result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(
                                         x.data[i + j * x.ld],
@@ -233,7 +233,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -274,7 +274,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(x.data[i + j * x.ld], y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -300,7 +300,7 @@ pub fn apply2(
                                 result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i * y.ld + j], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j + i * result.ld] = op(
                                         x.data[i + j * x.ld],
@@ -339,7 +339,7 @@ pub fn apply2(
                                 result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(
                                         x.data[i * x.ld + j],
@@ -379,7 +379,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -408,7 +408,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[j + i * y.ld]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -434,7 +434,7 @@ pub fn apply2(
                                 result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(
                                         x.data[i * x.ld + j],
@@ -477,7 +477,7 @@ pub fn apply2(
                                 result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(
                                         x.data[i * x.ld + j],
@@ -517,7 +517,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -546,7 +546,7 @@ pub fn apply2(
                                 );
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(x.data[i * x.ld + j], y.data[j * y.ld + i]);
                                 } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -572,7 +572,7 @@ pub fn apply2(
                                 result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i * y.ld + j], ctx);
                             }
 
-                            if (comptime types.isComplex(Y)) { // Result is a general matrix
+                            if (comptime types.isComplex(X)) { // Result is a general matrix
                                 if (comptime opinfo.@"fn".params.len == 2) {
                                     result.data[j * result.ld + i] = op(
                                         x.data[i * x.ld + j],

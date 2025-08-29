@@ -587,7 +587,7 @@ fn perfTesting(a: std.mem.Allocator) !void {
     fillMatrix(A, 1);
     printMatrix("A", A);
 
-    var B: zml.matrix.Symmetric(zml.cf64, .lower, .row_major) = try .init(a, 5);
+    var B: zml.matrix.Triangular(f64, .lower, .non_unit, .row_major) = try .init(a, 5, 5);
     defer B.deinit(a);
 
     fillMatrix(B, 2);
