@@ -42,9 +42,9 @@ const hetr = @import("ops/hetr.zig");
 const hedi = @import("ops/hedi.zig");
 // const heba = @import("ops/heba.zig");
 // const hegt = @import("ops/hegt.zig");
-// const trge = @import("ops/trge.zig");
-// const trsy = @import("ops/trsy.zig");
-// const trhe = @import("ops/trhe.zig");
+const trge = @import("ops/trge.zig");
+const trsy = @import("ops/trsy.zig");
+const trhe = @import("ops/trhe.zig");
 const trdi = @import("ops/trdi.zig");
 // const trba = @import("ops/trba.zig");
 // const trgt = @import("ops/trgt.zig");
@@ -149,9 +149,9 @@ pub fn apply2(
                 else => @compileError("apply2 not implemented for matrix type " ++ @typeName(Y) ++ " yet"),
             },
             .triangular => switch (comptime types.matrixType(Y)) {
-                // .general => return trge.apply2(allocator, x, y, op,  ctx),
-                // .symmetric => return trsy.apply2(allocator, x, y, op,  ctx),
-                // .hermitian => return trhe.apply2(allocator, x, y, op,  ctx),
+                .general => return trge.apply2(allocator, x, y, op, ctx),
+                .symmetric => return trsy.apply2(allocator, x, y, op, ctx),
+                .hermitian => return trhe.apply2(allocator, x, y, op, ctx),
                 .triangular => return triangular.apply2(allocator, x, y, op, ctx),
                 .diagonal => return trdi.apply2(allocator, x, y, op, ctx),
                 // .banded => return trba.apply2(allocator, x, y, op,  ctx),
