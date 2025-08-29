@@ -32,12 +32,12 @@ const gedi = @import("ops/gedi.zig");
 // const gegt = @import("ops/gegt.zig");
 const syge = @import("ops/syge.zig");
 const syhe = @import("ops/syhe.zig");
-// const sytr = @import("ops/sytr.zig");
+const sytr = @import("ops/sytr.zig");
 const sydi = @import("ops/sydi.zig");
 // const syba = @import("ops/syba.zig");
 // const sygt = @import("ops/sygt.zig");
 const hege = @import("ops/hege.zig");
-// const hesy = @import("ops/hesy.zig");
+const hesy = @import("ops/hesy.zig");
 // const hetr = @import("ops/hetr.zig");
 // const hedi = @import("ops/hedi.zig");
 // const heba = @import("ops/heba.zig");
@@ -128,7 +128,7 @@ pub fn apply2(
                 .general => return syge.apply2(allocator, x, y, op, ctx),
                 .symmetric => return symmetric.apply2(allocator, x, y, op, ctx),
                 .hermitian => return syhe.apply2(allocator, x, y, op, ctx),
-                // .triangular => return sytr.apply2(allocator, x, y, op,  ctx),
+                .triangular => return sytr.apply2(allocator, x, y, op, ctx),
                 .diagonal => return sydi.apply2(allocator, x, y, op, ctx),
                 // .banded => return syba.apply2(allocator, x, y, op,  ctx),
                 // .tridiagonal => return sygt.apply2(allocator, x, y, op,  ctx),
@@ -138,7 +138,7 @@ pub fn apply2(
             },
             .hermitian => switch (comptime types.matrixType(Y)) {
                 .general => return hege.apply2(allocator, x, y, op, ctx),
-                // .symmetric => return hesy.apply2(allocator, x, y, op,  ctx),
+                .symmetric => return hesy.apply2(allocator, x, y, op, ctx),
                 .hermitian => return hermitian.apply2(allocator, x, y, op, ctx),
                 // .triangular => return hetr.apply2(allocator, x, y, op,  ctx),
                 // .diagonal => return hedi.apply2(allocator, x, y, op,  ctx),

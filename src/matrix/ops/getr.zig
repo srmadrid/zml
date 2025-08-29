@@ -48,7 +48,7 @@ pub fn apply2(
                     if (j < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, ctx);
                             }
@@ -85,7 +85,7 @@ pub fn apply2(
                     if (j < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, ctx);
                             }
@@ -124,7 +124,7 @@ pub fn apply2(
                     if (j < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, ctx);
                             }
@@ -161,7 +161,7 @@ pub fn apply2(
                     if (j < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[j + j * result.ld] = op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[j + j * result.ld] = try op(x.data[j + j * x.ld], constants.one(Y, ctx) catch unreachable, ctx);
                             }
@@ -202,7 +202,7 @@ pub fn apply2(
                     if (i < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, ctx);
                             }
@@ -239,7 +239,7 @@ pub fn apply2(
                     if (i < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, ctx);
                             }
@@ -278,7 +278,7 @@ pub fn apply2(
                     if (i < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, ctx);
                             }
@@ -315,7 +315,7 @@ pub fn apply2(
                     if (i < int.min(x.rows, x.cols)) {
                         if (comptime types.diagOf(@TypeOf(y)) == .unit) {
                             if (comptime opinfo.@"fn".params.len == 2) {
-                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, y);
+                                result.data[i * result.ld + i] = op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[i * result.ld + i] = try op(x.data[i * x.ld + i], constants.one(Y, ctx) catch unreachable, ctx);
                             }

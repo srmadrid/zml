@@ -581,20 +581,20 @@ fn printMatrix(name: []const u8, a: anytype) void {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.Diagonal(f64) = try .init(a, 5, 5);
+    var A: zml.matrix.Hermitian(zml.cf64, .lower, .row_major) = try .init(a, 5);
     defer A.deinit(a);
 
     fillMatrix(A, 1);
     printMatrix("A", A);
 
-    var B: zml.matrix.Tridiagonal(f64) = try .init(a, 5);
+    var B: zml.matrix.Symmetric(zml.cf64, .lower, .row_major) = try .init(a, 5);
     defer B.deinit(a);
 
     fillMatrix(B, 2);
     printMatrix("B", B);
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.matrix.Tridiagonal(f64) = try zml.matrix.apply2(a, A, B, zml.sub, .{});
+    var C: zml.matrix.General(zml.cf64, .row_major) = try zml.matrix.apply2(a, A, B, zml.sub, .{});
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 
