@@ -81,7 +81,7 @@ pub fn apply2(
             }
 
             j = i + 1;
-            while (j < x.cols) : (j += 1) {
+            while (j <= int.min(x.cols - 1, i + result.upper)) : (j += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i * result.ld + (result.lower + j - i)] = op(x.data[i * x.ld + (x.lower + j - i)], constants.zero(Y, ctx) catch unreachable);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
