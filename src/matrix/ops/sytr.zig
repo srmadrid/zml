@@ -296,7 +296,7 @@ pub fn apply2(
                                 result.data[j * result.ld + i] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
                             } else if (comptime opinfo.@"fn".params.len == 3) {
                                 result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i + j * y.ld], ctx);
-                                result.data[i + j * y.ld] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                                result.data[j * result.ld + i] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
                             }
                         }
                     }

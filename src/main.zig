@@ -581,26 +581,26 @@ fn printMatrix(name: []const u8, a: anytype) void {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.Triangular(f64, .lower, .non_unit, .row_major) = try .init(a, 5, 5);
+    var A: zml.matrix.Hermitian(zml.cf64, .upper, .col_major) = try .init(a, 5);
     defer A.deinit(a);
 
     fillMatrix(A, 1);
     printMatrix("A", A);
 
-    var B: zml.matrix.Hermitian(zml.cf64, .lower, .row_major) = try .init(a, 5);
+    var B: zml.matrix.Banded(f64, .row_major) = try .init(a, 5, 5, 1, 2);
     defer B.deinit(a);
 
     fillMatrix(B, 2);
     printMatrix("B", B);
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.matrix.General(zml.cf64, .row_major) = try zml.matrix.apply2(a, A, B, zml.sub, .{});
+    var C: zml.matrix.General(zml.cf64, .col_major) = try zml.matrix.apply2(a, A, B, zml.sub, .{});
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 
     std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    printMatrix("C = A + B", C);
+    printMatrix("C = A - B", C);
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

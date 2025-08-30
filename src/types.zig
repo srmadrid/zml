@@ -2156,15 +2156,15 @@ pub fn Numeric(comptime T: type) type {
 }
 
 pub fn orderOf(comptime T: type) Order {
-    if (isArray(T)) {
+    if (comptime isArray(T)) {
         if (T == array.Dense(Numeric(T), .col_major) or
             T == array.Strided(Numeric(T), .col_major) or
             T == array.Sparse(Numeric(T), .col_major))
             return .col_major
         else
             return .row_major;
-    } else if (isMatrix(T)) {
-        if (isComplex(Numeric(T))) {
+    } else if (comptime isMatrix(T)) {
+        if (comptime isComplex(Numeric(T))) {
             if (T == matrix.General(Numeric(T), .col_major) or
                 T == matrix.Symmetric(Numeric(T), .upper, .col_major) or
                 T == matrix.Symmetric(Numeric(T), .lower, .col_major) or

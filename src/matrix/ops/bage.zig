@@ -36,27 +36,27 @@ pub fn apply2(
             var j: u32 = 0;
             while (j < x.cols) : (j += 1) {
                 var i: u32 = 0;
-                while (i < if (j < y.upper) 0 else j - y.upper) : (i += 1) {
+                while (i < if (j < x.upper) 0 else j - x.upper) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i + j * result.ld] = op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i + j * result.ld] = try op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld], ctx);
                     }
                 }
 
-                while (i <= int.min(x.rows - 1, j + y.lower)) : (i += 1) {
+                while (i <= int.min(x.rows - 1, j + x.lower)) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[(y.upper + i - j) + j * y.ld]);
+                        result.data[i + j * result.ld] = op(x.data[(x.upper + i - j) + j * x.ld], y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[(y.upper + i - j) + j * y.ld], ctx);
+                        result.data[i + j * result.ld] = try op(x.data[(x.upper + i - j) + j * x.ld], y.data[i + j * y.ld], ctx);
                     }
                 }
 
                 while (i < x.rows) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i + j * result.ld] = op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i + j * result.ld] = try op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld], ctx);
                     }
                 }
             }
@@ -64,27 +64,27 @@ pub fn apply2(
             var j: u32 = 0;
             while (j < x.cols) : (j += 1) {
                 var i: u32 = 0;
-                while (i < if (j < y.upper) 0 else j - y.upper) : (i += 1) {
+                while (i < if (j < x.upper) 0 else j - x.upper) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i + j * result.ld] = op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i + j * result.ld] = try op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j], ctx);
                     }
                 }
 
-                while (i <= int.min(x.rows - 1, j + y.lower)) : (i += 1) {
+                while (i <= int.min(x.rows - 1, j + x.lower)) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], y.data[i * y.ld + (y.lower + j - i)]);
+                        result.data[i + j * result.ld] = op(x.data[(x.upper + i - j) + j * x.ld], y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], y.data[i * y.ld + (y.lower + j - i)], ctx);
+                        result.data[i + j * result.ld] = try op(x.data[(x.upper + i - j) + j * x.ld], y.data[i * y.ld + j], ctx);
                     }
                 }
 
                 while (i < x.rows) : (i += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i + j * result.ld] = op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i + j * result.ld] = op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i + j * result.ld] = try op(x.data[i + j * x.ld], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i + j * result.ld] = try op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j], ctx);
                     }
                 }
             }
@@ -94,27 +94,27 @@ pub fn apply2(
             var i: u32 = 0;
             while (i < x.rows) : (i += 1) {
                 var j: u32 = 0;
-                while (j < if (i < y.lower) 0 else i - y.lower) : (j += 1) {
+                while (j < if (i < x.lower) 0 else i - x.lower) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i * result.ld + j] = op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i * result.ld + j] = try op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld], ctx);
                     }
                 }
 
-                while (j <= int.min(x.cols - 1, i + y.upper)) : (j += 1) {
+                while (j <= int.min(x.cols - 1, i + x.upper)) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[(y.upper + i - j) + j * y.ld]);
+                        result.data[i * result.ld + j] = op(x.data[i * x.ld + (x.lower + j - i)], y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[(y.upper + i - j) + j * y.ld], ctx);
+                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + (x.lower + j - i)], y.data[i + j * y.ld], ctx);
                     }
                 }
 
                 while (j < x.cols) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i * result.ld + j] = op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i * result.ld + j] = try op(constants.zero(X, ctx) catch unreachable, y.data[i + j * y.ld], ctx);
                     }
                 }
             }
@@ -122,27 +122,27 @@ pub fn apply2(
             var i: u32 = 0;
             while (i < x.rows) : (i += 1) {
                 var j: u32 = 0;
-                while (j < if (i < y.lower) 0 else i - y.lower) : (j += 1) {
+                while (j < if (i < x.lower) 0 else i - x.lower) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i * result.ld + j] = op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i * result.ld + j] = try op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j], ctx);
                     }
                 }
 
-                while (j <= int.min(x.cols - 1, i + y.upper)) : (j += 1) {
+                while (j <= int.min(x.cols - 1, i + x.upper)) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], y.data[i * y.ld + (y.lower + j - i)]);
+                        result.data[i * result.ld + j] = op(x.data[i * x.ld + (x.lower + j - i)], y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], y.data[i * y.ld + (y.lower + j - i)], ctx);
+                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + (x.lower + j - i)], y.data[i * y.ld + j], ctx);
                     }
                 }
 
                 while (j < x.cols) : (j += 1) {
                     if (comptime opinfo.@"fn".params.len == 2) {
-                        result.data[i * result.ld + j] = op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable);
+                        result.data[i * result.ld + j] = op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j]);
                     } else if (comptime opinfo.@"fn".params.len == 3) {
-                        result.data[i * result.ld + j] = try op(x.data[i * x.ld + j], constants.zero(Y, ctx) catch unreachable, ctx);
+                        result.data[i * result.ld + j] = try op(constants.zero(X, ctx) catch unreachable, y.data[i * y.ld + j], ctx);
                     }
                 }
             }
