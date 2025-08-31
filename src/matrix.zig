@@ -22,6 +22,8 @@ const banded = @import("matrix/banded.zig");
 pub const Banded = banded.Banded;
 const tridiagonal = @import("matrix/tridiagonal.zig");
 pub const Tridiagonal = tridiagonal.Tridiagonal;
+const permutation = @import("matrix/permutation.zig");
+pub const Permutation = permutation.Permutation;
 const sparse = @import("matrix/sparse.zig");
 pub const Sparse = sparse.Sparse;
 

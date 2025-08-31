@@ -543,13 +543,16 @@ fn fillMatrix(a: anytype, factor: u32) void {
                 }
             }
         },
+        .permutation => {
+            randomPermutation(a.data[0..a.size]);
+        },
         else => unreachable,
     }
 }
 
 fn printMatrix(name: []const u8, a: anytype) void {
     std.debug.print("Matrix {s}:\n", .{name});
-    if (comptime zml.types.isSymmetricMatrix(@TypeOf(a)) or zml.types.isHermitianMatrix(@TypeOf(a)) or zml.types.isTridiagonalMatrix(@TypeOf(a))) {
+    if (comptime zml.types.isSymmetricMatrix(@TypeOf(a)) or zml.types.isHermitianMatrix(@TypeOf(a)) or zml.types.isTridiagonalMatrix(@TypeOf(a)) or zml.types.isPermutationMatrix(@TypeOf(a))) {
         var i: u32 = 0;
         while (i < a.size) : (i += 1) {
             var j: u32 = 0;
@@ -580,21 +583,43 @@ fn printMatrix(name: []const u8, a: anytype) void {
     }
 }
 
+fn randomPermutation(data: []u32) void {
+    //std.Thread.sleep(1000000000);
+
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
+
+    // Initialize with identity permutation
+    var i: u32 = 0;
+    while (i < data.len) : (i += 1) {
+        data[i] = i;
+    }
+
+    // Shuffle using Fisher-Yates algorithm
+    i = zml.scast(u32, data.len - 1);
+    while (i > 0) : (i -= 1) {
+        const j = rand.intRangeAtMost(u32, 0, i);
+        const temp = data[i];
+        data[i] = data[j];
+        data[j] = temp;
+    }
+}
+
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.Tridiagonal(f64) = try .init(a, 5);
+    var A: zml.matrix.Permutation = try .init(a, 5);
     defer A.deinit(a);
 
     fillMatrix(A, 1);
     printMatrix("A", A);
 
-    var B: zml.matrix.Banded(f64, .row_major) = try .init(a, 5, 5, 1, 2);
+    var B: zml.matrix.Tridiagonal(f64) = try .init(a, 5);
     defer B.deinit(a);
 
     fillMatrix(B, 2);
     printMatrix("B", B);
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.matrix.Banded(f64, .row_major) = try zml.matrix.apply2(a, A, B, zml.sub, .{});
+    var C: zml.matrix.General(f64, .col_major) = try zml.matrix.apply2(a, A, B, zml.sub, .{});
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 

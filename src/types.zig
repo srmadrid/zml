@@ -223,6 +223,7 @@ pub const MatrixType = enum {
     diagonal,
     banded,
     tridiagonal,
+    permutation,
     sparse,
     numeric, // Fallback for numeric types that are not matrices
 };
@@ -391,6 +392,8 @@ pub inline fn matrixType(comptime T: type) MatrixType {
         return .banded;
     } else if (isTridiagonalMatrix(T)) {
         return .tridiagonal;
+    } else if (isPermutationMatrix(T)) {
+        return .permutation;
     } else if (isSparseMatrix(T)) {
         return .sparse;
     }
@@ -629,6 +632,8 @@ pub fn isMatrix(comptime T: type) bool {
                 inline for (matrix_types) |matrix_type| {
                     if (T == matrix_type) return true;
                 }
+
+                if (T == matrix.Permutation) return true;
             }
 
             return false;
@@ -832,6 +837,10 @@ pub fn isTridiagonalMatrix(comptime T: type) bool {
         },
         else => return false,
     }
+}
+
+pub fn isPermutationMatrix(comptime T: type) bool {
+    return T == matrix.Permutation;
 }
 
 /// Checks if the input type is an instance of a `matrix.Sparse`.
@@ -1065,7 +1074,7 @@ pub fn isComplex(comptime T: type) bool {
 /// -------
 /// `type`: The coerced type that can represent both `X` and `Y`.
 pub fn Coerce(comptime X: type, comptime Y: type) type {
-    if (comptime X == Y and !(isTriangularMatrix(X) or isTriangularMatrix(Y))) {
+    if (comptime X == Y and !isTriangularMatrix(X) and !isPermutationMatrix(X)) {
         return X;
     }
 
@@ -1087,6 +1096,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .diagonal => return matrix.Diagonal(Coerce(X, Numeric(Y))), // numeric + diagonal
                 .banded => return matrix.Banded(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + banded
                 .tridiagonal => return matrix.Tridiagonal(Coerce(X, Numeric(Y))), // numeric + tridiagonal
+                .permutation => return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + permutation
                 .sparse => return matrix.Sparse(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + sparse
                 .numeric => unreachable,
             },
@@ -1214,6 +1224,12 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal + rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal + array
+                },
+                .permutation => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y), orderOf(X)), // permutation + numeric
+                    .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // permutation + vector
+                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // permutation + matrix
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // permutation + array
                 },
                 .sparse => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse + numeric
@@ -1741,6 +1757,13 @@ pub fn EnsureDomain(comptime X: type, comptime Y: type) type {
             .diagonal => return matrix.Diagonal(Y),
             .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
+            .permutation => {
+                if (Y == u32) {
+                    return matrix.Permutation;
+                } else {
+                    return matrix.General(Y, .col_major);
+                }
+            },
             .sparse => return matrix.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
@@ -1775,6 +1798,13 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
             .diagonal => return matrix.Diagonal(Y),
             .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
+            .permutation => {
+                if (Y == u32) {
+                    return matrix.Permutation;
+                } else {
+                    return matrix.General(Y, .col_major);
+                }
+            },
             .sparse => return matrix.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
@@ -2049,6 +2079,7 @@ pub fn EnsureFloat(comptime T: type) type {
             .diagonal => return matrix.Diagonal(EnsureFloat(Numeric(T))),
             .banded => return matrix.Banded(EnsureFloat(Numeric(T)), orderOf(T)),
             .tridiagonal => return matrix.Tridiagonal(EnsureFloat(Numeric(T))),
+            .permutation => return matrix.General(EnsureFloat(Numeric(T)), .col_major),
             .sparse => return matrix.Sparse(EnsureFloat(Numeric(T)), orderOf(T)),
             .numeric => unreachable,
         }
@@ -2157,41 +2188,41 @@ pub fn Numeric(comptime T: type) type {
 
 pub fn orderOf(comptime T: type) Order {
     if (comptime isArray(T)) {
-        if (T == array.Dense(Numeric(T), .col_major) or
-            T == array.Strided(Numeric(T), .col_major) or
-            T == array.Sparse(Numeric(T), .col_major))
-            return .col_major
+        if (T == array.Dense(Numeric(T), .row_major) or
+            T == array.Strided(Numeric(T), .row_major) or
+            T == array.Sparse(Numeric(T), .row_major))
+            return .row_major
         else
-            return .row_major;
+            return .col_major;
     } else if (comptime isMatrix(T)) {
         if (comptime isComplex(Numeric(T))) {
-            if (T == matrix.General(Numeric(T), .col_major) or
-                T == matrix.Symmetric(Numeric(T), .upper, .col_major) or
-                T == matrix.Symmetric(Numeric(T), .lower, .col_major) or
-                T == matrix.Hermitian(Numeric(T), .upper, .col_major) or
-                T == matrix.Hermitian(Numeric(T), .lower, .col_major) or
-                T == matrix.Triangular(Numeric(T), .upper, .non_unit, .col_major) or
-                T == matrix.Triangular(Numeric(T), .upper, .unit, .col_major) or
-                T == matrix.Triangular(Numeric(T), .lower, .non_unit, .col_major) or
-                T == matrix.Triangular(Numeric(T), .lower, .unit, .col_major) or
-                T == matrix.Banded(Numeric(T), .col_major) or
-                T == matrix.Sparse(Numeric(T), .col_major))
-                return .col_major
+            if (T == matrix.General(Numeric(T), .row_major) or
+                T == matrix.Symmetric(Numeric(T), .upper, .row_major) or
+                T == matrix.Symmetric(Numeric(T), .lower, .row_major) or
+                T == matrix.Hermitian(Numeric(T), .upper, .row_major) or
+                T == matrix.Hermitian(Numeric(T), .lower, .row_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .non_unit, .row_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .unit, .row_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .non_unit, .row_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .unit, .row_major) or
+                T == matrix.Banded(Numeric(T), .row_major) or
+                T == matrix.Sparse(Numeric(T), .row_major))
+                return .row_major
             else
-                return .row_major;
+                return .col_major;
         } else {
-            if (T == matrix.General(Numeric(T), .col_major) or
-                T == matrix.Symmetric(Numeric(T), .upper, .col_major) or
-                T == matrix.Symmetric(Numeric(T), .lower, .col_major) or
-                T == matrix.Triangular(Numeric(T), .upper, .non_unit, .col_major) or
-                T == matrix.Triangular(Numeric(T), .upper, .unit, .col_major) or
-                T == matrix.Triangular(Numeric(T), .lower, .non_unit, .col_major) or
-                T == matrix.Triangular(Numeric(T), .lower, .unit, .col_major) or
-                T == matrix.Banded(Numeric(T), .col_major) or
-                T == matrix.Sparse(Numeric(T), .col_major))
-                return .col_major
+            if (T == matrix.General(Numeric(T), .row_major) or
+                T == matrix.Symmetric(Numeric(T), .upper, .row_major) or
+                T == matrix.Symmetric(Numeric(T), .lower, .row_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .non_unit, .row_major) or
+                T == matrix.Triangular(Numeric(T), .upper, .unit, .row_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .non_unit, .row_major) or
+                T == matrix.Triangular(Numeric(T), .lower, .unit, .row_major) or
+                T == matrix.Banded(Numeric(T), .row_major) or
+                T == matrix.Sparse(Numeric(T), .row_major))
+                return .row_major
             else
-                return .row_major;
+                return .col_major;
         }
     }
 }

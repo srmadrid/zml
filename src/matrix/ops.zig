@@ -22,6 +22,7 @@ const triangular = @import("triangular.zig");
 const diagonal = @import("diagonal.zig");
 const banded = @import("banded.zig");
 const tridiagonal = @import("tridiagonal.zig");
+const permutation = @import("permutation.zig");
 const sparse = @import("sparse.zig");
 
 const gesy = @import("ops/gesy.zig");
@@ -30,42 +31,56 @@ const getr = @import("ops/getr.zig");
 const gedi = @import("ops/gedi.zig");
 const geba = @import("ops/geba.zig");
 const gegt = @import("ops/gegt.zig");
+const gepe = @import("ops/gepe.zig");
 const syge = @import("ops/syge.zig");
 const syhe = @import("ops/syhe.zig");
 const sytr = @import("ops/sytr.zig");
 const sydi = @import("ops/sydi.zig");
 const syba = @import("ops/syba.zig");
 const sygt = @import("ops/sygt.zig");
+const sype = @import("ops/sype.zig");
 const hege = @import("ops/hege.zig");
 const hesy = @import("ops/hesy.zig");
 const hetr = @import("ops/hetr.zig");
 const hedi = @import("ops/hedi.zig");
 const heba = @import("ops/heba.zig");
 const hegt = @import("ops/hegt.zig");
+const hepe = @import("ops/hepe.zig");
 const trge = @import("ops/trge.zig");
 const trsy = @import("ops/trsy.zig");
 const trhe = @import("ops/trhe.zig");
 const trdi = @import("ops/trdi.zig");
 const trba = @import("ops/trba.zig");
 const trgt = @import("ops/trgt.zig");
+const trpe = @import("ops/trpe.zig");
 const dige = @import("ops/dige.zig");
 const disy = @import("ops/disy.zig");
 const dihe = @import("ops/dihe.zig");
 const ditr = @import("ops/ditr.zig");
 const diba = @import("ops/diba.zig");
 const digt = @import("ops/digt.zig");
+const dipe = @import("ops/dipe.zig");
 const bage = @import("ops/bage.zig");
 const basy = @import("ops/basy.zig");
 const bahe = @import("ops/bahe.zig");
 const batr = @import("ops/batr.zig");
 const badi = @import("ops/badi.zig");
 const bagt = @import("ops/bagt.zig");
+const bape = @import("ops/bape.zig");
 const gtge = @import("ops/gtge.zig");
 const gtsy = @import("ops/gtsy.zig");
 const gthe = @import("ops/gthe.zig");
 const gttr = @import("ops/gttr.zig");
 const gtdi = @import("ops/gtdi.zig");
 const gtba = @import("ops/gtba.zig");
+const gtpe = @import("ops/gtpe.zig");
+const pege = @import("ops/pege.zig");
+const pesy = @import("ops/pesy.zig");
+const pehe = @import("ops/pehe.zig");
+const petr = @import("ops/petr.zig");
+const pedi = @import("ops/pedi.zig");
+const peba = @import("ops/peba.zig");
+const pegt = @import("ops/pegt.zig");
 
 const linalg = @import("../linalg.zig");
 
@@ -95,6 +110,7 @@ pub fn apply2(
             .diagonal => return diagonal.apply2(allocator, x, y, op, ctx),
             .banded => return banded.apply2(allocator, x, y, op, ctx),
             .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, ctx),
+            .permutation => return permutation.apply2(allocator, x, y, op, ctx),
             .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
             .numeric => unreachable,
         }
@@ -107,6 +123,7 @@ pub fn apply2(
             .diagonal => return diagonal.apply2(allocator, x, y, op, ctx),
             .banded => return banded.apply2(allocator, x, y, op, ctx),
             .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, ctx),
+            .permutation => return permutation.apply2(allocator, x, y, op, ctx),
             .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
             .numeric => unreachable,
         }
@@ -120,6 +137,7 @@ pub fn apply2(
                 .diagonal => return gedi.apply2(allocator, x, y, op, ctx),
                 .banded => return geba.apply2(allocator, x, y, op, ctx),
                 .tridiagonal => return gegt.apply2(allocator, x, y, op, ctx),
+                .permutation => return gepe.apply2(allocator, x, y, op, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -131,6 +149,7 @@ pub fn apply2(
                 .diagonal => return sydi.apply2(allocator, x, y, op, ctx),
                 .banded => return syba.apply2(allocator, x, y, op, ctx),
                 .tridiagonal => return sygt.apply2(allocator, x, y, op, ctx),
+                .permutation => return sype.apply2(allocator, x, y, op, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -142,6 +161,7 @@ pub fn apply2(
                 .diagonal => return hedi.apply2(allocator, x, y, op, ctx),
                 .banded => return heba.apply2(allocator, x, y, op, ctx),
                 .tridiagonal => return hegt.apply2(allocator, x, y, op, ctx),
+                .permutation => return hepe.apply2(allocator, x, y, op, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -153,6 +173,7 @@ pub fn apply2(
                 .diagonal => return trdi.apply2(allocator, x, y, op, ctx),
                 .banded => return trba.apply2(allocator, x, y, op, ctx),
                 .tridiagonal => return trgt.apply2(allocator, x, y, op, ctx),
+                .permutation => return trpe.apply2(allocator, x, y, op, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -164,6 +185,7 @@ pub fn apply2(
                 .diagonal => return diagonal.apply2(allocator, x, y, op, ctx),
                 .banded => return diba.apply2(allocator, x, y, op, ctx),
                 .tridiagonal => return digt.apply2(allocator, x, y, op, ctx),
+                .permutation => return dipe.apply2(allocator, x, y, op, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -175,6 +197,7 @@ pub fn apply2(
                 .diagonal => return badi.apply2(allocator, x, y, op, ctx),
                 .banded => return banded.apply2(allocator, x, y, op, ctx),
                 .tridiagonal => return bagt.apply2(allocator, x, y, op, ctx),
+                .permutation => return bape.apply2(allocator, x, y, op, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -186,6 +209,19 @@ pub fn apply2(
                 .diagonal => return gtdi.apply2(allocator, x, y, op, ctx),
                 .banded => return gtba.apply2(allocator, x, y, op, ctx),
                 .tridiagonal => return tridiagonal.apply2(allocator, x, y, op, ctx),
+                .permutation => return gtpe.apply2(allocator, x, y, op, ctx),
+                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .numeric => unreachable,
+            },
+            .permutation => switch (comptime types.matrixType(Y)) {
+                .general => return pege.apply2(allocator, x, y, op, ctx),
+                .symmetric => return pesy.apply2(allocator, x, y, op, ctx),
+                .hermitian => return pehe.apply2(allocator, x, y, op, ctx),
+                .triangular => return petr.apply2(allocator, x, y, op, ctx),
+                .diagonal => return pedi.apply2(allocator, x, y, op, ctx),
+                .banded => return peba.apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return pegt.apply2(allocator, x, y, op, ctx),
+                .permutation => return permutation.apply2(allocator, x, y, op, ctx),
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
