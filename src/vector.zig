@@ -7,6 +7,7 @@ const Coerce = types.Coerce;
 const MulCoerce = types.MulCoerce;
 const int = @import("int.zig");
 const ops = @import("ops.zig");
+const linalg = @import("linalg.zig");
 
 const matrix = @import("matrix.zig");
 const Diagonal = matrix.Diagonal;
@@ -21,7 +22,7 @@ pub fn Vector(T: type) type {
 
     return struct {
         data: [*]T,
-        len: i32,
+        len: u32,
         inc: i32,
         flags: Flags = .{},
 
@@ -38,7 +39,7 @@ pub fn Vector(T: type) type {
 
             return .{
                 .data = (try allocator.alloc(T, len)).ptr,
-                .len = types.scast(i32, len),
+                .len = len,
                 .inc = 1,
                 .flags = .{ .owns_data = true },
             };
@@ -46,7 +47,7 @@ pub fn Vector(T: type) type {
 
         pub fn deinit(self: *Vector(T), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.free(self.data[0..types.scast(u32, self.len)]);
+                allocator.free(self.data[0..self.len]);
             }
 
             self.* = undefined;
@@ -59,7 +60,7 @@ pub fn Vector(T: type) type {
             return if (self.inc > 0)
                 self.data[index * types.scast(u32, self.inc)]
             else
-                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
+                self.data[types.scast(u32, (-types.scast(i32, self.len) + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
         }
 
         pub inline fn at(self: *const Vector(T), index: u32) T {
@@ -67,7 +68,7 @@ pub fn Vector(T: type) type {
             return if (self.inc > 0)
                 self.data[index * types.scast(u32, self.inc)]
             else
-                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
+                self.data[types.scast(u32, (-types.scast(i32, self.len) + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
         }
 
         pub fn set(self: *Vector(T), index: u32, value: T) !void {
@@ -77,7 +78,7 @@ pub fn Vector(T: type) type {
             if (self.inc > 0) {
                 self.data[index * types.scast(u32, self.inc)] = value;
             } else {
-                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))] = value;
+                self.data[types.scast(u32, (-types.scast(i32, self.len) + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))] = value;
             }
         }
 
@@ -86,7 +87,7 @@ pub fn Vector(T: type) type {
             if (self.inc > 0) {
                 self.data[index * types.scast(u32, self.inc)] = value;
             } else {
-                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))] = value;
+                self.data[types.scast(u32, (-types.scast(i32, self.len) + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))] = value;
             }
         }
 
@@ -127,7 +128,7 @@ pub fn apply2(
         @compileError("apply2: op must be a function of two arguments, or a function of three arguments with the third argument being a context, got " ++ @typeName(@TypeOf(op)));
 
     if (comptime !types.isVector(@TypeOf(x))) {
-        var result: R = try .init(allocator, types.scast(u32, y.len));
+        var result: R = try .init(allocator, y.len);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -156,7 +157,7 @@ pub fn apply2(
 
         return result;
     } else if (comptime !types.isVector(@TypeOf(y))) {
-        var result: R = try .init(allocator, types.scast(u32, x.len));
+        var result: R = try .init(allocator, x.len);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -189,7 +190,7 @@ pub fn apply2(
     if (x.len != y.len)
         return Error.DimensionMismatch;
 
-    var result: R = try .init(allocator, types.scast(u32, x.len));
+    var result: R = try .init(allocator, x.len);
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));
@@ -313,8 +314,7 @@ pub inline fn mul(
             types.validateContext(@TypeOf(ctx), .{});
         };
 
-        @compileError("Vector-vector multiplication not implemented yet");
-        // return linalg.dot(...);
+        return linalg.dot(x, y, ctx);
     } else {
         comptime if (types.isArbitraryPrecision(C)) { // scalar * vector  or  vector * scalar
             @compileError("Arbitrary precision types not implemented yet");

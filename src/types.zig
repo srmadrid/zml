@@ -573,7 +573,7 @@ pub fn isVector(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is a matrix, `false` otherwise.
 pub fn isMatrix(comptime T: type) bool {
-    @setEvalBranchQuota(10000);
+    @setEvalBranchQuota(100000);
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
             if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
@@ -840,6 +840,8 @@ pub fn isTridiagonalMatrix(comptime T: type) bool {
 }
 
 pub fn isPermutationMatrix(comptime T: type) bool {
+    @setEvalBranchQuota(10000);
+
     switch (@typeInfo(T)) {
         .@"struct" => |tinfo| {
             if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
@@ -1529,10 +1531,6 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
 /// `type`: The coerced type that can represent the result of multiplying `X`
 /// and `Y`.
 pub fn MulCoerce(comptime X: type, comptime Y: type) type {
-    if (comptime X == Y and !isTriangularMatrix(X) and !isPermutationMatrix(X)) {
-        return X;
-    }
-
     switch (comptime domainType(X)) {
         .numeric => switch (comptime domainType(Y)) {
             .numeric => {},
@@ -1559,7 +1557,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
         },
         .vector => switch (comptime domainType(Y)) {
             .numeric => return vector.Vector(Coerce(Numeric(X), Y)), // vector * numeric
-            .vector => return Coerce(X, Y), // vector * vector (dot product)
+            .vector => return Coerce(Numeric(X), Numeric(Y)), // vector * vector (dot product)
             .matrix => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // vector * matrix
             .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // vector * array
         },

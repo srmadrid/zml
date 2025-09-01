@@ -922,29 +922,49 @@ pub inline fn mul(
                 types.stripStruct(ctx, &.{"matrix_allocator"}),
         );
     } else if (comptime types.isVector(X) or types.isVector(Y)) {
-        comptime if (types.isArbitraryPrecision(Numeric(C))) {
-            @compileError("Arbitrary precision types not implemented yet");
-        } else {
-            if (types.numericType(Numeric(C)) == .int) {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .mode = .{ .type = int.Mode, .required = false },
-                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+        comptime if (types.isVector(X) and types.isVector(Y)) {
+            if (types.isArbitraryPrecision(Numeric(C))) {
+                @compileError("Arbitrary precision types not implemented yet");
             } else {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+                if (types.numericType(Numeric(C)) == .int) {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .mode = .{ .type = int.Mode, .required = false },
+                        },
+                    );
+                } else {
+                    types.validateContext(@TypeOf(ctx), .{});
+                }
+            }
+        } else {
+            if (types.isArbitraryPrecision(Numeric(C))) {
+                @compileError("Arbitrary precision types not implemented yet");
+            } else {
+                if (types.numericType(Numeric(C)) == .int) {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .mode = .{ .type = int.Mode, .required = false },
+                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                } else {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                }
             }
         };
 
         return vector.mul(
-            ctx.vector_allocator,
+            if (comptime types.isVector(X) and types.isVector(Y)) // vector-vector multiplication
+                undefined
+            else // matrix-vector multiplication
+                ctx.vector_allocator,
             x,
             y,
             types.stripStruct(ctx, &.{"vector_allocator"}),

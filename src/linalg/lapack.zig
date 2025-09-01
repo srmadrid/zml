@@ -14,7 +14,7 @@ const cf64 = cfloat.cf64;
 const ops = @import("../ops.zig");
 const linalg = @import("../linalg.zig");
 
-const ci = @import("../c.zig");
+const ci = @import("../c.zig").c;
 
 const Order = types.Order;
 const Transpose = linalg.Transpose;

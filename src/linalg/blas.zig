@@ -3,7 +3,6 @@ const options = @import("options");
 
 const types = @import("../types.zig");
 const scast = types.scast;
-const validateContext = types.validateContext;
 const Scalar = types.Scalar;
 const Child = types.Child;
 const Coerce = types.Coerce;
@@ -14,7 +13,7 @@ const cf64 = cfloat.cf64;
 const ops = @import("../ops.zig");
 const linalg = @import("../linalg.zig");
 
-const ci = @import("../c.zig");
+const ci = @import("../c.zig").c;
 
 const Order = types.Order;
 const Transpose = linalg.Transpose;
@@ -108,7 +107,7 @@ pub inline fn asum_sub(
         if (types.isArbitraryPrecision(X)) {
             @compileError("zml.linalg.blas.asum_sub not implemented for arbitrary precision types yet");
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         }
     };
 
@@ -359,7 +358,7 @@ pub inline fn asum(
     comptime if (types.isArbitraryPrecision(X)) {
         @compileError("zml.linalg.blas.asum not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (options.link_cblas != null) {
@@ -631,7 +630,7 @@ pub inline fn axpy(
         if (types.isArbitraryPrecision(Y)) {
             @compileError("zml.linalg.blas.axpy not implemented for arbitrary precision types yet");
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         }
     };
 
@@ -922,7 +921,7 @@ pub inline fn copy(
         if (types.isArbitraryPrecision(Y)) {
             @compileError("zml.linalg.blas.copy not implemented for arbitrary precision types yet");
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         }
     };
 
@@ -1215,7 +1214,7 @@ pub inline fn dot_sub(
         if (types.isArbitraryPrecision(C)) {
             @compileError("zml.linalg.blas.dot_sub not implemented for arbitrary precision types yet");
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         }
     };
 
@@ -1407,7 +1406,7 @@ pub inline fn dot(
     comptime if (types.isArbitraryPrecision(C)) {
         @compileError("zml.linalg.blas.dot not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime X == Y and options.link_cblas != null) {
@@ -1611,7 +1610,7 @@ pub inline fn dotc_sub(
         if (types.isArbitraryPrecision(C)) {
             @compileError("zml.linalg.blas.dotc_sub not implemented for arbitrary precision types yet");
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         }
     };
 
@@ -1799,7 +1798,7 @@ pub inline fn dotc(
     comptime if (types.isArbitraryPrecision(C)) {
         @compileError("zml.linalg.blas.dotc not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime X == Y and options.link_cblas != null) {
@@ -2006,7 +2005,7 @@ pub inline fn dotu_sub(
         if (types.isArbitraryPrecision(C)) {
             @compileError("zml.linalg.blas.dotu_sub not implemented for arbitrary precision types yet");
         } else {
-            validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         }
     };
 
@@ -2198,7 +2197,7 @@ pub inline fn dotu(
     comptime if (types.isArbitraryPrecision(C)) {
         @compileError("zml.linalg.blas.dotu not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime X == Y and options.link_cblas != null) {
@@ -2368,7 +2367,7 @@ pub inline fn nrm2(
     comptime if (types.isArbitraryPrecision(X)) {
         @compileError("zml.linalg.blas.nrm2 not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime options.link_cblas != null) {
@@ -2644,7 +2643,7 @@ pub inline fn rot(
         // When implemented, expand if
         @compileError("zml.linalg.blas.rot not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime X == Y and X == C and X == S and options.link_cblas != null) {
@@ -2937,7 +2936,7 @@ pub inline fn rotg(
         // When implemented, expand if
         @compileError("zml.linalg.blas.rotg not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and A == C and A == S and options.link_cblas != null) {
@@ -3272,7 +3271,7 @@ pub inline fn rotm(
         // When implemented, expand if
         @compileError("zml.linalg.blas.rotm not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime X == Y and X == P and options.link_cblas != null) {
@@ -3636,7 +3635,7 @@ pub inline fn rotmg(
         // When implemented, expand if
         @compileError("zml.linalg.blas.rotmg not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime D1 == D2 and D1 == X1 and D1 == P and types.canCoerce(Y1, D1) and options.link_cblas != null) {
@@ -3902,7 +3901,7 @@ pub inline fn scal(
         // When implemented, expand if
         @compileError("zml.linalg.blas.scal not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime types.canCoerce(Al, X) and options.link_cblas != null) {
@@ -4241,7 +4240,7 @@ pub inline fn swap(
         // When implemented, expand if
         @compileError("zml.linalg.blas.swap not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime X == Y and options.link_cblas != null) {
@@ -4481,7 +4480,7 @@ pub inline fn iamax(
         // Might need but only when arbitrary p complex
         @compileError("zml.linalg.blas.iamax not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime options.link_cblas != null) {
@@ -4713,7 +4712,7 @@ pub inline fn iamin(
         // Might need but only when arbitrary p complex
         @compileError("zml.linalg.blas.iamin not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime options.link_cblas != null) {
@@ -5052,7 +5051,7 @@ pub inline fn gbmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.gbmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -5659,7 +5658,7 @@ pub inline fn gemv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.gemv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -6205,7 +6204,7 @@ pub inline fn ger(
         // When implemented, expand if
         @compileError("zml.linalg.blas.ger not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -6478,7 +6477,7 @@ pub inline fn gerc(
         // When implemented, expand if
         @compileError("zml.linalg.blas.gerc not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -6753,7 +6752,7 @@ pub inline fn geru(
         // When implemented, expand if
         @compileError("zml.linalg.blas.geru not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -7044,7 +7043,7 @@ pub inline fn hbmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.hbmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -7353,7 +7352,7 @@ pub inline fn hemv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.hemv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -7628,7 +7627,7 @@ pub inline fn her(
         // When implemented, expand if
         @compileError("zml.linalg.blas.her not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and types.canCoerce(Al, Scalar(A)) and options.link_cblas != null) {
@@ -7893,7 +7892,7 @@ pub inline fn her2(
         // When implemented, expand if
         @compileError("zml.linalg.blas.her2 not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -8181,7 +8180,7 @@ pub inline fn hpmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.hpmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -8446,7 +8445,7 @@ pub inline fn hpr(
         // When implemented, expand if
         @compileError("zml.linalg.blas.hpr not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -8697,7 +8696,7 @@ pub inline fn hpr2(
         // When implemented, expand if
         @compileError("zml.linalg.blas.hpr2 not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -8984,7 +8983,7 @@ pub inline fn sbmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.sbmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -9286,7 +9285,7 @@ pub inline fn spmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.spmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -9544,7 +9543,7 @@ pub inline fn spr(
         // When implemented, expand if
         @compileError("zml.linalg.blas.spr not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -9795,7 +9794,7 @@ pub inline fn spr2(
         // When implemented, expand if
         @compileError("zml.linalg.blas.spr2 not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -10076,7 +10075,7 @@ pub inline fn symv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.symv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -10344,7 +10343,7 @@ pub inline fn syr(
         // When implemented, expand if
         @compileError("zml.linalg.blas.syr not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -10607,7 +10606,7 @@ pub inline fn syr2(
         // When implemented, expand if
         @compileError("zml.linalg.blas.syr2 not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -10889,7 +10888,7 @@ pub inline fn tbmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.tbmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and options.link_cblas != null) {
@@ -11401,7 +11400,7 @@ pub inline fn tbsv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.tbsv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and options.link_cblas != null) {
@@ -11921,7 +11920,7 @@ pub inline fn tpmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.tpmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and options.link_cblas != null) {
@@ -12392,7 +12391,7 @@ pub inline fn tpsv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.tpsv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and options.link_cblas != null) {
@@ -12875,7 +12874,7 @@ pub inline fn trmv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.trmv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and options.link_cblas != null) {
@@ -13367,7 +13366,7 @@ pub inline fn trsv(
         // When implemented, expand if
         @compileError("zml.linalg.blas.trsv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == X and options.link_cblas != null) {
@@ -13919,7 +13918,7 @@ pub inline fn gemm(
         // When implemented, expand if
         @compileError("zml.linalg.blas.gemm not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -14520,7 +14519,7 @@ pub inline fn hemm(
         // When implemented, expand if
         @compileError("zml.linalg.blas.hemm not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -14868,7 +14867,7 @@ pub inline fn herk(
         // When implemented, expand if
         @compileError("zml.linalg.blas.herk not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == C and types.canCoerce(Al, Scalar(A)) and types.canCoerce(Be, Scalar(A)) and options.link_cblas != null) {
@@ -15223,7 +15222,7 @@ pub inline fn her2k(
         // When implemented, expand if
         @compileError("zml.linalg.blas.her2k not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, Scalar(A)) and options.link_cblas != null) {
@@ -15603,7 +15602,7 @@ pub inline fn symm(
         // When implemented, expand if
         @compileError("zml.linalg.blas.symm not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -16133,7 +16132,7 @@ pub inline fn syrk(
         // When implemented, expand if
         @compileError("zml.linalg.blas.syrk not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -16662,7 +16661,7 @@ pub inline fn syr2k(
         // When implemented, expand if
         @compileError("zml.linalg.blas.syr2k not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
@@ -17235,7 +17234,7 @@ pub inline fn trmm(
         // When implemented, expand if
         @compileError("zml.linalg.blas.trmm not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and types.canCoerce(Al, A) and options.link_cblas != null) {
@@ -17761,7 +17760,7 @@ pub inline fn trsm(
         // When implemented, expand if
         @compileError("zml.linalg.blas.trsm not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and types.canCoerce(Al, A) and options.link_cblas != null) {

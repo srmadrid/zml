@@ -1,5 +1,50 @@
+const std = @import("std");
+
+const types = @import("types.zig");
+const Numeric = types.Numeric;
+const Coerce = types.Coerce;
+const MulCoerce = types.MulCoerce;
+const int = @import("int.zig");
+const ops = @import("ops.zig");
+
 pub const blas = @import("linalg/blas.zig");
 pub const lapack = @import("linalg/lapack.zig");
+
+pub inline fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y))) {
+    const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
+
+    comptime if (!types.isVector(@TypeOf(x)) or !types.isVector(@TypeOf(y)))
+        @compileError("dot: both arguments must be vectors, got " ++ @typeName(@TypeOf(x)) ++ " and " ++ @typeName(@TypeOf(y)));
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        @compileError("zml.linalg.blas.dotc not implemented for arbitrary precision types yet");
+    } else {
+        types.validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (x.len != y.len)
+        return Error.DimensionMismatch;
+
+    if (comptime types.isComplex(C)) {
+        return blas.dotc(types.scast(i32, x.len), x.data, x.inc, y.data, y.inc, ctx);
+    } else {
+        return blas.dot(types.scast(i32, x.len), x.data, x.inc, y.data, y.inc, ctx);
+    }
+}
+
+pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: anytype) !MulCoerce(Numeric(@TypeOf(a)), Numeric(@TypeOf(b))) {
+    const C: type = MulCoerce(Numeric(@TypeOf(a)), Numeric(@TypeOf(b)));
+
+    comptime if (!((types.isMatrix(@TypeOf(a)) and types.isMatrix(@TypeOf(b))) or
+        (types.isMatrix(@TypeOf(a)) and types.isVector(@TypeOf(b))) or
+        (types.isVector(@TypeOf(a)) and types.isMatrix(@TypeOf(b)))))
+        @compileError("matmul: at least one argument must be a matrix, the other must be a matrix or vector, got " ++ @typeName(@TypeOf(a)) ++ " and " ++ @typeName(@TypeOf(b)));
+
+    _ = C;
+    _ = allocator;
+    _ = ctx;
+    return Error.DimensionMismatch; // TODO
+}
 
 const lu_ = @import("linalg/lu.zig");
 pub const LU = lu_.LU;
@@ -98,4 +143,9 @@ pub const Side = enum(u1) {
             .right => .left,
         };
     }
+};
+
+pub const Error = error{
+    DimensionMismatch,
+    SingularMatrix,
 };

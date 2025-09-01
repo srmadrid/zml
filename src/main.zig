@@ -634,26 +634,31 @@ fn perfTesting(a: std.mem.Allocator) !void {
     // var A: zml.matrix.Permutation(f64) = try .init(a, 5);
     // defer A.deinit(a);
 
-    var A: zml.vector.Vector(f64) = try .init(a, 10);
+    var A: zml.vector.Vector(zml.cf64) = try .init(a, 10);
     defer A.deinit(a);
 
     fill(A, 1);
     print("A", A);
 
-    var B: zml.matrix.Tridiagonal(f64) = try .init(a, 5);
+    // var B: zml.matrix.Tridiagonal(f64) = try .init(a, 5);
+    // defer B.deinit(a);
+
+    var B: zml.vector.Vector(zml.cf64) = try .init(a, 10);
     defer B.deinit(a);
 
     fill(B, 2);
     print("B", B);
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.vector.Vector(f64) = try zml.div(A, 2, .{ .vector_allocator = a });
+    //var C: zml.vector.Vector(f64) = try zml.div(A, 2, .{ .vector_allocator = a });
+    const C: zml.cf64 = try zml.mul(A, B, .{});
     const end_time: i128 = std.time.nanoTimestamp();
-    defer C.deinit(a);
+    //defer C.deinit(a);
 
     std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    print("C = A - B", C);
+    // print("C = A - B", C);
+    std.debug.print("C = A · B = {}\n", .{C});
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {
