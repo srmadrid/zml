@@ -6,6 +6,7 @@ const scast = types.scast;
 const Scalar = types.Scalar;
 const Numeric = types.Numeric;
 const Coerce = types.Coerce;
+const MulCoerce = types.MulCoerce;
 const EnsureArray = types.EnsureArray;
 const EnsureMatrixOrArray = types.EnsureMatrixOrArray;
 const Child = types.Child;
@@ -99,10 +100,6 @@ pub inline fn add(
     const C: type = types.Coerce(X, Y);
 
     if (comptime types.isArray(X) or types.isArray(Y)) {
-        if (comptime types.isMatrix(X) or types.isMatrix(Y))
-            @compileError("zml.add: if x or y is a matrix, the other must also be a matrix, got " ++
-                @typeName(X) ++ " and " ++ @typeName(Y));
-
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
             types.validateContext(
                 @TypeOf(ctx),
@@ -134,13 +131,9 @@ pub inline fn add(
             ctx.array_allocator,
             x,
             y,
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
-        if (comptime types.isVector(X) or types.isVector(Y))
-            @compileError("zml.add: if x or y is a vector, the other must also be a vector, got " ++
-                @typeName(X) ++ " and " ++ @typeName(Y));
-
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
             types.validateContext(
                 @TypeOf(ctx),
@@ -514,9 +507,7 @@ pub inline fn sub(
     const Y: type = @TypeOf(y);
     const C: type = types.Coerce(X, Y);
 
-    if (comptime types.isArray(X) or
-        types.isArray(Y))
-    {
+    if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
             @compileError("Arbitrary precision types not implemented yet");
         } else {
@@ -526,7 +517,6 @@ pub inline fn sub(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -534,7 +524,6 @@ pub inline fn sub(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -544,8 +533,7 @@ pub inline fn sub(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
@@ -557,7 +545,6 @@ pub inline fn sub(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -565,7 +552,6 @@ pub inline fn sub(
                     @TypeOf(ctx),
                     .{
                         .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -575,8 +561,36 @@ pub inline fn sub(
             ctx.matrix_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+
+            types.stripStruct(ctx, &.{"matrix_allocator"}),
+        );
+    } else if (comptime types.isVector(X) or types.isVector(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.numericType(Numeric(C)) == .int) {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .mode = .{ .type = int.Mode, .required = false },
+                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+            } else {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+            }
+        };
+
+        return vector.sub(
+            ctx.vector_allocator,
+            x,
+            y,
+            types.stripStruct(ctx, &.{"vector_allocator"}),
         );
     } else {
         switch (comptime types.numericType(C)) {
@@ -604,7 +618,7 @@ pub inline fn sub(
     }
 }
 
-/// Sibtracts two values of any two supported types in-place.
+/// Subtracts two values of any two supported types in-place.
 ///
 /// The function supports subtraction for values of any combination of supported
 /// numeric types, arrays and slices, and stores the result in the output
@@ -817,10 +831,10 @@ pub inline fn mul(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !Coerce(@TypeOf(x), @TypeOf(y)) {
+) !MulCoerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const C: type = types.Coerce(X, Y);
+    const C: type = MulCoerce(X, Y);
 
     if (comptime types.isArray(X) or types.isArray(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
@@ -832,7 +846,6 @@ pub inline fn mul(
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -840,7 +853,6 @@ pub inline fn mul(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -850,10 +862,66 @@ pub inline fn mul(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        comptime if (types.isVector(X) or types.isVector(Y)) { // matrix-vector multiplication
+            if (types.isArbitraryPrecision(Numeric(C))) {
+                @compileError("Arbitrary precision types not implemented yet");
+            } else {
+                if (types.numericType(Numeric(C)) == .int) {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .mode = .{ .type = int.Mode, .required = false },
+                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                } else {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                }
+            }
+        } else { // matrix-matrix multiplication
+            if (types.isArbitraryPrecision(Numeric(C))) {
+                @compileError("Arbitrary precision types not implemented yet");
+            } else {
+                if (types.numericType(Numeric(C)) == .int) {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .mode = .{ .type = int.Mode, .required = false },
+                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                } else {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                }
+            }
+        };
+
+        return matrix.mul(
+            if (comptime types.isVector(X) or types.isVector(Y)) // matrix-vector multiplication
+                ctx.vector_allocator
+            else // matrix-matrix multiplication
+                ctx.matrix_allocator,
+            x,
+            y,
+            if (comptime types.isVector(X) or types.isVector(Y)) // matrix-vector multiplication
+                types.stripStruct(ctx, &.{"vector_allocator"})
+            else // matrix-matrix multiplication
+                types.stripStruct(ctx, &.{"matrix_allocator"}),
+        );
+    } else if (comptime types.isVector(X) or types.isVector(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
             @compileError("Arbitrary precision types not implemented yet");
         } else {
@@ -862,27 +930,24 @@ pub inline fn mul(
                     @TypeOf(ctx),
                     .{
                         .mode = .{ .type = int.Mode, .required = false },
-                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
+                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
                     },
                 );
             } else {
                 types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
+                        .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
                     },
                 );
             }
         };
 
-        return matrix.mul(
-            ctx.matrix_allocator,
+        return vector.mul(
+            ctx.vector_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+            types.stripStruct(ctx, &.{"vector_allocator"}),
         );
     } else {
         switch (comptime types.numericType(C)) {
@@ -1070,7 +1135,6 @@ pub inline fn div(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -1079,8 +1143,7 @@ pub inline fn div(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         comptime if (types.isArbitraryPrecision(Numeric(C))) {
@@ -1090,7 +1153,6 @@ pub inline fn div(
                 @TypeOf(ctx),
                 .{
                     .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -1099,29 +1161,47 @@ pub inline fn div(
             ctx.matrix_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "matrix_allocator", "order" }),
+
+            types.stripStruct(ctx, &.{"matrix_allocator"}),
         );
-    }
+    } else if (comptime types.isVector(X) or types.isVector(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(C))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+        };
 
-    switch (comptime types.numericType(C)) {
-        .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .int => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+        return vector.div(
+            ctx.vector_allocator,
+            x,
+            y,
+            types.stripStruct(ctx, &.{"vector_allocator"}),
+        );
+    } else {
+        switch (comptime types.numericType(C)) {
+            .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return int.div(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
-        },
-        .float => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return int.div(x, y);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return float.div(x, y);
-        },
-        .cfloat => {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+                return float.div(x, y);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return cfloat.div(x, y);
-        },
-        else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                return cfloat.div(x, y);
+            },
+            else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+        }
     }
 }
 
@@ -1199,7 +1279,6 @@ pub inline fn eq(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1207,7 +1286,6 @@ pub inline fn eq(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.eq not defined for matrices, convert to array first");
@@ -1318,7 +1396,6 @@ pub inline fn ne(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1326,7 +1403,6 @@ pub inline fn ne(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.ne not defined for matrices, convert to array first");
@@ -1437,7 +1513,6 @@ pub inline fn lt(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1445,7 +1520,6 @@ pub inline fn lt(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.lt not defined for matrices, convert to array first");
@@ -1546,7 +1620,6 @@ pub inline fn le(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1554,7 +1627,6 @@ pub inline fn le(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.le not defined for matrices, convert to array first");
@@ -1655,7 +1727,6 @@ pub inline fn gt(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1663,7 +1734,6 @@ pub inline fn gt(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.gt not defined for matrices, convert to array first");
@@ -1764,7 +1834,6 @@ pub inline fn ge(
             @TypeOf(ctx),
             .{
                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                .order = .{ .type = ?types.Order, .required = false },
             },
         );
 
@@ -1772,7 +1841,6 @@ pub inline fn ge(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.ge not defined for matrices, convert to array first");
@@ -1876,7 +1944,6 @@ pub inline fn max(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -1885,8 +1952,7 @@ pub inline fn max(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.max not defined for matrices, convert to array first");
@@ -1994,7 +2060,6 @@ pub inline fn min(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2003,8 +2068,7 @@ pub inline fn min(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.min not defined for matrices, convert to array first");
@@ -2109,7 +2173,7 @@ pub inline fn abs(
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
+
                     .copy = .{ .type = bool, .required = false },
                 },
             );
@@ -2118,7 +2182,6 @@ pub inline fn abs(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2126,8 +2189,7 @@ pub inline fn abs(
         return array.abs(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.abs not defined for matrices, convert to array first");
@@ -2249,7 +2311,6 @@ pub inline fn abs2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2257,8 +2318,7 @@ pub inline fn abs2(
         return array.abs2(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.abs2 not defined for matrices, convert to array first");
@@ -2358,7 +2418,6 @@ pub inline fn exp(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2366,8 +2425,7 @@ pub inline fn exp(
         return array.exp(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.exp not defined for matrices, convert to array first");
@@ -2456,7 +2514,6 @@ pub inline fn exp10(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2464,8 +2521,7 @@ pub inline fn exp10(
         return array.exp10(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.exp10 not defined for matrices, convert to array first");
@@ -2544,7 +2600,6 @@ pub inline fn exp2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2552,8 +2607,7 @@ pub inline fn exp2(
         return array.exp2(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.exp2 not defined for matrices, convert to array first");
@@ -2632,7 +2686,6 @@ pub inline fn exp10m1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2640,8 +2693,7 @@ pub inline fn exp10m1(
         return array.exp10m1(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.exp10m1 not defined for matrices, convert to array first");
@@ -2720,7 +2772,6 @@ pub inline fn exp2m1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2728,8 +2779,7 @@ pub inline fn exp2m1(
         return array.exp2m1(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.exp2m1 not defined for matrices, convert to array first");
@@ -2808,7 +2858,6 @@ pub inline fn expm1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2816,8 +2865,7 @@ pub inline fn expm1(
         return array.expm1(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.expm1 not defined for matrices, convert to array first");
@@ -2896,7 +2944,6 @@ pub inline fn log(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -2904,8 +2951,7 @@ pub inline fn log(
         return array.log(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.log not defined for matrices, convert to array first");
@@ -2994,7 +3040,6 @@ pub inline fn log10(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3002,8 +3047,7 @@ pub inline fn log10(
         return array.log10(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.log10 not defined for matrices, convert to array first");
@@ -3082,7 +3126,6 @@ pub inline fn log2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3090,8 +3133,7 @@ pub inline fn log2(
         return array.log2(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.log2 not defined for matrices, convert to array first");
@@ -3170,7 +3212,6 @@ pub inline fn log10p1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3178,8 +3219,7 @@ pub inline fn log10p1(
         return array.log10p1(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.log10p1 not defined for matrices, convert to array first");
@@ -3258,7 +3298,6 @@ pub inline fn log2p1(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3266,8 +3305,7 @@ pub inline fn log2p1(
         return array.log2p1(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.log2p1 not defined for matrices, convert to array first");
@@ -3346,7 +3384,6 @@ pub inline fn log1p(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3354,8 +3391,7 @@ pub inline fn log1p(
         return array.log1p(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.log1p not defined for matrices, convert to array first");
@@ -3438,7 +3474,6 @@ pub inline fn pow(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3447,8 +3482,7 @@ pub inline fn pow(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.pow not defined for matrices, convert to array first");
@@ -3534,7 +3568,6 @@ pub inline fn sqrt(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3542,8 +3575,7 @@ pub inline fn sqrt(
         return array.sqrt(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.sqrt not defined for matrices, convert to array first");
@@ -3632,7 +3664,6 @@ pub inline fn cbrt(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3640,8 +3671,7 @@ pub inline fn cbrt(
         return array.cbrt(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.cbrt not defined for matrices, convert to array first");
@@ -3716,7 +3746,6 @@ pub inline fn hypot(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3725,8 +3754,7 @@ pub inline fn hypot(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.hypot not defined for matrices, convert to array first");
@@ -3802,7 +3830,6 @@ pub inline fn sin(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3810,8 +3837,7 @@ pub inline fn sin(
         return array.sin(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.sin not defined for matrices, convert to array first");
@@ -3893,7 +3919,6 @@ pub inline fn cos(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3901,8 +3926,7 @@ pub inline fn cos(
         return array.cos(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.cos not defined for matrices, convert to array first");
@@ -3984,7 +4008,6 @@ pub inline fn tan(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -3992,8 +4015,7 @@ pub inline fn tan(
         return array.tan(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.tan not defined for matrices, convert to array first");
@@ -4082,7 +4104,6 @@ pub inline fn asin(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4090,8 +4111,7 @@ pub inline fn asin(
         return array.asin(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.asin not defined for matrices, convert to array first");
@@ -4173,7 +4193,6 @@ pub inline fn acos(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4181,8 +4200,7 @@ pub inline fn acos(
         return array.acos(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.acos not defined for matrices, convert to array first");
@@ -4264,7 +4282,6 @@ pub inline fn atan(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4272,8 +4289,7 @@ pub inline fn atan(
         return array.atan(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.atan not defined for matrices, convert to array first");
@@ -4367,7 +4383,6 @@ pub inline fn atan2(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4376,8 +4391,7 @@ pub inline fn atan2(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.atan2 not defined for matrices, convert to array first");
@@ -4452,7 +4466,6 @@ pub inline fn sinpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4460,8 +4473,7 @@ pub inline fn sinpi(
         return array.sinpi(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.sinpi not defined for matrices, convert to array first");
@@ -4540,7 +4552,6 @@ pub inline fn cospi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4548,8 +4559,7 @@ pub inline fn cospi(
         return array.cospi(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.cospi not defined for matrices, convert to array first");
@@ -4628,7 +4638,6 @@ pub inline fn tanpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4636,8 +4645,7 @@ pub inline fn tanpi(
         return array.tanpi(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.tanpi not defined for matrices, convert to array first");
@@ -4716,7 +4724,6 @@ pub inline fn asinpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4724,8 +4731,7 @@ pub inline fn asinpi(
         return array.asinpi(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.asinpi not defined for matrices, convert to array first");
@@ -4797,7 +4803,6 @@ pub inline fn acospi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4805,8 +4810,7 @@ pub inline fn acospi(
         return array.acospi(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.acospi not defined for matrices, convert to array first");
@@ -4878,7 +4882,6 @@ pub inline fn atanpi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4886,8 +4889,7 @@ pub inline fn atanpi(
         return array.atanpi(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.atanpi not defined for matrices, convert to array first");
@@ -4962,7 +4964,6 @@ pub inline fn atan2pi(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -4971,8 +4972,7 @@ pub inline fn atan2pi(
             ctx.array_allocator,
             x,
             y,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
         @compileError("zml.atan2pi not defined for matrices, convert to array first");
@@ -5048,7 +5048,6 @@ pub inline fn sinh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5056,8 +5055,7 @@ pub inline fn sinh(
         return array.sinh(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.sinh not defined for matrices, convert to array first");
@@ -5139,7 +5137,6 @@ pub inline fn cosh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5147,8 +5144,7 @@ pub inline fn cosh(
         return array.cosh(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.cosh not defined for matrices, convert to array first");
@@ -5230,7 +5226,6 @@ pub inline fn tanh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5238,8 +5233,7 @@ pub inline fn tanh(
         return array.tanh(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.tanh not defined for matrices, convert to array first");
@@ -5321,7 +5315,6 @@ pub inline fn asinh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5329,8 +5322,7 @@ pub inline fn asinh(
         return array.asinh(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.asinh not defined for matrices, convert to array first");
@@ -5412,7 +5404,6 @@ pub inline fn acosh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5420,8 +5411,7 @@ pub inline fn acosh(
         return array.acosh(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.acosh not defined for matrices, convert to array first");
@@ -5503,7 +5493,6 @@ pub inline fn atanh(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5511,8 +5500,7 @@ pub inline fn atanh(
         return array.atanh(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.atanh not defined for matrices, convert to array first");
@@ -5595,7 +5583,6 @@ pub inline fn erf(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5603,8 +5590,7 @@ pub inline fn erf(
         return array.erf(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.erf not defined for matrices, convert to array first");
@@ -5673,7 +5659,6 @@ pub inline fn erfc(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5681,8 +5666,7 @@ pub inline fn erfc(
         return array.erfc(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.erfc not defined for matrices, convert to array first");
@@ -5751,7 +5735,6 @@ pub inline fn gamma(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5759,8 +5742,7 @@ pub inline fn gamma(
         return array.gamma(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.gamma not defined for matrices, convert to array first");
@@ -5829,7 +5811,6 @@ pub inline fn lgamma(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5837,8 +5818,7 @@ pub inline fn lgamma(
         return array.lgamma(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.lgamma not defined for matrices, convert to array first");
@@ -5907,7 +5887,6 @@ pub inline fn re(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5915,8 +5894,7 @@ pub inline fn re(
         return array.re(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.re not defined for matrices, convert to array first");
@@ -5957,7 +5935,6 @@ pub inline fn im(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -5965,8 +5942,7 @@ pub inline fn im(
         return array.im(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.im not defined for matrices, convert to array first");
@@ -6007,7 +5983,6 @@ pub inline fn conjugate(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6015,8 +5990,7 @@ pub inline fn conjugate(
         return array.conjugate(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.conjugate not defined for matrices, convert to array first");
@@ -6108,7 +6082,6 @@ pub inline fn ceil(
                     @TypeOf(ctx),
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             } else {
@@ -6117,7 +6090,6 @@ pub inline fn ceil(
                     .{
                         .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .order = .{ .type = ?types.Order, .required = false },
                     },
                 );
             }
@@ -6126,7 +6098,6 @@ pub inline fn ceil(
                 @TypeOf(ctx),
                 .{
                     .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .order = .{ .type = ?types.Order, .required = false },
                 },
             );
         };
@@ -6134,8 +6105,7 @@ pub inline fn ceil(
         return array.ceil(
             ctx.array_allocator,
             x,
-            .{ .order = types.getFieldOrDefault(ctx, "order", ?types.Order, null) },
-            types.stripStruct(ctx, &.{ "array_allocator", "order" }),
+            types.stripStruct(ctx, &.{"array_allocator"}),
         );
     } else if (comptime types.isMatrix(X)) {
         @compileError("zml.ceil not defined for matrices, convert to array first");

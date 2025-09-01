@@ -482,8 +482,21 @@ fn ask_user(default: u32) !u32 {
     }
 }
 
-fn fillMatrix(a: anytype, factor: u32) void {
+fn fill(a: anytype, factor: u32) void {
     const A: type = zml.types.Numeric(@TypeOf(a));
+    if (comptime zml.types.isVector(@TypeOf(a))) {
+        var i: u32 = 0;
+        while (i < a.len) : (i += 1) {
+            if (comptime zml.types.isComplex(A)) {
+                a.data[i] = A.init(zml.scast(zml.types.Scalar(A), i + factor), zml.scast(zml.types.Scalar(A), i + factor));
+            } else {
+                a.data[i] = zml.scast(A, i + factor);
+            }
+        }
+
+        return;
+    }
+
     switch (comptime zml.types.matrixType(@TypeOf(a))) {
         .general, .triangular => {
             var i: u32 = 0;
@@ -550,36 +563,48 @@ fn fillMatrix(a: anytype, factor: u32) void {
     }
 }
 
-fn printMatrix(name: []const u8, a: anytype) void {
-    std.debug.print("Matrix {s}:\n", .{name});
-    if (comptime zml.types.isSymmetricMatrix(@TypeOf(a)) or zml.types.isHermitianMatrix(@TypeOf(a)) or zml.types.isTridiagonalMatrix(@TypeOf(a)) or zml.types.isPermutationMatrix(@TypeOf(a))) {
+fn print(name: []const u8, a: anytype) void {
+    if (comptime zml.types.isVector(@TypeOf(a))) {
+        std.debug.print("Vector {s}:\n", .{name});
         var i: u32 = 0;
-        while (i < a.size) : (i += 1) {
-            var j: u32 = 0;
-            while (j < a.size) : (j += 1) {
-                if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
-                    std.debug.print("{d:3} + {d:3}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
-                } else {
-                    std.debug.print("{d:3}  ", .{a.get(i, j) catch unreachable});
-                }
+        while (i < a.len) : (i += 1) {
+            if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
+                std.debug.print("{d:3} + {d:3}i\n", .{ (a.get(i) catch unreachable).re, (a.get(i) catch unreachable).im });
+            } else {
+                std.debug.print("{d:3}\n", .{a.get(i) catch unreachable});
             }
-            std.debug.print("\n", .{});
         }
-        std.debug.print("\n", .{});
     } else {
-        var i: u32 = 0;
-        while (i < a.rows) : (i += 1) {
-            var j: u32 = 0;
-            while (j < a.cols) : (j += 1) {
-                if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
-                    std.debug.print("{d:3} + {d:3}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
-                } else {
-                    std.debug.print("{d:3}  ", .{a.get(i, j) catch unreachable});
+        std.debug.print("Matrix {s}:\n", .{name});
+        if (comptime zml.types.isSymmetricMatrix(@TypeOf(a)) or zml.types.isHermitianMatrix(@TypeOf(a)) or zml.types.isTridiagonalMatrix(@TypeOf(a)) or zml.types.isPermutationMatrix(@TypeOf(a))) {
+            var i: u32 = 0;
+            while (i < a.size) : (i += 1) {
+                var j: u32 = 0;
+                while (j < a.size) : (j += 1) {
+                    if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
+                        std.debug.print("{d:3} + {d:3}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
+                    } else {
+                        std.debug.print("{d:3}  ", .{a.get(i, j) catch unreachable});
+                    }
                 }
+                std.debug.print("\n", .{});
+            }
+            std.debug.print("\n", .{});
+        } else {
+            var i: u32 = 0;
+            while (i < a.rows) : (i += 1) {
+                var j: u32 = 0;
+                while (j < a.cols) : (j += 1) {
+                    if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
+                        std.debug.print("{d:3} + {d:3}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
+                    } else {
+                        std.debug.print("{d:3}  ", .{a.get(i, j) catch unreachable});
+                    }
+                }
+                std.debug.print("\n", .{});
             }
             std.debug.print("\n", .{});
         }
-        std.debug.print("\n", .{});
     }
 }
 
@@ -606,26 +631,29 @@ fn randomPermutation(data: []u32) void {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.Permutation = try .init(a, 5);
+    // var A: zml.matrix.Permutation(f64) = try .init(a, 5);
+    // defer A.deinit(a);
+
+    var A: zml.vector.Vector(f64) = try .init(a, 10);
     defer A.deinit(a);
 
-    fillMatrix(A, 1);
-    printMatrix("A", A);
+    fill(A, 1);
+    print("A", A);
 
     var B: zml.matrix.Tridiagonal(f64) = try .init(a, 5);
     defer B.deinit(a);
 
-    fillMatrix(B, 2);
-    printMatrix("B", B);
+    fill(B, 2);
+    print("B", B);
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.matrix.General(f64, .col_major) = try zml.matrix.apply2(a, A, B, zml.sub, .{});
+    var C: zml.vector.Vector(f64) = try zml.div(A, 2, .{ .vector_allocator = a });
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 
     std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    printMatrix("C = A - B", C);
+    print("C = A - B", C);
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

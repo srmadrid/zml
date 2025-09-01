@@ -581,7 +581,7 @@ pub fn isMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                const matrix_types: [if (isComplex(numeric_type)) 24 else 20]type = if (comptime isComplex(numeric_type)) .{
+                const matrix_types: [if (isComplex(numeric_type)) 25 else 21]type = if (comptime isComplex(numeric_type)) .{
                     matrix.General(numeric_type, .col_major),
                     matrix.General(numeric_type, .row_major),
                     matrix.Symmetric(numeric_type, .upper, .col_major),
@@ -604,6 +604,7 @@ pub fn isMatrix(comptime T: type) bool {
                     matrix.Banded(numeric_type, .col_major),
                     matrix.Banded(numeric_type, .row_major),
                     matrix.Tridiagonal(numeric_type),
+                    matrix.Permutation(numeric_type),
                     matrix.Sparse(numeric_type, .col_major),
                     matrix.Sparse(numeric_type, .row_major),
                 } else .{
@@ -625,6 +626,7 @@ pub fn isMatrix(comptime T: type) bool {
                     matrix.Banded(numeric_type, .col_major),
                     matrix.Banded(numeric_type, .row_major),
                     matrix.Tridiagonal(numeric_type),
+                    matrix.Permutation(numeric_type),
                     matrix.Sparse(numeric_type, .col_major),
                     matrix.Sparse(numeric_type, .row_major),
                 };
@@ -632,8 +634,6 @@ pub fn isMatrix(comptime T: type) bool {
                 inline for (matrix_types) |matrix_type| {
                     if (T == matrix_type) return true;
                 }
-
-                if (T == matrix.Permutation) return true;
             }
 
             return false;
@@ -840,7 +840,20 @@ pub fn isTridiagonalMatrix(comptime T: type) bool {
 }
 
 pub fn isPermutationMatrix(comptime T: type) bool {
-    return T == matrix.Permutation;
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == matrix.Permutation(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
 }
 
 /// Checks if the input type is an instance of a `matrix.Sparse`.
@@ -1496,6 +1509,179 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
     }
 }
 
+/// Coerces the input types to the smallest type that can represent the result
+/// of their multiplication.
+///
+/// For scalar or array types, this is equivalent to `Coerce`. For matrices and
+/// vectors, this function takes into account the rules of linear algebra to
+/// determine the appropriate resulting type.
+///
+/// Parameters
+/// ----------
+/// comptime X (`type`): The first type to coerce. Must be a supported numeric
+/// type, a vector, a matrix, or an array.
+///
+/// comptime Y (`type`): The second type to coerce. Must be a supported numeric
+/// type, a vector, a matrix, or an array.
+///
+/// Returns
+/// -------
+/// `type`: The coerced type that can represent the result of multiplying `X`
+/// and `Y`.
+pub fn MulCoerce(comptime X: type, comptime Y: type) type {
+    if (comptime X == Y and !isTriangularMatrix(X) and !isPermutationMatrix(X)) {
+        return X;
+    }
+
+    switch (comptime domainType(X)) {
+        .numeric => switch (comptime domainType(Y)) {
+            .numeric => {},
+            .vector => return vector.Vector(Coerce(X, Numeric(Y))), // numeric * vector
+            .matrix => switch (comptime matrixType(Y)) {
+                .general => return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric * general
+                .symmetric => return matrix.Symmetric(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)), // numeric * symmetric
+                .hermitian => {
+                    if (comptime isComplex(X)) {
+                        return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)); // numeric (complex) * hermitian
+                    } else {
+                        return matrix.Hermitian(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)); // numeric (real) * hermitian
+                    }
+                },
+                .triangular => return matrix.Triangular(Coerce(X, Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // numeric * triangular
+                .diagonal => return matrix.Diagonal(Coerce(X, Numeric(Y))), // numeric * diagonal
+                .banded => return matrix.Banded(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric * banded
+                .tridiagonal => return matrix.Tridiagonal(Coerce(X, Numeric(Y))), // numeric * tridiagonal
+                .permutation => return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric * permutation
+                .sparse => return matrix.Sparse(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric * sparse
+                .numeric => unreachable,
+            },
+            .array => return Coerce(X, Y), // numeric * array
+        },
+        .vector => switch (comptime domainType(Y)) {
+            .numeric => return vector.Vector(Coerce(Numeric(X), Y)), // vector * numeric
+            .vector => return Coerce(X, Y), // vector * vector (dot product)
+            .matrix => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // vector * matrix
+            .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // vector * array
+        },
+        .matrix => {
+            switch (comptime matrixType(X)) {
+                .general => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y), orderOf(X)), // general * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // general * vector
+                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // general * matrix
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // general * array
+                },
+                .symmetric => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.Symmetric(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)), // symmetric * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // symmetric * vector
+                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // symmetric * matrix
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // symmetric + array
+                },
+                .hermitian => switch (comptime domainType(Y)) {
+                    .numeric => {
+                        if (comptime isComplex(Y)) {
+                            return matrix.General(Coerce(Numeric(X), Y), orderOf(X)); // hermitian * numeric (complex)
+                        } else {
+                            return matrix.Hermitian(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)); // hermitian * numeric (real)
+                        }
+                    },
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // hermitian * vector
+                    .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // hermitian * matrix
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // hermitian * array
+                },
+                .triangular => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.Triangular(Coerce(Numeric(X), Y), uploOf(X), .non_unit, orderOf(X)), // triangular * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // triangular * vector
+                    .matrix => switch (comptime matrixType(Y)) {
+                        .triangular => {
+                            if (comptime uploOf(X) == uploOf(Y)) {
+                                if (comptime diagOf(X) == diagOf(Y)) {
+                                    return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(X), diagOf(X), orderOf(X)); // triangular * triangular (same uplo, same diag)
+                                } else {
+                                    return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)); // triangular * triangular (same uplo, different diag)
+                                }
+                            } else {
+                                return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // triangular * triangular (different uplo)
+                            }
+                        },
+                        .diagonal => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // triangular * diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular * banded
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular * tridiagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular * rest of matrices
+                    },
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // triangular * array
+                },
+                .diagonal => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.Diagonal(Coerce(Numeric(X), Y)), // diagonal * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // diagonal * vector
+                    .matrix => switch (comptime matrixType(Y)) {
+                        .triangular => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal * triangular
+                        .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal * diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal * banded
+                        .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal * tridiagonal
+                        .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal * sparse
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal * rest of matrices
+                    },
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal * array
+                },
+                .banded => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.Banded(Coerce(Numeric(X), Y), orderOf(X)), // banded * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // banded * vector
+                    .matrix => switch (comptime matrixType(Y)) {
+                        .triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded * triangular
+                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded * diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded * banded
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded * tridiagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded * rest of matrices
+                    },
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded * array
+                },
+                .tridiagonal => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.Tridiagonal(Coerce(Numeric(X), Y)), // tridiagonal * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // tridiagonal * vector
+                    .matrix => switch (comptime matrixType(Y)) {
+                        .triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal * triangular
+                        .diagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal * diagonal
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal * banded
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal * tridiagonal
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal * rest of matrices
+                    },
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal * array
+                },
+                .permutation => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.General(Coerce(Numeric(X), Y), orderOf(X)), // permutation * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // permutation * vector
+                    .matrix => switch (comptime matrixType(Y)) {
+                        .permutation => return matrix.Permutation(Coerce(Numeric(X), Numeric(Y))), // permutation * permutation
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // permutation * rest of matrices
+                    },
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // permutation * array
+                },
+                .sparse => switch (comptime domainType(Y)) {
+                    .numeric => return matrix.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse * numeric
+                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // sparse * vector
+                    .matrix => switch (comptime matrixType(Y)) {
+                        .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse * sparse
+                        else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse * rest of matrices
+                    },
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse * array
+                },
+                .numeric => unreachable,
+            }
+        },
+        .array => {
+            switch (comptime domainType(X)) {
+                .numeric => return Coerce(X, Y), // array * numeric
+                .vector => @compileError("Cannot coerce array and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // array * vector
+                .matrix => @compileError("Cannot coerce array and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // array * matrix
+                .array => return Coerce(X, Y), // array * array
+            }
+        },
+    }
+
+    return Coerce(X, Y);
+}
+
 /// Checks if if `K` can be coerced to `V` without loss of information. This is
 /// a more flexible version of `Coerce`, as it does not require `V` to be to the
 /// smallest type that can represent both types. The only requirement is that
@@ -1757,13 +1943,7 @@ pub fn EnsureDomain(comptime X: type, comptime Y: type) type {
             .diagonal => return matrix.Diagonal(Y),
             .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
-            .permutation => {
-                if (Y == u32) {
-                    return matrix.Permutation;
-                } else {
-                    return matrix.General(Y, .col_major);
-                }
-            },
+            .permutation => return matrix.Permutation(Y),
             .sparse => return matrix.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
@@ -1798,13 +1978,7 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
             .diagonal => return matrix.Diagonal(Y),
             .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
-            .permutation => {
-                if (Y == u32) {
-                    return matrix.Permutation;
-                } else {
-                    return matrix.General(Y, .col_major);
-                }
-            },
+            .permutation => return matrix.Permutation(Y),
             .sparse => return matrix.Sparse(Y, orderOf(X)),
             .numeric => unreachable,
         }
@@ -2175,8 +2349,12 @@ pub fn Scalar(comptime T: type) type {
 /// `type`: The underlying numeric type of the input type.
 pub fn Numeric(comptime T: type) type {
     if (isArray(T) or isMatrix(T) or isVector(T)) {
-        const t: T = .empty;
-        return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
+        if (isPermutationMatrix(T)) {
+            return T.tp();
+        } else {
+            const t: T = .empty;
+            return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
+        }
     }
 
     if (!isNumeric(T)) {

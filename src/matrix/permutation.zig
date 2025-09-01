@@ -24,175 +24,196 @@ const Flags = matrix.Flags;
 const array = @import("../array.zig");
 const Dense = array.Dense;
 
-pub const Permutation = struct {
-    data: [*]u32,
-    size: u32,
-    flags: Flags = .{},
+pub fn Permutation(T: type) type {
+    if (!types.isNumeric(T))
+        @compileError("Permutation requires a numeric type, got " ++ @typeName(T));
 
-    pub const empty: Permutation = .{
-        .data = &.{},
-        .size = 0,
-        .flags = .{ .owns_data = false },
-    };
-
-    pub fn init(
-        allocator: std.mem.Allocator,
+    return struct {
+        data: [*]u32,
         size: u32,
-    ) !Permutation {
-        if (size == 0)
-            return matrix.Error.ZeroDimension;
+        flags: Flags = .{},
 
-        return .{
-            .data = (try allocator.alloc(u32, size)).ptr,
-            .size = size,
-            .flags = .{ .owns_data = true },
+        pub const empty: Permutation(T) = .{
+            .data = &.{},
+            .size = 0,
+            .flags = .{ .owns_data = false },
         };
-    }
 
-    pub fn eye(
-        allocator: std.mem.Allocator,
-        size: u32,
-    ) !Permutation {
-        const mat: Permutation = try .init(allocator, size);
-        errdefer mat.deinit(allocator);
-
-        var i: u32 = 0;
-        while (i < size) : (i += 1) {
-            mat.data[i] = i;
+        pub fn tp() type {
+            return T;
         }
 
-        return mat;
-    }
+        pub fn init(
+            allocator: std.mem.Allocator,
+            size: u32,
+        ) !Permutation(T) {
+            if (size == 0)
+                return matrix.Error.ZeroDimension;
 
-    pub fn deinit(self: *Permutation, allocator: ?std.mem.Allocator) void {
-        if (self.flags.owns_data) {
-            allocator.?.free(self.data[0..self.size]);
+            return .{
+                .data = (try allocator.alloc(u32, size)).ptr,
+                .size = size,
+                .flags = .{ .owns_data = true },
+            };
         }
 
-        self.* = undefined;
-    }
+        pub fn eye(
+            allocator: std.mem.Allocator,
+            size: u32,
+        ) !Permutation(T) {
+            const mat: Permutation(T) = try .init(allocator, size);
+            errdefer mat.deinit(allocator);
 
-    pub fn get(self: *const Permutation, row: u32, col: u32) !u32 {
-        if (row >= self.size or col >= self.size)
-            return matrix.Error.PositionOutOfBounds;
-
-        if (self.data[row] == col) {
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-
-    pub inline fn at(self: *const Permutation, row: u32, col: u32) u32 {
-        // Unchecked version of get. Assumes row and col are valid and
-        // in banded range.
-        if (self.data[row] == col) {
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-
-    // pub fn set(self: *Permutation, row: u32, col: u32, value: u32) !void {
-    //     if (row >= self.size or col >= self.size)
-    //         return matrix.Error.PositionOutOfBounds;
-
-    //     if (value != 0 and value != 1)
-    //         return matrix.Error.BreaksStructure;
-    // }
-
-    // pub inline fn put(self: *Permutation, row: u32, col: u32, value: u32) void {
-    //     // Unchecked version of set. Assumes row and col are valid and
-    //     // in banded range.
-    //     if (value == 1) {
-    //         self.data[row] = col;
-    //     }
-    // }
-
-    pub fn toGeneral(self: Permutation, allocator: std.mem.Allocator, comptime order: Order) !General(u32, order) {
-        var result: General(u32, order) = try .init(allocator, self.size, self.size);
-        errdefer result.deinit(allocator);
-
-        if (comptime order == .col_major) {
-            var j: u32 = 0;
-            while (j < self.size) : (j += 1) {
-                var i: u32 = 0;
-                while (i < self.size) : (i += 1) {
-                    result.data[i + j * result.ld] = if (self.data[i] == j) 1 else 0;
-                }
-            }
-        } else {
             var i: u32 = 0;
-            while (i < self.size) : (i += 1) {
+            while (i < size) : (i += 1) {
+                mat.data[i] = i;
+            }
+
+            return mat;
+        }
+
+        pub fn deinit(self: *Permutation(T), allocator: ?std.mem.Allocator) void {
+            if (self.flags.owns_data) {
+                allocator.?.free(self.data[0..self.size]);
+            }
+
+            self.* = undefined;
+        }
+
+        pub fn get(self: *const Permutation(T), row: u32, col: u32) !T {
+            if (row >= self.size or col >= self.size)
+                return matrix.Error.PositionOutOfBounds;
+
+            if (self.data[row] == col) {
+                return constants.one(T, .{}) catch unreachable;
+            } else {
+                return constants.zero(T, .{}) catch unreachable;
+            }
+        }
+
+        pub inline fn at(self: *const Permutation(T), row: u32, col: u32) T {
+            // Unchecked version of get. Assumes row and col are valid and
+            // in banded range.
+            if (self.data[row] == col) {
+                return constants.one(T, .{}) catch unreachable;
+            } else {
+                return constants.zero(T, .{}) catch unreachable;
+            }
+        }
+
+        // pub fn set(self: *Permutation(T), row: u32, col: u32, value: u32) !void {
+        //     if (row >= self.size or col >= self.size)
+        //         return matrix.Error.PositionOutOfBounds;
+
+        //     if (value != 0 and value != 1)
+        //         return matrix.Error.BreaksStructure;
+        // }
+
+        // pub inline fn put(self: *Permutation(T), row: u32, col: u32, value: u32) void {
+        //     // Unchecked version of set. Assumes row and col are valid and
+        //     // in banded range.
+        //     if (value == 1) {
+        //         self.data[row] = col;
+        //     }
+        // }
+
+        pub fn toGeneral(self: Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !General(T, order) {
+            var result: General(T, order) = try .init(allocator, self.size, self.size);
+            errdefer result.deinit(allocator);
+
+            if (comptime order == .col_major) {
                 var j: u32 = 0;
                 while (j < self.size) : (j += 1) {
-                    result.data[i * result.ld + j] = if (self.data[i] == j) 1 else 0;
+                    var i: u32 = 0;
+                    while (i < self.size) : (i += 1) {
+                        result.data[i + j * result.ld] = if (self.data[i] == j)
+                            constants.one(T, ctx) catch unreachable
+                        else
+                            constants.zero(T, ctx) catch unreachable;
+                    }
                 }
-            }
-        }
-
-        return result;
-    }
-
-    pub fn toDenseArray(self: *const Permutation, allocator: std.mem.Allocator, comptime order: Order) !Dense(u32, order) {
-        var result: Dense(u32, order) = try .init(allocator, &.{ self.size, self.size });
-        errdefer result.deinit(allocator);
-
-        if (comptime order == .col_major) {
-            var j: u32 = 0;
-            while (j < self.size) : (j += 1) {
+            } else {
                 var i: u32 = 0;
                 while (i < self.size) : (i += 1) {
-                    result.data[i + j * result.strides[0]] = if (self.data[i] == j) 1 else 0;
+                    var j: u32 = 0;
+                    while (j < self.size) : (j += 1) {
+                        result.data[i * result.ld + j] = if (self.data[i] == j)
+                            constants.one(T, ctx) catch unreachable
+                        else
+                            constants.zero(T, ctx) catch unreachable;
+                    }
                 }
             }
-        } else {
-            var i: u32 = 0;
-            while (i < self.size) : (i += 1) {
+
+            return result;
+        }
+
+        pub fn toDenseArray(self: *const Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !Dense(T, order) {
+            var result: Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
+            errdefer result.deinit(allocator);
+
+            if (comptime order == .col_major) {
                 var j: u32 = 0;
                 while (j < self.size) : (j += 1) {
-                    result.data[i * result.strides[0] + j] = if (self.data[i] == j) 1 else 0;
+                    var i: u32 = 0;
+                    while (i < self.size) : (i += 1) {
+                        result.data[i + j * result.strides[0]] = if (self.data[i] == j)
+                            constants.one(T, ctx) catch unreachable
+                        else
+                            constants.zero(T, ctx) catch unreachable;
+                    }
+                }
+            } else {
+                var i: u32 = 0;
+                while (i < self.size) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < self.size) : (j += 1) {
+                        result.data[i * result.strides[0] + j] = if (self.data[i] == j)
+                            constants.one(T, ctx) catch unreachable
+                        else
+                            constants.zero(T, ctx) catch unreachable;
+                    }
                 }
             }
+
+            return result;
         }
 
-        return result;
-    }
+        pub fn transpose(self: Permutation(T), allocator: std.mem.Allocator) !Permutation(T) {
+            var result: Permutation(T) = try .init(allocator, self.size);
+            errdefer result.deinit(allocator);
 
-    pub fn transpose(self: Permutation, allocator: std.mem.Allocator) !Permutation {
-        var result: Permutation = try .init(allocator, self.size);
-        errdefer result.deinit(allocator);
+            var i: u32 = 0;
+            while (i < self.size) : (i += 1) {
+                result.data[self.data[i]] = i;
+            }
 
-        var i: u32 = 0;
-        while (i < self.size) : (i += 1) {
-            result.data[self.data[i]] = i;
+            return result;
         }
 
-        return result;
-    }
+        // pub fn submatrix(
+        //     self: *const Permutation(T),
+        //     start: u32,
+        //     end: u32,
+        // ) !? {
+        //     if (start >= self.size or end > self.size or start >= end)
+        //         return matrix.Error.InvalidRange;
 
-    // pub fn submatrix(
-    //     self: *const Permutation,
-    //     start: u32,
-    //     end: u32,
-    // ) !? {
-    //     if (start >= self.size or end > self.size or start >= end)
-    //         return matrix.Error.InvalidRange;
+        //     const sub_size = end - start;
 
-    //     const sub_size = end - start;
-
-    //     return .{
-    //         .data = self.data,
-    //         .size = sub_size,
-    //         .osize = self.osize,
-    //         .offset = self.offset + start,
-    //         .sdoffset = self.sdoffset,
-    //         .flags = .{
-    //             .owns_data = false,
-    //         },
-    //     };
-    // }
-};
+        //     return .{
+        //         .data = self.data,
+        //         .size = sub_size,
+        //         .osize = self.osize,
+        //         .offset = self.offset + start,
+        //         .sdoffset = self.sdoffset,
+        //         .flags = .{
+        //             .owns_data = false,
+        //         },
+        //     };
+        // }
+    };
+}
 
 pub fn apply2(
     allocator: std.mem.Allocator,

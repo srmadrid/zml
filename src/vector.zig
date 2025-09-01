@@ -3,7 +3,10 @@ const std = @import("std");
 const types = @import("types.zig");
 const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
+const Coerce = types.Coerce;
+const MulCoerce = types.MulCoerce;
 const int = @import("int.zig");
+const ops = @import("ops.zig");
 
 const matrix = @import("matrix.zig");
 const Diagonal = matrix.Diagonal;
@@ -18,13 +21,14 @@ pub fn Vector(T: type) type {
 
     return struct {
         data: [*]T,
-        len: u32,
+        len: i32,
         inc: i32,
         flags: Flags = .{},
 
         pub const empty = Vector(T){
             .data = &.{},
             .len = 0,
+            .inc = 0,
             .flags = .{ .owns_data = false },
         };
 
@@ -34,7 +38,7 @@ pub fn Vector(T: type) type {
 
             return .{
                 .data = (try allocator.alloc(T, len)).ptr,
-                .len = len,
+                .len = types.scast(i32, len),
                 .inc = 1,
                 .flags = .{ .owns_data = true },
             };
@@ -42,7 +46,7 @@ pub fn Vector(T: type) type {
 
         pub fn deinit(self: *Vector(T), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.free(self.data[0..self.len]);
+                allocator.free(self.data[0..types.scast(u32, self.len)]);
             }
 
             self.* = undefined;
@@ -55,7 +59,7 @@ pub fn Vector(T: type) type {
             return if (self.inc > 0)
                 self.data[index * types.scast(u32, self.inc)]
             else
-                self.data[(-self.len + 1) * types.scast(u32, int.abs(self.inc)) - index * types.scast(u32, int.abs(self.inc))];
+                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
         }
 
         pub inline fn at(self: *const Vector(T), index: u32) T {
@@ -63,7 +67,7 @@ pub fn Vector(T: type) type {
             return if (self.inc > 0)
                 self.data[index * types.scast(u32, self.inc)]
             else
-                self.data[(-self.len + 1) * types.scast(u32, int.abs(self.inc)) - index * types.scast(u32, int.abs(self.inc))];
+                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
         }
 
         pub fn set(self: *Vector(T), index: u32, value: T) !void {
@@ -73,7 +77,7 @@ pub fn Vector(T: type) type {
             if (self.inc > 0) {
                 self.data[index * types.scast(u32, self.inc)] = value;
             } else {
-                self.data[(-self.len + 1) * types.scast(u32, int.abs(self.inc)) - index * types.scast(u32, int.abs(self.inc))] = value;
+                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))] = value;
             }
         }
 
@@ -82,7 +86,7 @@ pub fn Vector(T: type) type {
             if (self.inc > 0) {
                 self.data[index * types.scast(u32, self.inc)] = value;
             } else {
-                self.data[(-self.len + 1) * types.scast(u32, int.abs(self.inc)) - index * types.scast(u32, int.abs(self.inc))] = value;
+                self.data[types.scast(u32, (-self.len + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))] = value;
             }
         }
 
@@ -111,9 +115,9 @@ pub fn apply2(
     comptime op: anytype,
     ctx: anytype,
 ) !Vector(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
-    const X: type = Numeric(@TypeOf(x));
-    const Y: type = Numeric(@TypeOf(y));
-    const R: type = Vector(ReturnType2(op, X, Y));
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = Vector(ReturnType2(op, Numeric(X), Numeric(Y)));
 
     comptime if (!types.isVector(X) and !types.isVector(Y))
         @compileError("apply2: at least one of x or y must be a vector, got " ++
@@ -123,7 +127,7 @@ pub fn apply2(
         @compileError("apply2: op must be a function of two arguments, or a function of three arguments with the third argument being a context, got " ++ @typeName(@TypeOf(op)));
 
     if (comptime !types.isVector(@TypeOf(x))) {
-        var result: R = try .init(allocator, y.len);
+        var result: R = try .init(allocator, types.scast(u32, y.len));
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -152,7 +156,7 @@ pub fn apply2(
 
         return result;
     } else if (comptime !types.isVector(@TypeOf(y))) {
-        var result: R = try .init(allocator, x.len);
+        var result: R = try .init(allocator, types.scast(u32, x.len));
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -185,7 +189,7 @@ pub fn apply2(
     if (x.len != y.len)
         return Error.DimensionMismatch;
 
-    var result: R = try .init(allocator, x.len);
+    var result: R = try .init(allocator, types.scast(u32, x.len));
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));
@@ -215,6 +219,152 @@ pub fn apply2(
     }
 
     return result;
+}
+
+pub inline fn add(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
+    const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
+
+    comptime if (!types.isVector(@TypeOf(x)) or !types.isVector(@TypeOf(y)))
+        @compileError("Both arguments to add must be vector types");
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        types.validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        if (types.numericType(C) == .int) {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{ .mode = .{ .type = int.Mode, .required = false } },
+            );
+        } else {
+            types.validateContext(@TypeOf(ctx), .{});
+        }
+    };
+
+    return apply2(
+        allocator,
+        x,
+        y,
+        ops.add,
+        ctx,
+    );
+}
+
+pub inline fn sub(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
+    const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
+
+    comptime if (!types.isVector(@TypeOf(x)) or !types.isVector(@TypeOf(y)))
+        @compileError("Both arguments to sub must be vector types");
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        types.validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        if (types.numericType(C) == .int) {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{ .mode = .{ .type = int.Mode, .required = false } },
+            );
+        } else {
+            types.validateContext(@TypeOf(ctx), .{});
+        }
+    };
+
+    return apply2(
+        allocator,
+        x,
+        y,
+        ops.sub,
+        ctx,
+    );
+}
+
+pub inline fn mul(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !MulCoerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(Numeric(X), Numeric(Y));
+
+    comptime if (!types.isVector(X) and !types.isVector(Y))
+        @compileError("At least one of the arguments must be a vector type");
+
+    if (comptime types.isVector(X) and types.isVector(Y)) { // vector * vector
+        comptime if (types.isArbitraryPrecision(C)) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            types.validateContext(@TypeOf(ctx), .{});
+        };
+
+        @compileError("Vector-vector multiplication not implemented yet");
+        // return linalg.dot(...);
+    } else {
+        comptime if (types.isArbitraryPrecision(C)) { // scalar * vector  or  vector * scalar
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.numericType(C) == .int) {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{ .mode = .{ .type = int.Mode, .required = false } },
+                );
+            } else {
+                types.validateContext(@TypeOf(ctx), .{});
+            }
+        };
+
+        return apply2(
+            allocator,
+            x,
+            y,
+            ops.mul,
+            ctx,
+        );
+    }
+}
+
+pub inline fn div(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(Numeric(X), Numeric(Y));
+
+    comptime if (!types.isVector(X) and types.isVector(Y))
+        @compileError("First argument must be a vector type and second argument must be a scalar type");
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        @compileError("Arbitrary precision types not implemented yet");
+    } else {
+        types.validateContext(@TypeOf(ctx), .{});
+    };
+
+    return apply2(
+        allocator,
+        x,
+        y,
+        ops.div,
+        ctx,
+    );
 }
 
 pub const Error = error{

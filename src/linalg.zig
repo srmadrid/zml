@@ -1,6 +1,20 @@
 pub const blas = @import("linalg/blas.zig");
 pub const lapack = @import("linalg/lapack.zig");
 
+const lu_ = @import("linalg/lu.zig");
+pub const LU = lu_.LU;
+pub const lu = lu_.lu;
+pub const PLU = lu_.PLU;
+pub const plu = lu_.plu;
+pub const PLUQ = lu_.PLUQ;
+pub const pluq = lu_.pluq;
+
+const qr_ = @import("linalg/qr.zig");
+pub const QR = qr_.QR;
+pub const qr = qr_.qr;
+pub const QRP = qr_.QRP;
+pub const qrp = qr_.qrp;
+
 pub const Transpose = enum(u2) {
     no_trans,
     trans,

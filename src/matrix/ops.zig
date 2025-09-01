@@ -2,6 +2,7 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const Coerce = types.Coerce;
+const MulCoerce = types.MulCoerce;
 const Scalar = types.Scalar;
 const Numeric = types.Numeric;
 const Child = types.Child;
@@ -231,14 +232,84 @@ pub fn apply2(
     }
 }
 
-// Example
-pub inline fn mul(
+pub inline fn add(
     allocator: std.mem.Allocator,
     x: anytype,
     y: anytype,
     ctx: anytype,
 ) !Coerce(@TypeOf(x), @TypeOf(y)) {
-    _ = allocator;
+    const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
+
+    comptime if (!types.isMatrix(@TypeOf(x)) or !types.isMatrix(@TypeOf(y)))
+        @compileError("Both arguments to add must be matrix types");
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        types.validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        if (types.numericType(C) == .int) {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{ .mode = .{ .type = int.Mode, .required = false } },
+            );
+        } else {
+            types.validateContext(@TypeOf(ctx), .{});
+        }
+    };
+
+    return apply2(
+        allocator,
+        x,
+        y,
+        ops.add,
+        ctx,
+    );
+}
+
+pub inline fn sub(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
+    const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
+
+    comptime if (!types.isMatrix(@TypeOf(x)) or !types.isMatrix(@TypeOf(y)))
+        @compileError("Both arguments to sub must be matrix types");
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        types.validateContext(
+            @TypeOf(ctx),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+        );
+    } else {
+        if (types.numericType(C) == .int) {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{ .mode = .{ .type = int.Mode, .required = false } },
+            );
+        } else {
+            types.validateContext(@TypeOf(ctx), .{});
+        }
+    };
+
+    return apply2(
+        allocator,
+        x,
+        y,
+        ops.sub,
+        ctx,
+    );
+}
+
+pub inline fn mul(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !MulCoerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = Coerce(Numeric(X), Numeric(Y));
@@ -246,13 +317,16 @@ pub inline fn mul(
     comptime if (!types.isMatrix(X) and !types.isMatrix(Y))
         @compileError("At least one of the arguments must be a matrix type");
 
-    if (comptime types.isMatrix(X) and types.isMatrix(Y)) { // matrix * matrix
+    if (comptime (types.isMatrix(X) and types.isMatrix(Y)) or
+        types.isVector(X) or types.isVector(Y))
+    { // matrix * matrix  or  vector * matrix  or  matrix * vector
         comptime if (types.isArbitraryPrecision(C)) {
             @compileError("Arbitrary precision types not implemented yet");
         } else {
             types.validateContext(@TypeOf(ctx), .{});
         };
 
+        @compileError("Matrix multiplication not implemented yet");
         // return linalg.matmul(...);
     } else {
         comptime if (types.isArbitraryPrecision(C)) { // scalar * matrix  or  matrix * scalar
@@ -268,6 +342,40 @@ pub inline fn mul(
             }
         };
 
-        // return apply2(...);
+        return apply2(
+            allocator,
+            x,
+            y,
+            ops.mul,
+            ctx,
+        );
     }
+}
+
+pub inline fn div(
+    allocator: std.mem.Allocator,
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(Numeric(X), Numeric(Y));
+
+    comptime if (!types.isMatrix(X) and types.isMatrix(Y))
+        @compileError("First argument must be a matrix type and second argument must be a scalar type");
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        @compileError("Arbitrary precision types not implemented yet");
+    } else {
+        types.validateContext(@TypeOf(ctx), .{});
+    };
+
+    return apply2(
+        allocator,
+        x,
+        y,
+        ops.div,
+        ctx,
+    );
 }

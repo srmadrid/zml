@@ -25,6 +25,7 @@ pub const Real = real.Real;
 pub const complex = @import("complex.zig");
 pub const Complex = complex.Complex;
 
+pub const vector = @import("vector.zig");
 pub const matrix = @import("matrix.zig");
 pub const array = @import("array.zig");
 
