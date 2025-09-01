@@ -326,8 +326,7 @@ pub inline fn mul(
             types.validateContext(@TypeOf(ctx), .{});
         };
 
-        @compileError("Matrix multiplication not implemented yet");
-        // return linalg.matmul(...);
+        return linalg.matmul(allocator, x, y, ctx);
     } else {
         comptime if (types.isArbitraryPrecision(C)) { // scalar * matrix  or  matrix * scalar
             @compileError("Arbitrary precision types not implemented yet");

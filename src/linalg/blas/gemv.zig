@@ -199,6 +199,8 @@ fn k_gemv(
                             ) catch unreachable;
                         }
                     }
+
+                    jx += incx;
                 }
             } else {
                 var j: i32 = 0;

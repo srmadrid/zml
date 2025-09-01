@@ -32,19 +32,7 @@ pub inline fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(
     }
 }
 
-pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: anytype) !MulCoerce(Numeric(@TypeOf(a)), Numeric(@TypeOf(b))) {
-    const C: type = MulCoerce(Numeric(@TypeOf(a)), Numeric(@TypeOf(b)));
-
-    comptime if (!((types.isMatrix(@TypeOf(a)) and types.isMatrix(@TypeOf(b))) or
-        (types.isMatrix(@TypeOf(a)) and types.isVector(@TypeOf(b))) or
-        (types.isVector(@TypeOf(a)) and types.isMatrix(@TypeOf(b)))))
-        @compileError("matmul: at least one argument must be a matrix, the other must be a matrix or vector, got " ++ @typeName(@TypeOf(a)) ++ " and " ++ @typeName(@TypeOf(b)));
-
-    _ = C;
-    _ = allocator;
-    _ = ctx;
-    return Error.DimensionMismatch; // TODO
-}
+pub const matmul = @import("linalg/matmul.zig").matmul;
 
 const lu_ = @import("linalg/lu.zig");
 pub const LU = lu_.LU;
@@ -148,4 +136,5 @@ pub const Side = enum(u1) {
 pub const Error = error{
     DimensionMismatch,
     SingularMatrix,
+    NotImplemented,
 };

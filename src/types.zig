@@ -308,7 +308,7 @@ fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usi
 pub inline fn numericType(comptime T: type) NumericType {
     // Without inline functions calling this fail miserably. I have no idea why.
 
-    @setEvalBranchQuota(1000000);
+    @setEvalBranchQuota(10000000);
 
     switch (@typeInfo(T)) {
         .bool => return .bool,
@@ -2404,8 +2404,8 @@ pub fn orderOf(comptime T: type) Order {
 }
 
 pub fn uploOf(comptime T: type) Uplo {
-    if (isMatrix(T)) {
-        if (isComplex(Numeric(T))) {
+    if (comptime isMatrix(T)) {
+        if (comptime isComplex(Numeric(T))) {
             if (T == matrix.Symmetric(Numeric(T), .upper, orderOf(T)) or
                 T == matrix.Hermitian(Numeric(T), .upper, orderOf(T)) or
                 T == matrix.Triangular(Numeric(T), .upper, .non_unit, orderOf(T)) or
@@ -2427,8 +2427,8 @@ pub fn uploOf(comptime T: type) Uplo {
 }
 
 pub fn diagOf(comptime T: type) Diag {
-    if (isMatrix(T)) {
-        if (isComplex(Numeric(T))) {
+    if (comptime isMatrix(T)) {
+        if (comptime isComplex(Numeric(T))) {
             if (T == matrix.Triangular(Numeric(T), uploOf(T), .unit, orderOf(T)))
                 return .unit
             else
