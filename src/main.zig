@@ -582,9 +582,9 @@ fn print(name: []const u8, a: anytype) void {
                 var j: u32 = 0;
                 while (j < a.size) : (j += 1) {
                     if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
-                        std.debug.print("{d:3} + {d:3}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
+                        std.debug.print("{d:4} + {d:4}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
                     } else {
-                        std.debug.print("{d:3}  ", .{a.get(i, j) catch unreachable});
+                        std.debug.print("{d:4}  ", .{a.get(i, j) catch unreachable});
                     }
                 }
                 std.debug.print("\n", .{});
@@ -596,9 +596,9 @@ fn print(name: []const u8, a: anytype) void {
                 var j: u32 = 0;
                 while (j < a.cols) : (j += 1) {
                     if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
-                        std.debug.print("{d:3} + {d:3}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
+                        std.debug.print("{d:4} + {d:4}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
                     } else {
-                        std.debug.print("{d:3}  ", .{a.get(i, j) catch unreachable});
+                        std.debug.print("{d:4}  ", .{a.get(i, j) catch unreachable});
                     }
                 }
                 std.debug.print("\n", .{});
@@ -631,13 +631,13 @@ fn randomPermutation(data: []u32) void {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.General(f64, .row_major) = try .init(a, 3, 4);
+    var A: zml.matrix.General(f64, .row_major) = try .init(a, 5, 6);
     defer A.deinit(a);
 
     fill(A, 1);
     print("A", A);
 
-    var B: zml.matrix.Symmetric(f64, .lower, .row_major) = try .init(a, 4);
+    var B: zml.matrix.Triangular(f64, .upper, .non_unit, .col_major) = try .init(a, 6, 7);
     defer B.deinit(a);
 
     fill(B, 2);

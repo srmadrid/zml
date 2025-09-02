@@ -130,7 +130,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                         ctx,
                     );
                 } else {
-                    return linalg.Error.NotImplemented;
+                    try defaultSlowVM(&result, a, b, ctx);
                 }
 
                 return result;
@@ -194,8 +194,35 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                 return result;
             },
-            .tridiagonal => return linalg.Error.NotImplemented,
-            .permutation => return linalg.Error.NotImplemented,
+            .tridiagonal => { // vector * tridiagonal
+                if (a.len != b.size)
+                    return linalg.Error.DimensionMismatch;
+
+                var result: vector.Vector(C) = try .init(allocator, b.size);
+                errdefer result.deinit(allocator);
+
+                try defaultSlowVM(&result, a, b, ctx);
+
+                return result;
+            },
+            .permutation => { // vector * permutation
+                if (a.len != b.size)
+                    return linalg.Error.DimensionMismatch;
+
+                var result: vector.Vector(C) = try .init(allocator, b.size);
+                errdefer result.deinit(allocator);
+
+                var i: u32 = 0;
+                while (i < b.size) : (i += 1) {
+                    try ops.set(
+                        &result.data[b.data[i]],
+                        a.get(i) catch unreachable,
+                        ctx,
+                    );
+                }
+
+                return result;
+            },
             .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
             .numeric => unreachable,
         }
@@ -275,38 +302,42 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 return result;
             },
             .triangular => { // triangular * vector
-                if (a.rows != a.cols or a.cols != b.len)
+                if (a.cols != b.len)
                     return linalg.Error.DimensionMismatch;
 
                 var result: vector.Vector(C) = try .init(allocator, a.rows);
                 errdefer result.deinit(allocator);
 
-                try blas.copy(
-                    types.scast(i32, b.len),
-                    b.data,
-                    b.inc,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
+                if (a.rows == a.cols) {
+                    try blas.copy(
+                        types.scast(i32, b.len),
+                        b.data,
+                        b.inc,
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
 
-                try blas.trmv(
-                    types.orderOf(A),
-                    types.uploOf(A),
-                    .no_trans,
-                    types.diagOf(A),
-                    types.scast(i32, a.rows),
-                    a.data,
-                    types.scast(i32, a.ld),
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
+                    try blas.trmv(
+                        types.orderOf(A),
+                        types.uploOf(A),
+                        .no_trans,
+                        types.diagOf(A),
+                        types.scast(i32, a.rows),
+                        a.data,
+                        types.scast(i32, a.ld),
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
+                } else {
+                    try defaultSlowMV(&result, a, b, ctx);
+                }
 
                 return result;
             },
             .diagonal => { // diagonal * vector
-                if (a.rows != a.cols or a.cols != b.len)
+                if (a.cols != b.len)
                     return linalg.Error.DimensionMismatch;
 
                 var result: vector.Vector(C) = try .init(allocator, a.rows);
@@ -364,8 +395,35 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                 return result;
             },
-            .tridiagonal => return linalg.Error.NotImplemented,
-            .permutation => return linalg.Error.NotImplemented,
+            .tridiagonal => { // tridiagonal * vector
+                if (a.size != b.len)
+                    return linalg.Error.DimensionMismatch;
+
+                var result: vector.Vector(C) = try .init(allocator, a.size);
+                errdefer result.deinit(allocator);
+
+                try defaultSlowMV(&result, a, b, ctx);
+
+                return result;
+            },
+            .permutation => { // permutation * vector
+                if (a.size != b.len)
+                    return linalg.Error.DimensionMismatch;
+
+                var result: vector.Vector(C) = try .init(allocator, a.size);
+                errdefer result.deinit(allocator);
+
+                var i: u32 = 0;
+                while (i < a.size) : (i += 1) {
+                    try ops.set(
+                        &result.data[i],
+                        b.get(a.data[i]) catch unreachable,
+                        ctx,
+                    );
+                }
+
+                return result;
+            },
             .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
             .numeric => unreachable,
         }
@@ -425,12 +483,132 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
+                .hermitian => { // general * hermitian
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try blas.hemm(
+                        types.orderOf(A),
+                        .right,
+                        if (comptime types.orderOf(A) == types.orderOf(B)) types.uploOf(B) else types.uploOf(B).invert(),
+                        types.scast(i32, a.rows),
+                        types.scast(i32, b.size),
+                        1,
+                        b.data,
+                        types.scast(i32, b.ld),
+                        a.data,
+                        types.scast(i32, a.ld),
+                        0,
+                        result.data,
+                        types.scast(i32, result.ld),
+                        ctx,
+                    );
+
+                    return result;
+                },
+                .triangular => { // general * triangular
+                    if (a.cols != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.cols);
+                    errdefer result.deinit(allocator);
+
+                    if (b.rows == b.cols) {
+                        var i: u32 = 0;
+                        while (i < a.rows) : (i += 1) {
+                            try blas.copy(
+                                types.scast(i32, a.cols),
+                                a.data + if (comptime types.orderOf(A) == .col_major) i * a.ld else 0,
+                                if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, a.ld),
+                                result.data + if (comptime types.orderOf(A) == .col_major) i * result.ld else 0,
+                                if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
+                                ctx,
+                            );
+                        }
+
+                        try blas.trmm(
+                            types.orderOf(A),
+                            .right,
+                            if (comptime types.orderOf(A) == types.orderOf(B)) types.uploOf(B) else types.uploOf(B).invert(),
+                            if (comptime types.orderOf(A) == types.orderOf(B)) .no_trans else .trans,
+                            types.diagOf(B),
+                            types.scast(i32, a.rows),
+                            types.scast(i32, b.cols),
+                            1,
+                            b.data,
+                            types.scast(i32, b.ld),
+                            result.data,
+                            types.scast(i32, result.ld),
+                            ctx,
+                        );
+                    } else {
+                        try defaultSlowMM(&result, a, b, ctx);
+                    }
+
+                    return result;
+                },
+                .diagonal => { // general * diagonal
+                    if (a.cols != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .full(allocator, a.rows, b.cols, 0, ctx);
+                    errdefer result.deinit(allocator);
+
+                    // lapack.lascl2
+
+                    var j: u32 = 0;
+                    while (j < int.min(a.cols, b.cols)) : (j += 1) {
+                        try blas.axpy(
+                            types.scast(i32, a.rows),
+                            b.data[j],
+                            a.data + if (comptime types.orderOf(A) == .col_major) j * a.ld else j,
+                            if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, a.ld),
+                            result.data + if (comptime types.orderOf(A) == .col_major) j * result.ld else j,
+                            if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
+                            ctx,
+                        );
+                    }
+
+                    while (j < b.cols) : (j += 1) {
+                        var i: u32 = 0;
+                        while (i < a.rows) : (i += 1) {
+                            if (comptime types.orderOf(A) == .col_major) {
+                                result.data[i + j * result.ld] = try constants.zero(C, ctx);
+                            } else {
+                                result.data[i * result.ld + j] = try constants.zero(C, ctx);
+                            }
+                        }
+                    }
+
+                    return result;
+                },
+                .banded => { // general * banded
+                    if (a.cols != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .tridiagonal => { // general * tridiagonal
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+                    // lapack.lagtm
+
+                    return result;
+                },
+                .permutation => return linalg.Error.NotImplemented, // lapack.lapmt
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -524,10 +702,71 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
     }
 }
 
-fn defaultSlow(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
+fn defaultSlowVM(result: anytype, x: anytype, a: anytype, ctx: anytype) !void {
+    const A: type = @TypeOf(a);
+    const C: type = Numeric(types.Child(@TypeOf(result)));
+
+    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
+    const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
+
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        try result.set(i, try constants.zero(C, ctx));
+
+        var j: u32 = 0;
+        while (j < m) : (j += 1) {
+            try result.set(
+                i,
+                try ops.add(
+                    result.get(i) catch unreachable,
+                    try ops.mul(
+                        a.get(j, i) catch unreachable,
+                        x.get(j) catch unreachable,
+                        ctx,
+                    ),
+                    ctx,
+                ),
+            );
+        }
+    }
+}
+
+fn defaultSlowMV(result: anytype, a: anytype, x: anytype, ctx: anytype) !void {
+    const A: type = @TypeOf(a);
+    const C: type = Numeric(types.Child(@TypeOf(result)));
+
+    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
+    const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
+
+    if (x.len != n)
+        return linalg.Error.DimensionMismatch;
+
+    var i: u32 = 0;
+    while (i < m) : (i += 1) {
+        try result.set(i, try constants.zero(C, ctx));
+
+        var j: u32 = 0;
+        while (j < n) : (j += 1) {
+            try result.set(
+                i,
+                try ops.add(
+                    result.get(i) catch unreachable,
+                    try ops.mul(
+                        a.get(i, j) catch unreachable,
+                        x.get(j) catch unreachable,
+                        ctx,
+                    ),
+                    ctx,
+                ),
+            );
+        }
+    }
+}
+
+fn defaultSlowMM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     const A: type = @TypeOf(a);
     const B: type = @TypeOf(b);
-    const C: type = Numeric(@TypeOf(result));
+    const C: type = Numeric(types.Child(@TypeOf(result)));
 
     const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
     const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B)) b.size else b.cols;
@@ -545,12 +784,10 @@ fn defaultSlow(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
                     i,
                     j,
                     try ops.add(
-                        C,
-                        result.get(i, j),
+                        result.get(i, j) catch unreachable,
                         try ops.mul(
-                            C,
-                            a.get(i, kk),
-                            b.get(kk, j),
+                            a.get(i, kk) catch unreachable,
+                            b.get(kk, j) catch unreachable,
                             ctx,
                         ),
                         ctx,
