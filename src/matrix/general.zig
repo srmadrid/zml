@@ -202,7 +202,7 @@ pub fn General(T: type, order: Order) type {
                 .data = self.data,
                 .rows = self.cols,
                 .cols = self.rows,
-                .ld = if (comptime order == .col_major) self.cols else self.rows,
+                .ld = self.ld,
                 .flags = .{
                     .owns_data = false,
                 },

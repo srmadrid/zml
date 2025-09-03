@@ -633,13 +633,13 @@ fn randomPermutation(data: []u32) void {
 fn perfTesting(a: std.mem.Allocator) !void {
     const print_mats: bool = true;
 
-    var A: zml.matrix.General(f64, .col_major) = try .init(a, 8, 5);
+    var A: zml.matrix.Symmetric(f64, .lower, .row_major) = try .init(a, 5);
     defer A.deinit(a);
 
     fill(A, 1);
     if (print_mats) print("A", A);
 
-    var B: zml.matrix.Triangular(f64, .lower, .non_unit, .col_major) = try .init(a, 5, 7);
+    var B: zml.matrix.General(f64, .col_major) = try .init(a, 5, 6);
     defer B.deinit(a);
 
     fill(B, 2);
