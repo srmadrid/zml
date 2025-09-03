@@ -47,7 +47,7 @@ pub fn QRP(T: type, order: Order) type {
     return struct {
         q: General(T, order),
         r: Triangular(T, .upper, .non_unit, order),
-        p: Permutation,
+        p: Permutation(T),
 
         pub fn init(q: anytype, r: anytype, p: anytype, m: u32, n: u32, k: u32) QRP(Numeric(Coerce(@TypeOf(q), @TypeOf(r))), order) {
             return .{

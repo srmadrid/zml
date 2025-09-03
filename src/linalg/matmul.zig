@@ -130,7 +130,88 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                         ctx,
                     );
                 } else {
-                    try defaultSlowVM(&result, a, b, ctx);
+                    const min_dim: u32 = int.min(b.rows, b.cols);
+
+                    try blas.copy(
+                        types.scast(i32, min_dim),
+                        a.data,
+                        a.inc,
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
+
+                    try blas.trmv(
+                        types.orderOf(B),
+                        types.uploOf(B),
+                        .trans,
+                        types.diagOf(B),
+                        types.scast(i32, min_dim),
+                        b.data,
+                        types.scast(i32, b.ld),
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
+
+                    if (comptime types.uploOf(B) == .upper) {
+                        if (b.cols > min_dim) {
+                            try blas.gemv(
+                                types.orderOf(B),
+                                .trans,
+                                types.scast(i32, b.rows),
+                                types.scast(i32, b.cols - min_dim),
+                                1,
+                                b.data +
+                                    if (comptime types.orderOf(B) == .col_major)
+                                        min_dim * b.ld
+                                    else
+                                        min_dim,
+                                types.scast(i32, b.ld),
+                                a.data,
+                                a.inc,
+                                0,
+                                result.data + min_dim * types.scast(u32, result.inc),
+                                result.inc,
+                                ctx,
+                            );
+                        }
+                    } else {
+                        if (b.rows > min_dim) {
+                            try blas.gemv(
+                                types.orderOf(B),
+                                .trans,
+                                types.scast(i32, b.rows - min_dim),
+                                types.scast(i32, b.cols),
+                                1,
+                                b.data +
+                                    if (comptime types.orderOf(B) == .col_major)
+                                        min_dim
+                                    else
+                                        min_dim * b.ld,
+                                types.scast(i32, b.ld),
+                                a.data +
+                                    if (a.inc > 0)
+                                        min_dim * types.scast(u32, a.inc)
+                                    else
+                                        0,
+                                a.inc,
+                                1,
+                                result.data,
+                                result.inc,
+                                ctx,
+                            );
+                        }
+                        if (b.cols > min_dim) {
+                            try blas.scal(
+                                types.scast(i32, b.cols - min_dim),
+                                0,
+                                result.data + min_dim * types.scast(u32, result.inc),
+                                result.inc,
+                                ctx,
+                            );
+                        }
+                    }
                 }
 
                 return result;
@@ -201,6 +282,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 var result: vector.Vector(C) = try .init(allocator, b.size);
                 errdefer result.deinit(allocator);
 
+                // lapack.lagtm
                 try defaultSlowVM(&result, a, b, ctx);
 
                 return result;
@@ -331,7 +413,87 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                         ctx,
                     );
                 } else {
-                    try defaultSlowMV(&result, a, b, ctx);
+                    const min_dim: u32 = int.min(a.rows, a.cols);
+
+                    try blas.copy(
+                        types.scast(i32, min_dim),
+                        b.data,
+                        b.inc,
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
+
+                    try blas.trmv(
+                        types.orderOf(A),
+                        types.uploOf(A),
+                        .no_trans,
+                        types.diagOf(A),
+                        types.scast(i32, min_dim),
+                        a.data,
+                        types.scast(i32, a.ld),
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
+
+                    if (comptime types.uploOf(A) == .upper) {
+                        if (a.cols > min_dim) { // extra rows (filled)
+                            try blas.gemv(
+                                types.orderOf(A),
+                                .no_trans,
+                                types.scast(i32, a.rows),
+                                types.scast(i32, a.cols - min_dim),
+                                1,
+                                a.data +
+                                    if (comptime types.orderOf(A) == .col_major)
+                                        min_dim * a.ld
+                                    else
+                                        min_dim,
+                                types.scast(i32, a.ld),
+                                b.data +
+                                    if (b.inc > 0)
+                                        min_dim * types.scast(u32, b.inc)
+                                    else
+                                        0,
+                                b.inc,
+                                1,
+                                result.data,
+                                result.inc,
+                                ctx,
+                            );
+                        } else { // extra columns (zeroed)
+                            try blas.scal(
+                                types.scast(i32, a.rows - min_dim),
+                                0,
+                                result.data + min_dim * types.scast(u32, result.inc),
+                                result.inc,
+                                ctx,
+                            );
+                        }
+                    } else {
+                        if (a.rows > min_dim) { // extra rows (filled)
+                            try blas.gemv(
+                                types.orderOf(A),
+                                .no_trans,
+                                types.scast(i32, a.rows - min_dim),
+                                types.scast(i32, a.cols),
+                                1,
+                                a.data +
+                                    if (comptime types.orderOf(A) == .col_major)
+                                        min_dim
+                                    else
+                                        min_dim * a.ld,
+                                types.scast(i32, a.ld),
+                                b.data,
+                                b.inc,
+                                1,
+                                result.data + min_dim * types.scast(u32, result.inc),
+                                result.inc,
+                                ctx,
+                            );
+                        }
+                    }
                 }
 
                 return result;
@@ -402,6 +564,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 var result: vector.Vector(C) = try .init(allocator, a.size);
                 errdefer result.deinit(allocator);
 
+                // lapack.lagtm
                 try defaultSlowMV(&result, a, b, ctx);
 
                 return result;
@@ -517,16 +680,30 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                     errdefer result.deinit(allocator);
 
                     if (b.rows == b.cols) {
-                        var i: u32 = 0;
-                        while (i < a.rows) : (i += 1) {
-                            try blas.copy(
-                                types.scast(i32, a.cols),
-                                a.data + if (comptime types.orderOf(A) == .col_major) i * a.ld else 0,
-                                if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, a.ld),
-                                result.data + if (comptime types.orderOf(A) == .col_major) i * result.ld else 0,
-                                if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
-                                ctx,
-                            );
+                        if (comptime types.orderOf(A) == .col_major) {
+                            var j: u32 = 0;
+                            while (j < b.cols) : (j += 1) {
+                                try blas.copy(
+                                    types.scast(i32, a.rows),
+                                    a.data + j * a.ld,
+                                    1,
+                                    result.data + j * result.ld,
+                                    1,
+                                    ctx,
+                                );
+                            }
+                        } else {
+                            var i: u32 = 0;
+                            while (i < a.rows) : (i += 1) {
+                                try blas.copy(
+                                    types.scast(i32, b.cols),
+                                    a.data + i * a.ld,
+                                    1,
+                                    result.data + i * result.ld,
+                                    1,
+                                    ctx,
+                                );
+                            }
                         }
 
                         try blas.trmm(
@@ -545,7 +722,118 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                             ctx,
                         );
                     } else {
-                        try defaultSlowMM(&result, a, b, ctx);
+                        const min_dim: u32 = int.min(b.rows, b.cols);
+
+                        if (comptime types.orderOf(A) == .col_major) {
+                            var j: u32 = 0;
+                            while (j < min_dim) : (j += 1) {
+                                try blas.copy(
+                                    types.scast(i32, a.rows),
+                                    a.data + j * a.ld,
+                                    1,
+                                    result.data + j * result.ld,
+                                    1,
+                                    ctx,
+                                );
+                            }
+                        } else {
+                            var i: u32 = 0;
+                            while (i < a.rows) : (i += 1) {
+                                try blas.copy(
+                                    types.scast(i32, min_dim),
+                                    a.data + i * a.ld,
+                                    types.scast(i32, a.ld),
+                                    result.data + i * result.ld,
+                                    types.scast(i32, result.ld),
+                                    ctx,
+                                );
+                            }
+                        }
+
+                        try blas.trmm(
+                            types.orderOf(A),
+                            .right,
+                            if (comptime types.orderOf(A) == types.orderOf(B)) types.uploOf(B) else types.uploOf(B).invert(),
+                            if (comptime types.orderOf(A) == types.orderOf(B)) .no_trans else .trans,
+                            types.diagOf(B),
+                            types.scast(i32, a.rows),
+                            types.scast(i32, min_dim),
+                            1,
+                            b.data,
+                            types.scast(i32, b.ld),
+                            result.data,
+                            types.scast(i32, result.ld),
+                            ctx,
+                        );
+
+                        if (comptime types.uploOf(B) == .upper) {
+                            if (b.cols > min_dim) {
+                                try blas.gemm(
+                                    types.orderOf(A),
+                                    .no_trans,
+                                    if (comptime types.orderOf(A) == types.orderOf(B)) .no_trans else .trans,
+                                    types.scast(i32, a.rows),
+                                    types.scast(i32, b.cols - min_dim),
+                                    types.scast(i32, b.rows),
+                                    1,
+                                    a.data,
+                                    types.scast(i32, a.ld),
+                                    b.data + if (comptime types.orderOf(B) == .col_major)
+                                        min_dim * b.ld
+                                    else
+                                        min_dim,
+                                    types.scast(i32, b.ld),
+                                    0,
+                                    result.data + if (comptime types.orderOf(A) == .col_major)
+                                        min_dim * result.ld
+                                    else
+                                        min_dim,
+                                    types.scast(i32, result.ld),
+                                    ctx,
+                                );
+                            }
+                        } else {
+                            if (b.rows > min_dim) {
+                                try blas.gemm(
+                                    types.orderOf(A),
+                                    .no_trans,
+                                    if (comptime types.orderOf(A) == types.orderOf(B)) .no_trans else .trans,
+                                    types.scast(i32, a.rows),
+                                    types.scast(i32, b.cols),
+                                    types.scast(i32, b.rows - min_dim),
+                                    1,
+                                    a.data + if (comptime types.orderOf(A) == .col_major)
+                                        min_dim
+                                    else
+                                        min_dim * a.ld,
+                                    types.scast(i32, a.ld),
+                                    b.data + if (comptime types.orderOf(B) == .col_major)
+                                        min_dim
+                                    else
+                                        min_dim * b.ld,
+                                    types.scast(i32, b.ld),
+                                    1,
+                                    result.data,
+                                    types.scast(i32, result.ld),
+                                    ctx,
+                                );
+                            }
+                            if (b.cols > min_dim) {
+                                var j: u32 = min_dim;
+                                while (j < b.cols) : (j += 1) {
+                                    try blas.scal(
+                                        types.scast(i32, a.rows),
+                                        0,
+                                        result.data + if (comptime types.orderOf(A) == .col_major)
+                                            j * result.ld
+                                        else
+                                            j,
+                                        if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
+                                        ctx,
+                                    );
+                                }
+                            }
+                        }
                     }
 
                     return result;
@@ -603,8 +891,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                     var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.cols);
                     errdefer result.deinit(allocator);
 
-                    try defaultSlowMM(&result, a, b, ctx);
                     // lapack.lagtm
+                    try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },

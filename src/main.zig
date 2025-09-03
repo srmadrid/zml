@@ -631,26 +631,28 @@ fn randomPermutation(data: []u32) void {
 }
 
 fn perfTesting(a: std.mem.Allocator) !void {
-    var A: zml.matrix.General(f64, .row_major) = try .init(a, 5, 6);
+    const print_mats: bool = true;
+
+    var A: zml.matrix.General(f64, .col_major) = try .init(a, 8, 5);
     defer A.deinit(a);
 
     fill(A, 1);
-    print("A", A);
+    if (print_mats) print("A", A);
 
-    var B: zml.matrix.Triangular(f64, .upper, .non_unit, .col_major) = try .init(a, 6, 7);
+    var B: zml.matrix.Triangular(f64, .lower, .non_unit, .col_major) = try .init(a, 5, 7);
     defer B.deinit(a);
 
     fill(B, 2);
-    print("B", B);
+    if (print_mats) print("B", B);
 
     const start_time = std.time.nanoTimestamp();
-    var C: zml.matrix.General(f64, .row_major) = try zml.mul(A, B, .{ .matrix_allocator = a });
+    var C = try zml.mul(A, B, .{ .matrix_allocator = a });
     const end_time: i128 = std.time.nanoTimestamp();
     defer C.deinit(a);
 
     std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    print("C = A * B", C);
+    if (print_mats) print("C = A * B", C);
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

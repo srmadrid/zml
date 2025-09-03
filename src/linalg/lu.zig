@@ -43,7 +43,7 @@ pub fn LU(T: type, order: Order) type {
 
 pub fn PLU(T: type, order: Order) type {
     return struct {
-        p: Permutation,
+        p: Permutation(T),
         l: Triangular(T, .lower, .unit, order),
         u: Triangular(T, .upper, .non_unit, order),
 
@@ -82,10 +82,10 @@ pub fn PLU(T: type, order: Order) type {
 
 pub fn PLUQ(T: type, order: Order) type {
     return struct {
-        p: Permutation,
+        p: Permutation(T),
         l: Triangular(T, .lower, .unit, order),
         u: Triangular(T, .upper, .non_unit, order),
-        q: Permutation,
+        q: Permutation(T),
 
         pub fn init(p: [*]u32, lu: anytype, q: [*]u32, m: u32, n: u32) PLUQ(Numeric(@TypeOf(lu)), order) {
             return .{
