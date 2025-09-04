@@ -1109,7 +1109,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                     if (a.size != b.size)
                         return linalg.Error.DimensionMismatch;
 
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.size, a.size);
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.size, b.size);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
@@ -1120,7 +1120,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                     if (a.size != b.size)
                         return linalg.Error.DimensionMismatch;
 
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.size, a.size);
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.size, b.size);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
@@ -1187,61 +1187,295 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             },
             .triangular => switch (comptime types.matrixType(B)) {
                 .general => return linalg.Error.NotImplemented,
-                .symmetric => return linalg.Error.NotImplemented,
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
+                .symmetric => { // triangular * symmetric
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .hermitian => { // triangular * hermitian
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .triangular => return linalg.Error.NotImplemented, // triangular result
+                .diagonal => return linalg.Error.NotImplemented, // triangular result
+                .banded => return linalg.Error.NotImplemented, // banded result
+                .tridiagonal => return linalg.Error.NotImplemented, // banded result
+                .permutation => { // triangular * permutation
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, a.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMP(&result, a, b, ctx);
+
+                    return result;
+                },
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
             .diagonal => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented,
-                .symmetric => return linalg.Error.NotImplemented,
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
+                .general => { // diagonal * general
+                    if (a.cols != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.rows, b.cols);
+                    errdefer result.deinit(allocator);
+
+                    // lapack.lascl2
+
+                    var i: u32 = 0;
+                    while (i < int.min(a.rows, b.rows)) : (i += 1) {
+                        try blas.axpy(
+                            types.scast(i32, b.cols),
+                            a.data[i],
+                            b.data + if (comptime types.orderOf(B) == .col_major) i * b.ld else i,
+                            if (comptime types.orderOf(B) == .col_major) 1 else types.scast(i32, b.ld),
+                            result.data + if (comptime types.orderOf(A) == .col_major) i * result.ld else i,
+                            if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
+                            ctx,
+                        );
+                    }
+
+                    while (i < b.rows) : (i += 1) {
+                        var j: u32 = 0;
+                        while (j < b.cols) : (j += 1) {
+                            if (comptime types.orderOf(A) == .col_major) {
+                                result.data[i + j * result.ld] = try constants.zero(C, ctx);
+                            } else {
+                                result.data[i * result.ld + j] = try constants.zero(C, ctx);
+                            }
+                        }
+                    }
+
+                    return result;
+                },
+                .symmetric => { // diagonal * symmetric
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.rows, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .hermitian => { // diagonal * hermitian
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.rows, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .triangular => return linalg.Error.NotImplemented, // triangular result
+                .diagonal => return linalg.Error.NotImplemented, // diagonal result
+                .banded => return linalg.Error.NotImplemented, // banded result
+                .tridiagonal => return linalg.Error.NotImplemented, // tridiagonal result
+                .permutation => { // diagonal * permutation
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.rows, a.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMP(&result, a, b, ctx);
+
+                    return result;
+                },
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
             .banded => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented,
-                .symmetric => return linalg.Error.NotImplemented,
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
+                .general => { // banded * general
+                    if (a.cols != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .symmetric => { // banded * symmetric
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .hermitian => { // banded * hermitian
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .triangular => return linalg.Error.NotImplemented, // banded result
+                .diagonal => return linalg.Error.NotImplemented, // banded result
+                .banded => return linalg.Error.NotImplemented, // banded result
+                .tridiagonal => return linalg.Error.NotImplemented, // banded result
+                .permutation => { // banded * permutation
+                    if (a.cols != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, a.rows, a.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMP(&result, a, b, ctx);
+
+                    return result;
+                },
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
             .tridiagonal => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented,
-                .symmetric => return linalg.Error.NotImplemented,
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
+                .general => return linalg.Error.NotImplemented, // lapack.lagtm
+                .symmetric => { // tridiagonal * symmetric
+                    if (a.size != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .hermitian => { // tridiagonal * hermitian
+                    if (a.size != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, b.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .triangular => return linalg.Error.NotImplemented, // banded result
+                .diagonal => return linalg.Error.NotImplemented, // tridiagonal result
+                .banded => return linalg.Error.NotImplemented, // banded result
+                .tridiagonal => return linalg.Error.NotImplemented, // banded result
+                .permutation => { // tridiagonal * permutation
+                    if (a.size != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMP(&result, a, b, ctx);
+
+                    return result;
+                },
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
             .permutation => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented,
-                .symmetric => return linalg.Error.NotImplemented,
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
+                .general => return linalg.Error.NotImplemented, // lapack.laswp
+                .symmetric => { // permutation * symmetric
+                    if (a.size != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowPM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .hermitian => { // permutation * hermitian
+                    if (a.size != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowPM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .triangular => { // permutation * triangular
+                    if (a.size != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowPM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .diagonal => { // permutation * diagonal
+                    if (a.size != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowPM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .banded => { // permutation * banded
+                    if (a.size != b.rows)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.cols);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowPM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .tridiagonal => { // permutation * tridiagonal
+                    if (a.size != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowPM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .permutation => { // permutation * permutation
+                    if (a.size != b.size)
+                        return linalg.Error.DimensionMismatch;
+
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, a.size, a.size);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowPM(&result, a, b, ctx);
+
+                    return result;
+                },
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -1395,7 +1629,7 @@ fn defaultSlowPM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
                     else
                         i * result.ld + j
                 ],
-                a.get(b.data[i], j) catch unreachable,
+                b.get(a.data[i], j) catch unreachable,
                 ctx,
             );
         }
