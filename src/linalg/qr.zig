@@ -82,3 +82,11 @@ pub fn QRP(T: type, order: Order) type {
         }
     };
 }
+
+pub fn qrp() void {
+    // Make sure to convert from column permutation to row permutation
+    // (Permutation matrix type assumes row permutations and, in case whe
+    // multiplicate from the right, like A * P, matmul already takes care of
+    // converting it to column permutation internally, i.e., doing the inverse
+    // permutation). Also from 1 to 0-based indexing.
+}

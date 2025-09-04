@@ -2400,6 +2400,8 @@ pub fn orderOf(comptime T: type) Order {
             else
                 return .col_major;
         }
+    } else {
+        @compileError("Cannot get order of a non-matrix or non-array type. Use `orderOf` only with matrix or array types.");
     }
 }
 

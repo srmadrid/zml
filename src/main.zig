@@ -639,11 +639,12 @@ fn perfTesting(a: std.mem.Allocator) !void {
     fill(A, 1);
     if (print_mats) print("A", A);
 
-    var B: zml.matrix.General(f64, .col_major) = try .init(a, 5, 6);
+    var B: zml.matrix.Permutation(f64) = try .init(a, 5);
     defer B.deinit(a);
 
     fill(B, 2);
     if (print_mats) print("B", B);
+    std.debug.print("B.data = {any}\n\n", .{B.data[0..B.size]});
 
     const start_time = std.time.nanoTimestamp();
     var C = try zml.mul(A, B, .{ .matrix_allocator = a });
