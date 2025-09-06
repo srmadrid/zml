@@ -633,18 +633,17 @@ fn randomPermutation(data: []u32) void {
 fn perfTesting(a: std.mem.Allocator) !void {
     const print_mats: bool = true;
 
-    var A: zml.matrix.Permutation(f64) = try .init(a, 5);
+    var A: zml.matrix.Diagonal(f64) = try .init(a, 6, 7);
     defer A.deinit(a);
 
     fill(A, 1);
     if (print_mats) print("A", A);
 
-    var B: zml.matrix.Symmetric(f64, .upper, .row_major) = try .init(a, 5);
+    var B: zml.matrix.Tridiagonal(f64) = try .init(a, 7);
     defer B.deinit(a);
 
     fill(B, 2);
     if (print_mats) print("B", B);
-    std.debug.print("B.data = {any}\n\n", .{B.data[0..B.size]});
 
     const start_time = std.time.nanoTimestamp();
     var C = try zml.mul(A, B, .{ .matrix_allocator = a });

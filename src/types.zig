@@ -1616,7 +1616,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .triangular => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal * triangular
                         .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal * diagonal
                         .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal * banded
-                        .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal * tridiagonal
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // diagonal * tridiagonal. Should be tridiagonal, but since the diagonal can be rectangular and tridiagonal must be square, we return banded
                         .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal * sparse
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal * rest of matrices
                     },
