@@ -633,13 +633,13 @@ fn randomPermutation(data: []u32) void {
 fn perfTesting(a: std.mem.Allocator) !void {
     const print_mats: bool = true;
 
-    var A: zml.matrix.Diagonal(f64) = try .init(a, 6, 7);
+    var A: zml.matrix.Banded(f64, .col_major) = try .init(a, 6, 4, 1, 2);
     defer A.deinit(a);
 
     fill(A, 1);
     if (print_mats) print("A", A);
 
-    var B: zml.matrix.Tridiagonal(f64) = try .init(a, 7);
+    var B: zml.matrix.Triangular(f64, .lower, .non_unit, .row_major) = try .init(a, 4, 7);
     defer B.deinit(a);
 
     fill(B, 2);
@@ -651,6 +651,8 @@ fn perfTesting(a: std.mem.Allocator) !void {
     defer C.deinit(a);
 
     std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
+
+    std.debug.print("C bandwidth: (lower={d}, upper={d})\n", .{ C.lower, C.upper });
 
     if (print_mats) print("C = A * B", C);
 }
