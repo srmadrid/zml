@@ -26,12 +26,19 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
         (types.isVector(A) and types.isMatrix(B))))
         @compileError("matmul: at least one argument must be a matrix, the other must be a matrix or vector, got " ++ @typeName(A) ++ " and " ++ @typeName(B));
 
+    comptime if (types.isArbitraryPrecision(Numeric(A)) or types.isArbitraryPrecision(Numeric(B))) {
+        // When implemented, expand if
+        @compileError("zml.linalg.matmul not implemented for arbitrary precision types yet");
+    } else {
+        types.validateContext(@TypeOf(ctx), .{});
+    };
+
     if (comptime !types.isMatrix(A)) { // vector * matrix
-        const m: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B))
+        const m: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
             b.size
         else
             b.rows;
-        const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B))
+        const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
             b.size
         else
             b.cols;
@@ -105,7 +112,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 return result;
             },
             .triangular => { // vector * triangular
-                var result: vector.Vector(C) = try .init(allocator, n);
+                var result: vector.Vector(C) = try .full(allocator, n, 0, ctx);
                 errdefer result.deinit(allocator);
 
                 if (m == n) {
@@ -202,9 +209,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                                 result.inc,
                                 ctx,
                             );
-                        }
-
-                        if (n > min_dim) {
+                        } else if (n > min_dim) {
                             try blas.scal(
                                 types.scast(i32, n - min_dim),
                                 0,
@@ -219,7 +224,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 return result;
             },
             .diagonal => { // vector * diagonal
-                var result: vector.Vector(C) = try .init(allocator, n);
+                var result: vector.Vector(C) = try .full(allocator, n, 0, ctx);
                 errdefer result.deinit(allocator);
 
                 try blas.copy(
@@ -299,11 +304,11 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             .numeric => unreachable,
         }
     } else if (comptime !types.isMatrix(B)) { // matrix * vector
-        const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A))
+        const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
             a.size
         else
             a.rows;
-        const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A))
+        const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
             a.size
         else
             a.cols;
@@ -377,7 +382,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 return result;
             },
             .triangular => { // triangular * vector
-                var result: vector.Vector(C) = try .init(allocator, m);
+                var result: vector.Vector(C) = try .full(allocator, m, 0, ctx);
                 errdefer result.deinit(allocator);
 
                 if (m == n) {
@@ -452,7 +457,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                                 result.inc,
                                 ctx,
                             );
-                        } else { // extra columns (zeroed)
+                        } else if (m > min_dim) { // extra rows (empty)
                             try blas.scal(
                                 types.scast(i32, m - min_dim),
                                 0,
@@ -489,7 +494,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 return result;
             },
             .diagonal => { // diagonal * vector
-                var result: vector.Vector(C) = try .init(allocator, m);
+                var result: vector.Vector(C) = try .full(allocator, m, 0, ctx);
                 errdefer result.deinit(allocator);
 
                 try blas.copy(
@@ -569,20 +574,20 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             .numeric => unreachable,
         }
     } else {
-        const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A))
+        const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
             a.size
         else
             a.rows;
-        const k: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A))
+        const k: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
             a.size
         else
             a.cols;
-        const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B))
+        const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
             b.size
         else
             b.cols;
 
-        if (k != (if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B))
+        if (k != (if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
             b.size
         else
             b.rows))
@@ -661,7 +666,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                     return result;
                 },
                 .triangular => { // general * triangular
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                    var result: matrix.General(C, types.orderOf(A)) = try .full(allocator, m, n, 0, ctx);
                     errdefer result.deinit(allocator);
 
                     if (k == n) {
@@ -802,9 +807,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                                     types.scast(i32, result.ld),
                                     ctx,
                                 );
-                            }
-
-                            if (n > min_dim) {
+                            } else if (n > min_dim) {
                                 var j: u32 = min_dim;
                                 while (j < n) : (j += 1) {
                                     try blas.scal(
@@ -1112,7 +1115,15 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 .numeric => unreachable,
             },
             .triangular => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented,
+                .general => { // triangular * general
+                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    // Change to blas calls
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
                 .symmetric => { // triangular * symmetric
                     var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
@@ -1392,7 +1403,15 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 .numeric => unreachable,
             },
             .tridiagonal => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented, // lapack.lagtm
+                .general => { // tridiagonal * general
+                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    // lapack.lagtm
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
                 .symmetric => { // tridiagonal * symmetric
                     var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
@@ -1531,7 +1550,17 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .permutation => return linalg.Error.NotImplemented, // permutation result
+                .permutation => { // permutation * permutation
+                    var result: matrix.Permutation(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    var i: u32 = 0;
+                    while (i < n) : (i += 1) {
+                        result.data[i] = b.data[a.data[i]];
+                    }
+
+                    return result;
+                },
                 .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },

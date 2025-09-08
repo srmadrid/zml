@@ -45,6 +45,31 @@ pub fn Vector(T: type) type {
             };
         }
 
+        pub fn full(
+            allocator: std.mem.Allocator,
+            len: u32,
+            value: anytype,
+            ctx: anytype,
+        ) !Vector(T) {
+            var vec = try Vector(T).init(allocator, len);
+            errdefer vec.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                const value_casted: T = types.scast(T, value);
+
+                var i: u32 = 0;
+                while (i < len) : (i += 1) {
+                    vec.data[i] = value_casted;
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return vec;
+        }
+
         pub fn deinit(self: *Vector(T), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.free(self.data[0..self.len]);

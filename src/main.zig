@@ -34,6 +34,17 @@ fn random_buffer(
     return buffer;
 }
 
+fn random_buffer_fill(
+    buffer: []f64,
+) void {
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
+
+    for (0..buffer.len) |i| {
+        buffer[i] = rand.float(f64);
+    }
+}
+
 /// Generate a random m×n matrix A with specified 2-norm condition number `kappa`.
 pub fn random_matrix(
     allocator: std.mem.Allocator,
@@ -149,6 +160,120 @@ pub fn random_matrix(
     );
 
     return A;
+}
+
+pub fn random_matrix_buffer(
+    allocator: std.mem.Allocator,
+    m: u32,
+    n: u32,
+    kappa: f64,
+    A: []f64,
+    order: zml.Order,
+) !void {
+    // - `allocator`: memory allocator
+    // - `m`, `n`: dimensions
+    // - `kappa`: desired condition number κ₂(A)
+    // - `order`: either .RowMajor or .ColMajor
+    //
+    // Method:
+    // 1. Construct singular values σᵢ geometrically spaced between 1 and κ^(1/min(m,n)).
+    // 2. Generate random m×min(m,n) matrix X, QR factor → Q₁ (m×r).
+    // 3. Generate random n×min(m,n) matrix Y, QR factor → Q₂ (n×r).
+    // 4. Form A = Q₁ * diag(σ) * Q₂ᵀ.
+    //     - Compute B = diag(σ) * Q₂ᵀ.
+    //     - Then A = Q₁ × B.
+    const r = zml.int.min(m, n);
+
+    // 1) geometric singular values σ[i]
+    var sig = try allocator.alloc(f64, r);
+    defer allocator.free(sig);
+    for (0..r) |i| {
+        sig[i] = zml.float.pow(kappa, zml.float.div(zml.scast(f64, i), r - 1));
+    }
+
+    // 2) random X: m×r → QR → Q₁
+    const X = try random_buffer(allocator, m * r);
+    defer allocator.free(X);
+    const tauX = try allocator.alloc(f64, r);
+    defer allocator.free(tauX);
+    _ = ci.LAPACKE_dgeqrf(
+        order.toCInt(),
+        zml.scast(c_int, m),
+        zml.scast(c_int, r),
+        X.ptr,
+        zml.scast(c_int, if (order == .col_major) m else r),
+        tauX.ptr,
+    );
+    _ = ci.LAPACKE_dorgqr(
+        order.toCInt(),
+        zml.scast(c_int, m),
+        zml.scast(c_int, r),
+        zml.scast(c_int, r),
+        X.ptr,
+        zml.scast(c_int, if (order == .col_major) m else r),
+        tauX.ptr,
+    );
+    // X now holds Q₁
+
+    // 3) random Y: n×r → QR → Q₂
+    const Y = try random_buffer(allocator, n * r);
+    defer allocator.free(Y);
+    const tauY = try allocator.alloc(f64, r);
+    defer allocator.free(tauY);
+    _ = ci.LAPACKE_dgeqrf(
+        order.toCInt(),
+        zml.scast(c_int, n),
+        zml.scast(c_int, r),
+        Y.ptr,
+        zml.scast(c_int, if (order == .col_major) n else r),
+        tauY.ptr,
+    );
+    _ = ci.LAPACKE_dorgqr(
+        order.toCInt(),
+        zml.scast(c_int, n),
+        zml.scast(c_int, r),
+        zml.scast(c_int, r),
+        Y.ptr,
+        zml.scast(c_int, if (order == .col_major) n else r),
+        tauY.ptr,
+    );
+    // Y now holds Q₂
+
+    // 4a) form B = diag(sig) * Q2ᵀ (B is r×n in same layout)
+    const B = try allocator.alloc(f64, r * n);
+    defer allocator.free(B);
+    for (0..r) |i| {
+        const row_start = if (order == .col_major)
+            B.ptr + i
+        else
+            B.ptr + i * n;
+
+        const stride = if (order == .col_major) r else 1;
+
+        for (0..n) |j| {
+            // Q2[j,i] is at Y.ptr + j*ldY + i
+            const q2ji = (Y.ptr + j * if (order == .col_major) n else r)[i];
+            row_start[j * stride] = sig[i] * q2ji;
+        }
+    }
+
+    // 4b) A = Q1 (m×r) × B (r×n) → A (m×n)
+    zml.linalg.blas.dgemm(
+        order,
+        .no_trans,
+        .no_trans,
+        zml.scast(i32, m),
+        zml.scast(i32, n),
+        zml.scast(i32, r),
+        1,
+        X.ptr,
+        zml.scast(i32, if (order == .col_major) m else r),
+        B.ptr,
+        zml.scast(i32, if (order == .col_major) r else n),
+        0,
+        A.ptr,
+        zml.scast(i32, if (order == .col_major) m else n),
+    );
 }
 
 fn max_difference(a: []const f64, b: []const f64) struct {
@@ -450,7 +575,9 @@ pub fn main() !void {
 
     // try multiIterTesting(a);
 
-    try perfTesting(a);
+    // try binopPerfTesting(a);
+
+    try decompPerfTesting(a);
 
     // try typeTesting(a);
 
@@ -582,9 +709,9 @@ fn print(name: []const u8, a: anytype) void {
                 var j: u32 = 0;
                 while (j < a.size) : (j += 1) {
                     if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
-                        std.debug.print("{d:4} + {d:4}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
+                        std.debug.print("{d:8.4} + {d:8.4}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
                     } else {
-                        std.debug.print("{d:4}  ", .{a.get(i, j) catch unreachable});
+                        std.debug.print("{d:8.4}  ", .{a.get(i, j) catch unreachable});
                     }
                 }
                 std.debug.print("\n", .{});
@@ -596,9 +723,9 @@ fn print(name: []const u8, a: anytype) void {
                 var j: u32 = 0;
                 while (j < a.cols) : (j += 1) {
                     if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(a)))) {
-                        std.debug.print("{d:4} + {d:4}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
+                        std.debug.print("{d:8.4} + {d:8.4}i  ", .{ (a.get(i, j) catch unreachable).re, (a.get(i, j) catch unreachable).im });
                     } else {
-                        std.debug.print("{d:4}  ", .{a.get(i, j) catch unreachable});
+                        std.debug.print("{d:8.4}  ", .{a.get(i, j) catch unreachable});
                     }
                 }
                 std.debug.print("\n", .{});
@@ -630,16 +757,16 @@ fn randomPermutation(data: []u32) void {
     }
 }
 
-fn perfTesting(a: std.mem.Allocator) !void {
-    const print_mats: bool = true;
+fn binopPerfTesting(a: std.mem.Allocator) !void {
+    const print_mats: bool = false;
 
-    var A: zml.matrix.Banded(f64, .col_major) = try .init(a, 6, 4, 1, 2);
+    var A: zml.matrix.General(f64, .col_major) = try .init(a, 10, 12);
     defer A.deinit(a);
 
     fill(A, 1);
     if (print_mats) print("A", A);
 
-    var B: zml.matrix.Triangular(f64, .lower, .non_unit, .row_major) = try .init(a, 4, 7);
+    var B: zml.matrix.General(f64, .col_major) = try .init(a, 10, 20);
     defer B.deinit(a);
 
     fill(B, 2);
@@ -652,9 +779,54 @@ fn perfTesting(a: std.mem.Allocator) !void {
 
     std.debug.print("Took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    std.debug.print("C bandwidth: (lower={d}, upper={d})\n", .{ C.lower, C.upper });
-
     if (print_mats) print("C = A * B", C);
+}
+
+fn decompPerfTesting(a: std.mem.Allocator) !void {
+    const print_mats: bool = false;
+
+    var A: zml.matrix.General(f64, .col_major) = try .init(a, 1000, 800);
+    defer A.deinit(a);
+
+    //fill(A, 1);
+    random_buffer_fill(A.data[0 .. A.rows * A.cols]);
+    if (print_mats) print("A", A);
+
+    // var B: zml.matrix.General(f64, .col_major) = try .init(a, 10, 20);
+    // defer B.deinit(a);
+
+    // fill(B, 2);
+    // if (print_mats) print("B", B);
+
+    var start_time = std.time.nanoTimestamp();
+    var PLUQ = try zml.linalg.pluq(a, A, .{});
+    var end_time: i128 = std.time.nanoTimestamp();
+    defer PLUQ.deinit(a);
+
+    std.debug.print("Decomposition took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
+
+    if (print_mats) print("P", PLUQ.p);
+    if (print_mats) print("L", PLUQ.l);
+    if (print_mats) print("U", PLUQ.u);
+    //if (print_mats) print("Q", PLUQ.q);
+
+    start_time = std.time.nanoTimestamp();
+    var LU = try zml.mul(PLUQ.l, PLUQ.u, .{ .matrix_allocator = a });
+    defer LU.deinit(a);
+    var PLU = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
+    defer PLU.deinit(a);
+    var A_reconstructed = try zml.mul(PLU, PLUQ.q, .{ .matrix_allocator = a });
+    defer A_reconstructed.deinit(a);
+    end_time = std.time.nanoTimestamp();
+
+    std.debug.print("Reconstruction took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
+
+    if (print_mats) print("A reconstructed = P * L * U * Q", A_reconstructed);
+
+    std.debug.print(
+        "||A - P*L*U||_F = {d}\n",
+        .{frobernius_norm_difference(A.data[0 .. A.rows * A.cols], A_reconstructed.data[0 .. A_reconstructed.rows * A_reconstructed.cols])},
+    );
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

@@ -36,8 +36,11 @@ fn k_laswp_c(
 ) !void {
     const A: type = types.Child(@TypeOf(a));
 
-    if (n <= 0 or incx == 0)
+    if (n < 0 or incx == 0)
         return lapack.Error.InvalidArgument;
+
+    if (n == 0)
+        return;
 
     // Interchange row i with row ipiv(k1 + (i - k1) * abs(incx)) for each of
     // rows k1 through k2.
@@ -120,8 +123,11 @@ fn k_laswp_r(
 ) !void {
     const A: type = types.Child(@TypeOf(a));
 
-    if (n <= 0 or lda < int.max(1, n) or incx == 0)
+    if (n < 0 or lda < int.max(1, n) or incx == 0)
         return lapack.Error.InvalidArgument;
+
+    if (n == 0)
+        return;
 
     // Interchange row i with row ipiv(k1 + (i - k1) * abs(incx)) for each of
     // rows k1 through k2.

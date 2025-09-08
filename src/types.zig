@@ -1774,13 +1774,17 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                 .bool => T3 = T1,
                 .int => T3 = T1,
                 .float => {
-                    const t1info = @typeInfo(T1);
-                    const t2info = @typeInfo(T2);
-
-                    if (t1info.float.bits > t2info.float.bits) {
-                        T3 = T1;
-                    } else {
+                    if (T1 == comptime_float) {
                         T3 = T2;
+                    } else {
+                        const t1info = @typeInfo(T1);
+                        const t2info = @typeInfo(T2);
+
+                        if (t1info.float.bits > t2info.float.bits) {
+                            T3 = T1;
+                        } else {
+                            T3 = T2;
+                        }
                     }
                 },
                 .cfloat => {

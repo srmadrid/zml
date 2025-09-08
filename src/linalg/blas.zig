@@ -4487,16 +4487,16 @@ pub inline fn iamax(
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
-                    return ci.cblas_isamax(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_isamax(scast(c_int, n), x, scast(c_int, incx)));
                 } else if (comptime X == f64) {
-                    return ci.cblas_idamax(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_idamax(scast(c_int, n), x, scast(c_int, incx)));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(X) == f32) {
-                    return ci.cblas_icamax(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_icamax(scast(c_int, n), x, scast(c_int, incx)));
                 } else if (comptime Scalar(X) == f64) {
-                    return ci.cblas_izamax(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_izamax(scast(c_int, n), x, scast(c_int, incx)));
                 }
             },
             else => {},
@@ -4719,16 +4719,16 @@ pub inline fn iamin(
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {
-                    return ci.cblas_isamin(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_isamin(scast(c_int, n), x, scast(c_int, incx)));
                 } else if (comptime X == f64) {
-                    return ci.cblas_idamin(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_idamin(scast(c_int, n), x, scast(c_int, incx)));
                 }
             },
             .cfloat => {
                 if (comptime Scalar(X) == f32) {
-                    return ci.cblas_icamin(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_icamin(scast(c_int, n), x, scast(c_int, incx)));
                 } else if (comptime Scalar(X) == f64) {
-                    return ci.cblas_izamin(scast(c_int, n), x, scast(c_int, incx));
+                    return types.scast(u32, ci.cblas_izamin(scast(c_int, n), x, scast(c_int, incx)));
                 }
             },
             else => {},

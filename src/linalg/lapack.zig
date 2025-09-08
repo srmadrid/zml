@@ -3,7 +3,6 @@ const options = @import("options");
 
 const types = @import("../types.zig");
 const scast = types.scast;
-const validateContext = types.validateContext;
 const Scalar = types.Scalar;
 const Child = types.Child;
 const Coerce = types.Coerce;
@@ -544,7 +543,7 @@ pub inline fn getrf2(
         // When implemented, expand if
         @compileError("zml.linalg.lapack.getrf2 not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime options.link_lapacke != null) {
@@ -955,7 +954,7 @@ pub inline fn getrf(
         // When implemented, expand if
         @compileError("zml.linalg.lapack.getrf not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime options.link_lapacke != null) {
@@ -1356,7 +1355,7 @@ pub inline fn getrs(
         // When implemented, expand if
         @compileError("zml.linalg.lapack.getrs not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (transa != .conj_no_trans and (comptime A == B and options.link_lapacke != null)) {
@@ -1883,13 +1882,11 @@ pub inline fn gesv(
     comptime if (!types.isNumeric(B))
         @compileError("zml.linalg.lapack.gesv requires b's child type to be a numeric, got " ++ @typeName(B));
 
-    comptime if (types.isArbitraryPrecision(A) or
-        types.isArbitraryPrecision(B))
-    {
+    comptime if (types.isArbitraryPrecision(A) or types.isArbitraryPrecision(B)) {
         // When implemented, expand if
         @compileError("zml.linalg.lapack.gesv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     if (comptime A == B and options.link_lapacke != null) {
@@ -2330,7 +2327,7 @@ pub inline fn potrf2(
         // When implemented, expand if
         @compileError("zml.linalg.lapack.potrf2 not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     // if (comptime options.link_lapacke != null) {
@@ -2801,7 +2798,7 @@ pub inline fn potrf(
         // When implemented, expand if
         @compileError("zml.linalg.lapack.potrf not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     // if (comptime options.link_lapacke != null) {
@@ -3250,7 +3247,7 @@ pub inline fn potrs(
         // When implemented, expand if
         @compileError("zml.linalg.lapack.potrs not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     // if (comptime A == B and options.link_lapacke != null) {
@@ -3734,7 +3731,7 @@ pub inline fn posv(
         // When implemented, expand if
         @compileError("zml.linalg.lapack.posv not implemented for arbitrary precision types yet");
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     // if (comptime A == B and options.link_lapacke != null) {

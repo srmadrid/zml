@@ -18,7 +18,9 @@ pub fn swap(
     const Y: type = types.Child(@TypeOf(y));
     const C: type = types.Coerce(X, Y);
 
-    if (n <= 0) return blas.Error.InvalidArgument;
+    if (n < 0) return blas.Error.InvalidArgument;
+
+    if (n == 0) return;
 
     if (comptime types.isArbitraryPrecision(C)) {
         @compileError("zml.linalg.blas.scal not implemented for arbitrary precision types yet");
