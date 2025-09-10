@@ -14364,6 +14364,101 @@ pub inline fn zgemm(
     return gemm(order, transa, transb, m, n, k, alpha, a, lda, b, ldb, beta, c, ldc, .{}) catch {};
 }
 
+pub inline fn gemmtr(
+    order: Order,
+    uplo: Uplo,
+    transa: Transpose,
+    transb: Transpose,
+    n: i32,
+    k: i32,
+    alpha: anytype,
+    a: anytype,
+    lda: i32,
+    b: anytype,
+    ldb: i32,
+    beta: anytype,
+    c: anytype,
+    ldc: i32,
+    ctx: anytype,
+) !void {
+    const Al: type = @TypeOf(alpha);
+    comptime var A: type = @TypeOf(a);
+    comptime var B: type = @TypeOf(b);
+    const Be: type = @TypeOf(beta);
+    comptime var C: type = @TypeOf(c);
+
+    comptime if (!types.isNumeric(Al))
+        @compileError("zml.linalg.blas.gemmtr requires alpha to be numeric, got " ++ @typeName(Al));
+
+    comptime if (!types.isManyPointer(A))
+        @compileError("zml.linalg.blas.gemmtr requires a to be a many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.blas.gemmtr requires a's child type to numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(B))
+        @compileError("zml.linalg.blas.gemmtr requires b to be a many-item pointer, got " ++ @typeName(B));
+
+    B = types.Child(B);
+
+    comptime if (!types.isNumeric(B))
+        @compileError("zml.linalg.blas.gemmtr requires b's child type to numeric, got " ++ @typeName(B));
+
+    comptime if (!types.isNumeric(Be))
+        @compileError("zml.linalg.blas.gemmtr requires beta to be numeric, got " ++ @typeName(Be));
+
+    comptime if (!types.isManyPointer(C) or types.isConstPointer(C))
+        @compileError("zml.linalg.blas.gemmtr requires c to be a mutable many-item pointer, got " ++ @typeName(C));
+
+    C = types.Child(C);
+
+    comptime if (!types.isNumeric(C))
+        @compileError("zml.linalg.blas.gemmtr requires c's child type to be numeric, got " ++ @typeName(C));
+
+    comptime if (Al == bool and A == bool and B == bool and Be == bool and C == bool)
+        @compileError("zml.linalg.blas.gemmtr does not support alpha, a, b, beta and c all being bool");
+
+    comptime if (types.isArbitraryPrecision(Al) or
+        types.isArbitraryPrecision(A) or
+        types.isArbitraryPrecision(B) or
+        types.isArbitraryPrecision(Be) or
+        types.isArbitraryPrecision(C))
+    {
+        // When implemented, expand if
+        @compileError("zml.linalg.blas.gemmtr not implemented for arbitrary precision types yet");
+    } else {
+        types.validateContext(@TypeOf(ctx), .{});
+    };
+
+    // if (comptime A == B and A == C and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
+    //     switch (comptime types.numericType(A)) {
+    //         .float => {
+    //             if (comptime A == f32) {
+    //                 return ci.cblas_sgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+    //             } else if (comptime A == f64) {
+    //                 return ci.cblas_dgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+    //             }
+    //         },
+    //         .cfloat => {
+    //             if (comptime Scalar(A) == f32) {
+    //                 const alpha_casted: A = scast(A, alpha);
+    //                 const beta_casted: A = scast(A, beta);
+    //                 return ci.cblas_cgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+    //             } else if (comptime Scalar(A) == f64) {
+    //                 const alpha_casted: A = scast(A, alpha);
+    //                 const beta_casted: A = scast(A, beta);
+    //                 return ci.cblas_zgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+    //             }
+    //         },
+    //         else => {},
+    //     }
+    // }
+
+    return @import("blas/gemmtr.zig").gemmtr(order, uplo, transa, transb, n, k, alpha, a, lda, b, ldb, beta, c, ldc, ctx);
+}
+
 /// Computes a matrix-matrix product where one input matrix is Hermitian.
 ///
 /// The `hemm` routines compute a scalar-matrix-matrix product using a Hermitian

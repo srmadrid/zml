@@ -49,6 +49,13 @@ pub const UTU = cholesky_.UTU;
 pub const utu = cholesky_.utu;
 pub const cholesky = cholesky_.cholesky;
 
+const bunchkaufman_ = @import("linalg/bunchkaufman.zig");
+pub const LDLT = bunchkaufman_.LDLT;
+pub const ldlt = bunchkaufman_.ldlt;
+pub const UDUT = bunchkaufman_.UDUT;
+pub const udut = bunchkaufman_.udut;
+pub const bunchkaufman = bunchkaufman_.bunchkaufman;
+
 const qr_ = @import("linalg/qr.zig");
 pub const QR = qr_.QR;
 pub const qr = qr_.qr;
