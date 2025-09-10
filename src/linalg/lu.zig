@@ -11,16 +11,13 @@ const int = @import("../int.zig");
 
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
-const General = matrix.General;
-const Triangular = matrix.Triangular;
-const Permutation = matrix.Permutation;
 
 const linalg = @import("../linalg.zig");
 
 pub fn LU(T: type, order: Order) type {
     return struct {
-        l: Triangular(T, .lower, .unit, order),
-        u: Triangular(T, .upper, .non_unit, order),
+        l: matrix.Triangular(T, .lower, .unit, order),
+        u: matrix.Triangular(T, .upper, .non_unit, order),
 
         pub fn init(lu: anytype, m: u32, n: u32) LU(Numeric(Child(@TypeOf(lu))), order) {
             return .{
@@ -51,9 +48,9 @@ pub fn LU(T: type, order: Order) type {
 
 pub fn PLU(T: type, order: Order) type {
     return struct {
-        p: Permutation(T),
-        l: Triangular(T, .lower, .unit, order),
-        u: Triangular(T, .upper, .non_unit, order),
+        p: matrix.Permutation(T),
+        l: matrix.Triangular(T, .lower, .unit, order),
+        u: matrix.Triangular(T, .upper, .non_unit, order),
 
         pub fn init(p: [*]u32, lu: anytype, m: u32, n: u32) PLU(Numeric(Child(@TypeOf(lu))), order) {
             return .{
@@ -90,10 +87,10 @@ pub fn PLU(T: type, order: Order) type {
 
 pub fn PLUQ(T: type, order: Order) type {
     return struct {
-        p: Permutation(T),
-        l: Triangular(T, .lower, .unit, order),
-        u: Triangular(T, .upper, .non_unit, order),
-        q: Permutation(T),
+        p: matrix.Permutation(T),
+        l: matrix.Triangular(T, .lower, .unit, order),
+        u: matrix.Triangular(T, .upper, .non_unit, order),
+        q: matrix.Permutation(T),
 
         pub fn init(p: [*]u32, lu: anytype, q: [*]u32, m: u32, n: u32) PLUQ(Numeric(Child(@TypeOf(lu))), order) {
             return .{
@@ -137,12 +134,12 @@ pub fn PLUQ(T: type, order: Order) type {
 pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(@TypeOf(a)), orderOf(@TypeOf(a))) {
     const A: type = @TypeOf(a);
 
-    comptime if (!types.isMatrix(A))
-        @compileError("plu: argument must be a matrix, got " ++ @typeName(A));
+    comptime if (!types.isMatrix(A) or (types.matrixType(A) != .general and types.matrixType(A) != .banded and types.matrixType(A) != .tridiagonal))
+        @compileError("plu: argument must be a general, banded or tridiagonal matrix, got " ++ @typeName(A));
 
     comptime if (types.isArbitraryPrecision(Numeric(A))) {
         // When implemented, expand if
-        @compileError("zml.linalg.matmul not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.plu not implemented for arbitrary precision types yet");
     } else {
         types.validateContext(@TypeOf(ctx), .{});
     };
@@ -152,36 +149,10 @@ pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(
             const m: u32 = a.rows;
             const n: u32 = a.cols;
 
-            var lu: General(Numeric(@TypeOf(a)), orderOf(A)) = try .init(allocator, m, n);
+            var lu: matrix.General(Numeric(@TypeOf(a)), orderOf(A)) = try a.copy(allocator, ctx);
             errdefer lu.deinit(allocator);
 
-            if (comptime types.orderOf(A) == .col_major) {
-                var j: u32 = 0;
-                while (j < n) : (j += 1) {
-                    try linalg.blas.copy(
-                        types.scast(i32, m),
-                        a.data + j * a.ld,
-                        1,
-                        lu.data + j * lu.ld,
-                        1,
-                        ctx,
-                    );
-                }
-            } else {
-                var i: u32 = 0;
-                while (i < m) : (i += 1) {
-                    try linalg.blas.copy(
-                        types.scast(i32, n),
-                        a.data + i * a.ld,
-                        1,
-                        lu.data + i * lu.ld,
-                        1,
-                        ctx,
-                    );
-                }
-            }
-
-            var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, m);
+            var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, int.min(m, n));
             defer ipiv.deinit(allocator);
 
             const info: i32 = try linalg.lapack.getrf(
@@ -207,7 +178,7 @@ pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(
                 p.data[i] = i;
             }
 
-            i = m - 1;
+            i = int.min(m, n) - 1;
             while (i > 0) : (i -= 1) {
                 const tmp: u32 = p.data[i];
                 p.data[i] = p.data[types.scast(u32, ipiv.data[i] - 1)];
@@ -223,7 +194,7 @@ pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(
         },
         .banded => return linalg.Error.NotImplemented, // lapack.gbtrf
         .tridiagonal => return linalg.Error.NotImplemented, // lapack.gttrf
-        else => @compileError("plu: argument must be a general, banded or tridiagonal matrix, got " ++ @typeName(A)),
+        else => unreachable,
     }
 }
 
@@ -235,39 +206,13 @@ pub fn pluq(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLUQ(Numeri
 
     comptime if (types.isArbitraryPrecision(Numeric(A))) {
         // When implemented, expand if
-        @compileError("zml.linalg.matmul not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.pluq not implemented for arbitrary precision types yet");
     } else {
         types.validateContext(@TypeOf(ctx), .{});
     };
 
-    var lu: General(Numeric(@TypeOf(a)), orderOf(A)) = try .init(allocator, a.rows, a.cols);
+    var lu: matrix.General(Numeric(@TypeOf(a)), orderOf(A)) = try a.copy(allocator, ctx);
     errdefer lu.deinit(allocator);
-
-    if (comptime types.orderOf(A) == .col_major) {
-        var j: u32 = 0;
-        while (j < a.cols) : (j += 1) {
-            try linalg.blas.copy(
-                types.scast(i32, a.rows),
-                a.data + j * a.ld,
-                1,
-                lu.data + j * lu.ld,
-                1,
-                ctx,
-            );
-        }
-    } else {
-        var i: u32 = 0;
-        while (i < a.rows) : (i += 1) {
-            try linalg.blas.copy(
-                types.scast(i32, a.cols),
-                a.data + i * a.ld,
-                1,
-                lu.data + i * lu.ld,
-                1,
-                ctx,
-            );
-        }
-    }
 
     var ipiv: vector.Vector(u32) = try vector.Vector(u32).init(allocator, a.rows);
     defer ipiv.deinit(allocator);

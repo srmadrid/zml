@@ -23,6 +23,8 @@ const Flags = matrix.Flags;
 const array = @import("../array.zig");
 const Dense = array.Dense;
 
+const linalg = @import("../linalg.zig");
+
 pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("Symmetric requires a numeric type, got " ++ @typeName(T));
@@ -254,6 +256,73 @@ pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
             } else {
                 self.data[row * self.ld + col] = value;
             }
+        }
+
+        pub fn copy(self: *const Symmetric(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !Symmetric(T, uplo, order) {
+            var mat: Symmetric(T, uplo, order) = try .init(allocator, self.size);
+            errdefer mat.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (comptime order == .col_major) {
+                    if (comptime uplo == .upper) { // cu
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, j + 1),
+                                self.data + (0 + j * self.ld),
+                                1,
+                                mat.data + (0 + j * mat.ld),
+                                1,
+                                ctx,
+                            );
+                        }
+                    } else { // cl
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, self.size - j),
+                                self.data + (j + j * self.ld),
+                                1,
+                                mat.data + (j + j * mat.ld),
+                                1,
+                                ctx,
+                            );
+                        }
+                    }
+                } else {
+                    if (comptime uplo == .upper) { // ru
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, self.size - i),
+                                self.data + (i * self.ld + i),
+                                1,
+                                mat.data + (i * mat.ld + i),
+                                1,
+                                ctx,
+                            );
+                        }
+                    } else { // rl
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, i + 1),
+                                self.data + (i * self.ld + 0),
+                                1,
+                                mat.data + (i * mat.ld + 0),
+                                1,
+                                ctx,
+                            );
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return mat;
         }
 
         pub fn toGeneral(self: Symmetric(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {

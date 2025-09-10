@@ -2330,49 +2330,49 @@ pub inline fn potrf2(
         types.validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime options.link_lapacke != null) {
-    //     switch (comptime types.numericType(A)) {
-    //         .float => {
-    //             if (comptime A == f32) {
-    //                 return scast(i32, ci.LAPACKE_spotrf2(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             } else if (comptime A == f64) {
-    //                 return scast(i32, ci.LAPACKE_dpotrf2(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             }
-    //         },
-    //         .cfloat => {
-    //             if (comptime Scalar(A) == f32) {
-    //                 return scast(i32, ci.LAPACKE_cpotrf2(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             } else if (comptime Scalar(A) == f64) {
-    //                 return scast(i32, ci.LAPACKE_zpotrf2(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             }
-    //         },
-    //         else => {},
-    //     }
-    // }
+    if (comptime options.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    return scast(i32, ci.LAPACKE_spotrf2(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime A == f64) {
+                    return scast(i32, ci.LAPACKE_dpotrf2(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(i32, ci.LAPACKE_cpotrf2(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(i32, ci.LAPACKE_zpotrf2(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
 
     return @import("lapack/potrf2.zig").potrf2(order, uplo, n, a, lda, ctx);
 }
@@ -2801,49 +2801,49 @@ pub inline fn potrf(
         types.validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime options.link_lapacke != null) {
-    //     switch (comptime types.numericType(A)) {
-    //         .float => {
-    //             if (comptime A == f32) {
-    //                 return scast(i32, ci.LAPACKE_spotrf(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             } else if (comptime A == f64) {
-    //                 return scast(i32, ci.LAPACKE_dpotrf(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             }
-    //         },
-    //         .cfloat => {
-    //             if (comptime Scalar(A) == f32) {
-    //                 return scast(i32, ci.LAPACKE_cpotrf(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             } else if (comptime Scalar(A) == f64) {
-    //                 return scast(i32, ci.LAPACKE_zpotrf(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                 ));
-    //             }
-    //         },
-    //         else => {},
-    //     }
-    // }
+    if (comptime options.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    return scast(i32, ci.LAPACKE_spotrf(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime A == f64) {
+                    return scast(i32, ci.LAPACKE_dpotrf(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(i32, ci.LAPACKE_cpotrf(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(i32, ci.LAPACKE_zpotrf(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
 
     return @import("lapack/potrf.zig").potrf(order, uplo, n, a, lda, ctx);
 }
@@ -3250,69 +3250,69 @@ pub inline fn potrs(
         types.validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime A == B and options.link_lapacke != null) {
-    //     switch (comptime types.numericType(A)) {
-    //         .float => {
-    //             if (comptime A == f32) {
-    //                 _ = ci.LAPACKE_spotrs(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 );
+    if (comptime A == B and options.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    _ = ci.LAPACKE_spotrs(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
 
-    //                 return;
-    //             } else if (comptime A == f64) {
-    //                 _ = ci.LAPACKE_dpotrs(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 );
+                    return;
+                } else if (comptime A == f64) {
+                    _ = ci.LAPACKE_dpotrs(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
 
-    //                 return;
-    //             }
-    //         },
-    //         .cfloat => {
-    //             if (comptime Scalar(A) == f32) {
-    //                 _ = ci.LAPACKE_cpotrs(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 );
+                    return;
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    _ = ci.LAPACKE_cpotrs(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
 
-    //                 return;
-    //             } else if (comptime Scalar(A) == f64) {
-    //                 _ = ci.LAPACKE_zpotrs(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 );
+                    return;
+                } else if (comptime Scalar(A) == f64) {
+                    _ = ci.LAPACKE_zpotrs(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    );
 
-    //                 return;
-    //             }
-    //         },
-    //         else => {},
-    //     }
-    // }
+                    return;
+                }
+            },
+            else => {},
+        }
+    }
 
     return @import("lapack/potrs.zig").potrs(order, uplo, n, nrhs, a, lda, b, ldb, ctx);
 }
@@ -3734,61 +3734,61 @@ pub inline fn posv(
         types.validateContext(@TypeOf(ctx), .{});
     };
 
-    // if (comptime A == B and options.link_lapacke != null) {
-    //     switch (comptime types.numericType(A)) {
-    //         .float => {
-    //             if (comptime A == f32) {
-    //                 return scast(i32, ci.LAPACKE_sposv(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 ));
-    //             } else if (comptime A == f64) {
-    //                 return scast(i32, ci.LAPACKE_dposv(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 ));
-    //             }
-    //         },
-    //         .cfloat => {
-    //             if (comptime Scalar(A) == f32) {
-    //                 return scast(i32, ci.LAPACKE_cposv(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 ));
-    //             } else if (comptime Scalar(A) == f64) {
-    //                 return scast(i32, ci.LAPACKE_zposv(
-    //                     order.toCInt(),
-    //                     uplo.toChar(),
-    //                     scast(c_int, n),
-    //                     scast(c_int, nrhs),
-    //                     a,
-    //                     scast(c_int, lda),
-    //                     b,
-    //                     scast(c_int, ldb),
-    //                 ));
-    //             }
-    //         },
-    //         else => {},
-    //     }
-    // }
+    if (comptime A == B and options.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .float => {
+                if (comptime A == f32) {
+                    return scast(i32, ci.LAPACKE_sposv(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                } else if (comptime A == f64) {
+                    return scast(i32, ci.LAPACKE_dposv(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                }
+            },
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(i32, ci.LAPACKE_cposv(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(i32, ci.LAPACKE_zposv(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        scast(c_int, nrhs),
+                        a,
+                        scast(c_int, lda),
+                        b,
+                        scast(c_int, ldb),
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
 
     return @import("lapack/posv.zig").posv(order, uplo, n, nrhs, a, lda, b, ldb, ctx);
 }

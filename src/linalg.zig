@@ -42,6 +42,13 @@ pub const plu = lu_.plu;
 pub const PLUQ = lu_.PLUQ;
 pub const pluq = lu_.pluq;
 
+const cholesky_ = @import("linalg/cholesky.zig");
+pub const LLT = cholesky_.LLT;
+pub const llt = cholesky_.llt;
+pub const UTU = cholesky_.UTU;
+pub const utu = cholesky_.utu;
+pub const cholesky = cholesky_.cholesky;
+
 const qr_ = @import("linalg/qr.zig");
 pub const QR = qr_.QR;
 pub const qr = qr_.qr;
@@ -136,5 +143,6 @@ pub const Side = enum(u1) {
 pub const Error = error{
     DimensionMismatch,
     SingularMatrix,
+    IndefiniteMatrix,
     NotImplemented,
 };

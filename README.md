@@ -4,7 +4,7 @@ A Zig numerical and symbolic mathematics library.
 
 ## Warning
 
-This library is in the early stages of development and is not yet ready for use. Breaking changes are to be expected every commit, and only the most basic functionality is currently implemented.
+This library is in the early stages of development and might return incorrect results. Breaking changes are to be expected every commit, and only the most basic functionality is currently implemented.
 
 ## Current Features
 
@@ -31,11 +31,15 @@ This library is in the early stages of development and is not yet ready for use.
   - N-dimensional arrays (`array`):
     - Two storage formats:
       - `Dense` (plus `Strided` for views)
-      - `Strided` (CSF): not implemented yet
+      - `Sparse` (CSF): not implemented yet
     - Broadcasting
     - Element-wise operations
     - Views
   - Linear Algebra (`linalg`):
+    - Matrix multiplication
+    - Matrix decompositions:
+      - LU (no pivoting (`lu`), partial pivoting (`plu`), full pivoting (`pluq`))
+      - Cholesky (lower (`llt`), upper (`utu`), "smart" (`cholesky`))
     - BLAS routines (`blas`)
     - Select LAPACK routines (`lapack`)
 - Symbolic System:

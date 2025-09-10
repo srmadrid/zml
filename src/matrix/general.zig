@@ -17,6 +17,8 @@ const Flags = matrix.Flags;
 const array = @import("../array.zig");
 const Dense = array.Dense;
 
+const linalg = @import("../linalg.zig");
+
 pub fn General(T: type, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("General requires a numeric type, got " ++ @typeName(T));
@@ -164,6 +166,45 @@ pub fn General(T: type, order: Order) type {
             } else {
                 self.data[row * self.ld + col] = value;
             }
+        }
+
+        pub fn copy(self: *const General(T, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {
+            var mat: General(T, order) = try .init(allocator, self.rows, self.cols);
+            errdefer mat.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (comptime order == .col_major) {
+                    var j: u32 = 0;
+                    while (j < self.cols) : (j += 1) {
+                        try linalg.blas.copy(
+                            types.scast(i32, self.rows),
+                            self.data + j * self.ld,
+                            1,
+                            mat.data + j * mat.ld,
+                            1,
+                            ctx,
+                        );
+                    }
+                } else {
+                    var i: u32 = 0;
+                    while (i < self.rows) : (i += 1) {
+                        try linalg.blas.copy(
+                            types.scast(i32, self.cols),
+                            self.data + i * self.ld,
+                            1,
+                            mat.data + i * mat.ld,
+                            1,
+                            ctx,
+                        );
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return mat;
         }
 
         pub fn toDenseArray(self: *const General(T, order), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, order) {

@@ -785,7 +785,7 @@ fn binopPerfTesting(a: std.mem.Allocator) !void {
 fn decompPerfTesting(a: std.mem.Allocator) !void {
     const print_mats: bool = false;
 
-    var A: zml.matrix.General(f64, .col_major) = try .init(a, 1000, 800);
+    var A: zml.matrix.General(f64, .col_major) = try .init(a, 500, 700);
     defer A.deinit(a);
 
     //fill(A, 1);
@@ -799,7 +799,7 @@ fn decompPerfTesting(a: std.mem.Allocator) !void {
     // if (print_mats) print("B", B);
 
     var start_time = std.time.nanoTimestamp();
-    var PLUQ = try zml.linalg.pluq(a, A, .{});
+    var PLUQ = try zml.linalg.plu(a, A, .{});
     var end_time: i128 = std.time.nanoTimestamp();
     defer PLUQ.deinit(a);
 
@@ -813,9 +813,9 @@ fn decompPerfTesting(a: std.mem.Allocator) !void {
     start_time = std.time.nanoTimestamp();
     var LU = try zml.mul(PLUQ.l, PLUQ.u, .{ .matrix_allocator = a });
     defer LU.deinit(a);
-    var PLU = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
-    defer PLU.deinit(a);
-    var A_reconstructed = try zml.mul(PLU, PLUQ.q, .{ .matrix_allocator = a });
+    //var PLU = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
+    //defer PLU.deinit(a);
+    var A_reconstructed = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
     defer A_reconstructed.deinit(a);
     end_time = std.time.nanoTimestamp();
 
