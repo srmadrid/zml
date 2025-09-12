@@ -65,8 +65,8 @@ pub fn UTU(T: type, order: Order) type {
 pub fn llt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LLT(Numeric(@TypeOf(a)), orderOf(@TypeOf(a))) {
     const A: type = @TypeOf(a);
 
-    comptime if (!types.isMatrix(A) or (types.matrixType(A) != .symmetric and types.matrixType(A) != .hermitian) or (types.uploOf(A) != .lower))
-        @compileError("llt: argument must be a lower symmetric or hermitian matrix, got " ++ @typeName(A));
+    comptime if (!types.isMatrix(A) or (types.matrixType(A) != .symmetric and types.matrixType(A) != .hermitian))
+        @compileError("llt: argument must be a symmetric or hermitian matrix, got " ++ @typeName(A));
 
     comptime if (types.isArbitraryPrecision(Numeric(A))) {
         // When implemented, expand if
@@ -79,7 +79,7 @@ pub fn llt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LLT(Numeric(
         .symmetric, .hermitian => {
             const n: u32 = a.size;
 
-            var l = try a.copy(allocator, ctx); // symmetric or hermitian, but can just take data for the result
+            var l = if (comptime types.uploOf(A) == .lower) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
             errdefer l.deinit(allocator);
 
             const info: i32 = try linalg.lapack.potrf(
@@ -103,8 +103,8 @@ pub fn llt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LLT(Numeric(
 pub fn utu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UTU(Numeric(@TypeOf(a)), orderOf(@TypeOf(a))) {
     const A: type = @TypeOf(a);
 
-    comptime if (!types.isMatrix(A) or (types.matrixType(A) != .symmetric and types.matrixType(A) != .hermitian) or (types.uploOf(A) != .upper))
-        @compileError("utu: argument must be an upper symmetric or hermitian matrix, got " ++ @typeName(A));
+    comptime if (!types.isMatrix(A) or (types.matrixType(A) != .symmetric and types.matrixType(A) != .hermitian))
+        @compileError("utu: argument must be a symmetric or hermitian matrix, got " ++ @typeName(A));
 
     comptime if (types.isArbitraryPrecision(Numeric(A))) {
         // When implemented, expand if
@@ -117,7 +117,7 @@ pub fn utu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UTU(Numeric(
         .symmetric, .hermitian => {
             const n: u32 = a.size;
 
-            var u = try a.copy(allocator, ctx); // symmetric or hermitian, but can just take data for the result
+            var u = if (comptime types.uploOf(A) == .upper) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
             errdefer u.deinit(allocator);
 
             const info: i32 = try linalg.lapack.potrf(

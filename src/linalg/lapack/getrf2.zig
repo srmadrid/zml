@@ -62,7 +62,7 @@ pub fn getrf2(
                 }
 
                 // Compute elements 1:m - 1 of the column.
-                if (ops.ge(ops.abs(a[0], ctx) catch unreachable, sfmin, ctx) catch unreachable) {
+                if (ops.ge(ops.abs1(a[0], ctx) catch unreachable, sfmin, ctx) catch unreachable) {
                     blas.scal(
                         m - 1,
                         ops.div(

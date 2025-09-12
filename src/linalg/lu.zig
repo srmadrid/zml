@@ -461,7 +461,7 @@ fn k_pluq2_c(
         // Find pivot in column k and swap rows
         var i_max: u32 = k;
         var j_max: u32 = k;
-        var v_max: Numeric(Child(@TypeOf(a))) = ops.abs(a[k + k * lda], ctx) catch unreachable;
+        var v_max: Numeric(Child(@TypeOf(a))) = ops.abs1(a[k + k * lda], ctx) catch unreachable;
         var j: u32 = k;
         while (j < n) : (j += 1) {
             const i_max_j: u32 = linalg.blas.iamax(
@@ -471,7 +471,7 @@ fn k_pluq2_c(
                 ctx,
             ) catch unreachable;
 
-            const v: Numeric(Child(@TypeOf(a))) = ops.abs(a[k + i_max_j + j * lda], ctx) catch unreachable;
+            const v: Numeric(Child(@TypeOf(a))) = ops.abs1(a[k + i_max_j + j * lda], ctx) catch unreachable;
             if (ops.gt(v, v_max, ctx) catch unreachable) {
                 v_max = v;
                 i_max = k + i_max_j;

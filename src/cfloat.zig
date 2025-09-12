@@ -390,6 +390,17 @@ pub inline fn ne(
     return !eq(x, y);
 }
 
+pub inline fn abs1(
+    z: anytype,
+) Scalar(@TypeOf(z)) {
+    const Z: type = @TypeOf(z);
+
+    comptime if (types.numericType(Z) != .cfloat)
+        @compileError("cfloat.abs1 requires a cfloat argument, got " ++ @typeName(Z));
+
+    return float.abs(z.re) + float.abs(z.im);
+}
+
 pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128
 pub const abs = @import("cfloat/abs.zig").abs; // 0/106 tests fail
 pub const abs2 = @import("cfloat/abs2.zig").abs2;

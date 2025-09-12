@@ -149,6 +149,7 @@ pub const Side = enum(u1) {
 
 pub const Error = error{
     DimensionMismatch,
+    FactorizationFailed,
     SingularMatrix,
     IndefiniteMatrix,
     NotImplemented,

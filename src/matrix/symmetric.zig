@@ -325,6 +325,77 @@ pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
             return mat;
         }
 
+        pub fn copyInverseUplo(
+            self: *const Symmetric(T, uplo, order),
+            allocator: std.mem.Allocator,
+            ctx: anytype,
+        ) !Symmetric(T, uplo.invert(), order) {
+            var mat: Symmetric(T, uplo.invert(), order) = try .init(allocator, self.size);
+            errdefer mat.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (comptime order == .col_major) {
+                    if (comptime uplo == .upper) { // cu -> cl
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, j + 1),
+                                self.data + (0 + j * self.ld),
+                                1,
+                                mat.data + j,
+                                types.scast(i32, mat.ld),
+                                ctx,
+                            );
+                        }
+                    } else { // cl -> cu
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, self.size - j),
+                                self.data + (j + j * self.ld),
+                                1,
+                                mat.data + (j + j * self.ld),
+                                types.scast(i32, mat.ld),
+                                ctx,
+                            );
+                        }
+                    }
+                } else {
+                    if (comptime uplo == .upper) { // ru -> rl
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, self.size - i),
+                                self.data + (i * self.ld + i),
+                                1,
+                                mat.data + (i * mat.ld + i),
+                                types.scast(i32, mat.ld),
+                                ctx,
+                            );
+                        }
+                    } else { // rl -> ru
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            try linalg.blas.copy(
+                                types.scast(i32, i + 1),
+                                self.data + (i * self.ld + 0),
+                                1,
+                                mat.data + i,
+                                types.scast(i32, mat.ld),
+                                ctx,
+                            );
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return mat;
+        }
+
         pub fn toGeneral(self: Symmetric(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {
             var result: General(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);

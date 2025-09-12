@@ -6,7 +6,7 @@ const float = @import("../../float.zig");
 
 const lapack = @import("../lapack.zig");
 
-pub fn ilaenv(ispec: i32, comptime name: []const u8, comptime opts: []const u8, n1: i32, n2: i32, n3: i32, n4: i32) i32 {
+pub fn ilaenv(ispec: i32, comptime name: []const u8, opts: []const u8, n1: i32, n2: i32, n3: i32, n4: i32) i32 {
     // Handle computed GOTO equivalent
     if (ispec == 1 or ispec == 2 or ispec == 3) {
         // Continue
@@ -588,7 +588,7 @@ fn ieeeck(ispec: i32, zero: f32, one: f32) i32 {
     return 1;
 }
 
-fn iparmq(ispec: i32, comptime name: []const u8, comptime opts: []const u8, n: i32, ilo: i32, ihi: i32, lwork: i32) i32 {
+fn iparmq(ispec: i32, comptime name: []const u8, opts: []const u8, n: i32, ilo: i32, ihi: i32, lwork: i32) i32 {
     _ = opts; // opts is not used
     _ = n; // n is not used
     _ = lwork; // lwork is not used

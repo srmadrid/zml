@@ -147,7 +147,7 @@ pub inline fn eq(
         @compileError("float.eq requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return x == y;
+    return types.scast(Coerce(X, Y), x) == types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn ne(
@@ -163,7 +163,7 @@ pub inline fn ne(
         @compileError("float.neq requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return x != y;
+    return types.scast(Coerce(X, Y), x) != types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn lt(
@@ -179,7 +179,7 @@ pub inline fn lt(
         @compileError("float.lt requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return x < y;
+    return types.scast(Coerce(X, Y), x) < types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn le(
@@ -195,7 +195,7 @@ pub inline fn le(
         @compileError("float.le requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return x <= y;
+    return types.scast(Coerce(X, Y), x) <= types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn gt(
@@ -211,7 +211,7 @@ pub inline fn gt(
         @compileError("float.gt requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return x > y;
+    return types.scast(Coerce(X, Y), x) > types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn ge(
@@ -227,7 +227,7 @@ pub inline fn ge(
         @compileError("float.ge requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return x >= y;
+    return types.scast(Coerce(X, Y), x) >= types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn max(

@@ -14436,20 +14436,20 @@ pub inline fn gemmtr(
     //     switch (comptime types.numericType(A)) {
     //         .float => {
     //             if (comptime A == f32) {
-    //                 return ci.cblas_sgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+    //                 return ci.cblas_sgemmtr(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
     //             } else if (comptime A == f64) {
-    //                 return ci.cblas_dgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
+    //                 return ci.cblas_dgemmtr(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, n), scast(c_int, k), scast(A, alpha), a, scast(c_int, lda), b, scast(c_int, ldb), scast(A, beta), c, scast(c_int, ldc));
     //             }
     //         },
     //         .cfloat => {
     //             if (comptime Scalar(A) == f32) {
     //                 const alpha_casted: A = scast(A, alpha);
     //                 const beta_casted: A = scast(A, beta);
-    //                 return ci.cblas_cgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+    //                 return ci.cblas_cgemmtr(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
     //             } else if (comptime Scalar(A) == f64) {
     //                 const alpha_casted: A = scast(A, alpha);
     //                 const beta_casted: A = scast(A, beta);
-    //                 return ci.cblas_zgemmtr(order.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, m), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
+    //                 return ci.cblas_zgemmtr(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), transb.toCUInt(), scast(c_int, n), scast(c_int, k), &alpha_casted, a, scast(c_int, lda), b, scast(c_int, ldb), &beta_casted, c, scast(c_int, ldc));
     //             }
     //         },
     //         else => {},

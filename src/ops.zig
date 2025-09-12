@@ -2317,6 +2317,114 @@ pub inline fn abs_(
     }
 }
 
+pub inline fn abs1(
+    x: anytype,
+    ctx: anytype,
+) !EnsureArray(@TypeOf(x), Scalar(Numeric(@TypeOf(x)))) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X)) {
+        comptime if (types.isArbitraryPrecision(Numeric(X))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+        };
+
+        return array.abs1(
+            ctx.array_allocator,
+            x,
+            types.stripStruct(ctx, &.{"array_allocator"}),
+        );
+    } else if (comptime types.isMatrix(X)) {
+        @compileError("zml.abs1 not defined for matrices, convert to array first");
+    } else {
+        switch (comptime types.numericType(X)) {
+            .bool => @compileError("zml.abs1 not defined for " ++ @typeName(X)),
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return int.abs(
+                    x,
+                );
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return float.abs(x);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return cfloat.abs1(x);
+            },
+            else => @compileError("zml.abs1 not implemented for " ++ @typeName(X) ++ " yet"),
+        }
+    }
+}
+
+pub inline fn abs1_(
+    o: anytype,
+    x: anytype,
+    ctx: anytype,
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.abs1_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.isArbitraryPrecision(Numeric(X))) {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                types.validateContext(@TypeOf(ctx), .{});
+            }
+        };
+
+        return array.abs1_(o, x, ctx);
+    } else if (comptime types.isArray(X)) {
+        @compileError("zml.abs1_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
+        @compileError("zml.abs1_ not defined for matrices, convert to array first");
+    } else {
+        switch (comptime types.numericType(X)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
+                .bool => @compileError("zml.abs1_ not defined for " ++ @typeName(X) ++ " input type"),
+                .int => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, int.abs(x));
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, float.abs(x));
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, cfloat.abs1(x));
+                },
+                else => @compileError("zml.abs1_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
+            },
+            else => @compileError("zml.abs1_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
+        }
+    }
+}
+
 pub inline fn abs2(
     x: anytype,
     ctx: anytype,
@@ -2419,6 +2527,118 @@ pub inline fn abs2_(
                 else => @compileError("zml.abs2_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
             },
             else => @compileError("zml.abs2_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
+        }
+    }
+}
+
+pub inline fn neg(
+    x: anytype,
+    ctx: anytype,
+) !EnsureArray(@TypeOf(x), Numeric(@TypeOf(x))) {
+    const X: type = @TypeOf(x);
+
+    if (comptime types.isArray(X)) {
+        comptime if (types.isArbitraryPrecision(Numeric(X))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+        };
+
+        return array.neg(
+            ctx.array_allocator,
+            x,
+            types.stripStruct(ctx, &.{"array_allocator"}),
+        );
+    } else if (comptime types.isMatrix(X)) {
+        @compileError("zml.neg not defined for matrices, convert to array first");
+    } else {
+        switch (comptime types.numericType(X)) {
+            .bool => @compileError("zml.neg not defined for " ++ @typeName(X)),
+            .int => {
+                comptime if (@typeInfo(X).int.signedness == .unsigned)
+                    @compileError("zml.neg not defined for unsigned integers, got " ++ @typeName(X));
+
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return -x;
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return -x;
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return .{ .re = -x.re, .im = -x.im };
+            },
+            else => @compileError("zml.neg not implemented for " ++ @typeName(X) ++ " yet"),
+        }
+    }
+}
+
+pub inline fn neg_(
+    o: anytype,
+    x: anytype,
+    ctx: anytype,
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.neg_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            if (types.isArbitraryPrecision(Numeric(X))) {
+                types.validateContext(
+                    @TypeOf(ctx),
+                    .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
+                );
+            } else {
+                types.validateContext(@TypeOf(ctx), .{});
+            }
+        };
+
+        return array.neg_(o, x, ctx);
+    } else if (comptime types.isArray(X)) {
+        @compileError("zml.neg_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
+        @compileError("zml.neg_ not defined for matrices, convert to array first");
+    } else {
+        switch (comptime types.numericType(X)) {
+            .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
+                .bool => @compileError("zml.neg_ not defined for " ++ @typeName(X) ++ " input type"),
+                .int => {
+                    comptime if (@typeInfo(X).int.signedness == .unsigned)
+                        @compileError("zml.neg_ not defined for unsigned integers, got " ++ @typeName(X));
+
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, -x);
+                },
+                .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, -x);
+                },
+                .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    o.* = scast(O, X{ .re = -x.re, .im = -x.im });
+                },
+                else => @compileError("zml.neg_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
+            },
+            else => @compileError("zml.neg_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
         }
     }
 }

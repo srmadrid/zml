@@ -37,7 +37,8 @@ fn random_buffer(
 fn random_buffer_fill(
     buffer: []f64,
 ) void {
-    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    //var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    var prng = std.Random.DefaultPrng.init(827923); // fixed seed for reproducibility
     const rand = prng.random();
 
     for (0..buffer.len) |i| {
@@ -494,7 +495,7 @@ fn print_matrix(desc: []const u8, m: u32, n: u32, a: []f64, lda: u32, order: zml
         while (i < m) : (i += 1) {
             var j: u32 = 0;
             while (j < n) : (j += 1) {
-                std.debug.print("{d}  ", .{a[i * lda + j]});
+                std.debug.print("{d:8.4}  ", .{a[i * lda + j]});
             }
             std.debug.print("\n", .{});
         }
@@ -503,7 +504,7 @@ fn print_matrix(desc: []const u8, m: u32, n: u32, a: []f64, lda: u32, order: zml
         while (i < m) : (i += 1) {
             var j: u32 = 0;
             while (j < n) : (j += 1) {
-                std.debug.print("{d}  ", .{a[i + j * lda]});
+                std.debug.print("{d:8.4}  ", .{a[i + j * lda]});
             }
             std.debug.print("\n", .{});
         }
@@ -758,19 +759,21 @@ fn randomPermutation(data: []u32) void {
 }
 
 fn binopPerfTesting(a: std.mem.Allocator) !void {
-    const print_mats: bool = false;
+    const print_mats: bool = true;
 
-    var A: zml.matrix.General(f64, .col_major) = try .init(a, 10, 12);
+    var A: zml.matrix.Hermitian(zml.cf64, .upper, .col_major) = try .init(a, 4);
     defer A.deinit(a);
 
     fill(A, 1);
     if (print_mats) print("A", A);
+    std.debug.print("A.data = {any}\n", .{A.data[0 .. A.size * A.size]});
 
-    var B: zml.matrix.General(f64, .col_major) = try .init(a, 10, 20);
+    var B: zml.matrix.Hermitian(zml.cf64, .lower, .col_major) = try A.copyInverseUplo(a, .{});
     defer B.deinit(a);
 
-    fill(B, 2);
+    //fill(B, 2);
     if (print_mats) print("B", B);
+    std.debug.print("B.data = {any}\n", .{B.data[0 .. B.size * B.size]});
 
     const start_time = std.time.nanoTimestamp();
     var C = try zml.mul(A, B, .{ .matrix_allocator = a });
@@ -785,11 +788,11 @@ fn binopPerfTesting(a: std.mem.Allocator) !void {
 fn decompPerfTesting(a: std.mem.Allocator) !void {
     const print_mats: bool = false;
 
-    var A: zml.matrix.General(f64, .col_major) = try .init(a, 500, 700);
+    var A: zml.matrix.Symmetric(f64, .lower, .col_major) = try .init(a, 786);
     defer A.deinit(a);
 
-    //fill(A, 1);
-    random_buffer_fill(A.data[0 .. A.rows * A.cols]);
+    //fill(A, 2);
+    random_buffer_fill(A.data[0 .. A.size * A.size]);
     if (print_mats) print("A", A);
 
     // var B: zml.matrix.General(f64, .col_major) = try .init(a, 10, 20);
@@ -799,34 +802,37 @@ fn decompPerfTesting(a: std.mem.Allocator) !void {
     // if (print_mats) print("B", B);
 
     var start_time = std.time.nanoTimestamp();
-    var PLUQ = try zml.linalg.plu(a, A, .{});
+    var LDLT = try zml.linalg.ldlt(a, A, .{});
     var end_time: i128 = std.time.nanoTimestamp();
-    defer PLUQ.deinit(a);
+    // defer PLUQ.deinit(a);
+    defer a.free(LDLT[0 .. A.size * A.size]);
+
+    print_matrix("A after LDL^T decomposition", 10, 10, LDLT[0 .. A.size * A.size], A.size, .col_major);
 
     std.debug.print("Decomposition took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    if (print_mats) print("P", PLUQ.p);
-    if (print_mats) print("L", PLUQ.l);
-    if (print_mats) print("U", PLUQ.u);
-    //if (print_mats) print("Q", PLUQ.q);
+    // if (print_mats) print("P", PLUQ.p);
+    // if (print_mats) print("L", PLUQ.l);
+    // if (print_mats) print("U", PLUQ.u);
+    // //if (print_mats) print("Q", PLUQ.q);
 
     start_time = std.time.nanoTimestamp();
-    var LU = try zml.mul(PLUQ.l, PLUQ.u, .{ .matrix_allocator = a });
-    defer LU.deinit(a);
-    //var PLU = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
-    //defer PLU.deinit(a);
-    var A_reconstructed = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
-    defer A_reconstructed.deinit(a);
+    // var LU = try zml.mul(PLUQ.l, PLUQ.u, .{ .matrix_allocator = a });
+    // defer LU.deinit(a);
+    // //var PLU = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
+    // //defer PLU.deinit(a);
+    // var A_reconstructed = try zml.mul(PLUQ.p, LU, .{ .matrix_allocator = a });
+    // defer A_reconstructed.deinit(a);
     end_time = std.time.nanoTimestamp();
 
     std.debug.print("Reconstruction took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    if (print_mats) print("A reconstructed = P * L * U * Q", A_reconstructed);
+    // if (print_mats) print("A reconstructed = P * L * U * Q", A_reconstructed);
 
-    std.debug.print(
-        "||A - P*L*U||_F = {d}\n",
-        .{frobernius_norm_difference(A.data[0 .. A.rows * A.cols], A_reconstructed.data[0 .. A_reconstructed.rows * A_reconstructed.cols])},
-    );
+    // std.debug.print(
+    //     "||A - P*L*U||_F = {d}\n",
+    //     .{frobernius_norm_difference(@as([*]f64, @ptrCast(A.data))[0 .. A.rows * A.cols * 2], @as([*]f64, @ptrCast(A_reconstructed.data))[0 .. A_reconstructed.rows * A_reconstructed.cols * 2])},
+    // );
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

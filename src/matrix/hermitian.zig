@@ -348,6 +348,101 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             return mat;
         }
 
+        pub fn copyInverseUplo(
+            self: *const Hermitian(T, uplo, order),
+            allocator: std.mem.Allocator,
+            ctx: anytype,
+        ) !Hermitian(T, uplo.invert(), order) {
+            var mat: Hermitian(T, uplo.invert(), order) = try .init(allocator, self.size);
+            errdefer mat.deinit(allocator);
+
+            if (comptime !types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                if (comptime order == .col_major) {
+                    if (comptime uplo == .upper) { // cu -> cl
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            var i: u32 = 0;
+                            while (i < j) : (i += 1) {
+                                try ops.set(
+                                    &mat.data[j + i * mat.ld],
+                                    ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable,
+                                    ctx,
+                                );
+                            }
+
+                            ops.set(
+                                &mat.data[j + j * mat.ld],
+                                self.data[j + j * self.ld].re,
+                                ctx,
+                            ) catch unreachable;
+                        }
+                    } else { // cl -> cu
+                        var j: u32 = 0;
+                        while (j < self.size) : (j += 1) {
+                            ops.set(
+                                &mat.data[j + j * mat.ld],
+                                self.data[j + j * self.ld].re,
+                                ctx,
+                            ) catch unreachable;
+
+                            var i: u32 = j + 1;
+                            while (i < self.size) : (i += 1) {
+                                try ops.set(
+                                    &mat.data[j + i * mat.ld],
+                                    ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable,
+                                    ctx,
+                                );
+                            }
+                        }
+                    }
+                } else {
+                    if (comptime uplo == .upper) { // ru -> rl
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            ops.set(
+                                &mat.data[i * mat.ld + i],
+                                self.data[i * self.ld + i].re,
+                                ctx,
+                            ) catch unreachable;
+
+                            var j: u32 = i + 1;
+                            while (j < self.size) : (j += 1) {
+                                try ops.set(
+                                    &mat.data[j * mat.ld + i],
+                                    ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable,
+                                    ctx,
+                                );
+                            }
+                        }
+                    } else { // rl -> ru
+                        var i: u32 = 0;
+                        while (i < self.size) : (i += 1) {
+                            var j: u32 = 0;
+                            while (j < i) : (j += 1) {
+                                try ops.set(
+                                    &mat.data[j * mat.ld + i],
+                                    ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable,
+                                    ctx,
+                                );
+                            }
+
+                            ops.set(
+                                &mat.data[i * mat.ld + i],
+                                self.data[i * self.ld + i].re,
+                                ctx,
+                            ) catch unreachable;
+                        }
+                    }
+                }
+            } else {
+                @compileError("Arbitrary precision types not implemented yet");
+            }
+
+            return mat;
+        }
+
         pub fn toGeneral(self: Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {
             var result: General(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
