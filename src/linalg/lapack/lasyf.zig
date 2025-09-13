@@ -480,7 +480,7 @@ pub fn lasyf(
                     a + utils.index(order, k, k, lda),
                     utils.col_ld(order, lda),
                     w + utils.index(order, k, k, ldw),
-                    1,
+                    utils.col_ld(order, ldw),
                     ctx,
                 );
 
@@ -496,7 +496,7 @@ pub fn lasyf(
                     utils.row_ld(order, ldw),
                     1,
                     w + utils.index(order, k, k, ldw),
-                    1,
+                    utils.col_ld(order, ldw),
                     ctx,
                 );
 
@@ -515,7 +515,7 @@ pub fn lasyf(
                     imax = k + 1 + types.scast(i32, try blas.iamax(
                         n - k - 1,
                         w + utils.index(order, k + 1, k, ldw),
-                        1,
+                        utils.col_ld(order, ldw),
                         ctx,
                     ));
                     colmax = ops.abs1(w[utils.index(order, imax, k, ldw)], ctx) catch unreachable;
@@ -690,7 +690,7 @@ pub fn lasyf(
                     try blas.copy(
                         n - k,
                         w + utils.index(order, k, k, ldw),
-                        1,
+                        utils.col_ld(order, ldw),
                         a + utils.index(order, k, k, lda),
                         utils.col_ld(order, lda),
                         ctx,

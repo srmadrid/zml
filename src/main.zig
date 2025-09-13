@@ -788,7 +788,7 @@ fn binopPerfTesting(a: std.mem.Allocator) !void {
 fn decompPerfTesting(a: std.mem.Allocator) !void {
     const print_mats: bool = false;
 
-    var A: zml.matrix.Symmetric(f64, .lower, .col_major) = try .init(a, 786);
+    var A: zml.matrix.Symmetric(f64, .upper, .row_major) = try .init(a, 10);
     defer A.deinit(a);
 
     //fill(A, 2);
@@ -807,7 +807,7 @@ fn decompPerfTesting(a: std.mem.Allocator) !void {
     // defer PLUQ.deinit(a);
     defer a.free(LDLT[0 .. A.size * A.size]);
 
-    print_matrix("A after LDL^T decomposition", 10, 10, LDLT[0 .. A.size * A.size], A.size, .col_major);
+    print_matrix("A after LDL^T decomposition", 10, 10, LDLT[0 .. A.size * A.size], A.size, .row_major);
 
     std.debug.print("Decomposition took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
