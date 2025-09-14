@@ -72,6 +72,7 @@ pub fn sytrf(
                 var iinfo: i32 = 0;
                 var kb: i32 = undefined;
                 if (k + 1 > nb) {
+                    std.debug.print("Calling lasyf with k + 1 = {d}\n", .{k + 1});
                     // Factorize columns k-kb+1:k of a and use blocked code to
                     // update columns 0:k-kb
                     iinfo = try lapack.lasyf(
@@ -88,6 +89,7 @@ pub fn sytrf(
                         ctx,
                     );
                 } else {
+                    std.debug.print("Calling sytf2 with k + 1 = {d}\n", .{k + 1});
                     // Use unblocked code to factorize columns 0:k of a
                     iinfo = try lapack.sytf2(
                         order,
@@ -125,7 +127,6 @@ pub fn sytrf(
                 var iinfo: i32 = 0;
                 var kb: i32 = undefined;
                 if (k <= n - nb - 1) {
-                    std.debug.print("Calling lasyf with k = {d}, n - k = {d}\n", .{ k, n - k });
                     // Factorize columns k:k+kb-1 of a and use blocked code to
                     // update columns k+kb:n-1
                     iinfo = try lapack.lasyf(
@@ -142,7 +143,6 @@ pub fn sytrf(
                         ctx,
                     );
                 } else {
-                    std.debug.print("Calling sytf2 with k = {d}, n - k = {d}\n", .{ k, n - k });
                     // use unblocked code to factorize columns k:n-1 of a
                     iinfo = try lapack.sytf2(
                         order,

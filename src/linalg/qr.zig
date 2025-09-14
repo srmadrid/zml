@@ -68,6 +68,7 @@ pub fn QRP(T: type, order: Order) type {
                 .p = .{
                     .data = p,
                     .size = n,
+                    .direction = .forward,
                     .flags = .{ .owns_data = true },
                 },
             };

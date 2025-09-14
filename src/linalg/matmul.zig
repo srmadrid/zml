@@ -1775,27 +1775,46 @@ fn defaultSlowMP(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
     const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
 
-    var j: u32 = 0;
-    while (j < n) : (j += 1) {
-        var k: u32 = 0;
-        while (k < n) : (k += 1) {
-            if (b.data[k] == j) {
-                break;
+    if (b.direction == .forward) {
+        var j: u32 = 0;
+        while (j < n) : (j += 1) {
+            var k: u32 = 0;
+            while (k < n) : (k += 1) {
+                if (b.data[k] == j) {
+                    break;
+                }
+            }
+
+            var i: u32 = 0;
+            while (i < m) : (i += 1) {
+                try ops.set(
+                    &result.data[
+                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
+                            i + j * result.ld
+                        else
+                            i * result.ld + j
+                    ],
+                    a.get(i, k) catch unreachable,
+                    ctx,
+                );
             }
         }
-
-        var i: u32 = 0;
-        while (i < m) : (i += 1) {
-            try ops.set(
-                &result.data[
-                    if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
-                        i + j * result.ld
-                    else
-                        i * result.ld + j
-                ],
-                a.get(i, k) catch unreachable,
-                ctx,
-            );
+    } else {
+        var j: u32 = 0;
+        while (j < n) : (j += 1) {
+            var i: u32 = 0;
+            while (i < m) : (i += 1) {
+                try ops.set(
+                    &result.data[
+                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
+                            i + j * result.ld
+                        else
+                            i * result.ld + j
+                    ],
+                    a.get(i, b.data[j]) catch unreachable,
+                    ctx,
+                );
+            }
         }
     }
 }
@@ -1806,20 +1825,46 @@ fn defaultSlowPM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     const m: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B)) b.size else b.rows;
     const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B)) b.size else b.cols;
 
-    var i: u32 = 0;
-    while (i < m) : (i += 1) {
-        var j: u32 = 0;
-        while (j < n) : (j += 1) {
-            try ops.set(
-                &result.data[
-                    if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
-                        i + j * result.ld
-                    else
-                        i * result.ld + j
-                ],
-                b.get(a.data[i], j) catch unreachable,
-                ctx,
-            );
+    if (a.direction == .forward) {
+        var i: u32 = 0;
+        while (i < m) : (i += 1) {
+            var j: u32 = 0;
+            while (j < n) : (j += 1) {
+                try ops.set(
+                    &result.data[
+                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
+                            i + j * result.ld
+                        else
+                            i * result.ld + j
+                    ],
+                    b.get(a.data[i], j) catch unreachable,
+                    ctx,
+                );
+            }
+        }
+    } else {
+        var i: u32 = 0;
+        while (i < m) : (i += 1) {
+            var k: u32 = 0;
+            while (k < m) : (k += 1) {
+                if (a.data[k] == i) {
+                    break;
+                }
+            }
+
+            var j: u32 = 0;
+            while (j < n) : (j += 1) {
+                try ops.set(
+                    &result.data[
+                        if (comptime types.orderOf(types.Child(@TypeOf(result))) == .col_major)
+                            i + j * result.ld
+                        else
+                            i * result.ld + j
+                    ],
+                    b.get(k, j) catch unreachable,
+                    ctx,
+                );
+            }
         }
     }
 }

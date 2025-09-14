@@ -17,12 +17,18 @@ const linalg = @import("../linalg.zig");
 
 pub fn LDLT(T: type, order: Order) type {
     return struct {
+        p: matrix.Permutation(T),
         l: matrix.Triangular(T, .lower, .unit, order),
         d: matrix.Tridiagonal(T), // strictly D is block diagonal with 1x1 and 2x2 blocks, but since no BDiagonal type exists, we use Tridiagonal here
-        p: matrix.Permutation(T),
 
-        pub fn init(l: anytype, d: anytype, p: [*]u32, n: u32) LDLT(Numeric(Child(@TypeOf(l))), order) {
+        pub fn init(p: [*]u32, l: anytype, d: anytype, n: u32) LDLT(Numeric(Child(@TypeOf(l))), order) {
             return .{
+                .p = .{
+                    .data = p,
+                    .size = n,
+                    .direction = .forward,
+                    .flags = .{ .owns_data = true },
+                },
                 .l = .{
                     .data = l,
                     .rows = n,
@@ -32,11 +38,6 @@ pub fn LDLT(T: type, order: Order) type {
                 },
                 .d = .{
                     .data = d,
-                    .size = n,
-                    .flags = .{ .owns_data = true },
-                },
-                .p = .{
-                    .data = p,
                     .size = n,
                     .flags = .{ .owns_data = true },
                 },
@@ -105,7 +106,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) ![*]Numeric(
     };
 
     switch (comptime types.matrixType(A)) {
-        .symmetric, .hermitian => {
+        .symmetric => {
             const n: u32 = a.size;
 
             var info: i32 = 0;
@@ -173,6 +174,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) ![*]Numeric(
                 return l.data;
             }
         },
+        .hermitian => @compileError("ldlt: hermitian matrices not implemented yet"),
         else => unreachable,
     }
 }
@@ -191,7 +193,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) ![*]Numeric(
     };
 
     switch (comptime types.matrixType(A)) {
-        .symmetric, .hermitian => {
+        .symmetric => {
             const n: u32 = a.size;
 
             var info: i32 = 0;
@@ -259,6 +261,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) ![*]Numeric(
                 return u.data;
             }
         },
+        .hermitian => @compileError("udut: hermitian matrices not implemented yet"),
         else => unreachable,
     }
 }

@@ -32,14 +32,13 @@ pub fn sytf2(
 
     if (comptime !types.isArbitraryPrecision(A)) {
         // Initialize alpha for use inchoosing the pivot block size.
-        const alpha: types.Scalar(A) = (1 + float.sqrt(@as(types.Scalar(A), 17))) / 8;
+        const alpha: types.Scalar(A) = (1 + try ops.sqrt(types.scast(types.Scalar(A), 17), ctx)) / 8;
 
         if (uplo == .upper) {
             // Factorize a as u*d*u**t using the upper triangle of a
             // k is the main loop index, decreasing from n to 1 in steps of 1 or 2
             var k: i32 = n - 1;
             while (k >= 0) {
-                // If k < 0, exit from loop
                 var kstep: i32 = 1;
 
                 // Determine rows and columns to be interchanged and whether
@@ -288,10 +287,6 @@ pub fn sytf2(
             // k is the main loop index, increasing from 1 to n in steps of 1 or 2
             var k: i32 = 0;
             while (k < n) {
-                // If k >= n, exit from loop
-                if (k >= n)
-                    break;
-
                 var kstep: i32 = 1;
 
                 // Determine rows and columns to be interchanged and whether

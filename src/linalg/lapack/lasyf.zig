@@ -34,7 +34,7 @@ pub fn lasyf(
 
     if (comptime !types.isArbitraryPrecision(A)) {
         // Initialize alpha for use inchoosing the pivot block size.
-        const alpha: types.Scalar(A) = (1 + float.sqrt(@as(types.Scalar(A), 17))) / 8;
+        const alpha: types.Scalar(A) = (1 + try ops.sqrt(types.scast(types.Scalar(A), 17), ctx)) / 8;
 
         if (uplo == .upper) {
             // Factorize the trailing columns of a using the upper triangle of a and
@@ -107,9 +107,8 @@ pub fn lasyf(
                 var kp: i32 = undefined;
                 if (try ops.eq(try ops.max(absakk, colmax, ctx), 0, ctx)) {
                     // Column k is zero or underflow: set info and continue
-                    if (info == 0) {
+                    if (info == 0)
                         info = k + 1;
-                    }
 
                     kp = k;
                 } else {
@@ -156,7 +155,7 @@ pub fn lasyf(
 
                         // jmax is the column-index of the largest off-diagonal
                         // element in row imax, and rowmax is its absolute value
-                        var jmax: i32 = imax + types.scast(i32, try blas.iamax(
+                        var jmax: i32 = imax + 1 + types.scast(i32, try blas.iamax(
                             k - imax,
                             w + utils.index(order, imax + 1, kw - 1, ldw),
                             utils.col_ld(order, ldw),

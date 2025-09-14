@@ -40,6 +40,7 @@ This library is in the early stages of development and might return incorrect re
     - Matrix decompositions:
       - LU (no pivoting (`lu`), partial pivoting (`plu`), full pivoting (`pluq`))
       - Cholesky (lower (`llt`), upper (`utu`), "smart" (`cholesky`))
+      - Bunch-Kaufman (lower (`ldlt`), upper (`udut`), "smart" (`bunchkaufman`))
     - BLAS routines (`blas`)
     - Select LAPACK routines (`lapack`)
 - Symbolic System:

@@ -17,7 +17,9 @@ pub fn scal(
     const X: type = types.Child(@TypeOf(x));
     const C: type = types.Coerce(Al, X);
 
-    if (n <= 0 or incx <= 0) return blas.Error.InvalidArgument;
+    if (n < 0 or incx <= 0) return blas.Error.InvalidArgument;
+
+    if (n == 0) return;
 
     if (ops.eq(alpha, 1, .{}) catch unreachable) return;
 

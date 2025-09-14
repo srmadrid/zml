@@ -57,6 +57,7 @@ pub fn PLU(T: type, order: Order) type {
                 .p = .{
                     .data = p,
                     .size = m,
+                    .direction = .forward,
                     .flags = .{ .owns_data = true },
                 },
                 .l = .{
@@ -97,6 +98,7 @@ pub fn PLUQ(T: type, order: Order) type {
                 .p = .{
                     .data = p,
                     .size = m,
+                    .direction = .forward,
                     .flags = .{ .owns_data = true },
                 },
                 .l = .{
@@ -116,6 +118,7 @@ pub fn PLUQ(T: type, order: Order) type {
                 .q = .{
                     .data = q,
                     .size = n,
+                    .direction = .forward,
                     .flags = .{ .owns_data = true },
                 },
             };
