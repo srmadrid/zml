@@ -9,7 +9,7 @@ const blas = @import("../blas.zig");
 const lapack = @import("../lapack.zig");
 const Order = types.Order;
 
-const utils = @import("utils.zig");
+const utils = @import("../utils.zig");
 
 pub fn getrf(
     order: Order,

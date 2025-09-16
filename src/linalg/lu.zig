@@ -14,6 +14,8 @@ const matrix = @import("../matrix.zig");
 
 const linalg = @import("../linalg.zig");
 
+const utils = @import("utils.zig");
+
 pub fn LU(T: type, order: Order) type {
     return struct {
         l: matrix.Triangular(T, .lower, .unit, order),
@@ -224,20 +226,16 @@ pub fn pluq(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLUQ(Numeri
 
     const nb: u32 = 64; // Block size, tune for performance
 
-    if (comptime types.orderOf(A) == .col_major) {
-        try k_pluq_c(
-            a.rows,
-            a.cols,
-            nb,
-            lu.data,
-            lu.ld,
-            ipiv.data,
-            q.data,
-            ctx,
-        );
-    } else {
-        return linalg.Error.NotImplemented;
-    }
+    try k_pluq(
+        a.rows,
+        a.cols,
+        nb,
+        lu.data,
+        lu.ld,
+        ipiv.data,
+        q.data,
+        ctx,
+    );
 
     var p: vector.Vector(u32) = try vector.Vector(u32).init(allocator, a.rows);
     errdefer p.deinit(allocator);
@@ -251,10 +249,11 @@ pub fn pluq(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLUQ(Numeri
     return .init(p.data, lu.data, q.data, a.rows, a.cols);
 }
 
-fn k_pluq_c(
+fn k_pluq(
+    order: Order,
     m: u32,
     n: u32,
-    comptime nb: u32,
+    nb: u32,
     a: anytype,
     lda: u32,
     p: [*]u32,
@@ -280,9 +279,9 @@ fn k_pluq_c(
     }
 
     if (min_dim <= nb) {
-        return k_pluq2_c(m, n, a, lda, p, q, ctx);
-    } else {
-        return k_pluq2_c(m, n, a, lda, p, q, ctx);
+        return k_pluq2(order, m, n, a, lda, p, q, ctx);
+    } else { // Remove when blocked algorithm works
+        return k_pluq2(order, m, n, a, lda, p, q, ctx);
     }
 
     // Unreachable: blocked algorithm does not work; must be reworked
@@ -309,7 +308,7 @@ fn k_pluq_c(
         };
 
         // Factor A[k:m, k:k + kb]
-        try k_pluq2_c(m - k, kb, a + k + k * lda, lda, &pb, &qb, ctx);
+        try k_pluq2(order, m - k, kb, a + k + k * lda, lda, &pb, &qb, ctx);
 
         var pt: [nb]u32 = undefined;
         var qt: [nb]u32 = undefined;
@@ -336,9 +335,9 @@ fn k_pluq_c(
                 try linalg.blas.swap(
                     types.scast(i32, k),
                     a + i + k,
-                    types.scast(i32, lda),
+                    utils.row_ld(order, lda),
                     a + pb[i] + k,
-                    types.scast(i32, lda),
+                    utils.row_ld(order, lda),
                     ctx,
                 );
             }
@@ -348,9 +347,9 @@ fn k_pluq_c(
                 try linalg.blas.swap(
                     types.scast(i32, n - (k + kb)),
                     a + i + k + (k + kb) * lda,
-                    types.scast(i32, lda),
+                    utils.row_ld(order, lda),
                     a + pb[i] + k + (k + kb) * lda,
-                    types.scast(i32, lda),
+                    utils.row_ld(order, lda),
                     ctx,
                 );
             }
@@ -365,9 +364,9 @@ fn k_pluq_c(
             try linalg.blas.swap(
                 types.scast(i32, k),
                 a + (j + k) * lda,
-                1,
+                utils.col_ld(order, lda),
                 a + (qb[j] + k) * lda,
-                1,
+                utils.col_ld(order, lda),
                 ctx,
             );
 
@@ -376,9 +375,9 @@ fn k_pluq_c(
                 try linalg.blas.swap(
                     types.scast(i32, m - (k + kb)),
                     a + (k + kb) + (j + k) * lda,
-                    1,
+                    utils.col_ld(order, lda),
                     a + (k + kb) + (qb[j] + k) * lda,
-                    1,
+                    utils.col_ld(order, lda),
                     ctx,
                 );
             }
@@ -448,7 +447,8 @@ fn k_pluq_c(
     }
 }
 
-fn k_pluq2_c(
+fn k_pluq2(
+    order: Order,
     m: u32,
     n: u32,
     a: anytype,
@@ -470,7 +470,7 @@ fn k_pluq2_c(
             const i_max_j: u32 = linalg.blas.iamax(
                 types.scast(i32, m - k),
                 a + k + j * lda,
-                1,
+                utils.col_ld(order, lda),
                 ctx,
             ) catch unreachable;
 
@@ -490,9 +490,9 @@ fn k_pluq2_c(
             try linalg.blas.swap(
                 types.scast(i32, n),
                 a + k,
-                types.scast(i32, lda),
+                utils.row_ld(order, lda),
                 a + i_max,
-                types.scast(i32, lda),
+                utils.row_ld(order, lda),
                 ctx,
             );
 
@@ -506,9 +506,9 @@ fn k_pluq2_c(
             try linalg.blas.swap(
                 types.scast(i32, m),
                 a + k * lda,
-                1,
+                utils.col_ld(order, lda),
                 a + j_max * lda,
-                1,
+                utils.col_ld(order, lda),
                 ctx,
             );
 
@@ -524,7 +524,7 @@ fn k_pluq2_c(
                 types.scast(i32, m - (k + 1)),
                 oo_akk,
                 a + (k + 1) + k * lda,
-                1,
+                utils.col_ld(order, lda),
                 ctx,
             );
 
@@ -536,9 +536,9 @@ fn k_pluq2_c(
                     types.scast(i32, n - (k + 1)),
                     -1,
                     a + (k + 1) + k * lda,
-                    1,
+                    utils.col_ld(order, lda),
                     a + k + (k + 1) * lda,
-                    types.scast(i32, lda),
+                    utils.row_ld(order, lda),
                     a + (k + 1) + (k + 1) * lda,
                     types.scast(i32, lda),
                     ctx,

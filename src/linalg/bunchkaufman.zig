@@ -15,6 +15,8 @@ const matrix = @import("../matrix.zig");
 
 const linalg = @import("../linalg.zig");
 
+const utils = @import("utils.zig");
+
 pub fn LDLT(T: type, order: Order) type {
     return struct {
         p: matrix.Permutation(T),
@@ -26,7 +28,7 @@ pub fn LDLT(T: type, order: Order) type {
                 .p = .{
                     .data = p,
                     .size = n,
-                    .direction = .forward,
+                    .direction = .backward,
                     .flags = .{ .owns_data = true },
                 },
                 .l = .{
@@ -39,6 +41,9 @@ pub fn LDLT(T: type, order: Order) type {
                 .d = .{
                     .data = d,
                     .size = n,
+                    .osize = n,
+                    .offset = 0,
+                    .sdoffset = (n - 1) + n,
                     .flags = .{ .owns_data = true },
                 },
             };
@@ -56,12 +61,18 @@ pub fn LDLT(T: type, order: Order) type {
 
 pub fn UDUT(T: type, order: Order) type {
     return struct {
+        p: matrix.Permutation(T),
         u: matrix.Triangular(T, .upper, .unit, order),
         d: matrix.Tridiagonal(T), // strictly D is block diagonal with 1x1 and 2x2 blocks, but since no BDiagonal type exists, we use Tridiagonal here
-        p: matrix.Permutation(T),
 
-        pub fn init(u: anytype, d: anytype, p: [*]u32, n: u32) UDUT(Numeric(Child(@TypeOf(u))), order) {
+        pub fn init(p: [*]u32, u: anytype, d: anytype, n: u32) UDUT(Numeric(Child(@TypeOf(u))), order) {
             return .{
+                .p = .{
+                    .data = p,
+                    .size = n,
+                    .direction = .forward,
+                    .flags = .{ .owns_data = true },
+                },
                 .u = .{
                     .data = u,
                     .rows = n,
@@ -72,11 +83,9 @@ pub fn UDUT(T: type, order: Order) type {
                 .d = .{
                     .data = d,
                     .size = n,
-                    .flags = .{ .owns_data = true },
-                },
-                .p = .{
-                    .data = p,
-                    .size = n,
+                    .osize = n,
+                    .offset = 0,
+                    .sdoffset = (n - 1) + n,
                     .flags = .{ .owns_data = true },
                 },
             };
@@ -92,7 +101,7 @@ pub fn UDUT(T: type, order: Order) type {
     };
 }
 
-pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) ![*]Numeric(@TypeOf(a)) { // !LDLT(Numeric(@TypeOf(a)), orderOf(@TypeOf(a))) {
+pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeric(@TypeOf(a)), orderOf(@TypeOf(a))) {
     const A: type = @TypeOf(a);
 
     comptime if (!types.isMatrix(A) or (types.matrixType(A) != .symmetric and types.matrixType(A) != .hermitian))
@@ -132,7 +141,22 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) ![*]Numeric(
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return l.data;
+                var d: matrix.Tridiagonal(Numeric(A)) = try .init(allocator, n);
+                errdefer d.deinit(allocator);
+
+                var p: vector.Vector(u32) = try vector.Vector(u32).init(allocator, n);
+                errdefer p.deinit(allocator);
+
+                var i: u32 = 0;
+                while (i < n) : (i += 1) {
+                    p.data[i] = i;
+                }
+
+                try lconvert(orderOf(A), n, l.data, d.data, p.data, ipiv.data, ctx);
+
+                lpermute(n, p.data, ipiv.data);
+
+                return .init(p.data, l.data, d.data, n);
             } else {
                 var lwork: i32 = -1;
                 _ = try linalg.lapack.sytrf( // work size query
@@ -171,11 +195,123 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) ![*]Numeric(
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return l.data;
+                var d: matrix.Tridiagonal(Numeric(A)) = try .init(allocator, n);
+                errdefer d.deinit(allocator);
+
+                var p: vector.Vector(u32) = try vector.Vector(u32).init(allocator, n);
+                errdefer p.deinit(allocator);
+
+                var i: u32 = 0;
+                while (i < n) : (i += 1) {
+                    p.data[i] = i;
+                }
+
+                try lconvert(orderOf(A), n, l.data, d.data, p.data, ipiv.data, ctx);
+
+                lpermute(n, p.data, ipiv.data);
+
+                return .init(p.data, l.data, d.data, n);
             }
         },
         .hermitian => @compileError("ldlt: hermitian matrices not implemented yet"),
         else => unreachable,
+    }
+}
+
+/// Convert the output a of `sytrf` or `hetrf` into the l and d matrices of the
+/// LDLT factorization. On output, `a` is `l` and `d` is overwritten. `p` is
+/// used as workspace for the permutation.
+fn lconvert(comptime order: Order, n: u32, a: anytype, d: anytype, p: [*]u32, ipiv: [*]i32, ctx: anytype) !void {
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        if (ipiv[i] > 0) {
+            // 1x1 pivot
+
+            // Update p
+            var tmp: u32 = p[i];
+            p[i] = p[types.scast(u32, ipiv[i] - 1)];
+            p[types.scast(u32, ipiv[i] - 1)] = tmp;
+
+            // Extract d
+            d[i + (n - 1)] = a[utils.cindex(order, i, i, n)]; // diagonal
+            a[utils.cindex(order, i, i, n)] = undefined;
+
+            if (i < n - 1) { // zero out under d11
+                d[i] = try constants.zero(Child(@TypeOf(a)), ctx); // subdiagonal
+                d[i + (n - 1) + n] = try constants.zero(Child(@TypeOf(a)), ctx); // superdiagonal
+            }
+
+            // Permute rows of l
+            while (p[i] != i) {
+                const jrow: u32 = p[i];
+                swap_rows_prefix(n, a, i, jrow, i);
+
+                tmp = p[i];
+                p[i] = p[jrow];
+                p[jrow] = tmp;
+            }
+        } else {
+            // 2x2 pivot
+
+            // Update p
+            var tmp: u32 = p[i + 1];
+            p[i + 1] = p[types.scast(u32, -ipiv[i] - 1)];
+            p[types.scast(u32, -ipiv[i] - 1)] = tmp;
+
+            // Extract d
+            d[i + (n - 1)] = a[utils.cindex(order, i, i, n)]; // diagonal (a11)
+            d[i] = a[utils.cindex(order, i + 1, i, n)]; // subdiagonal (a21)
+            d[i + (n - 1) + n] = try ops.copy(a[utils.cindex(order, i + 1, i, n)], ctx); // superdiagonal (a12)
+            d[i + 1 + (n - 1)] = a[utils.cindex(order, i + 1, i + 1, n)]; // diagonal (a22)
+            a[utils.cindex(order, i, i, n)] = undefined; // a11
+            a[utils.cindex(order, i + 1, i, n)] = try constants.zero(Child(@TypeOf(a)), ctx); // a21
+            a[utils.cindex(order, i + 1, i + 1, n)] = undefined; // a22
+
+            i += 1;
+
+            // Permute rows of l
+            while (p[i] != i) {
+                const jrow: u32 = p[i];
+                swap_rows_prefix(n, a, i, jrow, i - 1);
+
+                tmp = p[i];
+                p[i] = p[jrow];
+                p[jrow] = tmp;
+            }
+
+            if (i < n - 1) { // zero out under d22
+                d[i] = try constants.zero(Child(@TypeOf(a)), ctx); // subdiagonal
+                d[i + (n - 1) + n] = try constants.zero(Child(@TypeOf(a)), ctx); // superdiagonal
+            }
+        }
+    }
+}
+
+fn swap_rows_prefix(n: u32, a: anytype, r1: u32, r2: u32, upto_col: u32) void {
+    var j: u32 = 0;
+    while (j < upto_col) : (j += 1) {
+        const tmp = a[r1 + j * n];
+        a[r1 + j * n] = a[r2 + j * n];
+        a[r2 + j * n] = tmp;
+    }
+}
+
+fn lpermute(n: u32, p: [*]u32, ipiv: [*]i32) void {
+    var i: u32 = 0;
+    while (i < n) : (i += 1) {
+        if (ipiv[i] > 0) {
+            // 1x1 pivot
+            const tmp: u32 = p[i];
+            p[i] = p[types.scast(u32, ipiv[i] - 1)];
+            p[types.scast(u32, ipiv[i] - 1)] = tmp;
+        } else {
+            // 2x2 pivot
+            const tmp: u32 = p[i + 1];
+            p[i + 1] = p[types.scast(u32, -ipiv[i] - 1)];
+            p[types.scast(u32, -ipiv[i] - 1)] = tmp;
+
+            i += 1;
+        }
     }
 }
 

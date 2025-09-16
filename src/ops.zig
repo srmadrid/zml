@@ -6555,11 +6555,8 @@ pub inline fn set(
 pub inline fn copy(
     x: anytype,
     ctx: anytype,
-) @TypeOf(x) {
-    comptime if (!types.isPointer(@TypeOf(x)) or types.isConstPointer(@TypeOf(x)))
-        @compileError("zml.copy requires x a mutable pointer, got " ++ @typeName(@TypeOf(x)));
-
-    const X: type = Child(@TypeOf(x));
+) !@TypeOf(x) {
+    const X: type = @TypeOf(x);
 
     if (comptime types.isArray(X))
         @compileError("zml.copy not implemented for arrayss yet.");
@@ -6571,7 +6568,7 @@ pub inline fn copy(
         .bool, .int, .float, .cfloat => {
             comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return x.*;
+            return x;
         },
         else => @compileError("zml.copy not implemented for " ++ @typeName(X) ++ " yet"),
     }

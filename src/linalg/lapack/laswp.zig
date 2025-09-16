@@ -7,7 +7,7 @@ const linalg = @import("../../linalg.zig");
 const lapack = @import("../lapack.zig");
 const Order = types.Order;
 
-const utils = @import("utils.zig");
+const utils = @import("../utils.zig");
 
 pub fn laswp(
     order: Order,

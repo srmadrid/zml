@@ -12,7 +12,7 @@ const lapack = @import("../lapack.zig");
 const Order = types.Order;
 const Uplo = types.Uplo;
 
-const utils = @import("utils.zig");
+const utils = @import("../utils.zig");
 
 pub fn lasyf(
     order: Order,
