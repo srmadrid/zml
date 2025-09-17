@@ -16,48 +16,74 @@ const linalg = @import("../linalg.zig");
 
 pub fn LLT(T: type, order: Order) type {
     return struct {
-        l: matrix.Triangular(T, .lower, .non_unit, order),
+        _size: u32,
+        _l: [*]T,
 
-        pub fn init(l: anytype, n: u32) LLT(Numeric(Child(@TypeOf(l))), order) {
+        pub fn init(size: u32, a: [*]T) LLT(T, order) {
             return .{
-                .l = .{
-                    .data = l,
-                    .rows = n,
-                    .cols = n,
-                    .ld = n,
-                    .flags = .{ .owns_data = true },
-                },
+                ._size = size,
+                ._l = a,
             };
         }
 
         pub fn deinit(self: *LLT(T, order), allocator: std.mem.Allocator) void {
-            allocator.free(self.l.data[0 .. self.l.rows * self.l.cols]);
+            allocator.free(self._l[0 .. self._size * self._size]);
 
             self.* = undefined;
+        }
+
+        pub fn l(self: *const LLT(T, order)) matrix.Triangular(T, .lower, .non_unit, order) {
+            return .{
+                .data = self._l,
+                .rows = self._size,
+                .cols = self._size,
+                .ld = self._size,
+                .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn reconstruct(self: *const LLT(T, order), allocator: std.mem.Allocator) void {
+            _ = self;
+            _ = allocator;
+            // A = L * L^T
+            @compileError("LLT.reconstruct not implemented yet");
         }
     };
 }
 
 pub fn UTU(T: type, order: Order) type {
     return struct {
-        u: matrix.Triangular(T, .upper, .non_unit, order),
+        _size: u32,
+        _u: [*]T,
 
-        pub fn init(u: anytype, n: u32) UTU(Numeric(Child(@TypeOf(u))), order) {
+        pub fn init(n: u32, a: [*]T) UTU(T, order) {
             return .{
-                .u = .{
-                    .data = u,
-                    .rows = n,
-                    .cols = n,
-                    .ld = n,
-                    .flags = .{ .owns_data = true },
-                },
+                ._size = n,
+                ._u = a,
             };
         }
 
         pub fn deinit(self: *UTU(T, order), allocator: std.mem.Allocator) void {
-            allocator.free(self.u.data[0 .. self.u.rows * self.u.cols]);
+            allocator.free(self._u[0 .. self._size * self._size]);
 
             self.* = undefined;
+        }
+
+        pub fn u(self: *const UTU(T, order)) matrix.Triangular(T, .upper, .non_unit, order) {
+            return .{
+                .data = self._u,
+                .rows = self._size,
+                .cols = self._size,
+                .ld = self._size,
+                .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn reconstruct(self: *const UTU(T, order), allocator: std.mem.Allocator) void {
+            _ = self;
+            _ = allocator;
+            // A = U * U^T
+            @compileError("UTU.reconstruct not implemented yet");
         }
     };
 }
@@ -92,9 +118,9 @@ pub fn llt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LLT(Numeric(
             );
 
             if (info != 0)
-                return error.SingularMatrix;
+                return linalg.Error.SingularMatrix;
 
-            return .init(l.data, n);
+            return .init(n, l.data);
         },
         else => unreachable,
     }
@@ -132,7 +158,7 @@ pub fn utu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UTU(Numeric(
             if (info != 0)
                 return error.SingularMatrix;
 
-            return .init(u.data, n);
+            return .init(n, u.data);
         },
         else => unreachable,
     }

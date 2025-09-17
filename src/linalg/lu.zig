@@ -45,45 +45,83 @@ pub fn LU(T: type, order: Order) type {
 
             self.* = undefined;
         }
+
+        pub fn reconstruct(self: *const LU(T, order), allocator: std.mem.Allocator) void {
+            _ = self;
+            _ = allocator;
+            // A = L * U
+            @compileError("LU.reconstruct not implemented yet");
+        }
     };
 }
 
 pub fn PLU(T: type, order: Order) type {
     return struct {
-        p: matrix.Permutation(T),
-        l: matrix.Triangular(T, .lower, .unit, order),
-        u: matrix.Triangular(T, .upper, .non_unit, order),
+        _rows: u32,
+        _cols: u32,
+        _ipiv: [*]i32, // 1-based indexing
+        _lu: [*]T,
 
-        pub fn init(p: [*]u32, lu: anytype, m: u32, n: u32) PLU(Numeric(Child(@TypeOf(lu))), order) {
+        pub fn init(ipiv: [*]i32, a: anytype, rows: u32, cols: u32) PLU(Numeric(Child(@TypeOf(a))), order) {
             return .{
-                .p = .{
-                    .data = p,
-                    .size = m,
-                    .direction = .forward,
-                    .flags = .{ .owns_data = true },
-                },
-                .l = .{
-                    .data = lu,
-                    .rows = m,
-                    .cols = int.min(m, n),
-                    .ld = if (order == .col_major) m else n,
-                    .flags = .{ .owns_data = true },
-                },
-                .u = .{
-                    .data = lu,
-                    .rows = int.min(m, n),
-                    .cols = n,
-                    .ld = if (order == .col_major) m else n,
-                    .flags = .{ .owns_data = false },
-                },
+                ._rows = rows,
+                ._cols = cols,
+                ._ipiv = ipiv,
+                ._lu = a,
             };
         }
 
         pub fn deinit(self: *PLU(T, order), allocator: std.mem.Allocator) void {
-            self.p.deinit(allocator);
-            allocator.free(self.l.data[0 .. self.l.rows * self.u.cols]);
+            allocator.free(self._ipiv[0..int.min(self._rows, self._cols)]);
+            allocator.free(self._lu[0 .. self._rows * self._cols]);
 
             self.* = undefined;
+        }
+
+        pub fn p(self: *const PLU(T, order), allocator: std.mem.Allocator) !matrix.Permutation(T) {
+            var _p: matrix.Permutation(T) = try .init(allocator, self._rows);
+            errdefer _p.deinit(allocator);
+
+            var i: i32 = 0;
+            while (i < self._rows) : (i += 1) {
+                _p.data[types.scast(u32, i)] = types.scast(u32, i);
+            }
+
+            i = types.scast(i32, int.min(self._rows, self._cols) - 1);
+            while (i >= 0) : (i -= 1) {
+                const tmp: u32 = _p.data[types.scast(u32, i)];
+                _p.data[types.scast(u32, i)] = _p.data[types.scast(u32, self._ipiv[types.scast(u32, i)] - 1)];
+                _p.data[types.scast(u32, self._ipiv[types.scast(u32, i)] - 1)] = tmp;
+            }
+
+            return _p;
+        }
+
+        pub fn l(self: *const PLU(T, order)) matrix.Triangular(T, .lower, .unit, order) {
+            return .{
+                .data = self._lu,
+                .rows = self._rows,
+                .cols = int.min(self._rows, self._cols),
+                .ld = if (order == .col_major) self._rows else self._cols,
+                .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn u(self: *const PLU(T, order)) matrix.Triangular(T, .upper, .non_unit, order) {
+            return .{
+                .data = self._lu,
+                .rows = int.min(self._rows, self._cols),
+                .cols = self._cols,
+                .ld = if (order == .col_major) self._rows else self._cols,
+                .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn reconstruct(self: *const PLU(T, order), allocator: std.mem.Allocator) void {
+            _ = self;
+            _ = allocator;
+            // A = P * L * U
+            @compileError("PLU.reconstruct not implemented yet");
         }
     };
 }
@@ -158,7 +196,7 @@ pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(
             errdefer lu.deinit(allocator);
 
             var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, int.min(m, n));
-            defer ipiv.deinit(allocator);
+            errdefer ipiv.deinit(allocator);
 
             const info: i32 = try linalg.lapack.getrf(
                 types.orderOf(A),
@@ -173,29 +211,7 @@ pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(
             if (info != 0)
                 return error.SingularMatrix;
 
-            // Convert from 1 to 0-based indexing and invert permutation to be
-            // able to reconstruct A as P * L * U instead of P^T * L * U
-            var p: vector.Vector(u32) = try vector.Vector(u32).init(allocator, m);
-            errdefer p.deinit(allocator);
-
-            var i: u32 = 0;
-            while (i < m) : (i += 1) {
-                p.data[i] = i;
-            }
-
-            i = int.min(m, n) - 1;
-            while (i > 0) : (i -= 1) {
-                const tmp: u32 = p.data[i];
-                p.data[i] = p.data[types.scast(u32, ipiv.data[i] - 1)];
-                p.data[types.scast(u32, ipiv.data[i] - 1)] = tmp;
-            }
-
-            // Extra i = 0 step
-            const tmp: u32 = p.data[0];
-            p.data[0] = p.data[types.scast(u32, ipiv.data[0] - 1)];
-            p.data[types.scast(u32, ipiv.data[0] - 1)] = tmp;
-
-            return .init(p.data, lu.data, m, n);
+            return .init(ipiv.data, lu.data, m, n);
         },
         .banded => return linalg.Error.NotImplemented, // lapack.gbtrf
         .tridiagonal => return linalg.Error.NotImplemented, // lapack.gttrf

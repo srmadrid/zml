@@ -26,7 +26,7 @@ This library is in the early stages of development and might return incorrect re
       - `Tridiagonal`
       - `Permutation`
       - `Sparse` (CSR, CSC): not implemented yet
-    - Matrix addition/subtraction and scalar multiplication/division (in current development, only for select combinations)
+    - Matrix addition/subtraction and scalar multiplication/division
     - Views
   - N-dimensional arrays (`array`):
     - Two storage formats:
@@ -40,7 +40,7 @@ This library is in the early stages of development and might return incorrect re
     - Matrix decompositions:
       - LU (no pivoting (`lu`), partial pivoting (`plu`), full pivoting (`pluq`))
       - Cholesky (lower (`llt`), upper (`utu`), "smart" (`cholesky`))
-      - Bunch-Kaufman (lower (`ldlt`), upper (`udut`), "smart" (`bunchkaufman`))
+      - Bunch-Kaufman (lower (`ldlt`), upper (`udut`), "smart" (`bunchkaufman`)): only symmetric matrices implemented so far
     - BLAS routines (`blas`)
     - Select LAPACK routines (`lapack`)
 - Symbolic System:

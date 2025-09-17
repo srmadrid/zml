@@ -12,7 +12,7 @@ const lapack = @import("../lapack.zig");
 const Order = types.Order;
 const Uplo = types.Uplo;
 
-pub inline fn potrs(
+pub fn potrs(
     order: Order,
     uplo: Uplo,
     n: i32,

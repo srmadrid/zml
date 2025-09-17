@@ -34,27 +34,27 @@ pub inline fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(
 
 pub const matmul = @import("linalg/matmul.zig").matmul;
 
-const lu_ = @import("linalg/lu.zig");
-pub const LU = lu_.LU;
-pub const lu = lu_.lu;
-pub const PLU = lu_.PLU;
-pub const plu = lu_.plu;
-pub const PLUQ = lu_.PLUQ;
-pub const pluq = lu_.pluq;
+const _lu = @import("linalg/lu.zig");
+pub const LU = _lu.LU;
+pub const lu = _lu.lu;
+pub const PLU = _lu.PLU;
+pub const plu = _lu.plu;
+pub const PLUQ = _lu.PLUQ;
+pub const pluq = _lu.pluq;
 
-const cholesky_ = @import("linalg/cholesky.zig");
-pub const LLT = cholesky_.LLT;
-pub const llt = cholesky_.llt;
-pub const UTU = cholesky_.UTU;
-pub const utu = cholesky_.utu;
-pub const cholesky = cholesky_.cholesky;
+const _cholesky = @import("linalg/cholesky.zig");
+pub const LLT = _cholesky.LLT;
+pub const llt = _cholesky.llt;
+pub const UTU = _cholesky.UTU;
+pub const utu = _cholesky.utu;
+pub const cholesky = _cholesky.cholesky;
 
-const bunchkaufman_ = @import("linalg/bunchkaufman.zig");
-pub const LDLT = bunchkaufman_.LDLT;
-pub const ldlt = bunchkaufman_.ldlt;
-pub const UDUT = bunchkaufman_.UDUT;
-pub const udut = bunchkaufman_.udut;
-pub const bunchkaufman = bunchkaufman_.bunchkaufman;
+const _bunchkaufman = @import("linalg/bunchkaufman.zig");
+pub const LDLT = _bunchkaufman.LDLT;
+pub const ldlt = _bunchkaufman.ldlt;
+pub const UDUT = _bunchkaufman.UDUT;
+pub const udut = _bunchkaufman.udut;
+pub const bunchkaufman = _bunchkaufman.bunchkaufman;
 
 const qr_ = @import("linalg/qr.zig");
 pub const QR = qr_.QR;

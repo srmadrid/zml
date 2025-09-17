@@ -14,7 +14,7 @@ const Uplo = types.Uplo;
 
 const utils = @import("../utils.zig");
 
-pub inline fn potrf2(
+pub fn potrf2(
     order: Order,
     uplo: Uplo,
     n: i32,
@@ -193,6 +193,7 @@ pub inline fn potrf2(
                 }
 
                 iinfo = potrf2(
+                    order,
                     uplo,
                     n2,
                     a + utils.index(order, n1, n1, lda),
