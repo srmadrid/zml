@@ -22,12 +22,14 @@ pub fn LDLT(T: type, order: Order) type {
         _size: u32,
         _ipiv: [*]i32, // 1-based indexing
         _ld: [*]T,
+        _hermitian: bool,
 
-        pub fn init(size: u32, a: [*]T, ipiv: [*]i32) LDLT(T, order) {
+        pub fn init(size: u32, a: [*]T, ipiv: [*]i32, hermitian: bool) LDLT(T, order) {
             return .{
                 ._size = size,
                 ._ipiv = ipiv,
                 ._ld = a,
+                ._hermitian = hermitian,
             };
         }
 
@@ -64,7 +66,7 @@ pub fn LDLT(T: type, order: Order) type {
                 pwork[i] = i;
             }
 
-            try lconvert(order, self._size, self._ld, _l.data, null, pwork, self._ipiv, ctx);
+            try lconvert(order, self._size, self._ld, _l.data, null, pwork, self._ipiv, self._hermitian, ctx);
 
             return _l;
         }
@@ -81,7 +83,7 @@ pub fn LDLT(T: type, order: Order) type {
                 pwork[i] = i;
             }
 
-            try lconvert(order, self._size, self._ld, null, _d.data, pwork, self._ipiv, ctx);
+            try lconvert(order, self._size, self._ld, null, _d.data, pwork, self._ipiv, self._hermitian, ctx);
 
             return _d;
         }
@@ -89,7 +91,7 @@ pub fn LDLT(T: type, order: Order) type {
         pub fn reconstruct(self: *const LDLT(T, order), allocator: std.mem.Allocator) void {
             _ = self;
             _ = allocator;
-            // A = P * L * D * L^T * P^T
+            // A = P * L * D * L^T * P^T or A = P * L * D * L^H * P^T
             @compileError("LDLT.reconstruct not implemented yet");
         }
     };
@@ -100,12 +102,14 @@ pub fn UDUT(T: type, order: Order) type {
         _size: u32,
         _ipiv: [*]i32, // 1-based indexing
         _ud: [*]T,
+        _hermitian: bool,
 
-        pub fn init(size: u32, a: [*]T, ipiv: [*]i32) UDUT(T, order) {
+        pub fn init(size: u32, a: [*]T, ipiv: [*]i32, hermitian: bool) UDUT(T, order) {
             return .{
                 ._size = size,
                 ._ipiv = ipiv,
                 ._ud = a,
+                ._hermitian = hermitian,
             };
         }
 
@@ -142,7 +146,7 @@ pub fn UDUT(T: type, order: Order) type {
                 pwork[i] = i;
             }
 
-            try uconvert(order, self._size, self._ud, _u.data, null, pwork, self._ipiv, ctx);
+            try uconvert(order, self._size, self._ud, _u.data, null, pwork, self._ipiv, self._hermitian, ctx);
 
             return _u;
         }
@@ -159,7 +163,7 @@ pub fn UDUT(T: type, order: Order) type {
                 pwork[i] = i;
             }
 
-            try uconvert(order, self._size, self._ud, null, _d.data, pwork, self._ipiv, ctx);
+            try uconvert(order, self._size, self._ud, null, _d.data, pwork, self._ipiv, self._hermitian, ctx);
 
             return _d;
         }
@@ -167,7 +171,7 @@ pub fn UDUT(T: type, order: Order) type {
         pub fn reconstruct(self: *const UDUT(T, order), allocator: std.mem.Allocator) void {
             _ = self;
             _ = allocator;
-            // A = P * U * D * U^T * P^T
+            // A = P * U * D * U^T * P^T or A = P * U * D * U^H * P^T
             @compileError("UDUT.reconstruct not implemented yet");
         }
     };
@@ -187,7 +191,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
     };
 
     switch (comptime types.matrixType(A)) {
-        .symmetric => {
+        .symmetric, .hermitian => {
             const n: u32 = a.size;
 
             var info: i32 = 0;
@@ -198,35 +202,63 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, n);
                 errdefer ipiv.deinit(allocator);
 
-                info = try linalg.lapack.sytrf( // LAPACKE version does not need work
-                    types.orderOf(A),
-                    .lower,
-                    types.scast(i32, n),
-                    ld.data,
-                    types.scast(i32, ld.ld),
-                    ipiv.data,
-                    undefined,
-                    undefined,
-                    ctx,
-                );
+                if (comptime !types.isHermitianMatrix(A)) {
+                    info = try linalg.lapack.sytrf( // LAPACKE version does not need work
+                        types.orderOf(A),
+                        .lower,
+                        types.scast(i32, n),
+                        ld.data,
+                        types.scast(i32, ld.ld),
+                        ipiv.data,
+                        undefined,
+                        undefined,
+                        ctx,
+                    );
+                } else {
+                    info = try linalg.lapack.hetrf( // LAPACKE version does not need work
+                        types.orderOf(A),
+                        .lower,
+                        types.scast(i32, n),
+                        ld.data,
+                        types.scast(i32, ld.ld),
+                        ipiv.data,
+                        undefined,
+                        undefined,
+                        ctx,
+                    );
+                }
 
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ld.data, ipiv.data);
+                return .init(n, ld.data, ipiv.data, types.isHermitianMatrix(A));
             } else {
                 var lwork: i32 = -1;
-                _ = try linalg.lapack.sytrf( // work size query
-                    types.orderOf(A),
-                    .lower,
-                    types.scast(i32, n),
-                    @as([*]f64, undefined),
-                    types.scast(i32, a.ld),
-                    undefined,
-                    @as([*]i32, @ptrCast(&lwork)),
-                    -1,
-                    ctx,
-                );
+                if (comptime !types.isHermitianMatrix(A)) {
+                    _ = try linalg.lapack.sytrf( // work size query
+                        types.orderOf(A),
+                        .lower,
+                        types.scast(i32, n),
+                        @as([*]f64, undefined),
+                        types.scast(i32, a.ld),
+                        undefined,
+                        @as([*]i32, @ptrCast(&lwork)),
+                        -1,
+                        ctx,
+                    );
+                } else {
+                    _ = try linalg.lapack.hetrf( // work size query
+                        types.orderOf(A),
+                        .lower,
+                        types.scast(i32, n),
+                        @as([*]f64, undefined),
+                        types.scast(i32, a.ld),
+                        undefined,
+                        @as([*]i32, @ptrCast(&lwork)),
+                        -1,
+                        ctx,
+                    );
+                }
 
                 var ld = if (comptime types.uploOf(A) == .lower) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
                 errdefer ld.deinit(allocator);
@@ -237,25 +269,38 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 var work: vector.Vector(Numeric(A)) = try vector.Vector(Numeric(A)).init(allocator, types.scast(u32, lwork));
                 defer work.deinit(allocator);
 
-                info = try linalg.lapack.sytrf(
-                    types.orderOf(A),
-                    .lower,
-                    types.scast(i32, n),
-                    ld.data,
-                    types.scast(i32, ld.ld),
-                    ipiv.data,
-                    work.data,
-                    types.scast(i32, work.len),
-                    ctx,
-                );
+                if (comptime !types.isHermitianMatrix(A)) {
+                    info = try linalg.lapack.sytrf(
+                        types.orderOf(A),
+                        .lower,
+                        types.scast(i32, n),
+                        ld.data,
+                        types.scast(i32, ld.ld),
+                        ipiv.data,
+                        work.data,
+                        types.scast(i32, work.len),
+                        ctx,
+                    );
+                } else {
+                    info = try linalg.lapack.hetrf(
+                        types.orderOf(A),
+                        .lower,
+                        types.scast(i32, n),
+                        ld.data,
+                        types.scast(i32, ld.ld),
+                        ipiv.data,
+                        work.data,
+                        types.scast(i32, work.len),
+                        ctx,
+                    );
+                }
 
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ld.data, ipiv.data);
+                return .init(n, ld.data, ipiv.data, types.isHermitianMatrix(A));
             }
         },
-        .hermitian => @compileError("ldlt: hermitian matrices not implemented yet"),
         else => unreachable,
     }
 }
@@ -263,7 +308,17 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
 /// Convert the output a of `sytrf` or `hetrf` into the l and d matrices of the
 /// LDLT factorization. On output, `a` is `l` and `d` is overwritten. `p` is
 /// used as workspace for the permutation.
-fn lconvert(comptime order: Order, n: u32, a: anytype, l: anytype, d: anytype, p: [*]u32, ipiv: [*]i32, ctx: anytype) !void {
+fn lconvert(
+    comptime order: Order,
+    n: u32,
+    a: anytype,
+    l: anytype,
+    d: anytype,
+    p: [*]u32,
+    ipiv: [*]i32,
+    hermitian: bool,
+    ctx: anytype,
+) !void {
     var i: u32 = 0;
     while (i < n) : (i += 1) {
         if (ipiv[i] > 0) {
@@ -315,7 +370,10 @@ fn lconvert(comptime order: Order, n: u32, a: anytype, l: anytype, d: anytype, p
             if (comptime @TypeOf(d) != @TypeOf(null)) {
                 d[i + (n - 1)] = try ops.copy(a[utils.cindex(order, i, i, n)], ctx); // diagonal (a11)
                 d[i] = try ops.copy(a[utils.cindex(order, i + 1, i, n)], ctx); // subdiagonal (a21)
-                d[i + (n - 1) + n] = try ops.copy(a[utils.cindex(order, i + 1, i, n)], ctx); // superdiagonal (a12)
+                d[i + (n - 1) + n] = if (hermitian)
+                    try ops.conjugate(a[utils.cindex(order, i + 1, i, n)], ctx)
+                else
+                    try ops.copy(a[utils.cindex(order, i + 1, i, n)], ctx); // superdiagonal (a12)
                 d[i + 1 + (n - 1)] = try ops.copy(a[utils.cindex(order, i + 1, i + 1, n)], ctx); // diagonal (a22)
             }
 
@@ -397,7 +455,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
     };
 
     switch (comptime types.matrixType(A)) {
-        .symmetric => {
+        .symmetric, .hermitian => {
             const n: u32 = a.size;
 
             var info: i32 = 0;
@@ -408,35 +466,63 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                 var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, n);
                 errdefer ipiv.deinit(allocator);
 
-                info = try linalg.lapack.sytrf( // LAPACKE version does not need work
-                    types.orderOf(A),
-                    .upper,
-                    types.scast(i32, n),
-                    ud.data,
-                    types.scast(i32, ud.ld),
-                    ipiv.data,
-                    undefined,
-                    undefined,
-                    ctx,
-                );
+                if (comptime !types.isHermitianMatrix(A)) {
+                    info = try linalg.lapack.sytrf( // LAPACKE version does not need work
+                        types.orderOf(A),
+                        .upper,
+                        types.scast(i32, n),
+                        ud.data,
+                        types.scast(i32, ud.ld),
+                        ipiv.data,
+                        undefined,
+                        undefined,
+                        ctx,
+                    );
+                } else {
+                    info = try linalg.lapack.hetrf( // LAPACKE version does not need work
+                        types.orderOf(A),
+                        .upper,
+                        types.scast(i32, n),
+                        ud.data,
+                        types.scast(i32, ud.ld),
+                        ipiv.data,
+                        undefined,
+                        undefined,
+                        ctx,
+                    );
+                }
 
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ud.data, ipiv.data);
+                return .init(n, ud.data, ipiv.data, types.isHermitianMatrix(A));
             } else {
                 var lwork: i32 = -1;
-                _ = try linalg.lapack.sytrf( // work size query
-                    types.orderOf(A),
-                    .upper,
-                    types.scast(i32, n),
-                    @as([*]f64, undefined),
-                    types.scast(i32, a.ld),
-                    undefined,
-                    @as([*]i32, @ptrCast(&lwork)),
-                    -1,
-                    ctx,
-                );
+                if (comptime !types.isHermitianMatrix(A)) {
+                    _ = try linalg.lapack.sytrf( // work size query
+                        types.orderOf(A),
+                        .upper,
+                        types.scast(i32, n),
+                        @as([*]f64, undefined),
+                        types.scast(i32, a.ld),
+                        undefined,
+                        @as([*]i32, @ptrCast(&lwork)),
+                        -1,
+                        ctx,
+                    );
+                } else {
+                    _ = try linalg.lapack.hetrf( // work size query
+                        types.orderOf(A),
+                        .upper,
+                        types.scast(i32, n),
+                        @as([*]f64, undefined),
+                        types.scast(i32, a.ld),
+                        undefined,
+                        @as([*]i32, @ptrCast(&lwork)),
+                        -1,
+                        ctx,
+                    );
+                }
 
                 var ud = if (comptime types.uploOf(A) == .upper) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
                 errdefer ud.deinit(allocator);
@@ -447,25 +533,38 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                 var work: vector.Vector(Numeric(A)) = try vector.Vector(Numeric(A)).init(allocator, types.scast(u32, lwork));
                 defer work.deinit(allocator);
 
-                info = try linalg.lapack.sytrf(
-                    types.orderOf(A),
-                    .upper,
-                    types.scast(i32, n),
-                    ud.data,
-                    types.scast(i32, ud.ld),
-                    ipiv.data,
-                    work.data,
-                    types.scast(i32, work.len),
-                    ctx,
-                );
+                if (comptime !types.isHermitianMatrix(A)) {
+                    info = try linalg.lapack.sytrf(
+                        types.orderOf(A),
+                        .upper,
+                        types.scast(i32, n),
+                        ud.data,
+                        types.scast(i32, ud.ld),
+                        ipiv.data,
+                        work.data,
+                        types.scast(i32, work.len),
+                        ctx,
+                    );
+                } else {
+                    info = try linalg.lapack.hetrf(
+                        types.orderOf(A),
+                        .upper,
+                        types.scast(i32, n),
+                        ud.data,
+                        types.scast(i32, ud.ld),
+                        ipiv.data,
+                        work.data,
+                        types.scast(i32, work.len),
+                        ctx,
+                    );
+                }
 
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ud.data, ipiv.data);
+                return .init(n, ud.data, ipiv.data, types.isHermitianMatrix(A));
             }
         },
-        .hermitian => @compileError("udut: hermitian matrices not implemented yet"),
         else => unreachable,
     }
 }
@@ -481,6 +580,7 @@ fn uconvert(
     d: anytype,
     p: [*]u32,
     ipiv: [*]i32,
+    hermitian: bool,
     ctx: anytype,
 ) !void {
     var ii: i32 = types.scast(i32, n - 1);
@@ -534,7 +634,10 @@ fn uconvert(
             // Extract d
             if (comptime @TypeOf(d) != @TypeOf(null)) {
                 d[(i - 1) + (n - 1)] = try ops.copy(a[utils.cindex(order, i - 1, i - 1, n)], ctx); // diagonal (a11)
-                d[i - 1] = try ops.copy(a[utils.cindex(order, i - 1, i, n)], ctx); // subdiagonal (a21)
+                d[i - 1] = if (hermitian)
+                    try ops.conjugate(a[utils.cindex(order, i - 1, i, n)], ctx)
+                else
+                    try ops.copy(a[utils.cindex(order, i - 1, i, n)], ctx); // subdiagonal (a21)
                 d[(i - 1) + (n - 1) + n] = try ops.copy(a[utils.cindex(order, i - 1, i, n)], ctx); // superdiagonal (a12)
                 d[i + (n - 1)] = try ops.copy(a[utils.cindex(order, i, i, n)], ctx); // diagonal (a22)
 

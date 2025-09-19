@@ -14,7 +14,7 @@ const Uplo = types.Uplo;
 
 const utils = @import("../utils.zig");
 
-pub fn lasyf(
+pub fn lahef(
     order: Order,
     uplo: Uplo,
     n: i32,
@@ -54,11 +54,17 @@ pub fn lasyf(
 
                 // Copy column k of a to column kw of w and update it
                 try blas.copy(
-                    k + 1,
+                    k,
                     a + utils.index(order, 0, k, lda),
                     utils.col_ld(order, lda),
                     w + utils.index(order, 0, kw, ldw),
                     utils.col_ld(order, ldw),
+                    ctx,
+                );
+
+                try ops.set(
+                    &w[utils.index(order, k, kw, ldw)],
+                    try ops.re(a[utils.index(order, k, k, lda)], ctx),
                     ctx,
                 );
 
@@ -78,13 +84,19 @@ pub fn lasyf(
                         utils.col_ld(order, ldw),
                         ctx,
                     );
+
+                    try ops.set(
+                        &w[utils.index(order, k, kw, ldw)],
+                        try ops.re(w[utils.index(order, k, kw, ldw)], ctx),
+                        ctx,
+                    );
                 }
 
                 var kstep: i32 = 1;
 
                 // Determine rows and columns to be interchanged and whether a
                 // 1-by-1 or 2-by-2 pivot block will be used.
-                const absakk: types.Scalar(W) = ops.abs1(w[utils.index(order, k, kw, ldw)], ctx) catch unreachable;
+                const absakk: types.Scalar(W) = ops.abs1(try ops.re(w[utils.index(order, k, kw, ldw)], ctx), ctx) catch unreachable;
 
                 // imax is the row-index of the largest off-diagonal element in
                 // column k, and colmax is its absolute value.
@@ -111,6 +123,12 @@ pub fn lasyf(
                         info = k + 1;
 
                     kp = k;
+
+                    try ops.set(
+                        &a[utils.index(order, k, k, lda)],
+                        try ops.re(a[utils.index(order, k, k, lda)], ctx),
+                        ctx,
+                    );
                 } else {
                     if (try ops.ge(absakk, try ops.mul(alpha, colmax, ctx), ctx)) {
                         // No interchange, use 1-by-1 pivot block
@@ -118,11 +136,17 @@ pub fn lasyf(
                     } else {
                         // Copy column imax to column kw-1 of w and update it
                         try blas.copy(
-                            imax + 1,
+                            imax,
                             a + utils.index(order, 0, imax, lda),
                             utils.col_ld(order, lda),
                             w + utils.index(order, 0, kw - 1, ldw),
                             utils.col_ld(order, ldw),
+                            ctx,
+                        );
+
+                        try ops.set(
+                            &w[utils.index(order, imax, kw - 1, ldw)],
+                            try ops.re(a[utils.index(order, imax, imax, lda)], ctx),
                             ctx,
                         );
 
@@ -133,6 +157,12 @@ pub fn lasyf(
                             w + utils.index(order, imax + 1, kw - 1, ldw),
                             utils.col_ld(order, ldw),
                             ctx,
+                        );
+
+                        try lapack.lacgv(
+                            k - imax,
+                            w + utils.index(order, imax + 1, kw - 1, ldw),
+                            utils.col_ld(order, ldw),
                         );
 
                         if (k < n - 1) {
@@ -149,6 +179,12 @@ pub fn lasyf(
                                 1,
                                 w + utils.index(order, 0, kw - 1, ldw),
                                 utils.col_ld(order, ldw),
+                                ctx,
+                            );
+
+                            try ops.set(
+                                &w[utils.index(order, imax, kw - 1, ldw)],
+                                try ops.re(w[utils.index(order, imax, kw - 1, ldw)], ctx),
                                 ctx,
                             );
                         }
@@ -175,7 +211,7 @@ pub fn lasyf(
                         if (try ops.ge(absakk, try ops.mul(alpha, try ops.mul(colmax, try ops.div(colmax, rowmax, ctx), ctx), ctx), ctx)) {
                             // No interchange, use 1-by-1 pivot block
                             kp = k;
-                        } else if (try ops.ge(try ops.abs1(w[utils.index(order, imax, kw - 1, ldw)], ctx), try ops.mul(alpha, rowmax, ctx), ctx)) {
+                        } else if (try ops.ge(try ops.abs1(try ops.re(w[utils.index(order, imax, kw - 1, ldw)], ctx), ctx), try ops.mul(alpha, rowmax, ctx), ctx)) {
                             // Interchange rows and columns k and imax, use
                             // 1-by-1 pivot block
                             kp = imax;
@@ -214,7 +250,7 @@ pub fn lasyf(
 
                     try ops.set(
                         &a[utils.index(order, kp, kp, lda)],
-                        a[utils.index(order, kk, kk, lda)],
+                        try ops.re(a[utils.index(order, kk, kk, lda)], ctx),
                         ctx,
                     );
 
@@ -225,6 +261,12 @@ pub fn lasyf(
                         a + utils.index(order, kp, kp + 1, lda),
                         utils.row_ld(order, lda),
                         ctx,
+                    );
+
+                    try lapack.lacgv(
+                        kk - kp - 1,
+                        a + utils.index(order, kp, kp + 1, lda),
+                        utils.row_ld(order, lda),
                     );
 
                     if (kp > 0) {
@@ -282,14 +324,22 @@ pub fn lasyf(
                         ctx,
                     );
 
-                    const r1: A = try ops.div(1, a[utils.index(order, k, k, lda)], ctx);
-                    try blas.scal(
-                        k,
-                        r1,
-                        a + utils.index(order, 0, k, lda),
-                        utils.col_ld(order, lda),
-                        ctx,
-                    );
+                    if (k > 0) {
+                        const r1: types.Scalar(A) = try ops.div(1, try ops.re(a[utils.index(order, k, k, lda)], ctx), ctx);
+                        try blas.scal(
+                            k,
+                            r1,
+                            a + utils.index(order, 0, k, lda),
+                            utils.col_ld(order, lda),
+                            ctx,
+                        );
+
+                        try lapack.lacgv(
+                            k,
+                            w + utils.index(order, 0, kw, ldw),
+                            utils.col_ld(order, ldw),
+                        );
+                    }
                 } else {
                     // 2-by-2 pivot block d(k): columns kw and kw-1 of w now
                     // hold
@@ -332,7 +382,7 @@ pub fn lasyf(
                         var d21: W = w[utils.index(order, k - 1, kw, ldw)];
                         const d11: W = try ops.div(
                             w[utils.index(order, k, kw, ldw)],
-                            d21,
+                            try ops.conjugate(d21, ctx),
                             ctx,
                         );
                         const d22: W = try ops.div(
@@ -340,7 +390,19 @@ pub fn lasyf(
                             d21,
                             ctx,
                         );
-                        const t: W = try ops.div(1, try ops.sub(try ops.mul(d11, d22, ctx), 1, ctx), ctx);
+                        const t: types.Scalar(W) = try ops.div(
+                            1,
+                            try ops.sub(
+                                try ops.re(try ops.mul(
+                                    d11,
+                                    d22,
+                                    ctx,
+                                ), ctx),
+                                1,
+                                ctx,
+                            ),
+                            ctx,
+                        );
                         d21 = try ops.div(t, d21, ctx);
 
                         // Apdate elements in columns a(k-1) and a(k) as dot
@@ -348,7 +410,7 @@ pub fn lasyf(
                         // of d**(-1)
                         var j: i32 = 0;
                         while (j < k - 1) : (j += 1) {
-                            try ops.mul_( // a[j + (k - 1) * lda] = d21 * (d11 * w[j + (kw - 1) * ldw] - w[j + k * ldw]);
+                            try ops.mul_( // a[j + (k - 1) * lda] = d21 * (d11 * w[j + (kw - 1) * ldw] - w[j + kw * ldw]);
                                 &a[utils.index(order, j, k - 1, lda)],
                                 d21,
                                 try ops.sub(
@@ -363,9 +425,9 @@ pub fn lasyf(
                                 ctx,
                             );
 
-                            try ops.mul_( // a[j + k * lda] = d21 * (d22 * w[j + kw * ldw] - w[j + (kw - 1) * ldw]);
+                            try ops.mul_( // a[j + k * lda] = conj(d21) * (d22 * w[j + kw * ldw] - w[j + (kw - 1) * ldw]);
                                 &a[utils.index(order, j, k, lda)],
-                                d21,
+                                try ops.conjugate(d21, ctx),
                                 try ops.sub(
                                     try ops.mul(
                                         d22,
@@ -395,6 +457,18 @@ pub fn lasyf(
                         &a[utils.index(order, k, k, lda)],
                         w[utils.index(order, k, kw, ldw)],
                         ctx,
+                    );
+
+                    try lapack.lacgv(
+                        k,
+                        w + utils.index(order, 0, kw, ldw),
+                        utils.col_ld(order, ldw),
+                    );
+
+                    try lapack.lacgv(
+                        k - 1,
+                        w + utils.index(order, 0, kw - 1, ldw),
+                        utils.col_ld(order, ldw),
                     );
                 }
 
@@ -474,14 +548,22 @@ pub fn lasyf(
                     break;
 
                 // Copy column k of a to column k of w and update it
-                try blas.copy(
-                    n - k,
-                    a + utils.index(order, k, k, lda),
-                    utils.col_ld(order, lda),
-                    w + utils.index(order, k, k, ldw),
-                    utils.col_ld(order, ldw),
+                try ops.set(
+                    &w[utils.index(order, k, k, ldw)],
+                    try ops.re(a[utils.index(order, k, k, lda)], ctx),
                     ctx,
                 );
+
+                if (k < n - 1) {
+                    try blas.copy(
+                        n - k - 1,
+                        a + utils.index(order, k + 1, k, lda),
+                        utils.col_ld(order, lda),
+                        w + utils.index(order, k + 1, k, ldw),
+                        utils.col_ld(order, ldw),
+                        ctx,
+                    );
+                }
 
                 try blas.gemv(
                     order,
@@ -499,11 +581,17 @@ pub fn lasyf(
                     ctx,
                 );
 
+                try ops.set(
+                    &w[utils.index(order, k, k, ldw)],
+                    try ops.re(w[utils.index(order, k, k, ldw)], ctx),
+                    ctx,
+                );
+
                 var kstep: i32 = 1;
 
                 // Determine rows and columns to be interchanged and whether
                 // a 1-by-1 or 2-by-2 pivot block will be used
-                const absakk: types.Scalar(W) = ops.abs1(w[utils.index(order, k, k, ldw)], ctx) catch unreachable;
+                const absakk: types.Scalar(W) = ops.abs1(try ops.re(w[utils.index(order, k, k, ldw)], ctx), ctx) catch unreachable;
 
                 // imax is the row-index of the largest off-diagonal element in
                 // column k, and colmax is its absolute value.
@@ -529,6 +617,12 @@ pub fn lasyf(
                         info = k + 1;
 
                     kp = k;
+
+                    try ops.set(
+                        &a[utils.index(order, k, k, lda)],
+                        try ops.re(a[utils.index(order, k, k, lda)], ctx),
+                        ctx,
+                    );
                 } else {
                     if (try ops.ge(absakk, try ops.mul(alpha, colmax, ctx), ctx)) {
                         // No interchange, use 1-by-1 pivot block
@@ -544,14 +638,28 @@ pub fn lasyf(
                             ctx,
                         );
 
-                        try blas.copy(
-                            n - imax,
-                            a + utils.index(order, imax, imax, lda),
-                            utils.col_ld(order, lda),
-                            w + utils.index(order, imax, k + 1, ldw),
+                        try lapack.lacgv(
+                            imax - k,
+                            w + utils.index(order, k, k + 1, ldw),
                             utils.col_ld(order, ldw),
+                        );
+
+                        try ops.set(
+                            &w[utils.index(order, imax, k + 1, ldw)],
+                            try ops.re(a[utils.index(order, imax, imax, lda)], ctx),
                             ctx,
                         );
+
+                        if (imax < n - 1) {
+                            try blas.copy(
+                                n - imax - 1,
+                                a + utils.index(order, imax + 1, imax, lda),
+                                utils.col_ld(order, lda),
+                                w + utils.index(order, imax + 1, k + 1, ldw),
+                                utils.col_ld(order, ldw),
+                                ctx,
+                            );
+                        }
 
                         try blas.gemv(
                             order,
@@ -566,6 +674,12 @@ pub fn lasyf(
                             1,
                             w + utils.index(order, k, k + 1, ldw),
                             utils.col_ld(order, ldw),
+                            ctx,
+                        );
+
+                        try ops.set(
+                            &w[utils.index(order, imax, k + 1, ldw)],
+                            try ops.re(w[utils.index(order, imax, k + 1, ldw)], ctx),
                             ctx,
                         );
 
@@ -591,7 +705,7 @@ pub fn lasyf(
                         if (try ops.ge(absakk, try ops.mul(alpha, try ops.mul(colmax, try ops.div(colmax, rowmax, ctx), ctx), ctx), ctx)) {
                             // No interchange, use 1-by-1 pivot block
                             kp = k;
-                        } else if (try ops.ge(try ops.abs1(w[utils.index(order, imax, k + 1, ldw)], ctx), try ops.mul(alpha, rowmax, ctx), ctx)) {
+                        } else if (try ops.ge(try ops.abs1(try ops.re(w[utils.index(order, imax, k + 1, ldw)], ctx), ctx), try ops.mul(alpha, rowmax, ctx), ctx)) {
                             // Interchange rows and columns k and imax, use 1-by-1
                             // pivot block
                             kp = imax;
@@ -612,216 +726,240 @@ pub fn lasyf(
                             kstep = 2;
                         }
                     }
-                }
 
-                // kk is the column of a where pivoting step stopped
-                const kk: i32 = k + kstep - 1;
+                    // kk is the column of a where pivoting step stopped
+                    const kk: i32 = k + kstep - 1;
 
-                // Interchange rows and columns kp and kk.
-                // updated column kp is already stored in column kk of w.
-                if (kp != kk) {
-                    // copy non-updated column kk to column kp of submatrix a
-                    // at step k. no need to copy element into column k
-                    // (or k and k+1 for 2-by-2 pivot) of a, since these columns
-                    // will be later overwritten.
-                    try ops.set(
-                        &a[utils.index(order, kp, kp, lda)],
-                        a[utils.index(order, kk, kk, lda)],
-                        ctx,
-                    );
+                    // Interchange rows and columns kp and kk.
+                    // updated column kp is already stored in column kk of w.
+                    if (kp != kk) {
+                        // copy non-updated column kk to column kp of submatrix a
+                        // at step k. no need to copy element into column k
+                        // (or k and k+1 for 2-by-2 pivot) of a, since these columns
+                        // will be later overwritten.
+                        try ops.set(
+                            &a[utils.index(order, kp, kp, lda)],
+                            try ops.re(a[utils.index(order, kk, kk, lda)], ctx),
+                            ctx,
+                        );
 
-                    try blas.copy(
-                        kp - kk - 1,
-                        a + utils.index(order, kk + 1, kk, lda),
-                        utils.col_ld(order, lda),
-                        a + utils.index(order, kp, kk + 1, lda),
-                        utils.row_ld(order, lda),
-                        ctx,
-                    );
-
-                    if (kp < n - 1) {
                         try blas.copy(
-                            n - kp - 1,
-                            a + utils.index(order, kp + 1, kk, lda),
+                            kp - kk - 1,
+                            a + utils.index(order, kk + 1, kk, lda),
                             utils.col_ld(order, lda),
-                            a + utils.index(order, kp + 1, kp, lda),
-                            utils.col_ld(order, lda),
-                            ctx,
-                        );
-                    }
-
-                    // Interchange rows kk and kp in first k-1 columns of a
-                    // (columns k (or k and k+1 for 2-by-2 pivot) of a will be
-                    // later overwritten). interchange rows kk and kp
-                    // in first kk columns of w.
-                    if (k > 0) {
-                        try blas.swap(
-                            k,
-                            a + utils.index(order, kk, 0, lda),
-                            utils.row_ld(order, lda),
-                            a + utils.index(order, kp, 0, lda),
+                            a + utils.index(order, kp, kk + 1, lda),
                             utils.row_ld(order, lda),
                             ctx,
                         );
-                    }
 
-                    try blas.swap(
-                        kk + 1,
-                        w + utils.index(order, kk, 0, ldw),
-                        utils.row_ld(order, ldw),
-                        w + utils.index(order, kp, 0, ldw),
-                        utils.row_ld(order, ldw),
-                        ctx,
-                    );
-                }
-
-                if (kstep == 1) {
-                    // 1-by-1 pivot block d(k): column k of w now holds
-                    // w(k) = l(k)*d(k),
-                    // where l(k) is the k-th column of l
-
-                    // Store subdiag. elements of column l(k)
-                    // and 1-by-1 block d(k) in column k of a.
-                    // (note: diagonal element l(k,k) is a unit element
-                    // and not stored)
-                    //   a(k,k) := d(k,k) = w(k,k)
-                    //   a(k+1:n,k) := l(k+1:n,k) = w(k+1:n,k)/d(k,k)
-                    try blas.copy(
-                        n - k,
-                        w + utils.index(order, k, k, ldw),
-                        utils.col_ld(order, ldw),
-                        a + utils.index(order, k, k, lda),
-                        utils.col_ld(order, lda),
-                        ctx,
-                    );
-
-                    if (k < n - 1) {
-                        const r1: A = try ops.div(1, a[utils.index(order, k, k, lda)], ctx);
-
-                        try blas.scal(
-                            n - k - 1,
-                            r1,
-                            a + utils.index(order, k + 1, k, lda),
-                            utils.col_ld(order, lda),
-                            ctx,
+                        try lapack.lacgv(
+                            kp - kk - 1,
+                            a + utils.index(order, kp, kk + 1, lda),
+                            utils.row_ld(order, lda),
                         );
-                    }
-                } else {
-                    // 2-by-2 pivot block d(k): columns k and k+1 of w now hold
-                    // ( w(k) w(k+1) ) = ( l(k) l(k+1) )*d(k)
-                    // where l(k) and l(k+1) are the k-th and (k+1)-th columns of l
 
-                    // Store l(k+2:n,k) and l(k+2:n,k+1) and 2-by-2
-                    // block d(k:k+1,k:k+1) in columns k and k+1 of a.
-                    // (note: 2-by-2 diagonal block l(k:k+1,k:k+1) is a unit
-                    // block and not stored)
-                    //   a(k:k+1,k:k+1) := d(k:k+1,k:k+1) = w(k:k+1,k:k+1)
-                    //   a(k+2:n,k:k+1) := l(k+2:n,k:k+1) =
-                    //   = w(k+2:n,k:k+1) * ( d(k:k+1,k:k+1)**(-1) )
-                    if (k < n - 2) {
-                        // Compose the columns of the inverse of 2-by-2 pivot
-                        // block d in the following way to reduce the number
-                        // of flops when we myltiply panel ( w(k) w(k+1) ) by
-                        // this inverse
-
-                        // d**(-1) = ( d11 d21 )**(-1) =
-                        //           ( d21 d22 )
-                        //
-                        // = 1/(d11*d22-d21**2) * ( ( d22 ) (-d21 ) ) =
-                        //                        ( (-d21 ) ( d11 ) )
-                        //
-                        // = 1/d21 * 1/((d11/d21)*(d22/d21)-1) *
-                        //
-                        //   * ( ( d22/d21 ) (      -1 ) ) =
-                        //     ( (      -1 ) ( d11/d21 ) )
-                        //
-                        // = 1/d21 * 1/(d22*d11-1) * ( ( d11 ) (  -1 ) ) =
-                        //                           ( ( -1  ) ( d22 ) )
-                        //
-                        // = 1/d21 * t * ( ( d11 ) (  -1 ) )
-                        //               ( (  -1 ) ( d22 ) )
-                        //
-                        // = d21 * ( ( d11 ) (  -1 ) )
-                        //         ( (  -1 ) ( d22 ) )
-                        var d21: W = w[utils.index(order, k + 1, k, ldw)];
-                        const d11: W = try ops.div(
-                            w[utils.index(order, k + 1, k + 1, ldw)],
-                            d21,
-                            ctx,
-                        );
-                        const d22: W = try ops.div(
-                            w[utils.index(order, k, k, ldw)],
-                            d21,
-                            ctx,
-                        );
-                        const t: W = try ops.div(
-                            1,
-                            try ops.sub(
-                                try ops.mul(
-                                    d11,
-                                    d22,
-                                    ctx,
-                                ),
-                                1,
-                                ctx,
-                            ),
-                            ctx,
-                        );
-                        d21 = try ops.div(t, d21, ctx);
-
-                        // Update elements in columns a(k) and a(k+1) as
-                        // dot products of rows of ( w(k) w(k+1) ) and columns
-                        // of d**(-1)
-                        var j: i32 = k + 2;
-                        while (j < n) : (j += 1) {
-                            try ops.mul_( // a[j + k * lda] = d21 * (d11 * w[j + k * ldw] - w[j + (k + 1) * ldw]);
-                                &a[utils.index(order, j, k, lda)],
-                                d21,
-                                try ops.sub(
-                                    try ops.mul(
-                                        d11,
-                                        w[utils.index(order, j, k, ldw)],
-                                        ctx,
-                                    ),
-                                    w[utils.index(order, j, k + 1, ldw)],
-                                    ctx,
-                                ),
-                                ctx,
-                            );
-
-                            try ops.mul_( // a[j + (k + 1) * lda] = d21 * (d22 * w[j + (k + 1) * ldw] - w[j + k * ldw]);
-                                &a[utils.index(order, j, k + 1, lda)],
-                                d21,
-                                try ops.sub(
-                                    try ops.mul(
-                                        d22,
-                                        w[utils.index(order, j, k + 1, ldw)],
-                                        ctx,
-                                    ),
-                                    w[utils.index(order, j, k, ldw)],
-                                    ctx,
-                                ),
+                        if (kp < n - 1) {
+                            try blas.copy(
+                                n - kp - 1,
+                                a + utils.index(order, kp + 1, kk, lda),
+                                utils.col_ld(order, lda),
+                                a + utils.index(order, kp + 1, kp, lda),
+                                utils.col_ld(order, lda),
                                 ctx,
                             );
                         }
+
+                        // Interchange rows kk and kp in first k-1 columns of a
+                        // (columns k (or k and k+1 for 2-by-2 pivot) of a will be
+                        // later overwritten). interchange rows kk and kp
+                        // in first kk columns of w.
+                        if (k > 0) {
+                            try blas.swap(
+                                k,
+                                a + utils.index(order, kk, 0, lda),
+                                utils.row_ld(order, lda),
+                                a + utils.index(order, kp, 0, lda),
+                                utils.row_ld(order, lda),
+                                ctx,
+                            );
+                        }
+
+                        try blas.swap(
+                            kk + 1,
+                            w + utils.index(order, kk, 0, ldw),
+                            utils.row_ld(order, ldw),
+                            w + utils.index(order, kp, 0, ldw),
+                            utils.row_ld(order, ldw),
+                            ctx,
+                        );
                     }
 
-                    // Copy d(k) to a
-                    try ops.set( // a[k + k * lda] = w[k + k * ldw];
-                        &a[utils.index(order, k, k, lda)],
-                        w[utils.index(order, k, k, ldw)],
-                        ctx,
-                    );
-                    try ops.set( // a[k + 1 + k * lda] = w[k + 1 + k * ldw];
-                        &a[utils.index(order, k + 1, k, lda)],
-                        w[utils.index(order, k + 1, k, ldw)],
-                        ctx,
-                    );
-                    try ops.set( // a[k + 1 + (k + 1) * lda] = w[k + 1 + (k + 1) * ldw];
-                        &a[utils.index(order, k + 1, k + 1, lda)],
-                        w[utils.index(order, k + 1, k + 1, ldw)],
-                        ctx,
-                    );
+                    if (kstep == 1) {
+                        // 1-by-1 pivot block d(k): column k of w now holds
+                        // w(k) = l(k)*d(k),
+                        // where l(k) is the k-th column of l
+
+                        // Store subdiag. elements of column l(k)
+                        // and 1-by-1 block d(k) in column k of a.
+                        // (note: diagonal element l(k,k) is a unit element
+                        // and not stored)
+                        //   a(k,k) := d(k,k) = w(k,k)
+                        //   a(k+1:n,k) := l(k+1:n,k) = w(k+1:n,k)/d(k,k)
+                        try blas.copy(
+                            n - k,
+                            w + utils.index(order, k, k, ldw),
+                            utils.col_ld(order, ldw),
+                            a + utils.index(order, k, k, lda),
+                            utils.col_ld(order, lda),
+                            ctx,
+                        );
+
+                        if (k < n - 1) {
+                            const r1: types.Scalar(A) = try ops.div(1, try ops.re(a[utils.index(order, k, k, lda)], ctx), ctx);
+
+                            try blas.scal(
+                                n - k - 1,
+                                r1,
+                                a + utils.index(order, k + 1, k, lda),
+                                utils.col_ld(order, lda),
+                                ctx,
+                            );
+
+                            try lapack.lacgv(
+                                n - k - 1,
+                                w + utils.index(order, k + 1, k, ldw),
+                                utils.col_ld(order, ldw),
+                            );
+                        }
+                    } else {
+                        // 2-by-2 pivot block d(k): columns k and k+1 of w now hold
+                        // ( w(k) w(k+1) ) = ( l(k) l(k+1) )*d(k)
+                        // where l(k) and l(k+1) are the k-th and (k+1)-th columns of l
+
+                        // Store l(k+2:n,k) and l(k+2:n,k+1) and 2-by-2
+                        // block d(k:k+1,k:k+1) in columns k and k+1 of a.
+                        // (note: 2-by-2 diagonal block l(k:k+1,k:k+1) is a unit
+                        // block and not stored)
+                        //   a(k:k+1,k:k+1) := d(k:k+1,k:k+1) = w(k:k+1,k:k+1)
+                        //   a(k+2:n,k:k+1) := l(k+2:n,k:k+1) =
+                        //   = w(k+2:n,k:k+1) * ( d(k:k+1,k:k+1)**(-1) )
+                        if (k < n - 2) {
+                            // Compose the columns of the inverse of 2-by-2 pivot
+                            // block d in the following way to reduce the number
+                            // of flops when we myltiply panel ( w(k) w(k+1) ) by
+                            // this inverse
+
+                            // d**(-1) = ( d11 d21 )**(-1) =
+                            //           ( d21 d22 )
+                            //
+                            // = 1/(d11*d22-d21**2) * ( ( d22 ) (-d21 ) ) =
+                            //                        ( (-d21 ) ( d11 ) )
+                            //
+                            // = 1/d21 * 1/((d11/d21)*(d22/d21)-1) *
+                            //
+                            //   * ( ( d22/d21 ) (      -1 ) ) =
+                            //     ( (      -1 ) ( d11/d21 ) )
+                            //
+                            // = 1/d21 * 1/(d22*d11-1) * ( ( d11 ) (  -1 ) ) =
+                            //                           ( ( -1  ) ( d22 ) )
+                            //
+                            // = 1/d21 * t * ( ( d11 ) (  -1 ) )
+                            //               ( (  -1 ) ( d22 ) )
+                            //
+                            // = d21 * ( ( d11 ) (  -1 ) )
+                            //         ( (  -1 ) ( d22 ) )
+                            var d21: W = w[utils.index(order, k + 1, k, ldw)];
+                            const d11: W = try ops.div(
+                                w[utils.index(order, k + 1, k + 1, ldw)],
+                                d21,
+                                ctx,
+                            );
+                            const d22: W = try ops.div(
+                                w[utils.index(order, k, k, ldw)],
+                                try ops.conjugate(d21, ctx),
+                                ctx,
+                            );
+                            const t: types.Scalar(W) = try ops.div(
+                                1,
+                                try ops.sub(
+                                    try ops.re(try ops.mul(
+                                        d11,
+                                        d22,
+                                        ctx,
+                                    ), ctx),
+                                    1,
+                                    ctx,
+                                ),
+                                ctx,
+                            );
+                            d21 = try ops.div(t, d21, ctx);
+
+                            // Update elements in columns a(k) and a(k+1) as
+                            // dot products of rows of ( w(k) w(k+1) ) and columns
+                            // of d**(-1)
+                            var j: i32 = k + 2;
+                            while (j < n) : (j += 1) {
+                                try ops.mul_( // a[j + k * lda] = conj(d21) * (d11 * w[j + k * ldw] - w[j + (k + 1) * ldw]);
+                                    &a[utils.index(order, j, k, lda)],
+                                    try ops.conjugate(d21, ctx),
+                                    try ops.sub(
+                                        try ops.mul(
+                                            d11,
+                                            w[utils.index(order, j, k, ldw)],
+                                            ctx,
+                                        ),
+                                        w[utils.index(order, j, k + 1, ldw)],
+                                        ctx,
+                                    ),
+                                    ctx,
+                                );
+
+                                try ops.mul_( // a[j + (k + 1) * lda] = d21 * (d22 * w[j + (k + 1) * ldw] - w[j + k * ldw]);
+                                    &a[utils.index(order, j, k + 1, lda)],
+                                    d21,
+                                    try ops.sub(
+                                        try ops.mul(
+                                            d22,
+                                            w[utils.index(order, j, k + 1, ldw)],
+                                            ctx,
+                                        ),
+                                        w[utils.index(order, j, k, ldw)],
+                                        ctx,
+                                    ),
+                                    ctx,
+                                );
+                            }
+                        }
+
+                        // Copy d(k) to a
+                        try ops.set( // a[k + k * lda] = w[k + k * ldw];
+                            &a[utils.index(order, k, k, lda)],
+                            w[utils.index(order, k, k, ldw)],
+                            ctx,
+                        );
+                        try ops.set( // a[k + 1 + k * lda] = w[k + 1 + k * ldw];
+                            &a[utils.index(order, k + 1, k, lda)],
+                            w[utils.index(order, k + 1, k, ldw)],
+                            ctx,
+                        );
+                        try ops.set( // a[k + 1 + (k + 1) * lda] = w[k + 1 + (k + 1) * ldw];
+                            &a[utils.index(order, k + 1, k + 1, lda)],
+                            w[utils.index(order, k + 1, k + 1, ldw)],
+                            ctx,
+                        );
+
+                        try lapack.lacgv(
+                            n - k - 1,
+                            w + utils.index(order, k + 1, k, ldw),
+                            utils.col_ld(order, ldw),
+                        );
+
+                        try lapack.lacgv(
+                            n - k - 2,
+                            w + utils.index(order, k + 2, k + 1, ldw),
+                            utils.col_ld(order, ldw),
+                        );
+                    }
                 }
 
                 // store details of the interchanges in ipiv
@@ -889,7 +1027,7 @@ pub fn lasyf(
         }
     } else {
         // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.lapack.lasyf not implemented for arbitrary precision types yet");
+        @compileError("zml.linalg.lapack.lahef not implemented for arbitrary precision types yet");
     }
 
     return info;

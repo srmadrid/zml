@@ -61,6 +61,10 @@ pub const min = ops.min;
 // Basic operations
 pub const abs = ops.abs;
 pub const abs_ = ops.abs_;
+pub const abs1 = ops.abs1;
+pub const abs1_ = ops.abs1_;
+pub const abs2 = ops.abs2;
+pub const abs2_ = ops.abs2_;
 
 // Exponential functions
 pub const exp = ops.exp;
@@ -155,6 +159,8 @@ pub const lgamma_ = ops.lgamma_;
 // Nearest integer operations
 pub const ceil = ops.ceil;
 pub const ceil_ = ops.ceil_;
+
+pub const conjugate = ops.conjugate;
 
 pub const set = ops.set;
 

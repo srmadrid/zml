@@ -18,11 +18,13 @@ pub fn LLT(T: type, order: Order) type {
     return struct {
         _size: u32,
         _l: [*]T,
+        _hermitian: bool,
 
-        pub fn init(size: u32, a: [*]T) LLT(T, order) {
+        pub fn init(size: u32, a: [*]T, hermitian: bool) LLT(T, order) {
             return .{
                 ._size = size,
                 ._l = a,
+                ._hermitian = hermitian,
             };
         }
 
@@ -45,7 +47,7 @@ pub fn LLT(T: type, order: Order) type {
         pub fn reconstruct(self: *const LLT(T, order), allocator: std.mem.Allocator) void {
             _ = self;
             _ = allocator;
-            // A = L * L^T
+            // A = L * L^T or A = L * L^H
             @compileError("LLT.reconstruct not implemented yet");
         }
     };
@@ -55,11 +57,13 @@ pub fn UTU(T: type, order: Order) type {
     return struct {
         _size: u32,
         _u: [*]T,
+        _hermitian: bool,
 
-        pub fn init(n: u32, a: [*]T) UTU(T, order) {
+        pub fn init(n: u32, a: [*]T, hermitian: bool) UTU(T, order) {
             return .{
                 ._size = n,
                 ._u = a,
+                ._hermitian = hermitian,
             };
         }
 
@@ -82,7 +86,7 @@ pub fn UTU(T: type, order: Order) type {
         pub fn reconstruct(self: *const UTU(T, order), allocator: std.mem.Allocator) void {
             _ = self;
             _ = allocator;
-            // A = U * U^T
+            // A = U * U^T or A = U * U^H
             @compileError("UTU.reconstruct not implemented yet");
         }
     };
@@ -120,7 +124,7 @@ pub fn llt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LLT(Numeric(
             if (info != 0)
                 return linalg.Error.SingularMatrix;
 
-            return .init(n, l.data);
+            return .init(n, l.data, types.isHermitianMatrix(A));
         },
         else => unreachable,
     }
@@ -158,7 +162,7 @@ pub fn utu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UTU(Numeric(
             if (info != 0)
                 return error.SingularMatrix;
 
-            return .init(n, u.data);
+            return .init(n, u.data, types.isHermitianMatrix(A));
         },
         else => unreachable,
     }

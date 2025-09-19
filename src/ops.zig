@@ -6161,6 +6161,57 @@ pub inline fn re(
     }
 }
 
+pub inline fn re_(
+    o: anytype,
+    x: anytype,
+    ctx: anytype,
+) !void {
+    comptime var O: type = @TypeOf(o);
+    const X: type = @TypeOf(x);
+
+    comptime if (!types.isPointer(O) or types.isConstPointer(O))
+        @compileError("zml.re_ requires the output to be a mutable pointer, got " ++ @typeName(O));
+
+    O = types.Child(O);
+
+    if (comptime types.isArray(O)) {
+        comptime if (types.isArbitraryPrecision(Numeric(O)) or types.isArbitraryPrecision(Numeric(X))) {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
+            );
+        } else {
+            types.validateContext(@TypeOf(ctx), .{});
+        };
+
+        return array.re_(o, x, ctx);
+    } else if (comptime types.isArray(X)) {
+        @compileError("zml.re_: o must be an array if x is an array, got " ++ @typeName(O) ++ " and " ++ @typeName(X));
+    } else if (comptime types.isMatrix(O) or types.isMatrix(X)) {
+        @compileError("zml.re_ not defined for matrices, convert to array first");
+    } else {
+        switch (comptime types.numericType(X)) {
+            .bool => @compileError("zml.re_ not defined for " ++ @typeName(X) ++ " input type"),
+            .int => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = try cast(O, x, ctx);
+            },
+            .float => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = try cast(O, x, ctx);
+            },
+            .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = try cast(O, x.re, ctx);
+            },
+            else => @compileError("zml.re_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
+        }
+    }
+}
+
 pub inline fn im(
     x: anytype,
     ctx: anytype,

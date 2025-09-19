@@ -82,6 +82,44 @@ pub inline fn lamch(
     return @import("lapack/lamch.zig").lamch(comptime T, cmach);
 }
 
+pub inline fn lapy2(
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) Coerce(@TypeOf(x), @TypeOf(y)) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(X, Y);
+
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
+        @compileError("zml.linalg.lapack.lapy2 requires x and y to be numeric, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+
+    comptime if (types.isComplex(X) or types.isComplex(Y))
+        @compileError("zml.linalg.lapack.lapy2 requires x and y to be real, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+
+    comptime if (types.isArbitraryPrecision(C)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.lapy2 not implemented for arbitrary precision types yet");
+    } else {
+        types.validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime options.link_lapacke != null) {
+        switch (comptime types.numericType(C)) {
+            .float => {
+                if (comptime C == f32) {
+                    return ci.LAPACKE_slapy2(scast(C, x), scast(C, y));
+                } else if (comptime C == f64) {
+                    return ci.LAPACKE_dlapy2(scast(C, x), scast(C, y));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/lapy2.zig").lapy2(x, y, ctx);
+}
+
 pub inline fn lacgv(
     n: i32,
     x: anytype,
@@ -4267,6 +4305,132 @@ pub inline fn sytrf(
     }
 
     return @import("lapack/sytrf.zig").sytrf(order, uplo, n, a, lda, ipiv, work, lwork, ctx);
+}
+
+pub inline fn lahef(
+    order: Order,
+    uplo: Uplo,
+    n: i32,
+    nb: i32,
+    kb: *i32,
+    a: anytype,
+    lda: i32,
+    ipiv: [*]i32,
+    w: anytype,
+    ldw: i32,
+    ctx: anytype,
+) !i32 {
+    comptime var A: type = @TypeOf(a);
+    comptime var W: type = @TypeOf(w);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.lahef requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.lahef requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+        @compileError("zml.linalg.lapack.lahef requires w to be a mutable many-item pointer, got " ++ @typeName(W));
+
+    W = types.Child(W);
+
+    comptime if (!types.isNumeric(W))
+        @compileError("zml.linalg.lapack.lahef requires w's child type to be a numeric, got " ++ @typeName(W));
+
+    return @import("lapack/lahef.zig").lahef(order, uplo, n, nb, kb, a, lda, ipiv, w, ldw, ctx);
+}
+
+pub inline fn hetf2(
+    order: Order,
+    uplo: Uplo,
+    n: i32,
+    a: anytype,
+    lda: i32,
+    ipiv: [*]i32,
+    ctx: anytype,
+) !i32 {
+    comptime var A: type = @TypeOf(a);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.hetf2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.hetf2 requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    return @import("lapack/hetf2.zig").hetf2(order, uplo, n, a, lda, ipiv, ctx);
+}
+
+pub inline fn hetrf(
+    order: Order,
+    uplo: Uplo,
+    n: i32,
+    a: anytype,
+    lda: i32,
+    ipiv: [*]i32,
+    work: anytype,
+    lwork: i32,
+    ctx: anytype,
+) !i32 {
+    comptime var A: type = @TypeOf(a);
+    comptime var W: type = @TypeOf(work);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.hetrf requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.hetrf requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    if (comptime options.link_lapacke == null) { // LAPACKE hetrf does not need work
+        comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+            @compileError("zml.linalg.lapack.hetrf requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+
+        W = types.Child(W);
+
+        comptime if (!types.isNumeric(W))
+            @compileError("zml.linalg.lapack.hetrf requires work's child type to be a numeric, got " ++ @typeName(W));
+    }
+
+    comptime if (types.isArbitraryPrecision(A)) {
+        // When implemented, expand if
+        @compileError("zml.linalg.lapack.hetrf not implemented for arbitrary precision types yet");
+    } else {
+        types.validateContext(@TypeOf(ctx), .{});
+    };
+
+    if (comptime options.link_lapacke != null) {
+        switch (comptime types.numericType(A)) {
+            .cfloat => {
+                if (comptime Scalar(A) == f32) {
+                    return scast(i32, ci.LAPACKE_chetrf(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                    ));
+                } else if (comptime Scalar(A) == f64) {
+                    return scast(i32, ci.LAPACKE_zhetrf(
+                        order.toCInt(),
+                        uplo.toChar(),
+                        scast(c_int, n),
+                        a,
+                        scast(c_int, lda),
+                        ipiv,
+                    ));
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/hetrf.zig").hetrf(order, uplo, n, a, lda, ipiv, work, lwork, ctx);
 }
 
 pub const Error = error{
