@@ -1,5 +1,6 @@
 const std = @import("std");
 const types = @import("../types.zig");
+const int = @import("../int.zig");
 const float = @import("../float.zig");
 
 /// Returns a value with the magnitude of `x` and the sign of `y`.
@@ -15,12 +16,12 @@ pub fn copysign(x: anytype, y: anytype) @TypeOf(x) {
                         @compileError("If x is an unsigned int, y must be also be an unsigned int");
 
                     switch (@typeInfo(@TypeOf(y)).int.signedness) {
-                        .unsigned => return float.abs(x),
+                        .unsigned => return x,
                         .signed => {
                             if (y < 0) {
-                                return -float.abs(x);
+                                return -int.abs(x);
                             } else {
-                                return float.abs(x);
+                                return int.abs(x);
                             }
                         },
                     }

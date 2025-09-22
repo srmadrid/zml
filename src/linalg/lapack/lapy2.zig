@@ -21,7 +21,7 @@ pub fn lapy2(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    if (comptime !types.isArbitraryPrecision(X)) {
+    if (comptime !types.isArbitraryPrecision(C)) {
         if (types.numericType(C) == .int) {
             return types.scast(C, try ops.hypot(x, y, ctx));
         } else { // float

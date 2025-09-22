@@ -7,6 +7,7 @@ const Child = types.Child;
 const EnsureFloat = types.EnsureFloat;
 const float = @import("../../float.zig");
 const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
 
 const blas = @import("../blas.zig");
 
@@ -18,7 +19,10 @@ pub fn nrm2(
 ) !EnsureFloat(Scalar(Child(@TypeOf(x)))) {
     const X: type = Child(@TypeOf(x));
 
-    if (n <= 0) return blas.Error.InvalidArgument;
+    if (n < 0) return blas.Error.InvalidArgument;
+
+    if (n == 0)
+        return try constants.zero(EnsureFloat(Scalar(X)), ctx);
 
     if (comptime types.isArbitraryPrecision(X)) {
         // Orientative implementation for arbitrary precision types
@@ -45,7 +49,7 @@ pub fn nrm2(
 
         @compileError("zml.linalg.blas.nrm2 not implemented for arbitrary precision types yet");
     } else {
-        const huge = std.math.floatMax(EnsureFloat(Scalar(X)));
+        const huge: EnsureFloat(Scalar(X)) = std.math.floatMax(EnsureFloat(Scalar(X)));
         const tsml: EnsureFloat(Scalar(X)) = float.pow(2, float.ceil((std.math.floatExponentMin(EnsureFloat(Scalar(X))) - 1) * @as(EnsureFloat(Scalar(X)), 0.5)));
         const tbig: EnsureFloat(Scalar(X)) = float.pow(2, float.floor((std.math.floatExponentMax(EnsureFloat(Scalar(X))) - @bitSizeOf(EnsureFloat(Scalar(X))) + 1) * @as(EnsureFloat(Scalar(X)), 0.5)));
         const ssml: EnsureFloat(Scalar(X)) = float.pow(2, -float.floor((std.math.floatExponentMin(EnsureFloat(Scalar(X))) - @bitSizeOf(EnsureFloat(Scalar(X)))) * @as(EnsureFloat(Scalar(X)), 0.5)));
@@ -65,22 +69,22 @@ pub fn nrm2(
             for (0..scast(u32, n)) |_| {
                 var ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(u32, ix)].re);
                 if (ax > tbig) {
-                    abig += float.pow(ax * sbig, 2);
+                    abig += (ax * sbig) * (ax * sbig);
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += float.pow(ax * ssml, 2);
+                    if (notbig) asml += (ax * ssml) * (ax * ssml);
                 } else {
-                    amed += float.pow(ax, 2);
+                    amed += ax * ax;
                 }
 
                 ax = float.abs(x[scast(u32, ix)].im);
                 if (ax > tbig) {
-                    abig += float.pow(ax * sbig, 2);
+                    abig += (ax * sbig) * (ax * sbig);
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += float.pow(ax * ssml, 2);
+                    if (notbig) asml += (ax * ssml) * (ax * ssml);
                 } else {
-                    amed += float.pow(ax, 2);
+                    amed += ax * ax;
                 }
 
                 ix += incx;
@@ -90,12 +94,12 @@ pub fn nrm2(
             for (0..scast(u32, n)) |_| {
                 const ax: EnsureFloat(Scalar(X)) = float.abs(x[scast(u32, ix)]);
                 if (ax > tbig) {
-                    abig += float.pow(ax * sbig, 2);
+                    abig += (ax * sbig) * (ax * sbig);
                     notbig = false;
                 } else if (ax < tsml) {
-                    if (notbig) asml += float.pow(ax * ssml, 2);
+                    if (notbig) asml += (ax * ssml) * (ax * ssml);
                 } else {
-                    amed += float.pow(ax, 2);
+                    amed += ax * ax;
                 }
 
                 ix += incx;
@@ -104,7 +108,7 @@ pub fn nrm2(
 
         if (abig > 0) {
             if (amed > 0 or amed > huge or amed != amed) {
-                abig += float.pow(amed * sbig, 2);
+                abig += (amed * sbig) * (amed * sbig);
             }
             scl = 1 / sbig;
             sumsq = abig;
@@ -115,7 +119,7 @@ pub fn nrm2(
                 const ymin = if (sqrt_asml > sqrt_amed) sqrt_amed else sqrt_asml;
                 const ymax = if (sqrt_asml > sqrt_amed) sqrt_asml else sqrt_amed;
                 scl = 1;
-                sumsq = float.pow(ymax, 2) * (1 + float.pow(ymin / ymax, 2));
+                sumsq = (ymax * ymax) * (1 + (ymin / ymax) * (ymin / ymax));
             } else {
                 scl = 1 / ssml;
                 sumsq = asml;

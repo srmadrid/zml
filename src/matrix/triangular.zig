@@ -52,7 +52,10 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                 return matrix.Error.ZeroDimension;
 
             return .{
-                .data = (try allocator.alloc(T, rows * cols)).ptr,
+                .data = (try allocator.alloc(T, if (comptime uplo == .upper)
+                    int.min(rows, cols) * cols
+                else
+                    rows * int.min(rows, cols))).ptr,
                 .rows = rows,
                 .cols = cols,
                 .ld = if (order == .col_major) rows else cols,
@@ -264,7 +267,10 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
 
         pub fn deinit(self: *Triangular(T, uplo, diag, order), allocator: ?std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.?.free(self.data[0 .. self.rows * self.cols]);
+                allocator.?.free(self.data[0..if (comptime uplo == .upper)
+                    int.min(self.rows, self.cols) * self.cols
+                else
+                    self.rows * int.min(self.rows, self.cols)]);
             }
 
             self.* = undefined;

@@ -6113,6 +6113,52 @@ pub inline fn lgamma_(
     }
 }
 
+pub inline fn copysign(
+    x: anytype,
+    y: anytype,
+    ctx: anytype,
+) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    if (comptime types.isArray(X) or types.isArray(Y)) {
+        comptime if (types.isArbitraryPrecision(Numeric(X)) or types.isArbitraryPrecision(Numeric(Y))) {
+            @compileError("Arbitrary precision types not implemented yet");
+        } else {
+            types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+        };
+
+        return array.copysign(
+            ctx.array_allocator,
+            x,
+            y,
+            types.stripStruct(ctx, &.{"array_allocator"}),
+        );
+    } else if (comptime types.isMatrix(X) or types.isMatrix(Y)) {
+        @compileError("zml.copysign not defined for matrices, convert to array first");
+    } else {
+        switch (comptime types.numericType(X)) {
+            .bool => @compileError("zml.copysign not defined for " ++ @typeName(X) ++ " input type"),
+            .int, .float => switch (comptime types.numericType(Y)) {
+                .bool => @compileError("zml.copysign not defined for " ++ @typeName(Y) ++ " input type"),
+                .int, .float => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return float.copysign(x, y);
+                },
+                else => @compileError("zml.copysign not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+            },
+            .cfloat => @compileError("zml.copysign not defined for complex types"),
+            else => @compileError("zml.copysign not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " input types yet"),
+        }
+    }
+}
+
 pub inline fn re(
     x: anytype,
     ctx: anytype,
