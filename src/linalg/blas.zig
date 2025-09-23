@@ -2371,7 +2371,6 @@ pub inline fn nrm2(
     };
 
     if (comptime options.link_cblas != null) {
-        std.debug.print("Using CBLAS nrm2\n", .{});
         switch (comptime types.numericType(X)) {
             .float => {
                 if (comptime X == f32) {

@@ -4687,15 +4687,17 @@ pub inline fn geqr2(
     comptime if (!types.isNumeric(Ta))
         @compileError("zml.linalg.lapack.geqr2 requires tau's child type to be a numeric, got " ++ @typeName(Ta));
 
-    comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
-        @compileError("zml.linalg.lapack.geqr2 requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+    if (comptime options.link_lapacke == null) { // LAPACKE geqr2 does not need work
+        comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+            @compileError("zml.linalg.lapack.geqr2 requires work to be a mutable many-item pointer, got " ++ @typeName(W));
 
-    W = types.Child(W);
+        W = types.Child(W);
 
-    comptime if (!types.isNumeric(W))
-        @compileError("zml.linalg.lapack.geqr2 requires work's child type to be a numeric, got " ++ @typeName(W));
+        comptime if (!types.isNumeric(W))
+            @compileError("zml.linalg.lapack.geqr2 requires work's child type to be a numeric, got " ++ @typeName(W));
+    }
 
-    const C: type = types.Coerce(A, types.Coerce(Ta, W));
+    const C: type = types.Coerce(A, if (comptime options.link_lapacke != null) Ta else types.Coerce(Ta, W));
 
     if (comptime options.link_lapacke != null) {
         switch (comptime types.numericType(C)) {
@@ -4933,15 +4935,17 @@ pub inline fn larfb(
     comptime if (!types.isNumeric(C))
         @compileError("zml.linalg.lapack.larfb requires c's child type to be a numeric, got " ++ @typeName(C));
 
-    comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
-        @compileError("zml.linalg.lapack.larfb requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+    if (comptime options.link_lapacke == null) { // LAPACKE larfb does not need work
+        comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+            @compileError("zml.linalg.lapack.larfb requires work to be a mutable many-item pointer, got " ++ @typeName(W));
 
-    W = types.Child(W);
+        W = types.Child(W);
 
-    comptime if (!types.isNumeric(W))
-        @compileError("zml.linalg.lapack.larfb requires work's child type to be a numeric, got " ++ @typeName(W));
+        comptime if (!types.isNumeric(W))
+            @compileError("zml.linalg.lapack.larfb requires work's child type to be a numeric, got " ++ @typeName(W));
+    }
 
-    const CC: type = types.Coerce(V, types.Coerce(T, types.Coerce(C, W)));
+    const CC: type = types.Coerce(V, types.Coerce(T, if (comptime options.link_lapacke != null) C else types.Coerce(C, W)));
 
     comptime if (types.isArbitraryPrecision(V) or types.isArbitraryPrecision(T) or types.isArbitraryPrecision(C) or types.isArbitraryPrecision(W)) {
         // When implemented, expand if
@@ -5084,15 +5088,17 @@ pub inline fn geqrf(
     comptime if (!types.isNumeric(Ta))
         @compileError("zml.linalg.lapack.geqrf requires tau's child type to be a numeric, got " ++ @typeName(Ta));
 
-    comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
-        @compileError("zml.linalg.lapack.geqrf requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+    if (comptime options.link_lapacke == null) { // LAPACKE geqrf does not need work
+        comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+            @compileError("zml.linalg.lapack.geqrf requires work to be a mutable many-item pointer, got " ++ @typeName(W));
 
-    W = types.Child(W);
+        W = types.Child(W);
 
-    comptime if (!types.isNumeric(W))
-        @compileError("zml.linalg.lapack.geqrf requires work's child type to be a numeric, got " ++ @typeName(W));
+        comptime if (!types.isNumeric(W))
+            @compileError("zml.linalg.lapack.geqrf requires work's child type to be a numeric, got " ++ @typeName(W));
+    }
 
-    const C: type = types.Coerce(A, types.Coerce(Ta, W));
+    const C: type = types.Coerce(A, if (comptime options.link_lapacke != null) Ta else types.Coerce(Ta, W));
 
     if (comptime options.link_lapacke != null) {
         switch (comptime types.numericType(C)) {
@@ -5163,6 +5169,262 @@ pub inline fn geqrf(
     }
 
     return @import("lapack/geqrf.zig").geqrf(order, m, n, a, lda, tau, work, lwork, ctx);
+}
+
+pub inline fn org2r(
+    order: Order,
+    m: i32,
+    n: i32,
+    k: i32,
+    a: anytype,
+    lda: i32,
+    tau: anytype,
+    work: anytype,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var Ta: type = @TypeOf(tau);
+    comptime var W: type = @TypeOf(work);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.org2r requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.org2r requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(Ta) or types.isConstPointer(Ta))
+        @compileError("zml.linalg.lapack.org2r requires tau to be a mutable many-item pointer, got " ++ @typeName(Ta));
+
+    Ta = types.Child(Ta);
+
+    comptime if (!types.isNumeric(Ta))
+        @compileError("zml.linalg.lapack.org2r requires tau's child type to be a numeric, got " ++ @typeName(Ta));
+
+    comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+        @compileError("zml.linalg.lapack.org2r requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+
+    W = types.Child(W);
+
+    comptime if (!types.isNumeric(W))
+        @compileError("zml.linalg.lapack.org2r requires work's child type to be a numeric, got " ++ @typeName(W));
+
+    return @import("lapack/org2r.zig").org2r(order, m, n, k, a, lda, tau, work, ctx);
+}
+
+pub inline fn orgqr(
+    order: Order,
+    m: i32,
+    n: i32,
+    k: i32,
+    a: anytype,
+    lda: i32,
+    tau: anytype,
+    work: anytype,
+    lwork: i32,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var Ta: type = @TypeOf(tau);
+    comptime var W: type = @TypeOf(work);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.orgqr requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.orgqr requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(Ta) or types.isConstPointer(Ta))
+        @compileError("zml.linalg.lapack.orgqr requires tau to be a mutable many-item pointer, got " ++ @typeName(Ta));
+
+    Ta = types.Child(Ta);
+
+    comptime if (!types.isNumeric(Ta))
+        @compileError("zml.linalg.lapack.orgqr requires tau's child type to be a numeric, got " ++ @typeName(Ta));
+
+    if (comptime options.link_lapacke == null) { // LAPACKE orgqr does not need work
+        comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+            @compileError("zml.linalg.lapack.orgqr requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+
+        W = types.Child(W);
+
+        comptime if (!types.isNumeric(W))
+            @compileError("zml.linalg.lapack.orgqr requires work's child type to be a numeric, got " ++ @typeName(W));
+    }
+
+    const C: type = types.Coerce(A, if (comptime options.link_lapacke != null) Ta else types.Coerce(Ta, W));
+
+    if (comptime options.link_lapacke != null) {
+        switch (comptime types.numericType(C)) {
+            .float => {
+                if (comptime C == f32) {
+                    const info = ci.LAPACKE_sorgqr(
+                        order.toCInt(),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        scast(c_int, k),
+                        a,
+                        scast(c_int, lda),
+                        tau,
+                    );
+
+                    if (info != 0)
+                        return error.InvalidArgument;
+
+                    return;
+                } else if (comptime C == f64) {
+                    const info = ci.LAPACKE_dorgqr(
+                        order.toCInt(),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        scast(c_int, k),
+                        a,
+                        scast(c_int, lda),
+                        tau,
+                    );
+
+                    if (info != 0)
+                        return error.InvalidArgument;
+
+                    return;
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/orgqr.zig").orgqr(order, m, n, k, a, lda, tau, work, lwork, ctx);
+}
+
+pub inline fn ung2r(
+    order: Order,
+    m: i32,
+    n: i32,
+    k: i32,
+    a: anytype,
+    lda: i32,
+    tau: anytype,
+    work: anytype,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var Ta: type = @TypeOf(tau);
+    comptime var W: type = @TypeOf(work);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.ung2r requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.ung2r requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(Ta) or types.isConstPointer(Ta))
+        @compileError("zml.linalg.lapack.ung2r requires tau to be a mutable many-item pointer, got " ++ @typeName(Ta));
+
+    Ta = types.Child(Ta);
+
+    comptime if (!types.isNumeric(Ta))
+        @compileError("zml.linalg.lapack.ung2r requires tau's child type to be a numeric, got " ++ @typeName(Ta));
+
+    comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+        @compileError("zml.linalg.lapack.ung2r requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+
+    W = types.Child(W);
+
+    comptime if (!types.isNumeric(W))
+        @compileError("zml.linalg.lapack.ung2r requires work's child type to be a numeric, got " ++ @typeName(W));
+
+    return @import("lapack/ung2r.zig").ung2r(order, m, n, k, a, lda, tau, work, ctx);
+}
+
+pub inline fn ungqr(
+    order: Order,
+    m: i32,
+    n: i32,
+    k: i32,
+    a: anytype,
+    lda: i32,
+    tau: anytype,
+    work: anytype,
+    lwork: i32,
+    ctx: anytype,
+) !void {
+    comptime var A: type = @TypeOf(a);
+    comptime var Ta: type = @TypeOf(tau);
+    comptime var W: type = @TypeOf(work);
+
+    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
+        @compileError("zml.linalg.lapack.ungqr requires a to be a mutable many-item pointer, got " ++ @typeName(A));
+
+    A = types.Child(A);
+
+    comptime if (!types.isNumeric(A))
+        @compileError("zml.linalg.lapack.ungqr requires a's child type to be a numeric, got " ++ @typeName(A));
+
+    comptime if (!types.isManyPointer(Ta) or types.isConstPointer(Ta))
+        @compileError("zml.linalg.lapack.ungqr requires tau to be a mutable many-item pointer, got " ++ @typeName(Ta));
+
+    Ta = types.Child(Ta);
+
+    comptime if (!types.isNumeric(Ta))
+        @compileError("zml.linalg.lapack.ungqr requires tau's child type to be a numeric, got " ++ @typeName(Ta));
+
+    if (comptime options.link_lapacke == null) { // LAPACKE ungqr does not need work
+        comptime if (!types.isManyPointer(W) or types.isConstPointer(W))
+            @compileError("zml.linalg.lapack.ungqr requires work to be a mutable many-item pointer, got " ++ @typeName(W));
+
+        W = types.Child(W);
+
+        comptime if (!types.isNumeric(W))
+            @compileError("zml.linalg.lapack.ungqr requires work's child type to be a numeric, got " ++ @typeName(W));
+    }
+
+    const C: type = types.Coerce(A, if (comptime options.link_lapacke != null) Ta else types.Coerce(Ta, W));
+
+    if (comptime options.link_lapacke != null) {
+        switch (comptime types.numericType(C)) {
+            .cfloat => {
+                if (comptime Scalar(C) == f32) {
+                    const info = ci.LAPACKE_cungqr(
+                        order.toCInt(),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        scast(c_int, k),
+                        a,
+                        scast(c_int, lda),
+                        tau,
+                    );
+
+                    if (info != 0)
+                        return error.InvalidArgument;
+
+                    return;
+                } else if (comptime Scalar(C) == f64) {
+                    const info = ci.LAPACKE_zungqr(
+                        order.toCInt(),
+                        scast(c_int, m),
+                        scast(c_int, n),
+                        scast(c_int, k),
+                        a,
+                        scast(c_int, lda),
+                        tau,
+                    );
+
+                    if (info != 0)
+                        return error.InvalidArgument;
+
+                    return;
+                }
+            },
+            else => {},
+        }
+    }
+
+    return @import("lapack/ungqr.zig").ungqr(order, m, n, k, a, lda, tau, work, lwork, ctx);
 }
 
 pub const Error = error{

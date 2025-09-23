@@ -37,8 +37,8 @@ fn random_buffer(
 fn random_buffer_fill(
     buffer: []f64,
 ) void {
-    //var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-    var prng = std.Random.DefaultPrng.init(2); // fixed seed for reproducibility
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    //var prng = std.Random.DefaultPrng.init(2); // fixed seed for reproducibility
     const rand = prng.random();
 
     for (0..buffer.len) |i| {
@@ -847,91 +847,42 @@ fn binopPerfTesting(a: std.mem.Allocator) !void {
 fn decompPerfTesting(a: std.mem.Allocator) !void {
     const print_mats: bool = false;
 
-    var A: zml.matrix.General(f64, .row_major) = try .init(a, 1000, 800);
+    var A: zml.matrix.General(zml.cf64, .row_major) = try .init(a, 2000, 1000);
     defer A.deinit(a);
 
     //fill(A, 2);
-    random_buffer_fill(A.data[0 .. A.rows * A.cols]);
+    random_buffer_fill_complex(A.data[0 .. A.rows * A.cols]);
     if (print_mats) print("A", A);
 
-    const tau: []f64 = try a.alloc(f64, zml.int.min(A.rows, A.cols));
+    const tau: []zml.cf64 = try a.alloc(zml.cf64, zml.int.min(A.rows, A.cols));
     defer a.free(tau);
-    const work: []f64 = try a.alloc(f64, A.cols * 32);
+    const work: []zml.cf64 = try a.alloc(zml.cf64, A.cols * 32);
     defer a.free(work);
 
-    const start_time = std.time.nanoTimestamp();
-    try zml.linalg.lapack.geqrf(
-        .row_major,
-        zml.scast(i32, A.rows),
-        zml.scast(i32, A.cols),
-        A.data,
-        zml.scast(i32, A.ld),
-        tau.ptr,
-        work.ptr,
-        zml.scast(i32, work.len),
-        .{},
-    );
-    const end_time: i128 = std.time.nanoTimestamp();
+    var start_time = std.time.nanoTimestamp();
+    var qr = try zml.linalg.qr(a, A, .{});
+    var end_time: i128 = std.time.nanoTimestamp();
+    defer qr.deinit(a);
 
-    std.debug.print("geqrf took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
+    std.debug.print("Decomposition took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    if (print_mats) print("A after geqr2", A);
-    std.debug.print("tau:\n", .{});
-    var i: u32 = zml.scast(u32, tau.len - 10);
-    while (i < tau.len) : (i += 1) {
-        std.debug.print("{d}\n", .{tau[i]});
-        //std.debug.print("{d:.4} + {d:.4}i\n", .{ tau[i].re, tau[i].im });
-    }
-    std.debug.print("\n", .{});
+    var q = try qr.q(a, .full, .{});
+    defer q.deinit(a);
+    const r = qr.r(.full);
 
-    // var start_time = std.time.nanoTimestamp();
-    // var ldlt = try zml.linalg.ldlt(a, A, .{});
-    // var end_time: i128 = std.time.nanoTimestamp();
-    // defer ldlt.deinit(a);
+    if (print_mats) print("Q", q);
+    if (print_mats) print("R", r);
 
-    // std.debug.print("Decomposition took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
+    start_time = std.time.nanoTimestamp();
+    var A_reconstructed = try zml.mul(q, r, .{ .matrix_allocator = a });
+    defer A_reconstructed.deinit(a);
+    end_time = std.time.nanoTimestamp();
 
-    // var p = try ldlt.p(a);
-    // defer p.deinit(a);
-    // var l = try ldlt.l(a, .{});
-    // defer l.deinit(a);
+    std.debug.print("Reconstruction took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
 
-    // var lh_t = try @TypeOf(l).init(a, l.rows, l.cols);
-    // defer lh_t.deinit(a);
-    // @memcpy(lh_t.data[0 .. lh_t.rows * lh_t.cols], l.data[0 .. l.rows * l.cols]);
-    // var i: u32 = 0;
-    // while (i < lh_t.rows) : (i += 1) {
-    //     var j: u32 = 0;
-    //     while (j < lh_t.cols) : (j += 1) {
-    //         lh_t.put(i, j, try zml.conjugate(lh_t.at(i, j), .{}));
-    //     }
-    // }
-    // const lh = lh_t.transpose();
+    if (print_mats) print("A reconstructed", A_reconstructed);
 
-    // var d = try ldlt.d(a, .{});
-    // defer d.deinit(a);
-
-    // if (print_mats) print("P", p);
-    // if (print_mats) print("U", l);
-    // if (print_mats) print("U^H", lh);
-    // if (print_mats) print("D", d);
-
-    // start_time = std.time.nanoTimestamp();
-    // var pl = try zml.mul(p, l, .{ .matrix_allocator = a });
-    // defer pl.deinit(a);
-    // var pld = try zml.mul(pl, d, .{ .matrix_allocator = a });
-    // defer pld.deinit(a);
-    // var pldlh = try zml.mul(pld, lh, .{ .matrix_allocator = a });
-    // defer pldlh.deinit(a);
-    // var A_reconstructed = try zml.mul(pldlh, p.transpose(), .{ .matrix_allocator = a });
-    // defer A_reconstructed.deinit(a);
-    // end_time = std.time.nanoTimestamp();
-
-    // std.debug.print("Reconstruction took: {d} seconds\n\n", .{zml.float.div(end_time - start_time, 1e9)});
-
-    // if (print_mats) print("A reconstructed", A_reconstructed);
-
-    // std.debug.print("||A - A_r||_F = {d}\n", .{try frobernius_norm_difference_matrix(A, A_reconstructed)});
+    std.debug.print("||A - A_r||_F = {d}\n", .{try frobernius_norm_difference_matrix(A, A_reconstructed)});
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {

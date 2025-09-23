@@ -1,4 +1,4 @@
-# ZML: Zig Mathematics Library
+# zml: zig mathematics library
 
 A Zig numerical and symbolic mathematics library.
 
@@ -41,6 +41,7 @@ This library is in the early stages of development and might return incorrect re
       - LU (no pivoting (`lu`), partial pivoting (`plu`), full pivoting (`pluq`))
       - Cholesky (lower (`llt`), upper (`utu`), "smart" (`cholesky`))
       - Bunch-Kaufman (lower (`ldlt`), upper (`udut`), "smart" (`bunchkaufman`))
+      - QR (no pivoting (`qr`), column pivoting (`qrp`))
     - BLAS routines (`blas`)
     - Select LAPACK routines (`lapack`)
 - Symbolic System:

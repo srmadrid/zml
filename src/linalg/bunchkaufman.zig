@@ -181,7 +181,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
     const A: type = @TypeOf(a);
 
     comptime if (!types.isMatrix(A) or (types.matrixType(A) != .symmetric and types.matrixType(A) != .hermitian))
-        @compileError("ldlt: argument must be a symmetric or hermitian matrix, got " ++ @typeName(A));
+        @compileError("ldlt: a must be a symmetric or hermitian matrix, got " ++ @typeName(A));
 
     comptime if (types.isArbitraryPrecision(Numeric(A))) {
         // When implemented, expand if
@@ -194,7 +194,6 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
         .symmetric, .hermitian => {
             const n: u32 = a.size;
 
-            var info: i32 = 0;
             if (comptime options.link_lapacke != null) {
                 var ld = if (comptime types.uploOf(A) == .lower) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
                 errdefer ld.deinit(allocator);
@@ -202,6 +201,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, n);
                 errdefer ipiv.deinit(allocator);
 
+                var info: i32 = 0;
                 if (comptime !types.isHermitianMatrix(A)) {
                     info = try linalg.lapack.sytrf( // LAPACKE version does not need work
                         types.orderOf(A),
@@ -269,6 +269,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 var work: vector.Vector(Numeric(A)) = try vector.Vector(Numeric(A)).init(allocator, types.scast(u32, lwork));
                 defer work.deinit(allocator);
 
+                var info: i32 = 0;
                 if (comptime !types.isHermitianMatrix(A)) {
                     info = try linalg.lapack.sytrf(
                         types.orderOf(A),
@@ -445,7 +446,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
     const A: type = @TypeOf(a);
 
     comptime if (!types.isMatrix(A) or (types.matrixType(A) != .symmetric and types.matrixType(A) != .hermitian))
-        @compileError("udut: argument must be a symmetric or hermitian matrix, got " ++ @typeName(A));
+        @compileError("udut: a must be a symmetric or hermitian matrix, got " ++ @typeName(A));
 
     comptime if (types.isArbitraryPrecision(Numeric(A))) {
         // When implemented, expand if
