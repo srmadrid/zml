@@ -1,11 +1,7 @@
 const std = @import("std");
 
-const opts = @import("options");
-
 const types = @import("types.zig");
-
 const ops = @import("ops.zig");
-
 const int = @import("int.zig");
 
 const general = @import("matrix/general.zig");
@@ -42,6 +38,7 @@ pub const Error = error{
     BreaksStructure,
     DimensionMismatch,
     InvalidBandwidth,
+    NotSquare,
 };
 
 pub const Flags = packed struct {

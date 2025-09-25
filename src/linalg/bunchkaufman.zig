@@ -198,8 +198,8 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 var ld = if (comptime types.uploOf(A) == .lower) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
                 errdefer ld.deinit(allocator);
 
-                var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, n);
-                errdefer ipiv.deinit(allocator);
+                const ipiv: []i32 = try allocator.alloc(i32, n);
+                errdefer allocator.free(ipiv);
 
                 var info: i32 = 0;
                 if (comptime !types.isHermitianMatrix(A)) {
@@ -209,7 +209,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                         types.scast(i32, n),
                         ld.data,
                         types.scast(i32, ld.ld),
-                        ipiv.data,
+                        ipiv.ptr,
                         undefined,
                         undefined,
                         ctx,
@@ -221,7 +221,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                         types.scast(i32, n),
                         ld.data,
                         types.scast(i32, ld.ld),
-                        ipiv.data,
+                        ipiv.ptr,
                         undefined,
                         undefined,
                         ctx,
@@ -231,7 +231,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ld.data, ipiv.data, types.isHermitianMatrix(A));
+                return .init(n, ld.data, ipiv.ptr, types.isHermitianMatrix(A));
             } else {
                 var lwork: i32 = -1;
                 if (comptime !types.isHermitianMatrix(A)) {
@@ -263,11 +263,11 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 var ld = if (comptime types.uploOf(A) == .lower) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
                 errdefer ld.deinit(allocator);
 
-                var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, n);
-                errdefer ipiv.deinit(allocator);
+                const ipiv: []i32 = try allocator.alloc(i32, n);
+                errdefer allocator.free(ipiv);
 
-                var work: vector.Vector(Numeric(A)) = try vector.Vector(Numeric(A)).init(allocator, types.scast(u32, lwork));
-                defer work.deinit(allocator);
+                const work: []Numeric(A) = try allocator.alloc(Numeric(A), types.scast(u32, lwork));
+                defer allocator.free(work);
 
                 var info: i32 = 0;
                 if (comptime !types.isHermitianMatrix(A)) {
@@ -277,9 +277,9 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                         types.scast(i32, n),
                         ld.data,
                         types.scast(i32, ld.ld),
-                        ipiv.data,
-                        work.data,
-                        types.scast(i32, work.len),
+                        ipiv.ptr,
+                        work.ptr,
+                        lwork,
                         ctx,
                     );
                 } else {
@@ -289,9 +289,9 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                         types.scast(i32, n),
                         ld.data,
                         types.scast(i32, ld.ld),
-                        ipiv.data,
-                        work.data,
-                        types.scast(i32, work.len),
+                        ipiv.ptr,
+                        work.ptr,
+                        lwork,
                         ctx,
                     );
                 }
@@ -299,7 +299,7 @@ pub fn ldlt(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !LDLT(Numeri
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ld.data, ipiv.data, types.isHermitianMatrix(A));
+                return .init(n, ld.data, ipiv.ptr, types.isHermitianMatrix(A));
             }
         },
         else => unreachable,
@@ -464,8 +464,8 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                 var ud = if (comptime types.uploOf(A) == .upper) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
                 errdefer ud.deinit(allocator);
 
-                var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, n);
-                errdefer ipiv.deinit(allocator);
+                const ipiv: []i32 = try allocator.alloc(i32, n);
+                errdefer allocator.free(ipiv);
 
                 if (comptime !types.isHermitianMatrix(A)) {
                     info = try linalg.lapack.sytrf( // LAPACKE version does not need work
@@ -474,7 +474,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                         types.scast(i32, n),
                         ud.data,
                         types.scast(i32, ud.ld),
-                        ipiv.data,
+                        ipiv.ptr,
                         undefined,
                         undefined,
                         ctx,
@@ -486,7 +486,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                         types.scast(i32, n),
                         ud.data,
                         types.scast(i32, ud.ld),
-                        ipiv.data,
+                        ipiv.ptr,
                         undefined,
                         undefined,
                         ctx,
@@ -496,7 +496,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ud.data, ipiv.data, types.isHermitianMatrix(A));
+                return .init(n, ud.data, ipiv.ptr, types.isHermitianMatrix(A));
             } else {
                 var lwork: i32 = -1;
                 if (comptime !types.isHermitianMatrix(A)) {
@@ -528,11 +528,11 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                 var ud = if (comptime types.uploOf(A) == .upper) try a.copy(allocator, ctx) else try a.copyInverseUplo(allocator, ctx);
                 errdefer ud.deinit(allocator);
 
-                var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, n);
-                errdefer ipiv.deinit(allocator);
+                const ipiv: []i32 = try allocator.alloc(i32, n);
+                errdefer allocator.free(ipiv);
 
-                var work: vector.Vector(Numeric(A)) = try vector.Vector(Numeric(A)).init(allocator, types.scast(u32, lwork));
-                defer work.deinit(allocator);
+                const work: []Numeric(A) = try allocator.alloc(Numeric(A), types.scast(u32, lwork));
+                defer allocator.free(work);
 
                 if (comptime !types.isHermitianMatrix(A)) {
                     info = try linalg.lapack.sytrf(
@@ -541,9 +541,9 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                         types.scast(i32, n),
                         ud.data,
                         types.scast(i32, ud.ld),
-                        ipiv.data,
-                        work.data,
-                        types.scast(i32, work.len),
+                        ipiv.ptr,
+                        work.ptr,
+                        lwork,
                         ctx,
                     );
                 } else {
@@ -553,9 +553,9 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                         types.scast(i32, n),
                         ud.data,
                         types.scast(i32, ud.ld),
-                        ipiv.data,
-                        work.data,
-                        types.scast(i32, work.len),
+                        ipiv.ptr,
+                        work.ptr,
+                        lwork,
                         ctx,
                     );
                 }
@@ -563,7 +563,7 @@ pub fn udut(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !UDUT(Numeri
                 if (info != 0)
                     return linalg.Error.FactorizationFailed;
 
-                return .init(n, ud.data, ipiv.data, types.isHermitianMatrix(A));
+                return .init(n, ud.data, ipiv.ptr, types.isHermitianMatrix(A));
             }
         },
         else => unreachable,

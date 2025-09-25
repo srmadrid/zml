@@ -46,261 +46,276 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
         if (a.len != m)
             return linalg.Error.DimensionMismatch;
 
-        switch (comptime types.matrixType(B)) {
-            .general => { // vector * general
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
+        switch (comptime types.vectorType(A)) {
+            .dense => switch (comptime types.matrixType(B)) {
+                .general => { // dense vector * general
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
 
-                try blas.gemv(
-                    types.orderOf(B),
-                    .trans,
-                    types.scast(i32, m),
-                    types.scast(i32, n),
-                    1,
-                    b.data,
-                    types.scast(i32, b.ld),
-                    a.data,
-                    a.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                return result;
-            },
-            .symmetric => { // vector * symmetric
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                try blas.symv(
-                    types.orderOf(B).invert(),
-                    types.uploOf(B).invert(),
-                    types.scast(i32, n),
-                    1,
-                    b.data,
-                    types.scast(i32, b.ld),
-                    a.data,
-                    a.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                return result;
-            },
-            .hermitian => { // vector * hermitian
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                try blas.hemv(
-                    types.orderOf(B).invert(),
-                    types.uploOf(B).invert(),
-                    types.scast(i32, n),
-                    1,
-                    b.data,
-                    types.scast(i32, b.ld),
-                    a.data,
-                    a.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                return result;
-            },
-            .triangular => { // vector * triangular
-                var result: vector.Vector(C) = try .full(allocator, n, 0, ctx);
-                errdefer result.deinit(allocator);
-
-                if (m == n) {
-                    try blas.copy(
-                        types.scast(i32, n),
-                        a.data,
-                        a.inc,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    try blas.trmv(
+                    try blas.gemv(
                         types.orderOf(B),
-                        types.uploOf(B),
                         .trans,
-                        types.diagOf(B),
+                        types.scast(i32, m),
                         types.scast(i32, n),
+                        1,
                         b.data,
                         types.scast(i32, b.ld),
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-                } else {
-                    const min_dim: u32 = int.min(m, n);
-
-                    try blas.copy(
-                        types.scast(i32, min_dim),
                         a.data,
                         a.inc,
+                        0,
                         result.data,
                         result.inc,
                         ctx,
                     );
 
-                    try blas.trmv(
-                        types.orderOf(B),
-                        types.uploOf(B),
-                        .trans,
-                        types.diagOf(B),
-                        types.scast(i32, min_dim),
+                    return result;
+                },
+                .symmetric => { // dense vector * symmetric
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    try blas.symv(
+                        types.orderOf(B).invert(),
+                        types.uploOf(B).invert(),
+                        types.scast(i32, n),
+                        1,
                         b.data,
                         types.scast(i32, b.ld),
+                        a.data,
+                        a.inc,
+                        0,
                         result.data,
                         result.inc,
                         ctx,
                     );
 
-                    if (comptime types.uploOf(B) == .upper) {
-                        if (n > min_dim) {
-                            try blas.gemv(
-                                types.orderOf(B),
-                                .trans,
-                                types.scast(i32, m),
-                                types.scast(i32, n - min_dim),
-                                1,
-                                b.data +
-                                    if (comptime types.orderOf(B) == .col_major)
-                                        min_dim * b.ld
-                                    else
-                                        min_dim,
-                                types.scast(i32, b.ld),
-                                a.data,
-                                a.inc,
-                                0,
-                                result.data + min_dim * types.scast(u32, result.inc),
-                                result.inc,
-                                ctx,
-                            );
-                        }
+                    return result;
+                },
+                .hermitian => { // dense vector * hermitian
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    try blas.hemv(
+                        types.orderOf(B).invert(),
+                        types.uploOf(B).invert(),
+                        types.scast(i32, n),
+                        1,
+                        b.data,
+                        types.scast(i32, b.ld),
+                        a.data,
+                        a.inc,
+                        0,
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
+
+                    return result;
+                },
+                .triangular => { // dense vector * triangular
+                    var result: vector.Dense(C) = try .full(allocator, n, 0, ctx);
+                    errdefer result.deinit(allocator);
+
+                    if (m == n) {
+                        try blas.copy(
+                            types.scast(i32, n),
+                            a.data,
+                            a.inc,
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
+
+                        try blas.trmv(
+                            types.orderOf(B),
+                            types.uploOf(B),
+                            .trans,
+                            types.diagOf(B),
+                            types.scast(i32, n),
+                            b.data,
+                            types.scast(i32, b.ld),
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
                     } else {
-                        if (m > min_dim) {
-                            try blas.gemv(
-                                types.orderOf(B),
-                                .trans,
-                                types.scast(i32, m - min_dim),
-                                types.scast(i32, n),
-                                1,
-                                b.data +
-                                    if (comptime types.orderOf(B) == .col_major)
-                                        min_dim
-                                    else
-                                        min_dim * b.ld,
-                                types.scast(i32, b.ld),
-                                a.data +
-                                    if (a.inc > 0)
-                                        min_dim * types.scast(u32, a.inc)
-                                    else
-                                        0,
-                                a.inc,
-                                1,
-                                result.data,
-                                result.inc,
-                                ctx,
-                            );
-                        } else if (n > min_dim) {
-                            try blas.scal(
-                                types.scast(i32, n - min_dim),
-                                0,
-                                result.data + min_dim * types.scast(u32, result.inc),
-                                result.inc,
-                                ctx,
-                            );
+                        const min_dim: u32 = int.min(m, n);
+
+                        try blas.copy(
+                            types.scast(i32, min_dim),
+                            a.data,
+                            a.inc,
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
+
+                        try blas.trmv(
+                            types.orderOf(B),
+                            types.uploOf(B),
+                            .trans,
+                            types.diagOf(B),
+                            types.scast(i32, min_dim),
+                            b.data,
+                            types.scast(i32, b.ld),
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
+
+                        if (comptime types.uploOf(B) == .upper) {
+                            if (n > min_dim) {
+                                try blas.gemv(
+                                    types.orderOf(B),
+                                    .trans,
+                                    types.scast(i32, m),
+                                    types.scast(i32, n - min_dim),
+                                    1,
+                                    b.data +
+                                        if (comptime types.orderOf(B) == .col_major)
+                                            min_dim * b.ld
+                                        else
+                                            min_dim,
+                                    types.scast(i32, b.ld),
+                                    a.data,
+                                    a.inc,
+                                    0,
+                                    result.data + min_dim * types.scast(u32, result.inc),
+                                    result.inc,
+                                    ctx,
+                                );
+                            }
+                        } else {
+                            if (m > min_dim) {
+                                try blas.gemv(
+                                    types.orderOf(B),
+                                    .trans,
+                                    types.scast(i32, m - min_dim),
+                                    types.scast(i32, n),
+                                    1,
+                                    b.data +
+                                        if (comptime types.orderOf(B) == .col_major)
+                                            min_dim
+                                        else
+                                            min_dim * b.ld,
+                                    types.scast(i32, b.ld),
+                                    a.data +
+                                        if (a.inc > 0)
+                                            min_dim * types.scast(u32, a.inc)
+                                        else
+                                            0,
+                                    a.inc,
+                                    1,
+                                    result.data,
+                                    result.inc,
+                                    ctx,
+                                );
+                            } else if (n > min_dim) {
+                                try blas.scal(
+                                    types.scast(i32, n - min_dim),
+                                    0,
+                                    result.data + min_dim * types.scast(u32, result.inc),
+                                    result.inc,
+                                    ctx,
+                                );
+                            }
                         }
                     }
-                }
 
-                return result;
-            },
-            .diagonal => { // vector * diagonal
-                var result: vector.Vector(C) = try .full(allocator, n, 0, ctx);
-                errdefer result.deinit(allocator);
+                    return result;
+                },
+                .diagonal => { // dense vector * diagonal
+                    var result: vector.Dense(C) = try .full(allocator, n, 0, ctx);
+                    errdefer result.deinit(allocator);
 
-                try blas.copy(
-                    types.scast(i32, m),
-                    a.data,
-                    a.inc,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                var i: u32 = 0;
-                while (i < int.min(m, n)) : (i += 1) {
-                    try ops.mul_( // result[i] *= b[i, i]
-                        &result.data[i],
-                        result.data[i],
-                        b.data[i],
+                    try blas.copy(
+                        types.scast(i32, m),
+                        a.data,
+                        a.inc,
+                        result.data,
+                        result.inc,
                         ctx,
                     );
-                }
 
-                while (i < n) : (i += 1) {
-                    result.data[i] = try constants.zero(C, ctx);
-                }
+                    var i: u32 = 0;
+                    while (i < int.min(m, n)) : (i += 1) {
+                        try ops.mul_( // result[i] *= b[i, i]
+                            &result.data[i],
+                            result.data[i],
+                            b.data[i],
+                            ctx,
+                        );
+                    }
 
-                return result;
-            },
-            .banded => { // vector * banded
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
+                    while (i < n) : (i += 1) {
+                        result.data[i] = try constants.zero(C, ctx);
+                    }
 
-                try blas.gbmv(
-                    types.orderOf(B),
-                    .trans,
-                    types.scast(i32, m),
-                    types.scast(i32, n),
-                    types.scast(i32, b.lower),
-                    types.scast(i32, b.upper),
-                    1,
-                    b.data,
-                    types.scast(i32, b.ld),
-                    a.data,
-                    a.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
+                    return result;
+                },
+                .banded => { // dense vector * banded
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
 
-                return result;
-            },
-            .tridiagonal => { // vector * tridiagonal
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                // lapack.lagtm
-                try defaultSlowVM(&result, a, b, ctx);
-
-                return result;
-            },
-            .permutation => { // vector * permutation
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                var i: u32 = 0;
-                while (i < n) : (i += 1) {
-                    try ops.set(
-                        &result.data[b.data[i]],
-                        a.get(i) catch unreachable,
+                    try blas.gbmv(
+                        types.orderOf(B),
+                        .trans,
+                        types.scast(i32, m),
+                        types.scast(i32, n),
+                        types.scast(i32, b.lower),
+                        types.scast(i32, b.upper),
+                        1,
+                        b.data,
+                        types.scast(i32, b.ld),
+                        a.data,
+                        a.inc,
+                        0,
+                        result.data,
+                        result.inc,
                         ctx,
                     );
-                }
 
-                return result;
+                    return result;
+                },
+                .tridiagonal => { // dense vector * tridiagonal
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    // lapack.lagtm
+                    try defaultSlowVM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .permutation => { // dense vector * permutation
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    var i: u32 = 0;
+                    while (i < n) : (i += 1) {
+                        try ops.set(
+                            &result.data[b.data[i]],
+                            a.get(i) catch unreachable,
+                            ctx,
+                        );
+                    }
+
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
             },
-            .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .sparse => switch (comptime types.matrixType(B)) {
+                .general => return linalg.Error.NotImplemented,
+                .symmetric => return linalg.Error.NotImplemented,
+                .hermitian => return linalg.Error.NotImplemented,
+                .triangular => return linalg.Error.NotImplemented,
+                .diagonal => return linalg.Error.NotImplemented,
+                .banded => return linalg.Error.NotImplemented,
+                .tridiagonal => return linalg.Error.NotImplemented,
+                .permutation => return linalg.Error.NotImplemented,
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
+            },
             .numeric => unreachable,
         }
     } else if (comptime !types.isMatrix(B)) { // matrix * vector
@@ -317,260 +332,295 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             return linalg.Error.DimensionMismatch;
 
         switch (comptime types.matrixType(A)) {
-            .general => { // general * vector
-                var result: vector.Vector(C) = try .init(allocator, m);
-                errdefer result.deinit(allocator);
+            .general => switch (comptime types.vectorType(B)) {
+                .dense => { // general * dense vector
+                    var result: vector.Dense(C) = try .init(allocator, m);
+                    errdefer result.deinit(allocator);
 
-                try blas.gemv(
-                    types.orderOf(A),
-                    .no_trans,
-                    types.scast(i32, m),
-                    types.scast(i32, n),
-                    1,
-                    a.data,
-                    types.scast(i32, a.ld),
-                    b.data,
-                    b.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                return result;
-            },
-            .symmetric => { // vector * symmetric
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                try blas.symv(
-                    types.orderOf(A),
-                    types.uploOf(A),
-                    types.scast(i32, n),
-                    1,
-                    a.data,
-                    types.scast(i32, a.ld),
-                    b.data,
-                    b.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                return result;
-            },
-            .hermitian => { // vector * hermitian
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                try blas.hemv(
-                    types.orderOf(A),
-                    types.uploOf(A),
-                    types.scast(i32, n),
-                    1,
-                    a.data,
-                    types.scast(i32, a.ld),
-                    b.data,
-                    b.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                return result;
-            },
-            .triangular => { // triangular * vector
-                var result: vector.Vector(C) = try .full(allocator, m, 0, ctx);
-                errdefer result.deinit(allocator);
-
-                if (m == n) {
-                    try blas.copy(
-                        types.scast(i32, n),
-                        b.data,
-                        b.inc,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    try blas.trmv(
+                    try blas.gemv(
                         types.orderOf(A),
-                        types.uploOf(A),
                         .no_trans,
-                        types.diagOf(A),
+                        types.scast(i32, m),
                         types.scast(i32, n),
+                        1,
                         a.data,
                         types.scast(i32, a.ld),
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-                } else {
-                    const min_dim: u32 = int.min(m, n);
-
-                    try blas.copy(
-                        types.scast(i32, min_dim),
                         b.data,
                         b.inc,
+                        0,
                         result.data,
                         result.inc,
                         ctx,
                     );
 
-                    try blas.trmv(
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
+            },
+            .symmetric => switch (comptime types.vectorType(B)) {
+                .dense => { // symmetric * dense vector
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    try blas.symv(
                         types.orderOf(A),
                         types.uploOf(A),
-                        .no_trans,
-                        types.diagOf(A),
-                        types.scast(i32, min_dim),
+                        types.scast(i32, n),
+                        1,
                         a.data,
                         types.scast(i32, a.ld),
+                        b.data,
+                        b.inc,
+                        0,
                         result.data,
                         result.inc,
                         ctx,
                     );
 
-                    if (comptime types.uploOf(A) == .upper) {
-                        if (n > min_dim) { // extra rows (filled)
-                            try blas.gemv(
-                                types.orderOf(A),
-                                .no_trans,
-                                types.scast(i32, m),
-                                types.scast(i32, n - min_dim),
-                                1,
-                                a.data +
-                                    if (comptime types.orderOf(A) == .col_major)
-                                        min_dim * a.ld
-                                    else
-                                        min_dim,
-                                types.scast(i32, a.ld),
-                                b.data +
-                                    if (b.inc > 0)
-                                        min_dim * types.scast(u32, b.inc)
-                                    else
-                                        0,
-                                b.inc,
-                                1,
-                                result.data,
-                                result.inc,
-                                ctx,
-                            );
-                        } else if (m > min_dim) { // extra rows (empty)
-                            try blas.scal(
-                                types.scast(i32, m - min_dim),
-                                0,
-                                result.data + min_dim * types.scast(u32, result.inc),
-                                result.inc,
-                                ctx,
-                            );
-                        }
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
+            },
+            .hermitian => switch (comptime types.vectorType(B)) {
+                .dense => { // hermitian * dense vector
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    try blas.hemv(
+                        types.orderOf(A),
+                        types.uploOf(A),
+                        types.scast(i32, n),
+                        1,
+                        a.data,
+                        types.scast(i32, a.ld),
+                        b.data,
+                        b.inc,
+                        0,
+                        result.data,
+                        result.inc,
+                        ctx,
+                    );
+
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
+            },
+            .triangular => switch (comptime types.vectorType(B)) {
+                .dense => { // triangular * dense vector
+                    var result: vector.Dense(C) = try .full(allocator, m, 0, ctx);
+                    errdefer result.deinit(allocator);
+
+                    if (m == n) {
+                        try blas.copy(
+                            types.scast(i32, n),
+                            b.data,
+                            b.inc,
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
+
+                        try blas.trmv(
+                            types.orderOf(A),
+                            types.uploOf(A),
+                            .no_trans,
+                            types.diagOf(A),
+                            types.scast(i32, n),
+                            a.data,
+                            types.scast(i32, a.ld),
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
                     } else {
-                        if (m > min_dim) { // extra rows (filled)
-                            try blas.gemv(
-                                types.orderOf(A),
-                                .no_trans,
-                                types.scast(i32, m - min_dim),
-                                types.scast(i32, n),
-                                1,
-                                a.data +
-                                    if (comptime types.orderOf(A) == .col_major)
-                                        min_dim
-                                    else
-                                        min_dim * a.ld,
-                                types.scast(i32, a.ld),
-                                b.data,
-                                b.inc,
-                                1,
-                                result.data + min_dim * types.scast(u32, result.inc),
-                                result.inc,
-                                ctx,
-                            );
+                        const min_dim: u32 = int.min(m, n);
+
+                        try blas.copy(
+                            types.scast(i32, min_dim),
+                            b.data,
+                            b.inc,
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
+
+                        try blas.trmv(
+                            types.orderOf(A),
+                            types.uploOf(A),
+                            .no_trans,
+                            types.diagOf(A),
+                            types.scast(i32, min_dim),
+                            a.data,
+                            types.scast(i32, a.ld),
+                            result.data,
+                            result.inc,
+                            ctx,
+                        );
+
+                        if (comptime types.uploOf(A) == .upper) {
+                            if (n > min_dim) { // extra rows (filled)
+                                try blas.gemv(
+                                    types.orderOf(A),
+                                    .no_trans,
+                                    types.scast(i32, m),
+                                    types.scast(i32, n - min_dim),
+                                    1,
+                                    a.data +
+                                        if (comptime types.orderOf(A) == .col_major)
+                                            min_dim * a.ld
+                                        else
+                                            min_dim,
+                                    types.scast(i32, a.ld),
+                                    b.data +
+                                        if (b.inc > 0)
+                                            min_dim * types.scast(u32, b.inc)
+                                        else
+                                            0,
+                                    b.inc,
+                                    1,
+                                    result.data,
+                                    result.inc,
+                                    ctx,
+                                );
+                            } else if (m > min_dim) { // extra rows (empty)
+                                try blas.scal(
+                                    types.scast(i32, m - min_dim),
+                                    0,
+                                    result.data + min_dim * types.scast(u32, result.inc),
+                                    result.inc,
+                                    ctx,
+                                );
+                            }
+                        } else {
+                            if (m > min_dim) { // extra rows (filled)
+                                try blas.gemv(
+                                    types.orderOf(A),
+                                    .no_trans,
+                                    types.scast(i32, m - min_dim),
+                                    types.scast(i32, n),
+                                    1,
+                                    a.data +
+                                        if (comptime types.orderOf(A) == .col_major)
+                                            min_dim
+                                        else
+                                            min_dim * a.ld,
+                                    types.scast(i32, a.ld),
+                                    b.data,
+                                    b.inc,
+                                    1,
+                                    result.data + min_dim * types.scast(u32, result.inc),
+                                    result.inc,
+                                    ctx,
+                                );
+                            }
                         }
                     }
-                }
 
-                return result;
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
             },
-            .diagonal => { // diagonal * vector
-                var result: vector.Vector(C) = try .full(allocator, m, 0, ctx);
-                errdefer result.deinit(allocator);
+            .diagonal => switch (comptime types.vectorType(B)) {
+                .dense => { // diagonal * dense vector
+                    var result: vector.Dense(C) = try .full(allocator, m, 0, ctx);
+                    errdefer result.deinit(allocator);
 
-                try blas.copy(
-                    types.scast(i32, m),
-                    b.data,
-                    b.inc,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                var i: u32 = 0;
-                while (i < int.min(m, n)) : (i += 1) {
-                    try ops.mul_( // result[i] *= a[i, i]
-                        &result.data[i],
-                        result.data[i],
-                        a.data[i],
+                    try blas.copy(
+                        types.scast(i32, m),
+                        b.data,
+                        b.inc,
+                        result.data,
+                        result.inc,
                         ctx,
                     );
-                }
 
-                while (i < m) : (i += 1) {
-                    result.data[i] = try constants.zero(C, ctx);
-                }
+                    var i: u32 = 0;
+                    while (i < int.min(m, n)) : (i += 1) {
+                        try ops.mul_( // result[i] *= a[i, i]
+                            &result.data[i],
+                            result.data[i],
+                            a.data[i],
+                            ctx,
+                        );
+                    }
 
-                return result;
+                    while (i < m) : (i += 1) {
+                        result.data[i] = try constants.zero(C, ctx);
+                    }
+
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
             },
-            .banded => { // banded * vector
-                var result: vector.Vector(C) = try .init(allocator, m);
-                errdefer result.deinit(allocator);
+            .banded => switch (comptime types.vectorType(B)) {
+                .dense => { // banded * dense vector
+                    var result: vector.Dense(C) = try .init(allocator, m);
+                    errdefer result.deinit(allocator);
 
-                try blas.gbmv(
-                    types.orderOf(A),
-                    .no_trans,
-                    types.scast(i32, m),
-                    types.scast(i32, n),
-                    types.scast(i32, a.lower),
-                    types.scast(i32, a.upper),
-                    1,
-                    a.data,
-                    types.scast(i32, a.ld),
-                    b.data,
-                    b.inc,
-                    0,
-                    result.data,
-                    result.inc,
-                    ctx,
-                );
-
-                return result;
-            },
-            .tridiagonal => { // tridiagonal * vector
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                // lapack.lagtm
-                try defaultSlowMV(&result, a, b, ctx);
-
-                return result;
-            },
-            .permutation => { // permutation * vector
-                var result: vector.Vector(C) = try .init(allocator, n);
-                errdefer result.deinit(allocator);
-
-                var i: u32 = 0;
-                while (i < n) : (i += 1) {
-                    try ops.set(
-                        &result.data[i],
-                        b.get(a.data[i]) catch unreachable,
+                    try blas.gbmv(
+                        types.orderOf(A),
+                        .no_trans,
+                        types.scast(i32, m),
+                        types.scast(i32, n),
+                        types.scast(i32, a.lower),
+                        types.scast(i32, a.upper),
+                        1,
+                        a.data,
+                        types.scast(i32, a.ld),
+                        b.data,
+                        b.inc,
+                        0,
+                        result.data,
+                        result.inc,
                         ctx,
                     );
-                }
 
-                return result;
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
             },
-            .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .tridiagonal => switch (comptime types.vectorType(B)) {
+                .dense => { // tridiagonal * dense vector
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    // lapack.lagtm
+                    try defaultSlowMV(&result, a, b, ctx);
+
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
+            },
+            .permutation => switch (comptime types.vectorType(B)) {
+                .dense => { // permutation * dense vector
+                    var result: vector.Dense(C) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    var i: u32 = 0;
+                    while (i < n) : (i += 1) {
+                        try ops.set(
+                            &result.data[i],
+                            b.get(a.data[i]) catch unreachable,
+                            ctx,
+                        );
+                    }
+
+                    return result;
+                },
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
+            },
+            .sparse => switch (comptime types.vectorType(B)) {
+                .dense => return linalg.Error.NotImplemented,
+                .sparse => return linalg.Error.NotImplemented,
+            },
             .numeric => unreachable,
         }
     } else {
@@ -731,7 +781,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
             .symmetric => switch (comptime types.matrixType(B)) {
@@ -844,7 +894,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
             .hermitian => switch (comptime types.matrixType(B)) {
@@ -957,7 +1007,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
             .triangular => switch (comptime types.matrixType(B)) {
@@ -1057,7 +1107,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
             .diagonal => switch (comptime types.matrixType(B)) {
@@ -1156,7 +1206,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
             .banded => switch (comptime types.matrixType(B)) {
@@ -1245,7 +1295,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
             .tridiagonal => switch (comptime types.matrixType(B)) {
@@ -1335,7 +1385,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
             .permutation => switch (comptime types.matrixType(B)) {
@@ -1407,10 +1457,21 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse => return linalg.Error.NotImplemented,
                 .numeric => unreachable,
             },
-            .sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .sparse => switch (comptime types.matrixType(B)) {
+                .general => return linalg.Error.NotImplemented,
+                .symmetric => return linalg.Error.NotImplemented,
+                .hermitian => return linalg.Error.NotImplemented,
+                .triangular => return linalg.Error.NotImplemented,
+                .diagonal => return linalg.Error.NotImplemented,
+                .banded => return linalg.Error.NotImplemented,
+                .tridiagonal => return linalg.Error.NotImplemented,
+                .permutation => return linalg.Error.NotImplemented,
+                .sparse => return linalg.Error.NotImplemented,
+                .numeric => unreachable,
+            },
             .numeric => unreachable,
         }
     }

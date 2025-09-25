@@ -107,8 +107,8 @@ pub fn QR(T: type, order: Order) type {
                         .{},
                     );
 
-                    var work: vector.Vector(T) = try .init(allocator, types.scast(u32, lwork));
-                    defer work.deinit(allocator);
+                    const work: []T = try .init(allocator, types.scast(u32, lwork));
+                    defer allocator.free(work);
 
                     try linalg.lapack.orgqr(
                         order,
@@ -118,7 +118,7 @@ pub fn QR(T: type, order: Order) type {
                         Q.data,
                         types.scast(i32, Q.ld),
                         self._tau,
-                        work.data,
+                        work.ptr,
                         lwork,
                         .{},
                     );
@@ -137,8 +137,8 @@ pub fn QR(T: type, order: Order) type {
                         .{},
                     );
 
-                    var work: vector.Vector(T) = try .init(allocator, types.scast(u32, lwork));
-                    defer work.deinit(allocator);
+                    const work: []T = try .init(allocator, types.scast(u32, lwork));
+                    defer allocator.free(work);
 
                     try linalg.lapack.ungqr(
                         order,
@@ -148,7 +148,7 @@ pub fn QR(T: type, order: Order) type {
                         Q.data,
                         types.scast(i32, Q.ld),
                         self._tau,
-                        work.data,
+                        work.ptr,
                         lwork,
                         .{},
                     );
@@ -209,8 +209,8 @@ pub fn qr(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !QR(Numeric(@T
         var _qr = try a.copy(allocator, ctx);
         errdefer _qr.deinit(allocator);
 
-        var tau: vector.Vector(Numeric(A)) = try .init(allocator, int.min(m, n));
-        errdefer tau.deinit(allocator);
+        const tau: []Numeric(A) = try .init(allocator, int.min(m, n));
+        defer allocator.free(tau);
 
         try linalg.lapack.geqrf(
             types.orderOf(A),
@@ -218,13 +218,13 @@ pub fn qr(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !QR(Numeric(@T
             types.scast(i32, n),
             _qr.data,
             types.scast(i32, _qr.ld),
-            tau.data,
+            tau.ptr,
             undefined,
             undefined,
             ctx,
         );
 
-        return .init(m, n, _qr.data, tau.data);
+        return .init(m, n, _qr.data, tau.ptr);
     } else {
         var lwork: i32 = -1;
         try linalg.lapack.geqrf(
@@ -242,11 +242,11 @@ pub fn qr(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !QR(Numeric(@T
         var _qr = try a.copy(allocator, ctx);
         errdefer _qr.deinit(allocator);
 
-        var tau: vector.Vector(Numeric(A)) = try .init(allocator, int.min(m, n));
-        errdefer tau.deinit(allocator);
+        const tau: []Numeric(A) = try .init(allocator, int.min(m, n));
+        defer allocator.free(tau);
 
-        var work: vector.Vector(Numeric(A)) = try .init(allocator, types.scast(u32, lwork));
-        defer work.deinit(allocator);
+        const work: []Numeric(A) = try .init(allocator, types.scast(u32, lwork));
+        defer allocator.free(work);
 
         try linalg.lapack.geqrf(
             types.orderOf(A),
@@ -254,13 +254,13 @@ pub fn qr(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !QR(Numeric(@T
             types.scast(i32, n),
             _qr.data,
             types.scast(i32, _qr.ld),
-            tau.data,
-            work.data,
+            tau.ptr,
+            work.ptr,
             lwork,
             ctx,
         );
 
-        return .init(m, n, _qr.data, tau.data);
+        return .init(m, n, _qr.data, tau.ptr);
     }
 }
 

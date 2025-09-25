@@ -14,8 +14,6 @@ const ReturnType2 = types.ReturnType2;
 const int = @import("../int.zig");
 const ops = @import("../ops.zig");
 
-const matrix = @import("../array.zig");
-
 const general = @import("general.zig");
 const symmetric = @import("symmetric.zig");
 const hermitian = @import("hermitian.zig");

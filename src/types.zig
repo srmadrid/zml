@@ -215,6 +215,12 @@ const supported_complex_types: [9]type = .{
     Complex(Real), // Expression,
 };
 
+pub const VectorType = enum {
+    dense,
+    sparse,
+    numeric, // Fallback for numeric types that are not vectors
+};
+
 pub const MatrixType = enum {
     general,
     symmetric,
@@ -373,6 +379,18 @@ pub fn isNumeric(comptime T: type) bool {
             }
         },
     }
+}
+
+pub inline fn vectorType(comptime T: type) VectorType {
+    @setEvalBranchQuota(10000);
+
+    if (isDenseVector(T)) {
+        return .dense;
+    } else if (isSparseVector(T)) {
+        return .sparse;
+    }
+
+    return .numeric; // Fallback for numeric types that are not vectors
 }
 
 pub inline fn matrixType(comptime T: type) MatrixType {
@@ -551,7 +569,44 @@ pub fn isVector(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == vector.Vector(numeric_type)) return true;
+                if (T == vector.Dense(numeric_type) or
+                    T == vector.Sparse(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+pub fn isDenseVector(comptime T: type) bool {
+    @setEvalBranchQuota(10000);
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == vector.Dense(numeric_type)) return true;
+            }
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
+pub fn isSparseVector(comptime T: type) bool {
+    @setEvalBranchQuota(10000);
+    switch (@typeInfo(T)) {
+        .@"struct" => |tinfo| {
+            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
+                return false;
+            }
+
+            inline for (supported_numeric_types) |numeric_type| {
+                if (T == vector.Sparse(numeric_type)) return true;
             }
 
             return false;
@@ -1096,7 +1151,11 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
     switch (comptime domainType(X)) {
         .numeric => switch (comptime domainType(Y)) {
             .numeric => {},
-            .vector => return vector.Vector(Coerce(X, Numeric(Y))), // numeric + vector
+            .vector => switch (comptime vectorType(Y)) {
+                .dense => return vector.Dense(Coerce(X, Numeric(Y))), // numeric + dense vector
+                .sparse => return vector.Sparse(Coerce(X, Numeric(Y))), // numeric + sparse vector
+                .numeric => unreachable,
+            },
             .matrix => switch (comptime matrixType(Y)) {
                 .general => return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + general
                 .symmetric => return matrix.Symmetric(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)), // numeric + symmetric
@@ -1122,11 +1181,28 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => unreachable,
             },
         },
-        .vector => switch (comptime domainType(Y)) {
-            .numeric => return vector.Vector(Coerce(Numeric(X), Y)), // vector + numeric
-            .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // vector + vector
-            .matrix => @compileError("Cannot coerce vector and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // vector + matrix
-            .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // vector + array
+        .vector => switch (comptime vectorType(X)) {
+            .dense => switch (comptime domainType(Y)) {
+                .numeric => return vector.Dense(Coerce(Numeric(X), Y)), // dense vector + numeric
+                .vector => switch (comptime vectorType(Y)) {
+                    .dense => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense vector + dense vector
+                    .sparse => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense vector + sparse vector
+                    .numeric => unreachable,
+                },
+                .matrix => @compileError("Cannot coerce vector and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense vector + matrix
+                .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense vector + array
+            },
+            .sparse => switch (comptime domainType(Y)) {
+                .numeric => return vector.Sparse(Coerce(Numeric(X), Y)), // sparse vector + numeric
+                .vector => switch (comptime vectorType(Y)) {
+                    .dense => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse vector + dense vector
+                    .sparse => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse vector + sparse vector
+                    .numeric => unreachable,
+                },
+                .matrix => @compileError("Cannot coerce vector and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse vector + matrix
+                .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse vector + array
+            },
+            .numeric => unreachable,
         },
         .matrix => {
             switch (comptime matrixType(X)) {
@@ -1534,7 +1610,11 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
     switch (comptime domainType(X)) {
         .numeric => switch (comptime domainType(Y)) {
             .numeric => {},
-            .vector => return vector.Vector(Coerce(X, Numeric(Y))), // numeric * vector
+            .vector => switch (comptime vectorType(Y)) {
+                .dense => return vector.Dense(Coerce(X, Numeric(Y))), // numeric * dense vector
+                .sparse => return vector.Sparse(Coerce(X, Numeric(Y))), // numeric * sparse vector
+                .numeric => unreachable,
+            },
             .matrix => switch (comptime matrixType(Y)) {
                 .general => return matrix.General(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric * general
                 .symmetric => return matrix.Symmetric(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)), // numeric * symmetric
@@ -1555,23 +1635,35 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
             },
             .array => return Coerce(X, Y), // numeric * array
         },
-        .vector => switch (comptime domainType(Y)) {
-            .numeric => return vector.Vector(Coerce(Numeric(X), Y)), // vector * numeric
-            .vector => return Coerce(Numeric(X), Numeric(Y)), // vector * vector (dot product)
-            .matrix => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // vector * matrix
-            .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // vector * array
+        .vector => switch (comptime vectorType(X)) {
+            .dense => switch (comptime domainType(Y)) {
+                .numeric => return vector.Dense(Coerce(Numeric(X), Y)), // dense vector * numeric
+                .vector => Coerce(Numeric(X), Numeric(Y)), // dense vector * vector
+                .matrix => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense vector * matrix
+                .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense vector * array
+            },
+            .sparse => switch (comptime domainType(Y)) {
+                .numeric => return vector.Sparse(Coerce(Numeric(X), Y)), // sparse vector * numeric
+                .vector => Coerce(Numeric(X), Numeric(Y)), // sparse vector * vector
+                .matrix => switch (comptime matrixType(Y)) {
+                    .sparse => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse vector * sparse matrix
+                    else => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse vector * rest of matrices
+                },
+                .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse vector * array
+            },
+            .numeric => unreachable,
         },
         .matrix => {
             switch (comptime matrixType(X)) {
                 .general => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y), orderOf(X)), // general * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // general * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // general * vector
                     .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // general * matrix
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // general * array
                 },
                 .symmetric => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Symmetric(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)), // symmetric * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // symmetric * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // symmetric * vector
                     .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // symmetric * matrix
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // symmetric + array
                 },
@@ -1583,13 +1675,13 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                             return matrix.Hermitian(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)); // hermitian * numeric (real)
                         }
                     },
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // hermitian * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // hermitian * vector
                     .matrix => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // hermitian * matrix
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // hermitian * array
                 },
                 .triangular => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Triangular(Coerce(Numeric(X), Y), uploOf(X), .non_unit, orderOf(X)), // triangular * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // triangular * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // triangular * vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .triangular => {
                             if (comptime uploOf(X) == uploOf(Y)) {
@@ -1611,7 +1703,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 },
                 .diagonal => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Diagonal(Coerce(Numeric(X), Y)), // diagonal * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // diagonal * vector
+                    .vector => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // diagonal * vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .triangular => return matrix.Triangular(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal * triangular
                         .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal * diagonal
@@ -1624,7 +1716,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 },
                 .banded => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Banded(Coerce(Numeric(X), Y), orderOf(X)), // banded * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // banded * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // banded * vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded * triangular
                         .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded * diagonal
@@ -1636,7 +1728,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 },
                 .tridiagonal => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Tridiagonal(Coerce(Numeric(X), Y)), // tridiagonal * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // tridiagonal * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // tridiagonal * vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal * triangular
                         .diagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal * diagonal
@@ -1648,7 +1740,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 },
                 .permutation => switch (comptime domainType(Y)) {
                     .numeric => return matrix.General(Coerce(Numeric(X), Y), orderOf(X)), // permutation * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // permutation * vector
+                    .vector => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // permutation * vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .permutation => return matrix.Permutation(Coerce(Numeric(X), Numeric(Y))), // permutation * permutation
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // permutation * rest of matrices
@@ -1657,7 +1749,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 },
                 .sparse => switch (comptime domainType(Y)) {
                     .numeric => return matrix.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse * numeric
-                    .vector => return vector.Vector(Coerce(Numeric(X), Numeric(Y))), // sparse * vector
+                    .vector => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse * vector
                     .matrix => switch (comptime matrixType(Y)) {
                         .sparse => return matrix.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse * sparse
                         else => return matrix.General(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse * rest of matrices
@@ -1950,7 +2042,11 @@ pub fn EnsureDomain(comptime X: type, comptime Y: type) type {
             .numeric => unreachable,
         }
     } else if (isVector(X)) {
-        return vector.Vector(Y);
+        switch (vectorType(X)) {
+            .dense => return vector.Dense(Y),
+            .sparse => return vector.Sparse(Y),
+            .numeric => unreachable,
+        }
     } else {
         return Y;
     }
@@ -1958,7 +2054,11 @@ pub fn EnsureDomain(comptime X: type, comptime Y: type) type {
 
 pub fn EnsureVector(comptime X: type, comptime Y: type) type {
     if (isVector(X)) {
-        return vector.Vector(Y);
+        switch (vectorType(X)) {
+            .dense => return vector.Dense(Y),
+            .sparse => return vector.Sparse(Y),
+            .numeric => unreachable,
+        }
     } else if (isMatrix(X)) {
         @compileError("Cannot ensure vector type from a matrix type. Use `EnsureDomain` or `EnsureMatrix` instead.");
     } else if (isArray(X)) {

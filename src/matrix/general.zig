@@ -7,6 +7,8 @@ const EnsureMatrix = types.EnsureMatrix;
 const Coerce = types.Coerce;
 const Numeric = types.Numeric;
 const Order = types.Order;
+const Uplo = types.Uplo;
+const Diag = types.Diag;
 const ops = @import("../ops.zig");
 const constants = @import("../constants.zig");
 const int = @import("../int.zig");
@@ -276,6 +278,57 @@ pub fn General(T: type, order: Order) type {
                 .flags = .{
                     .owns_data = false,
                 },
+            };
+        }
+
+        // pub fn row(self: *const General(T, order), r: u32) !vector.Vector(T) {
+        //     if (r >= self.rows)
+        //         return matrix.Error.PositionOutOfBounds;
+
+        //     return array.Vector(T){
+        //         .data = if (comptime order == .col_major)
+        //             self.data + row
+        //         else
+        //             self.data + row * self.ld,
+        //         .len = self.cols,
+        //         .stride = if (comptime order == .col_major) self.ld else 1,
+        //     };
+        // }
+
+        pub fn asSymmetric(self: *const General(T, order), comptime uplo: Uplo) !matrix.Symmetric(T, uplo, order) {
+            if (self.rows != self.cols)
+                return matrix.Error.NotSquare;
+
+            return .{
+                .data = self.data,
+                .size = self.rows,
+                .ld = self.ld,
+                .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn asHermitian(self: *const General(T, order), comptime uplo: Uplo) !matrix.Hermitian(T, uplo, order) {
+            comptime if (!types.isComplex(T))
+                @compileError("Hermitian matrices require a complex type, got " ++ @typeName(T));
+
+            if (self.rows != self.cols)
+                return matrix.Error.NotSquare;
+
+            return .{
+                .data = self.data,
+                .size = self.rows,
+                .ld = self.ld,
+                .flags = .{ .owns_data = false },
+            };
+        }
+
+        pub fn asTriangular(self: *const General(T, order), comptime uplo: Uplo, comptime diag: Diag) !matrix.Triangular(T, uplo, diag, order) {
+            return .{
+                .data = self.data,
+                .rows = self.rows,
+                .cols = self.cols,
+                .ld = self.ld,
+                .flags = .{ .owns_data = false },
             };
         }
 

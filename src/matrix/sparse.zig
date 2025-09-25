@@ -4,6 +4,10 @@
 //! used, if row-major order is used, CSR (Compressed Sparse Row) format is
 //! used.
 
+// Offer sparse.General, sparse.Symmetric, sparse.Hermitian and
+// sparse.Triangular. These types cover most use cases for sparse matrices, and
+// other "special" kinds follow from general sparse storage.
+
 const std = @import("std");
 
 const types = @import("../types.zig");

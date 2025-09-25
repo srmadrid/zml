@@ -20,7 +20,7 @@ pub inline fn zero(
     comptime T: type,
     ctx: anytype,
 ) !T {
-    comptime if (types.isArbitraryPrecision(T)) {
+    comptime if (types.isArbitraryPrecision(T)) { // Check if allocator is present. If yes, validate context with it and return an allocated zero value. If no, validate context without it and return a zero value without allocation (owns_data = false to prevent the user from altering the memory). Same for one(), two() and other values we know can be created without allocation.
         validateContext(
             @TypeOf(ctx),
             .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },

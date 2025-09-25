@@ -195,8 +195,8 @@ pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(
             var lu: matrix.General(Numeric(@TypeOf(a)), orderOf(A)) = try a.copy(allocator, ctx);
             errdefer lu.deinit(allocator);
 
-            var ipiv: vector.Vector(i32) = try vector.Vector(i32).init(allocator, int.min(m, n));
-            errdefer ipiv.deinit(allocator);
+            const ipiv: []i32 = try allocator.alloc(i32, int.min(m, n));
+            errdefer allocator.free(ipiv);
 
             const info: i32 = try linalg.lapack.getrf(
                 types.orderOf(A),
@@ -204,14 +204,14 @@ pub fn plu(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLU(Numeric(
                 types.scast(i32, n),
                 lu.data,
                 types.scast(i32, lu.ld),
-                ipiv.data,
+                ipiv.ptr,
                 ctx,
             );
 
             if (info != 0)
                 return error.SingularMatrix;
 
-            return .init(ipiv.data, lu.data, m, n);
+            return .init(ipiv.ptr, lu.data, m, n);
         },
         .banded => return linalg.Error.NotImplemented, // lapack.gbtrf
         .tridiagonal => return linalg.Error.NotImplemented, // lapack.gttrf
@@ -235,10 +235,11 @@ pub fn pluq(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLUQ(Numeri
     var lu: matrix.General(Numeric(@TypeOf(a)), orderOf(A)) = try a.copy(allocator, ctx);
     errdefer lu.deinit(allocator);
 
-    var ipiv: vector.Vector(u32) = try vector.Vector(u32).init(allocator, a.rows);
-    defer ipiv.deinit(allocator);
-    var q: vector.Vector(u32) = try vector.Vector(u32).init(allocator, a.cols);
-    errdefer q.deinit(allocator);
+    const ipiv: []i32 = try allocator.alloc(i32, a.rows);
+    errdefer allocator.free(ipiv);
+
+    const q: []u32 = try allocator.alloc(u32, a.cols);
+    errdefer allocator.free(q);
 
     const nb: u32 = 64; // Block size, tune for performance
 
@@ -248,13 +249,13 @@ pub fn pluq(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLUQ(Numeri
         nb,
         lu.data,
         lu.ld,
-        ipiv.data,
-        q.data,
+        ipiv.ptr,
+        q.ptr,
         ctx,
     );
 
-    var p: vector.Vector(u32) = try vector.Vector(u32).init(allocator, a.rows);
-    errdefer p.deinit(allocator);
+    var p: []u32 = try allocator.alloc(u32, a.rows);
+    errdefer allocator.free(p);
 
     // Invert p
     var i: u32 = 0;
@@ -262,7 +263,7 @@ pub fn pluq(allocator: std.mem.Allocator, a: anytype, ctx: anytype) !PLUQ(Numeri
         p.data[ipiv.data[i]] = i;
     }
 
-    return .init(p.data, lu.data, q.data, a.rows, a.cols);
+    return .init(p.ptr, lu.data, q.ptr, a.rows, a.cols);
 }
 
 fn k_pluq(

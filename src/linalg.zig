@@ -11,10 +11,12 @@ pub const blas = @import("linalg/blas.zig");
 pub const lapack = @import("linalg/lapack.zig");
 
 pub inline fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y))) {
-    const C: type = Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y)));
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const C: type = Coerce(Numeric(X), Numeric(Y));
 
-    comptime if (!types.isVector(@TypeOf(x)) or !types.isVector(@TypeOf(y)))
-        @compileError("dot: both arguments must be vectors, got " ++ @typeName(@TypeOf(x)) ++ " and " ++ @typeName(@TypeOf(y)));
+    comptime if (!types.isVector(X) or !types.isVector(Y))
+        @compileError("dot: both arguments must be vectors, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     comptime if (types.isArbitraryPrecision(C)) {
         @compileError("zml.linalg.blas.dotc not implemented for arbitrary precision types yet");
@@ -25,10 +27,22 @@ pub inline fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(
     if (x.len != y.len)
         return Error.DimensionMismatch;
 
-    if (comptime types.isComplex(C)) {
-        return blas.dotc(types.scast(i32, x.len), x.data, x.inc, y.data, y.inc, ctx);
+    if (comptime types.isDenseVector(X)) {
+        if (comptime types.isDenseVector(Y)) {
+            if (comptime types.isComplex(C)) {
+                return blas.dotc(types.scast(i32, x.len), x.data, x.inc, y.data, y.inc, ctx);
+            } else {
+                return blas.dot(types.scast(i32, x.len), x.data, x.inc, y.data, y.inc, ctx);
+            }
+        } else {
+            return Error.NotImplemented;
+        }
     } else {
-        return blas.dot(types.scast(i32, x.len), x.data, x.inc, y.data, y.inc, ctx);
+        if (comptime types.isDenseVector(Y)) {
+            return Error.NotImplemented;
+        } else {
+            return Error.NotImplemented;
+        }
     }
 }
 
