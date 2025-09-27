@@ -26,7 +26,6 @@ const strided = @import("strided.zig");
 const Strided = strided.Strided;
 
 const matrix = @import("../matrix.zig");
-const General = matrix.General;
 
 pub fn Dense(T: type, order: Order) type {
     if (!types.isNumeric(T))
@@ -745,7 +744,7 @@ pub fn Dense(T: type, order: Order) type {
             self.data[self._index(position)] = value;
         }
 
-        pub fn asGeneralMatrix(self: *const Dense(T, order), axes: ?[2]u32, position: []const u32) !General(T, order) {
+        pub fn asGeneralDenseMatrix(self: *const Dense(T, order), axes: ?[2]u32, position: []const u32) !matrix.dense.General(T, order) {
             if (self.ndim < 2)
                 return array.Error.NotConvertible;
 

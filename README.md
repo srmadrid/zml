@@ -15,17 +15,26 @@ This library is in the early stages of development and might return incorrect re
     - Complex floats
     - Arbitrary precision integers, rationals, reals, and complex numbers: not implemented yet
 - Numerical System:
+  - Vectors (`vector`):
+    - Two storage formats:
+      - `Dense`
+      - `Sparse`
   - Matrices (`matrix`):
     - Diverse storage formats:
-      - `General`
-      - `Symmetric`
-      - `Hermitian`
-      - `Triangular`
-      - `Diagonal`
-      - `Banded`
-      - `Tridiagonal`
-      - `Permutation`
-      - `Sparse` (CSR, CSC): not implemented yet
+      - Dense (`dense`):
+        - `General`
+        - `Symmetric`
+        - `Hermitian`
+        - `Triangular`
+        - `Diagonal`
+        - `Banded`
+        - `Tridiagonal`
+      - Sparse (`sparse`):
+        - `General`
+        - `Symmetric`
+        - `Hermitian`
+        - `Block`
+        - `Permutation`
     - Matrix addition/subtraction and scalar multiplication/division
     - Views
   - N-dimensional arrays (`array`):

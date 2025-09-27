@@ -124,6 +124,7 @@ pub fn Sparse(T: type) type {
             while (i < self.nnz) : (i += 1) {
                 if (self.idx[i] == index) {
                     self.data[i] = value;
+
                     return;
                 } else if (self.idx[i] > index) {
                     break;
@@ -131,7 +132,11 @@ pub fn Sparse(T: type) type {
             }
 
             if (self.nnz == self._dlen or self.nnz == self._ilen) {
-                const new_nnz = if (self._dlen == 0) 1 else self._dlen * 2;
+                // Need more space
+                var new_nnz = if (self.nnz * 2 > self.len) self.len else self.nnz * 2;
+                if (new_nnz == 0)
+                    new_nnz = 2;
+
                 try self.reserve(allocator, new_nnz);
             }
 
@@ -157,6 +162,50 @@ pub fn Sparse(T: type) type {
                 } else if (self.idx[i] > index) {
                     break;
                 }
+            }
+
+            // Shift elements to the right to make space for the new element
+            var j: u32 = self.nnz;
+            while (j > i) : (j -= 1) {
+                self.data[j] = self.data[j - 1];
+                self.idx[j] = self.idx[j - 1];
+            }
+
+            self.data[i] = value;
+            self.idx[i] = index;
+            self.nnz += 1;
+        }
+
+        pub fn accumulate(self: *Sparse(T), allocator: std.mem.Allocator, index: u32, value: anytype, ctx: anytype) !void {
+            if (index >= self.len)
+                return vector.Error.PositionOutOfBounds;
+
+            if (self.flags.owns_data == false)
+                return;
+
+            var i: u32 = 0;
+            while (i < self.nnz) : (i += 1) {
+                if (self.idx[i] == index) {
+                    try ops.add_(
+                        &self.data[i],
+                        self.data[i],
+                        value,
+                        ctx,
+                    );
+
+                    return;
+                } else if (self.idx[i] > index) {
+                    break;
+                }
+            }
+
+            if (self.nnz == self._dlen or self.nnz == self._ilen) {
+                // Need more space
+                var new_nnz = if (self.nnz * 2 > self.len) self.len else self.nnz * 2;
+                if (new_nnz == 0)
+                    new_nnz = 2;
+
+                try self.reserve(allocator, new_nnz);
             }
 
             // Shift elements to the right to make space for the new element

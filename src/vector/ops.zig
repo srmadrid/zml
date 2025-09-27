@@ -13,8 +13,6 @@ const ReturnType2 = types.ReturnType2;
 const int = @import("../int.zig");
 const ops = @import("../ops.zig");
 
-const matrix = @import("../array.zig");
-
 const dense = @import("dense.zig");
 const sparse = @import("sparse.zig");
 

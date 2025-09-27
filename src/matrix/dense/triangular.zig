@@ -5,7 +5,7 @@
 
 const std = @import("std");
 
-const types = @import("../types.zig");
+const types = @import("../../types.zig");
 const Numeric = types.Numeric;
 const ReturnType2 = types.ReturnType2;
 const EnsureMatrix = types.EnsureMatrix;
@@ -13,16 +13,14 @@ const Coerce = types.Coerce;
 const Order = types.Order;
 const Uplo = types.Uplo;
 const Diag = types.Diag;
-const ops = @import("../ops.zig");
-const constants = @import("../constants.zig");
-const int = @import("../int.zig");
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
 
-const matrix = @import("../matrix.zig");
-const General = matrix.General;
+const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../array.zig");
-const Dense = array.Dense;
+const array = @import("../../array.zig");
 
 pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
     if (!types.isNumeric(T))
@@ -344,8 +342,8 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             }
         }
 
-        pub fn toGeneral(self: Triangular(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {
-            var result: General(T, order) = try .init(allocator, self.rows, self.cols);
+        pub fn toGeneralDenseMatrix(self: Triangular(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !matrix.dense.General(T, order) {
+            var result: matrix.dense.General(T, order) = try .init(allocator, self.rows, self.cols);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -447,8 +445,8 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Triangular(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, order) {
-            var result: Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
+        pub fn toDenseArray(self: *const Triangular(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
+            var result: array.Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {

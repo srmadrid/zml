@@ -1,35 +1,15 @@
-//! Storage scheme:
-//!
-//! If column-major order is used, CSC (Compressed Sparse Column) format is
-//! used, if row-major order is used, CSR (Compressed Sparse Row) format is
-//! used.
-
-// Offer sparse.General, sparse.Symmetric, sparse.Hermitian and
-// sparse.Triangular. These types cover most use cases for sparse matrices, and
-// other "special" kinds follow from general sparse storage.
-
-const std = @import("std");
-
-const types = @import("../types.zig");
-const Order = types.Order;
-const ops = @import("../ops.zig");
-const constants = @import("../constants.zig");
-const int = @import("../int.zig");
-
-const matrix = @import("../matrix.zig");
-const Flags = matrix.Flags;
-
-pub fn Sparse(T: type, order: Order) type {
-    if (!types.isNumeric(T))
-        @compileError("Sparse requires a numeric type, got " ++ @typeName(T));
-
-    return struct {
-        data: [*]T,
-        nnz: u32,
-
-        pub const empty: Sparse(T, order) = .{
-            .data = &.{},
-            .nnz = 0,
-        };
-    };
-}
+const builder = @import("sparse/builder.zig");
+pub const Builder = builder.Builder;
+const general = @import("sparse/general.zig");
+pub const General = general.General;
+const symmetric = @import("sparse/symmetric.zig");
+pub const Symmetric = symmetric.Symmetric;
+const hermitian = @import("sparse/hermitian.zig");
+pub const Hermitian = hermitian.Hermitian;
+const triangular = @import("sparse/triangular.zig");
+pub const Triangular = triangular.Triangular;
+const banded = @import("sparse/banded.zig");
+pub const Banded = banded.Banded;
+pub const block = @import("sparse/block.zig");
+const permutation = @import("sparse/permutation.zig");
+pub const Permutation = permutation.Permutation;

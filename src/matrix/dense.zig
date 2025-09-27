@@ -1,0 +1,14 @@
+const general = @import("dense/general.zig");
+pub const General = general.General;
+const symmetric = @import("dense/symmetric.zig");
+pub const Symmetric = symmetric.Symmetric;
+const hermitian = @import("dense/hermitian.zig");
+pub const Hermitian = hermitian.Hermitian;
+const triangular = @import("dense/triangular.zig");
+pub const Triangular = triangular.Triangular;
+const diagonal = @import("dense/diagonal.zig");
+pub const Diagonal = diagonal.Diagonal;
+const banded = @import("dense/banded.zig");
+pub const Banded = banded.Banded;
+const tridiagonal = @import("dense/tridiagonal.zig");
+pub const Tridiagonal = tridiagonal.Tridiagonal;

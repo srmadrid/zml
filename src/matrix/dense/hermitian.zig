@@ -5,25 +5,23 @@
 
 const std = @import("std");
 
-const types = @import("../types.zig");
+const types = @import("../../types.zig");
 const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
 const Coerce = types.Coerce;
 const EnsureMatrix = types.EnsureMatrix;
 const Order = types.Order;
 const Uplo = types.Uplo;
-const ops = @import("../ops.zig");
-const constants = @import("../constants.zig");
-const int = @import("../int.zig");
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
 
-const matrix = @import("../matrix.zig");
-const General = matrix.General;
+const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../array.zig");
-const Dense = array.Dense;
+const array = @import("../../array.zig");
 
-const linalg = @import("../linalg.zig");
+const linalg = @import("../../linalg.zig");
 
 pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
     if (!types.isNumeric(T) or !types.isComplex(T))
@@ -257,17 +255,15 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             }
 
             if (comptime order == .col_major) {
-                self.data[i + j * self.ld] = if (noconj) {
-                    value;
-                } else {
+                self.data[i + j * self.ld] = if (noconj)
+                    value
+                else
                     ops.conjugate(value, .{}) catch unreachable;
-                };
             } else {
-                self.data[i * self.ld + j] = if (noconj) {
-                    value;
-                } else {
+                self.data[i * self.ld + j] = if (noconj)
+                    value
+                else
                     ops.conjugate(value, .{}) catch unreachable;
-                };
             }
         }
 
@@ -443,8 +439,8 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             return mat;
         }
 
-        pub fn toGeneral(self: Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {
-            var result: General(T, order) = try .init(allocator, self.size, self.size);
+        pub fn toGeneralDenseMatrix(self: Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !matrix.dense.General(T, order) {
+            var result: matrix.dense.General(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -506,8 +502,8 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, order) {
-            var result: Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
+        pub fn toDenseArray(self: *const Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
+            var result: array.Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {

@@ -10,22 +10,20 @@
 
 const std = @import("std");
 
-const types = @import("../types.zig");
+const types = @import("../../types.zig");
 const EnsureMatrix = types.EnsureMatrix;
 const Coerce = types.Coerce;
 const Numeric = types.Numeric;
 const ReturnType2 = types.ReturnType2;
 const Order = types.Order;
-const ops = @import("../ops.zig");
-const constants = @import("../constants.zig");
-const int = @import("../int.zig");
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
 
-const matrix = @import("../matrix.zig");
-const General = matrix.General;
+const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../array.zig");
-const Dense = array.Dense;
+const array = @import("../../array.zig");
 
 pub const Direction = enum {
     forward,
@@ -144,8 +142,8 @@ pub fn Permutation(T: type) type {
         //     }
         // }
 
-        pub fn toGeneral(self: Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !General(T, order) {
-            var result: General(T, order) = try .init(allocator, self.size, self.size);
+        pub fn toGeneralDenseMatrix(self: Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !matrix.dense.General(T, order) {
+            var result: matrix.dense.General(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
             if (comptime order == .col_major) {
@@ -201,8 +199,8 @@ pub fn Permutation(T: type) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !Dense(T, order) {
-            var result: Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
+        pub fn toDenseArray(self: *const Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !array.Dense(T, order) {
+            var result: array.Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 
             if (comptime order == .col_major) {

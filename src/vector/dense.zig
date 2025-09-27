@@ -10,8 +10,6 @@ const linalg = @import("../linalg.zig");
 const vector = @import("../vector.zig");
 const Flags = vector.Flags;
 
-const matrix = @import("../matrix.zig");
-
 pub fn Dense(T: type) type {
     if (!types.isNumeric(T))
         @compileError("vector.Dense requires a numeric type, got " ++ @typeName(T));

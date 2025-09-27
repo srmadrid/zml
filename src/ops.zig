@@ -8,7 +8,6 @@ const Numeric = types.Numeric;
 const Coerce = types.Coerce;
 const MulCoerce = types.MulCoerce;
 const EnsureArray = types.EnsureArray;
-const EnsureMatrixOrArray = types.EnsureMatrixOrArray;
 const Child = types.Child;
 const EnsureFloat = types.EnsureFloat;
 
