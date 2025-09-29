@@ -16,6 +16,13 @@ const linalg = @import("../linalg.zig");
 const blas = @import("blas.zig");
 const lapack = @import("lapack.zig");
 
+fn isSquareMatrix(comptime T: type) bool {
+    return types.isSymmetricDenseMatrix(T) or types.isHermitianDenseMatrix(T) or
+        types.isTridiagonalDenseMatrix(T) or types.isSymmetricSparseMatrix(T) or
+        types.isHermitianSparseMatrix(T) or types.isSymmetricBlockSparseMatrix(T) or
+        types.isHermitianBlockSparseMatrix(T) or types.isPermutationSparseMatrix(T);
+}
+
 pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: anytype) !MulCoerce(@TypeOf(a), @TypeOf(b)) {
     const A: type = @TypeOf(a);
     const B: type = @TypeOf(b);
@@ -34,11 +41,11 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
     };
 
     if (comptime !types.isMatrix(A)) { // vector * matrix
-        const m: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
+        const m: u32 = if (comptime isSquareMatrix(B))
             b.size
         else
             b.rows;
-        const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
+        const n: u32 = if (comptime isSquareMatrix(B))
             b.size
         else
             b.cols;
@@ -48,236 +55,13 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
         switch (comptime types.vectorType(A)) {
             .dense => switch (comptime types.matrixType(B)) {
-                .general => { // dense vector * general
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.gemv(
-                        types.orderOf(B),
-                        .trans,
-                        types.scast(i32, m),
-                        types.scast(i32, n),
-                        1,
-                        b.data,
-                        types.scast(i32, b.ld),
-                        a.data,
-                        a.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .symmetric => { // dense vector * symmetric
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.symv(
-                        types.orderOf(B).invert(),
-                        types.uploOf(B).invert(),
-                        types.scast(i32, n),
-                        1,
-                        b.data,
-                        types.scast(i32, b.ld),
-                        a.data,
-                        a.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .hermitian => { // dense vector * hermitian
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.hemv(
-                        types.orderOf(B).invert(),
-                        types.uploOf(B).invert(),
-                        types.scast(i32, n),
-                        1,
-                        b.data,
-                        types.scast(i32, b.ld),
-                        a.data,
-                        a.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .triangular => { // dense vector * triangular
-                    var result: vector.Dense(C) = try .full(allocator, n, 0, ctx);
-                    errdefer result.deinit(allocator);
-
-                    if (m == n) {
-                        try blas.copy(
-                            types.scast(i32, n),
-                            a.data,
-                            a.inc,
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-
-                        try blas.trmv(
-                            types.orderOf(B),
-                            types.uploOf(B),
-                            .trans,
-                            types.diagOf(B),
-                            types.scast(i32, n),
-                            b.data,
-                            types.scast(i32, b.ld),
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-                    } else {
-                        const min_dim: u32 = int.min(m, n);
-
-                        try blas.copy(
-                            types.scast(i32, min_dim),
-                            a.data,
-                            a.inc,
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-
-                        try blas.trmv(
-                            types.orderOf(B),
-                            types.uploOf(B),
-                            .trans,
-                            types.diagOf(B),
-                            types.scast(i32, min_dim),
-                            b.data,
-                            types.scast(i32, b.ld),
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-
-                        if (comptime types.uploOf(B) == .upper) {
-                            if (n > min_dim) {
-                                try blas.gemv(
-                                    types.orderOf(B),
-                                    .trans,
-                                    types.scast(i32, m),
-                                    types.scast(i32, n - min_dim),
-                                    1,
-                                    b.data +
-                                        if (comptime types.orderOf(B) == .col_major)
-                                            min_dim * b.ld
-                                        else
-                                            min_dim,
-                                    types.scast(i32, b.ld),
-                                    a.data,
-                                    a.inc,
-                                    0,
-                                    result.data + min_dim * types.scast(u32, result.inc),
-                                    result.inc,
-                                    ctx,
-                                );
-                            }
-                        } else {
-                            if (m > min_dim) {
-                                try blas.gemv(
-                                    types.orderOf(B),
-                                    .trans,
-                                    types.scast(i32, m - min_dim),
-                                    types.scast(i32, n),
-                                    1,
-                                    b.data +
-                                        if (comptime types.orderOf(B) == .col_major)
-                                            min_dim
-                                        else
-                                            min_dim * b.ld,
-                                    types.scast(i32, b.ld),
-                                    a.data +
-                                        if (a.inc > 0)
-                                            min_dim * types.scast(u32, a.inc)
-                                        else
-                                            0,
-                                    a.inc,
-                                    1,
-                                    result.data,
-                                    result.inc,
-                                    ctx,
-                                );
-                            } else if (n > min_dim) {
-                                try blas.scal(
-                                    types.scast(i32, n - min_dim),
-                                    0,
-                                    result.data + min_dim * types.scast(u32, result.inc),
-                                    result.inc,
-                                    ctx,
-                                );
-                            }
-                        }
-                    }
-
-                    return result;
-                },
-                .diagonal => { // dense vector * diagonal
-                    var result: vector.Dense(C) = try .full(allocator, n, 0, ctx);
-                    errdefer result.deinit(allocator);
-
-                    try blas.copy(
-                        types.scast(i32, m),
-                        a.data,
-                        a.inc,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    var i: u32 = 0;
-                    while (i < int.min(m, n)) : (i += 1) {
-                        try ops.mul_( // result[i] *= b[i, i]
-                            &result.data[i],
-                            result.data[i],
-                            b.data[i],
-                            ctx,
-                        );
-                    }
-
-                    while (i < n) : (i += 1) {
-                        result.data[i] = try constants.zero(C, ctx);
-                    }
-
-                    return result;
-                },
-                .banded => { // dense vector * banded
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.gbmv(
-                        types.orderOf(B),
-                        .trans,
-                        types.scast(i32, m),
-                        types.scast(i32, n),
-                        types.scast(i32, b.lower),
-                        types.scast(i32, b.upper),
-                        1,
-                        b.data,
-                        types.scast(i32, b.ld),
-                        a.data,
-                        a.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .tridiagonal => { // dense vector * tridiagonal
+                .dense_general => return @import("matmul/dvdge.zig").vm(allocator, a, b, ctx), // dense vector * dense general matrix
+                .dense_symmetric => return @import("matmul/dvdsy.zig").vm(allocator, a, b, ctx), // dense vector * dense symmetric matrix
+                .dense_hermitian => return @import("matmul/dvdhe.zig").vm(allocator, a, b, ctx), // dense vector * dense hermitian matrix
+                .dense_triangular => return @import("matmul/dvdtr.zig").vm(allocator, a, b, ctx), // dense vector * dense triangular matrix
+                .dense_diagonal => return @import("matmul/dvddi.zig").vm(allocator, a, b, ctx), // dense vector * dense diagonal matrix
+                .dense_banded => return @import("matmul/dvdba.zig").vm(allocator, a, b, ctx), // dense vector * dense banded matrix
+                .dense_tridiagonal => { // dense vector * dense tridiagonal matrix
                     var result: vector.Dense(C) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
@@ -286,44 +70,22 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .permutation => { // dense vector * permutation
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    var i: u32 = 0;
-                    while (i < n) : (i += 1) {
-                        try ops.set(
-                            &result.data[b.data[i]],
-                            a.get(i) catch unreachable,
-                            ctx,
-                        );
-                    }
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
+                .sparse_permutation => return @import("matmul/dvspe.zig").vm(allocator, a, b, ctx), // dense vector * sparse permutation matrix
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
             .sparse => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented,
-                .symmetric => return linalg.Error.NotImplemented,
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
             .numeric => unreachable,
         }
     } else if (comptime !types.isMatrix(B)) { // matrix * vector
-        const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
+        const m: u32 = if (comptime isSquareMatrix(A))
             a.size
         else
             a.rows;
-        const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
+        const n: u32 = if (comptime isSquareMatrix(A))
             a.size
         else
             a.cols;
@@ -332,262 +94,39 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             return linalg.Error.DimensionMismatch;
 
         switch (comptime types.matrixType(A)) {
-            .general => switch (comptime types.vectorType(B)) {
-                .dense => { // general * dense vector
+            .dense_general => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/dgedv.zig").mv(allocator, a, b, ctx), // dense general matrix * dense vector
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
+                .numeric => unreachable,
+            },
+            .dense_symmetric => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/dsydv.zig").mv(allocator, a, b, ctx), // dense symmetric matrix * dense vector
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
+                .numeric => unreachable,
+            },
+            .dense_hermitian => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/dhedv.zig").mv(allocator, a, b, ctx), // dense hermitian matrix * dense vector
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
+                .numeric => unreachable,
+            },
+            .dense_triangular => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/dtrdv.zig").mv(allocator, a, b, ctx), // dense triangular matrix * dense vector
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
+                .numeric => unreachable,
+            },
+            .dense_diagonal => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/ddidv.zig").mv(allocator, a, b, ctx), // dense diagonal matrix * dense vector
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
+                .numeric => unreachable,
+            },
+            .dense_banded => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/dbadv.zig").mv(allocator, a, b, ctx), // dense banded matrix * dense vector
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
+                .numeric => unreachable,
+            },
+            .dense_tridiagonal => switch (comptime types.vectorType(B)) {
+                .dense => { // dense tridiagonal matrix * dense vector
                     var result: vector.Dense(C) = try .init(allocator, m);
-                    errdefer result.deinit(allocator);
-
-                    try blas.gemv(
-                        types.orderOf(A),
-                        .no_trans,
-                        types.scast(i32, m),
-                        types.scast(i32, n),
-                        1,
-                        a.data,
-                        types.scast(i32, a.ld),
-                        b.data,
-                        b.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
-                .numeric => unreachable,
-            },
-            .symmetric => switch (comptime types.vectorType(B)) {
-                .dense => { // symmetric * dense vector
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.symv(
-                        types.orderOf(A),
-                        types.uploOf(A),
-                        types.scast(i32, n),
-                        1,
-                        a.data,
-                        types.scast(i32, a.ld),
-                        b.data,
-                        b.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
-                .numeric => unreachable,
-            },
-            .hermitian => switch (comptime types.vectorType(B)) {
-                .dense => { // hermitian * dense vector
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.hemv(
-                        types.orderOf(A),
-                        types.uploOf(A),
-                        types.scast(i32, n),
-                        1,
-                        a.data,
-                        types.scast(i32, a.ld),
-                        b.data,
-                        b.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
-                .numeric => unreachable,
-            },
-            .triangular => switch (comptime types.vectorType(B)) {
-                .dense => { // triangular * dense vector
-                    var result: vector.Dense(C) = try .full(allocator, m, 0, ctx);
-                    errdefer result.deinit(allocator);
-
-                    if (m == n) {
-                        try blas.copy(
-                            types.scast(i32, n),
-                            b.data,
-                            b.inc,
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-
-                        try blas.trmv(
-                            types.orderOf(A),
-                            types.uploOf(A),
-                            .no_trans,
-                            types.diagOf(A),
-                            types.scast(i32, n),
-                            a.data,
-                            types.scast(i32, a.ld),
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-                    } else {
-                        const min_dim: u32 = int.min(m, n);
-
-                        try blas.copy(
-                            types.scast(i32, min_dim),
-                            b.data,
-                            b.inc,
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-
-                        try blas.trmv(
-                            types.orderOf(A),
-                            types.uploOf(A),
-                            .no_trans,
-                            types.diagOf(A),
-                            types.scast(i32, min_dim),
-                            a.data,
-                            types.scast(i32, a.ld),
-                            result.data,
-                            result.inc,
-                            ctx,
-                        );
-
-                        if (comptime types.uploOf(A) == .upper) {
-                            if (n > min_dim) { // extra rows (filled)
-                                try blas.gemv(
-                                    types.orderOf(A),
-                                    .no_trans,
-                                    types.scast(i32, m),
-                                    types.scast(i32, n - min_dim),
-                                    1,
-                                    a.data +
-                                        if (comptime types.orderOf(A) == .col_major)
-                                            min_dim * a.ld
-                                        else
-                                            min_dim,
-                                    types.scast(i32, a.ld),
-                                    b.data +
-                                        if (b.inc > 0)
-                                            min_dim * types.scast(u32, b.inc)
-                                        else
-                                            0,
-                                    b.inc,
-                                    1,
-                                    result.data,
-                                    result.inc,
-                                    ctx,
-                                );
-                            } else if (m > min_dim) { // extra rows (empty)
-                                try blas.scal(
-                                    types.scast(i32, m - min_dim),
-                                    0,
-                                    result.data + min_dim * types.scast(u32, result.inc),
-                                    result.inc,
-                                    ctx,
-                                );
-                            }
-                        } else {
-                            if (m > min_dim) { // extra rows (filled)
-                                try blas.gemv(
-                                    types.orderOf(A),
-                                    .no_trans,
-                                    types.scast(i32, m - min_dim),
-                                    types.scast(i32, n),
-                                    1,
-                                    a.data +
-                                        if (comptime types.orderOf(A) == .col_major)
-                                            min_dim
-                                        else
-                                            min_dim * a.ld,
-                                    types.scast(i32, a.ld),
-                                    b.data,
-                                    b.inc,
-                                    1,
-                                    result.data + min_dim * types.scast(u32, result.inc),
-                                    result.inc,
-                                    ctx,
-                                );
-                            }
-                        }
-                    }
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
-                .numeric => unreachable,
-            },
-            .diagonal => switch (comptime types.vectorType(B)) {
-                .dense => { // diagonal * dense vector
-                    var result: vector.Dense(C) = try .full(allocator, m, 0, ctx);
-                    errdefer result.deinit(allocator);
-
-                    try blas.copy(
-                        types.scast(i32, m),
-                        b.data,
-                        b.inc,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    var i: u32 = 0;
-                    while (i < int.min(m, n)) : (i += 1) {
-                        try ops.mul_( // result[i] *= a[i, i]
-                            &result.data[i],
-                            result.data[i],
-                            a.data[i],
-                            ctx,
-                        );
-                    }
-
-                    while (i < m) : (i += 1) {
-                        result.data[i] = try constants.zero(C, ctx);
-                    }
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
-                .numeric => unreachable,
-            },
-            .banded => switch (comptime types.vectorType(B)) {
-                .dense => { // banded * dense vector
-                    var result: vector.Dense(C) = try .init(allocator, m);
-                    errdefer result.deinit(allocator);
-
-                    try blas.gbmv(
-                        types.orderOf(A),
-                        .no_trans,
-                        types.scast(i32, m),
-                        types.scast(i32, n),
-                        types.scast(i32, a.lower),
-                        types.scast(i32, a.upper),
-                        1,
-                        a.data,
-                        types.scast(i32, a.ld),
-                        b.data,
-                        b.inc,
-                        0,
-                        result.data,
-                        result.inc,
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
-                .numeric => unreachable,
-            },
-            .tridiagonal => switch (comptime types.vectorType(B)) {
-                .dense => { // tridiagonal * dense vector
-                    var result: vector.Dense(C) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
                     // lapack.lagtm
@@ -595,32 +134,15 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .permutation => switch (comptime types.vectorType(B)) {
-                .dense => { // permutation * dense vector
-                    var result: vector.Dense(C) = try .init(allocator, n);
-                    errdefer result.deinit(allocator);
-
-                    var i: u32 = 0;
-                    while (i < n) : (i += 1) {
-                        try ops.set(
-                            &result.data[i],
-                            b.get(a.data[i]) catch unreachable,
-                            ctx,
-                        );
-                    }
-
-                    return result;
-                },
-                .sparse => return linalg.Error.NotImplemented,
+            .sparse_permutation => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/spedv.zig").mv(allocator, a, b, ctx), // sparse permutation matrix * dense vector
+                .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .sparse => switch (comptime types.vectorType(B)) {
-                .dense => return linalg.Error.NotImplemented,
-                .sparse => return linalg.Error.NotImplemented,
-            },
+            else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
             .numeric => unreachable,
         }
     } else {
@@ -644,127 +166,29 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             return linalg.Error.DimensionMismatch;
 
         switch (comptime types.matrixType(A)) {
-            .general => switch (comptime types.matrixType(B)) {
-                .general => { // general * general
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.gemm(
-                        types.orderOf(A),
-                        .no_trans,
-                        if (comptime types.orderOf(A) == types.orderOf(B)) .no_trans else .trans,
-                        types.scast(i32, m),
-                        types.scast(i32, n),
-                        types.scast(i32, k),
-                        1,
-                        a.data,
-                        types.scast(i32, a.ld),
-                        b.data,
-                        types.scast(i32, b.ld),
-                        0,
-                        result.data,
-                        types.scast(i32, result.ld),
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .symmetric => { // general * symmetric
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.symm(
-                        types.orderOf(A),
-                        .right,
-                        if (comptime types.orderOf(A) == types.orderOf(B)) types.uploOf(B) else types.uploOf(B).invert(),
-                        types.scast(i32, m),
-                        types.scast(i32, n),
-                        1,
-                        b.data,
-                        types.scast(i32, b.ld),
-                        a.data,
-                        types.scast(i32, a.ld),
-                        0,
-                        result.data,
-                        types.scast(i32, result.ld),
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .hermitian => { // general * hermitian
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try blas.hemm(
-                        types.orderOf(A),
-                        .right,
-                        if (comptime types.orderOf(A) == types.orderOf(B)) types.uploOf(B) else types.uploOf(B).invert(),
-                        types.scast(i32, m),
-                        types.scast(i32, n),
-                        1,
-                        b.data,
-                        types.scast(i32, b.ld),
-                        a.data,
-                        types.scast(i32, a.ld),
-                        0,
-                        result.data,
-                        types.scast(i32, result.ld),
-                        ctx,
-                    );
-
-                    return result;
-                },
-                .triangular => { // general * triangular
-                    var result: matrix.General(C, types.orderOf(A)) = try .full(allocator, m, n, 0, ctx);
+            .dense_general => switch (comptime types.matrixType(B)) {
+                .dense_general => return @import("matmul/dgedge.zig").mm(allocator, a, b, ctx), // dense general matrix * dense general matrix
+                .dense_symmetric => return @import("matmul/dgedsy.zig").mm(allocator, a, b, ctx), // dense general matrix * dense symmetric matrix
+                .dense_hermitian => return @import("matmul/dgedhe.zig").mm(allocator, a, b, ctx), // dense general matrix * dense hermitian matrix
+                .dense_triangular => { // dense general matrix * dense triangular matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .full(allocator, m, n, 0, ctx);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .diagonal => { // general * diagonal
-                    var result: matrix.General(C, types.orderOf(A)) = try .full(allocator, m, n, 0, ctx);
-                    errdefer result.deinit(allocator);
-
-                    // lapack.lascl2
-
-                    var j: u32 = 0;
-                    while (j < int.min(k, n)) : (j += 1) {
-                        try blas.axpy(
-                            types.scast(i32, m),
-                            b.data[j],
-                            a.data + if (comptime types.orderOf(A) == .col_major) j * a.ld else j,
-                            if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, a.ld),
-                            result.data + if (comptime types.orderOf(A) == .col_major) j * result.ld else j,
-                            if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
-                            ctx,
-                        );
-                    }
-
-                    while (j < n) : (j += 1) {
-                        var i: u32 = 0;
-                        while (i < m) : (i += 1) {
-                            if (comptime types.orderOf(A) == .col_major) {
-                                result.data[i + j * result.ld] = try constants.zero(C, ctx);
-                            } else {
-                                result.data[i * result.ld + j] = try constants.zero(C, ctx);
-                            }
-                        }
-                    }
-
-                    return result;
-                },
-                .banded => { // general * banded
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_diagonal => return @import("matmul/dgeddi.zig").mm(allocator, a, b, ctx), // dense general matrix * dense diagonal matrix
+                .dense_banded => { // dense general matrix * dense banded matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .tridiagonal => { // general * tridiagonal
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_tridiagonal => { // dense general matrix * dense tridiagonal matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     // lapack.lagtm
@@ -772,8 +196,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .permutation => { // general * permutation
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .sparse_permutation => { // dense general matrix * sparse permutation matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     // lapack.lapmt: convert first to inverse permutation and then 1 based indexing
@@ -781,177 +205,73 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .symmetric => switch (comptime types.matrixType(B)) {
-                .general => {
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    if (comptime types.orderOf(A) == types.orderOf(B)) {
-                        try blas.symm(
-                            types.orderOf(B),
-                            .left,
-                            types.uploOf(A),
-                            types.scast(i32, m),
-                            types.scast(i32, n),
-                            1,
-                            a.data,
-                            types.scast(i32, a.ld),
-                            b.data,
-                            types.scast(i32, b.ld),
-                            0,
-                            result.data,
-                            types.scast(i32, result.ld),
-                            ctx,
-                        );
-
-                        return result;
-                    } else {
-                        var j: u32 = 0;
-                        while (j < n) : (j += 1) {
-                            try blas.symv(
-                                types.orderOf(A),
-                                types.uploOf(A),
-                                types.scast(i32, m),
-                                1,
-                                a.data,
-                                types.scast(i32, a.ld),
-                                b.data +
-                                    if (comptime types.orderOf(B) == .col_major)
-                                        j * b.ld
-                                    else
-                                        j,
-                                if (comptime types.orderOf(B) == .col_major) 1 else types.scast(i32, b.ld),
-                                0,
-                                result.data +
-                                    if (comptime types.orderOf(A) == .col_major)
-                                        j * result.ld
-                                    else
-                                        j,
-                                if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
-                                ctx,
-                            );
-                        }
-                    }
-
-                    return result;
-                },
-                .symmetric => { // symmetric * symmetric
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
+            .dense_symmetric => switch (comptime types.matrixType(B)) {
+                .dense_general => return @import("matmul/dsydge.zig").mm(allocator, a, b, ctx), // dense symmetric matrix * dense general matrix
+                .dense_symmetric => { // dense symmetric matrix * dense symmetric matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .hermitian => { // symmetric * hermitian
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
+                .dense_hermitian => { // dense symmetric matrix * dense hermitian matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .triangular => { // symmetric * triangular
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_triangular => { // dense symmetric matrix * dense triangular matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .diagonal => { // symmetric * diagonal
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_diagonal => { // dense symmetric matrix * dense diagonal matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .banded => { // symmetric * banded
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_banded => { // dense symmetric matrix * dense banded matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .tridiagonal => { // symmetric * tridiagonal
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
+                .dense_tridiagonal => { // dense symmetric matrix * dense tridiagonal matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .permutation => { // symmetric * permutation
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
+                .sparse_permutation => { // dense symmetric matrix * sparse permutation matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMP(&result, a, b, ctx);
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .hermitian => switch (comptime types.matrixType(B)) {
-                .general => { // hermitian * general
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    if (comptime types.orderOf(A) == types.orderOf(B)) {
-                        try blas.hemm(
-                            types.orderOf(B),
-                            .left,
-                            types.uploOf(A),
-                            types.scast(i32, m),
-                            types.scast(i32, n),
-                            1,
-                            a.data,
-                            types.scast(i32, a.ld),
-                            b.data,
-                            types.scast(i32, b.ld),
-                            0,
-                            result.data,
-                            types.scast(i32, result.ld),
-                            ctx,
-                        );
-
-                        return result;
-                    } else {
-                        var j: u32 = 0;
-                        while (j < n) : (j += 1) {
-                            try blas.hemv(
-                                types.orderOf(A),
-                                types.uploOf(A),
-                                types.scast(i32, m),
-                                1,
-                                a.data,
-                                types.scast(i32, a.ld),
-                                b.data +
-                                    if (comptime types.orderOf(B) == .col_major)
-                                        j * b.ld
-                                    else
-                                        j,
-                                if (comptime types.orderOf(B) == .col_major) 1 else types.scast(i32, b.ld),
-                                0,
-                                result.data +
-                                    if (comptime types.orderOf(A) == .col_major)
-                                        j * result.ld
-                                    else
-                                        j,
-                                if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
-                                ctx,
-                            );
-                        }
-                    }
-
-                    return result;
-                },
-                .symmetric => { // hermitian * symmetric
+            .dense_hermitian => switch (comptime types.matrixType(B)) {
+                .dense_general => return @import("matmul/dhedge.zig").mm(allocator, a, b, ctx), // dense hermitian matrix * dense general matrix
+                .dense_symmetric => { // dense hermitian matrix * dense symmetric matrix
                     var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
@@ -959,60 +279,60 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .hermitian => { // hermitian * hermitian
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
+                .dense_hermitian => { // dense hermitian matrix * dense hermitian matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .triangular => { // hermitian * triangular
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_triangular => { // dense hermitian matrix * dense triangular matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .diagonal => { // hermitian * diagonal
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_diagonal => { // dense hermitian matrix * dense diagonal matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .banded => { // hermitian * banded
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_banded => { // dense hermitian matrix * dense banded matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .tridiagonal => { // hermitian * tridiagonal
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
+                .dense_tridiagonal => { // dense hermitian matrix * dense tridiagonal matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .permutation => { // hermitian * permutation
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, n, n);
+                .sparse_permutation => { // dense hermitian matrix * sparse permutation matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMP(&result, a, b, ctx);
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .triangular => switch (comptime types.matrixType(B)) {
-                .general => { // triangular * general
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+            .dense_triangular => switch (comptime types.matrixType(B)) {
+                .dense_general => { // dense triangular matrix * dense general matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     // Change to blas calls
@@ -1020,7 +340,15 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .symmetric => { // triangular * symmetric
+                .dense_symmetric => { // dense triangular matrix * dense symmetric matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowMM(&result, a, b, ctx);
+
+                    return result;
+                },
+                .dense_hermitian => { // dense triangular matrix * dense hermitian matrix
                     var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -1028,17 +356,9 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .hermitian => { // triangular * hermitian
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowMM(&result, a, b, ctx);
-
-                    return result;
-                },
-                .triangular => { // triangular * triangular
+                .dense_triangular => { // dense triangular matrix * dense triangular matrix
                     if (comptime types.uploOf(A) == types.uploOf(B)) {
-                        var result: matrix.Triangular(
+                        var result: matrix.dense.Triangular(
                             C,
                             types.uploOf(A),
                             if (types.diagOf(A) == types.diagOf(B))
@@ -1053,7 +373,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                         return result;
                     } else {
-                        var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                        var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowMM(&result, a, b, ctx);
@@ -1061,16 +381,16 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                         return result;
                     }
                 },
-                .diagonal => { // triangular * diagonal
-                    var result: matrix.Triangular(C, types.uploOf(A), .non_unit, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_diagonal => { // dense triangular matrix * dense diagonal matrix
+                    var result: matrix.dense.Triangular(C, types.uploOf(A), .non_unit, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowTMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .banded => { // triangular * banded
-                    var result: matrix.Banded(C, types.orderOf(A)) = try .init(
+                .dense_banded => { // dense triangular matrix * dense banded matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
                         allocator,
                         m,
                         n,
@@ -1084,8 +404,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .tridiagonal => { // triangular * tridiagonal
-                    var result: matrix.Banded(C, types.orderOf(A)) = try .init(
+                .dense_tridiagonal => { // dense triangular matrix * dense tridiagonal matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
                         allocator,
                         m,
                         n,
@@ -1099,143 +419,98 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .permutation => { // triangular * permutation
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .sparse_permutation => { // dense triangular matrix * sparse permutation matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMP(&result, a, b, ctx);
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .diagonal => switch (comptime types.matrixType(B)) {
-                .general => { // diagonal * general
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    // lapack.lascl2
-
-                    var i: u32 = 0;
-                    while (i < int.min(m, k)) : (i += 1) {
-                        try blas.axpy(
-                            types.scast(i32, n),
-                            a.data[i],
-                            b.data + if (comptime types.orderOf(B) == .col_major) i * b.ld else i,
-                            if (comptime types.orderOf(B) == .col_major) 1 else types.scast(i32, b.ld),
-                            result.data + if (comptime types.orderOf(A) == .col_major) i * result.ld else i,
-                            if (comptime types.orderOf(A) == .col_major) 1 else types.scast(i32, result.ld),
-                            ctx,
-                        );
-                    }
-
-                    while (i < m) : (i += 1) {
-                        var j: u32 = 0;
-                        while (j < n) : (j += 1) {
-                            if (comptime types.orderOf(A) == .col_major) {
-                                result.data[i + j * result.ld] = try constants.zero(C, ctx);
-                            } else {
-                                result.data[i * result.ld + j] = try constants.zero(C, ctx);
-                            }
-                        }
-                    }
-
-                    return result;
-                },
-                .symmetric => { // diagonal * symmetric
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+            .dense_diagonal => switch (comptime types.matrixType(B)) {
+                .dense_general => return @import("matmul/ddidge.zig").mm(allocator, a, b, ctx), // dense diagonal matrix * dense general matrix
+                .dense_symmetric => { // dense diagonal matrix * dense symmetric matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .hermitian => { // diagonal * hermitian
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+                .dense_hermitian => { // dense diagonal matrix * dense hermitian matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .triangular => { // diagonal * triangular
-                    var result: matrix.Triangular(C, types.uploOf(B), .non_unit, types.orderOf(B)) = try .init(allocator, m, n);
+                .dense_triangular => { // dense diagonal matrix * dense triangular matrix
+                    var result: matrix.dense.Triangular(C, types.uploOf(B), .non_unit, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowTMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .diagonal => { // diagonal * diagonal
-                    var result: matrix.Diagonal(C) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    var i: u32 = 0;
-                    while (i < int.min(a.rows, b.cols)) : (i += 1) {
-                        result.data[i] = try ops.mul(
-                            a.data[i],
-                            b.data[i],
-                            ctx,
-                        );
-                    }
-
-                    return result;
-                },
-                .banded => { // diagonal * banded
-                    var result: matrix.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, b.lower, b.upper);
+                .dense_diagonal => return @import("matmul/ddiddi.zig").mm(allocator, a, b, ctx), // dense diagonal matrix * dense diagonal matrix
+                .dense_banded => { // dense diagonal matrix * dense banded matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, b.lower, b.upper);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowBMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .tridiagonal => { // diagonal * tridiagonal
-                    var result: matrix.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, 1, 1);
+                .dense_tridiagonal => { // dense diagonal matrix * dense tridiagonal matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, 1, 1);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowBMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .permutation => { // diagonal * permutation
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+                .dense_permutation => { // dense diagonal matrix * sparse permutation matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMP(&result, a, b, ctx);
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .banded => switch (comptime types.matrixType(B)) {
-                .general => { // banded * general
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+            .dense_banded => switch (comptime types.matrixType(B)) {
+                .dense_general => { // dense banded matrix * dense general matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .symmetric => { // banded * symmetric
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_symmetric => { // dense banded matrix * dense symmetric matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .hermitian => { // banded * hermitian
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .dense_hermitian => { // dense banded matrix * dense hermitian matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .triangular => { // banded * triangular
-                    var result: matrix.Banded(C, types.orderOf(A)) = try .init(
+                .dense_triangular => { // densed banded matrix * dense triangular matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
                         allocator,
                         m,
                         n,
@@ -1249,16 +524,16 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .diagonal => { // banded * diagonal
-                    var result: matrix.Banded(C, types.orderOf(A)) = try .init(allocator, m, n, a.lower, a.upper);
+                .dense_diagonal => { // dense banded matrix * dense diagonal matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(allocator, m, n, a.lower, a.upper);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowBMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .banded => { // banded * banded
-                    var result: matrix.Banded(C, types.orderOf(A)) = try .init(
+                .dense_banded => { // dense banded matrix * dense banded matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
                         allocator,
                         m,
                         n,
@@ -1272,8 +547,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .tridiagonal => { // banded * tridiagonal
-                    var result: matrix.Banded(C, types.orderOf(A)) = try .init(
+                .dense_tridiagonal => { // dense banded matrix * dense tridiagonal matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(A)) = try .init(
                         allocator,
                         m,
                         n,
@@ -1287,20 +562,20 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .permutation => { // banded * permutation
-                    var result: matrix.General(C, types.orderOf(A)) = try .init(allocator, m, n);
+                .sparse_permutation => { // dense banded matrix * sparse permutation matrix
+                    var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMP(&result, a, b, ctx);
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .tridiagonal => switch (comptime types.matrixType(B)) {
-                .general => { // tridiagonal * general
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+            .dense_tridiagonal => switch (comptime types.matrixType(B)) {
+                .dense_general => { // dense tridiagonal matrix * dense general matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     // lapack.lagtm
@@ -1308,24 +583,24 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .symmetric => { // tridiagonal * symmetric
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, n, n);
+                .dense_symmetric => { // dense tridiagonal matrix * dense symmetric matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .hermitian => { // tridiagonal * hermitian
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, n, n);
+                .dense_hermitian => { // dense tridiagonal matrix * dense hermitian matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .triangular => { // tridiagonal * triangular
-                    var result: matrix.Banded(C, types.orderOf(B)) = try .init(
+                .dense_triangular => { // dense tridiagonal matrix * dense triangular matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(
                         allocator,
                         m,
                         n,
@@ -1339,16 +614,16 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .diagonal => { // tridiagonal * diagonal
-                    var result: matrix.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, 1, 1);
+                .dense_diagonal => { // dense tridiagonal matrix * dense diagonal matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(allocator, m, n, 1, 1);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowBMM(&result, a, b, ctx);
 
                     return result;
                 },
-                .banded => { // tridiagonal * banded
-                    var result: matrix.Banded(C, types.orderOf(B)) = try .init(
+                .dense_banded => { // dense tridiagonal matrix * dense banded matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(
                         allocator,
                         m,
                         n,
@@ -1362,8 +637,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .tridiagonal => { // tridiagonal * tridiagonal
-                    var result: matrix.Banded(C, types.orderOf(B)) = try .init(
+                .dense_tridiagonal => { // dense tridiagonal matrix * dense tridiagonal matrix
+                    var result: matrix.dense.Banded(C, types.orderOf(B)) = try .init(
                         allocator,
                         n,
                         n,
@@ -1377,20 +652,20 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .permutation => { // tridiagonal * permutation
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, n, n);
+                .sparse_permutation => { // dense tridiagonal matrix * sparse permutation matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowMP(&result, a, b, ctx);
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .permutation => switch (comptime types.matrixType(B)) {
-                .general => { // permutation * general
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+            .spatse_permutation => switch (comptime types.matrixType(B)) {
+                .dense_general => { // sparse permutation matrix * dense general matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     // lapack.laswp
@@ -1398,56 +673,56 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .symmetric => { // permutation * symmetric
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, n, n);
+                .dense_symmetric => { // sparse permutation matrix * dense symmetric matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowPM(&result, a, b, ctx);
 
                     return result;
                 },
-                .hermitian => { // permutation * hermitian
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, n, n);
+                .dense_hermitian => { // sparse permutation matrix * dense hermitian matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowPM(&result, a, b, ctx);
 
                     return result;
                 },
-                .triangular => { // permutation * triangular
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+                .dense_triangular => { // sparse permutation matrix * dense triangular matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowPM(&result, a, b, ctx);
 
                     return result;
                 },
-                .diagonal => { // permutation * diagonal
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+                .dense_diagonal => { // sparse permutation matrix * dense diagonal matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowPM(&result, a, b, ctx);
 
                     return result;
                 },
-                .banded => { // permutation * banded
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, m, n);
+                .dense_banded => { // sparse permutation matrix * dense banded matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowPM(&result, a, b, ctx);
 
                     return result;
                 },
-                .tridiagonal => { // permutation * tridiagonal
-                    var result: matrix.General(C, types.orderOf(B)) = try .init(allocator, n, n);
+                .dense_tridiagonal => { // sparse permutation matrix * dense tridiagonal matrix
+                    var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowPM(&result, a, b, ctx);
 
                     return result;
                 },
-                .permutation => { // permutation * permutation
-                    var result: matrix.Permutation(C) = try .init(allocator, n);
+                .sparse_permutation => { // sparse permutation matrix * sparse permutation matrix
+                    var result: matrix.sparse.Permutation(C) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
                     var i: u32 = 0;
@@ -1457,21 +732,10 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse => return linalg.Error.NotImplemented,
+                else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .sparse => switch (comptime types.matrixType(B)) {
-                .general => return linalg.Error.NotImplemented,
-                .symmetric => return linalg.Error.NotImplemented,
-                .hermitian => return linalg.Error.NotImplemented,
-                .triangular => return linalg.Error.NotImplemented,
-                .diagonal => return linalg.Error.NotImplemented,
-                .banded => return linalg.Error.NotImplemented,
-                .tridiagonal => return linalg.Error.NotImplemented,
-                .permutation => return linalg.Error.NotImplemented,
-                .sparse => return linalg.Error.NotImplemented,
-                .numeric => unreachable,
-            },
+            else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
             .numeric => unreachable,
         }
     }

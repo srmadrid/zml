@@ -33,7 +33,12 @@ This library is in the early stages of development and might return incorrect re
         - `General`
         - `Symmetric`
         - `Hermitian`
-        - `Block`
+        - `Triangular`
+        - `Banded`
+        - Block (`block`):
+          - `General`
+          - `Symmetric`
+          - `Hermitian`
         - `Permutation`
     - Matrix addition/subtraction and scalar multiplication/division
     - Views

@@ -706,7 +706,7 @@ fn print(name: []const u8, a: anytype) void {
         }
     } else {
         std.debug.print("Matrix {s}:\n", .{name});
-        if (comptime zml.types.isSymmetricMatrix(@TypeOf(a)) or zml.types.isHermitianMatrix(@TypeOf(a)) or zml.types.isTridiagonalMatrix(@TypeOf(a))) {
+        if (comptime zml.types.isSymmetricDenseMatrix(@TypeOf(a)) or zml.types.isHermitianDenseMatrix(@TypeOf(a)) or zml.types.isTridiagonalDenseMatrix(@TypeOf(a)) or zml.types.isSymmetricSparseMatrix(@TypeOf(a)) or zml.types.isHermitianSparseMatrix(@TypeOf(a)) or zml.types.isSymmetricBlockSparseMatrix(@TypeOf(a)) or zml.types.isHermitianBlockSparseMatrix(@TypeOf(a))) {
             var i: u32 = 0;
             while (i < a.size) : (i += 1) {
                 var j: u32 = 0;
@@ -720,7 +720,7 @@ fn print(name: []const u8, a: anytype) void {
                 std.debug.print("\n", .{});
             }
             std.debug.print("\n", .{});
-        } else if (comptime zml.types.isPermutationMatrix(@TypeOf(a))) {
+        } else if (comptime zml.types.isPermutationSparseMatrix(@TypeOf(a))) {
             var i: u32 = 0;
             while (i < a.size) : (i += 1) {
                 var j: u32 = 0;
@@ -908,7 +908,7 @@ fn print_matrix(desc: []const u8, A: anytype) void {
 
         var j: u32 = 0;
         while (j < cols) : (j += 1) {
-            if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(A)))) {
+            if (comptime zml.types.isComplex(zml.types.Numeric(f64))) {
                 std.debug.print("{d:7.4} + {d:7.4}i  ", .{ (A.get(i, j) catch unreachable).re, (A.get(i, j) catch unreachable).im });
             } else {
                 std.debug.print("{d:5.4}  ", .{A.get(i, j) catch unreachable});
@@ -920,15 +920,40 @@ fn print_matrix(desc: []const u8, A: anytype) void {
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {
-    var A = try random_matrix_t(
-        zml.matrix.dense.Tridiagonal(f64),
-        a,
-        5,
-        5,
-    );
-    defer A.deinit(a);
+    // var A = try random_matrix_t(
+    //     zml.matrix.dense.Tridiagonal(f64),
+    //     a,
+    //     5,
+    //     5,
+    // );
+    var A: zml.matrix.sparse.Builder(f64, .col_major) = try .init(a, 5, 6, 10);
+    //defer A.deinit(a);
+
+    try A.set(a, 0, 0, 1);
+    try A.set(a, 1, 0, 2);
+    try A.set(a, 4, 0, 3);
+    try A.set(a, 0, 1, 1);
+    try A.set(a, 3, 2, 4);
+    try A.set(a, 1, 3, 5);
+    try A.set(a, 2, 3, 6);
+    try A.set(a, 2, 1, 8); // Try self-ordering
+    try A.set(a, 4, 4, 6);
+    try A.set(a, 2, 5, 7);
 
     print_matrix("A", A);
+
+    std.debug.print("A.data = {any}\n", .{A.data[0..A.nnz]});
+    std.debug.print("A.row = {any}\n", .{A.row[0..A.nnz]});
+    std.debug.print("A.col = {any}\n", .{A.col[0..A.nnz]});
+
+    var B = try A.compile(a);
+    defer B.deinit(a);
+
+    print_matrix("B", B);
+
+    std.debug.print("B.data = {any}\n", .{B.data[0..B.nnz]});
+    std.debug.print("B.idx = {any}\n", .{B.idx[0..B.nnz]});
+    std.debug.print("B.ptr = {any}\n", .{B.ptr[0 .. B.cols + 1]});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

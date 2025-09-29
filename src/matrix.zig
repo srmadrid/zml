@@ -12,8 +12,8 @@ pub const div = matops.div;
 pub const Error = error{
     ZeroDimension,
     PositionOutOfBounds,
-    InvalidRange,
     BreaksStructure,
+    InvalidRange,
     DimensionMismatch,
     InvalidBandwidth,
     NotSquare,
