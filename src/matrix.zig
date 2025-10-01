@@ -1,5 +1,7 @@
 pub const dense = @import("matrix/dense.zig");
 pub const sparse = @import("matrix/sparse.zig");
+const permutation = @import("matrix/permutation.zig");
+pub const Permutation = permutation.Permutation;
 
 const matops = @import("matrix/ops.zig");
 pub const apply2 = matops.apply2;

@@ -24,9 +24,6 @@ pub fn apply2(
     const Y: type = Numeric(@TypeOf(y));
     const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
 
-    if (x.size != y.rows or x.size != y.cols)
-        return matrix.Error.DimensionMismatch;
-
     var result: R = try .init(allocator, x.size, x.size);
     errdefer result.deinit(allocator);
 
@@ -37,9 +34,9 @@ pub fn apply2(
             var i: u32 = 0;
             while (i < x.size) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[i + j * result.ld] = op(x.at(i, j), y.get(i, j) catch unreachable);
+                    result.data[i + j * result.ld] = op(x.at(i, j), y.data[i + j * y.ld]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[i + j * result.ld] = try op(x.at(i, j), y.get(i, j) catch unreachable, ctx);
+                    result.data[i + j * result.ld] = try op(x.at(i, j), y.data[i + j * y.ld], ctx);
                 }
             }
         }
@@ -49,9 +46,9 @@ pub fn apply2(
             var j: u32 = 0;
             while (j < x.size) : (j += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[i * result.ld + j] = op(x.at(i, j), y.get(i, j) catch unreachable);
+                    result.data[i * result.ld + j] = op(x.at(i, j), y.data[i * y.ld + j]);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[i * result.ld + j] = try op(x.at(i, j), y.get(i, j) catch unreachable, ctx);
+                    result.data[i * result.ld + j] = try op(x.at(i, j), y.data[i * y.ld + j], ctx);
                 }
             }
         }

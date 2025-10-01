@@ -313,10 +313,10 @@ pub fn Builder(T: type, order: Order) type {
                 allocator.free(self.row[0..self._rlen]);
 
                 if (self._dlen > self.nnz)
-                    self.data = try allocator.realloc(self.data[0..self._dlen], self.nnz);
+                    self.data = (try allocator.realloc(self.data[0..self._dlen], self.nnz)).ptr;
 
                 if (self._clen > self.nnz)
-                    self.col = try allocator.realloc(self.col[0..self._clen], self.nnz);
+                    self.col = (try allocator.realloc(self.col[0..self._clen], self.nnz)).ptr;
             }
 
             const result = matrix.sparse.General(T, order){

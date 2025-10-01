@@ -10,20 +10,20 @@
 
 const std = @import("std");
 
-const types = @import("../../types.zig");
+const types = @import("../types.zig");
 const EnsureMatrix = types.EnsureMatrix;
 const Coerce = types.Coerce;
 const Numeric = types.Numeric;
 const ReturnType2 = types.ReturnType2;
 const Order = types.Order;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
+const ops = @import("../ops.zig");
+const constants = @import("../constants.zig");
+const int = @import("../int.zig");
 
-const matrix = @import("../../matrix.zig");
+const matrix = @import("../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../../array.zig");
+const array = @import("../array.zig");
 
 pub const Direction = enum {
     forward,
@@ -287,72 +287,4 @@ pub fn Permutation(T: type) type {
         //     };
         // }
     };
-}
-
-pub fn apply2(
-    allocator: std.mem.Allocator,
-    x: anytype,
-    y: anytype,
-    comptime op: anytype,
-    ctx: anytype,
-) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
-    const X: type = Numeric(@TypeOf(x));
-    const Y: type = Numeric(@TypeOf(y));
-    const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
-
-    if (comptime !types.isPermutationMatrix(@TypeOf(x))) {
-        var result: R = try .init(allocator, y.size, y.size);
-        errdefer result.deinit(allocator);
-
-        var j: u32 = 0;
-        while (j < y.size) : (j += 1) {
-            var i: u32 = 0;
-            while (i < y.size) : (i += 1) {
-                if (comptime @typeInfo(@TypeOf(op)).@"fn".params.len == 2) {
-                    result.data[i + j * result.ld] = op(x, y.at(i, j));
-                } else if (comptime @typeInfo(@TypeOf(op)).@"fn".params.len == 3) {
-                    result.data[i + j * result.ld] = try op(x, y.at(i, j), ctx);
-                }
-            }
-        }
-
-        return result;
-    } else if (comptime !types.isPermutationMatrix(@TypeOf(y))) {
-        var result: R = try .init(allocator, x.size, x.size);
-        errdefer result.deinit(allocator);
-
-        var j: u32 = 0;
-        while (j < x.size) : (j += 1) {
-            var i: u32 = 0;
-            while (i < x.size) : (i += 1) {
-                if (comptime @typeInfo(@TypeOf(op)).@"fn".params.len == 2) {
-                    result.data[i + j * result.ld] = op(x.at(i, j), y);
-                } else if (comptime @typeInfo(@TypeOf(op)).@"fn".params.len == 3) {
-                    result.data[i + j * result.ld] = try op(x.at(i, j), y, ctx);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    if (x.size != y.size)
-        return matrix.Error.DimensionMismatch;
-
-    var result: R = try .init(allocator, x.size, x.size);
-    errdefer result.deinit(allocator);
-
-    var j: u32 = 0;
-    while (j < x.size) : (j += 1) {
-        var i: u32 = 0;
-        while (i < x.size) : (i += 1) {
-            if (comptime @typeInfo(@TypeOf(op)).@"fn".params.len == 2) {
-                result.data[i + j * result.ld] = op(x.at(i, j), y.at(i, j));
-            } else if (comptime @typeInfo(@TypeOf(op)).@"fn".params.len == 3) {
-                result.data[i + j * result.ld] = try op(x.at(i, j), y.at(i, j), ctx);
-            }
-        }
-    }
-
-    return result;
 }

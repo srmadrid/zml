@@ -11,5 +11,3 @@ pub const Triangular = triangular.Triangular;
 const banded = @import("sparse/banded.zig");
 pub const Banded = banded.Banded;
 pub const block = @import("sparse/block.zig");
-const permutation = @import("sparse/permutation.zig");
-pub const Permutation = permutation.Permutation;

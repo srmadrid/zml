@@ -846,7 +846,7 @@ fn is_square(comptime T: type) bool {
         zml.types.isTridiagonalDenseMatrix(T) or
         zml.types.isSymmetricSparseMatrix(T) or
         zml.types.isHermitianSparseMatrix(T) or
-        zml.types.isPermutationSparseMatrix(T);
+        zml.types.isPermutationMatrix(T);
 }
 
 fn random_matrix_t(
@@ -865,29 +865,164 @@ fn random_matrix_t(
             try T.init(allocator, rows, cols);
         errdefer result.deinit(allocator);
 
-        var i: u32 = 0;
-        while (i < rows) : (i += 1) {
-            var j: u32 = 0;
-            while (j < cols) : (j += 1) {
-                if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                    if (zml.types.isHermitianDenseMatrix(T) and i == j) {
-                        // diagonal of Hermitian matrix must be real
-                        result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), 0)) catch unreachable;
+        switch (comptime zml.types.matrixType(T)) {
+            .dense_general, .dense_symmetric, .dense_hermitian => { // Wasteful for symmetric/hermitian, but whatever
+                var i: u32 = 0;
+                while (i < rows) : (i += 1) {
+                    var j: u32 = 0;
+                    while (j < cols) : (j += 1) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            if (zml.types.isHermitianDenseMatrix(T) and i == j) {
+                                // diagonal of Hermitian matrix must be real
+                                result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), 0)) catch unreachable;
 
-                        continue;
+                                continue;
+                            }
+
+                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
+                    }
+                }
+            },
+            .dense_triangular => {
+                if (comptime zml.types.uploOf(T) == .upper) {
+                    var i: u32 = 0;
+                    while (i < rows) : (i += 1) {
+                        if (comptime zml.types.diagOf(T) == .non_unit) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
+                        }
+
+                        var j: u32 = i + 1;
+                        while (j < cols) : (j += 1) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
+                        }
+                    }
+                } else {
+                    var i: u32 = 0;
+                    while (i < rows) : (i += 1) {
+                        var j: u32 = 0;
+                        while (j < i and j < cols) : (j += 1) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
+                        }
+
+                        if ((comptime zml.types.diagOf(T) == .non_unit) and i < cols) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
+                        }
+                    }
+                }
+            },
+            .dense_diagonal => {
+                var i: u32 = 0;
+                while (i < zml.int.min(rows, cols)) : (i += 1) {
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    } else {
+                        result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    }
+                }
+            },
+            .dense_banded => {
+                var i: u32 = 0;
+                while (i < rows) : (i += 1) {
+                    const j_start = if (i >= result.lower) i - result.lower else 0;
+                    const j_end = zml.int.min(cols, i + result.upper + 1);
+                    var j: u32 = j_start;
+                    while (j < j_end) : (j += 1) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
+                    }
+                }
+            },
+            .dense_tridiagonal => {
+                var i: u32 = 0;
+                while (i < rows) : (i += 1) {
+                    if (i > 0) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            result.set(i, i - 1, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, i - 1, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
                     }
 
-                    result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
-                } else {
-                    result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    } else {
+                        result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    }
+
+                    if (i + 1 < cols) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            result.set(i, i + 1, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, i + 1, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
+                    }
                 }
-            }
+            },
+            else => unreachable,
         }
 
         return result;
-    } else if (comptime zml.types.isPermutationSparseMatrix(T)) {
-        return error.UnsupportedMatrixType;
-    } else {}
+    } else if (comptime zml.types.isPermutationMatrix(T)) {
+        var result: T = try .init(allocator, rows);
+        errdefer result.deinit(allocator);
+
+        randomPermutation(result.data[0..rows]);
+
+        return result;
+    } else {
+        const nnz: u32 = rand.intRangeAtMost(u32, rows + cols, rows * cols / 2);
+
+        var builder: zml.matrix.sparse.Builder(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, cols, nnz);
+        errdefer builder.deinit(allocator);
+
+        // generate random (i, j) pairs
+        var used: std.AutoHashMap([2]u32, void) = .init(allocator);
+        defer used.deinit();
+        var count: u32 = 0;
+        while (count < nnz) : (count += 1) {
+            const i = rand.intRangeAtMost(u32, 0, rows - 1);
+            const j = rand.intRangeAtMost(u32, 0, cols - 1);
+            if (!used.contains(.{ i, j })) {
+                try used.put(.{ i, j }, {});
+                if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                    try builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64)));
+                } else {
+                    try builder.set(allocator, i, j, rand.float(zml.types.Numeric(T)));
+                }
+            } else {
+                count -= 1; // try again
+            }
+        }
+
+        switch (comptime zml.types.matrixType(T)) {
+            .sparse_general => return try builder.compile(allocator),
+            //.sparse_symmetric => return try builder.compileSymmetric(allocator),
+            //.sparse_hermitian => return try builder.compileHermitian(allocator),
+            else => unreachable,
+        }
+    }
 }
 
 fn print_matrix(desc: []const u8, A: anytype) void {
@@ -920,40 +1055,30 @@ fn print_matrix(desc: []const u8, A: anytype) void {
 }
 
 fn matrixTesting(a: std.mem.Allocator) !void {
-    // var A = try random_matrix_t(
-    //     zml.matrix.dense.Tridiagonal(f64),
-    //     a,
-    //     5,
-    //     5,
-    // );
-    var A: zml.matrix.sparse.Builder(f64, .col_major) = try .init(a, 5, 6, 10);
-    //defer A.deinit(a);
-
-    try A.set(a, 0, 0, 1);
-    try A.set(a, 1, 0, 2);
-    try A.set(a, 4, 0, 3);
-    try A.set(a, 0, 1, 1);
-    try A.set(a, 3, 2, 4);
-    try A.set(a, 1, 3, 5);
-    try A.set(a, 2, 3, 6);
-    try A.set(a, 2, 1, 8); // Try self-ordering
-    try A.set(a, 4, 4, 6);
-    try A.set(a, 2, 5, 7);
+    var A = try random_matrix_t(
+        zml.matrix.sparse.General(f64, .col_major),
+        a,
+        10,
+        10,
+    );
+    defer A.deinit(a);
 
     print_matrix("A", A);
 
-    std.debug.print("A.data = {any}\n", .{A.data[0..A.nnz]});
-    std.debug.print("A.row = {any}\n", .{A.row[0..A.nnz]});
-    std.debug.print("A.col = {any}\n", .{A.col[0..A.nnz]});
-
-    var B = try A.compile(a);
+    var B = try random_matrix_t(
+        zml.matrix.dense.Tridiagonal(f64),
+        a,
+        10,
+        10,
+    );
     defer B.deinit(a);
 
     print_matrix("B", B);
 
-    std.debug.print("B.data = {any}\n", .{B.data[0..B.nnz]});
-    std.debug.print("B.idx = {any}\n", .{B.idx[0..B.nnz]});
-    std.debug.print("B.ptr = {any}\n", .{B.ptr[0 .. B.cols + 1]});
+    var R = try zml.add(B, A, .{ .matrix_allocator = a });
+    defer R.deinit(a);
+
+    print_matrix("R = B + C", R);
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

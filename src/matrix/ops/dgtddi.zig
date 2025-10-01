@@ -24,9 +24,6 @@ pub fn apply2(
     const Y: type = Numeric(@TypeOf(y));
     const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
 
-    if (x.size != y.rows or x.size != y.cols)
-        return matrix.Error.DimensionMismatch;
-
     var result: R = try .init(allocator, x.size);
     errdefer result.deinit(allocator);
 

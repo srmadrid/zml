@@ -16,13 +16,6 @@ const linalg = @import("../linalg.zig");
 const blas = @import("blas.zig");
 const lapack = @import("lapack.zig");
 
-fn isSquareMatrix(comptime T: type) bool {
-    return types.isSymmetricDenseMatrix(T) or types.isHermitianDenseMatrix(T) or
-        types.isTridiagonalDenseMatrix(T) or types.isSymmetricSparseMatrix(T) or
-        types.isHermitianSparseMatrix(T) or types.isSymmetricBlockSparseMatrix(T) or
-        types.isHermitianBlockSparseMatrix(T) or types.isPermutationSparseMatrix(T);
-}
-
 pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: anytype) !MulCoerce(@TypeOf(a), @TypeOf(b)) {
     const A: type = @TypeOf(a);
     const B: type = @TypeOf(b);
@@ -41,14 +34,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
     };
 
     if (comptime !types.isMatrix(A)) { // vector * matrix
-        const m: u32 = if (comptime isSquareMatrix(B))
-            b.size
-        else
-            b.rows;
-        const n: u32 = if (comptime isSquareMatrix(B))
-            b.size
-        else
-            b.cols;
+        const m: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.rows;
+        const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
 
         if (a.len != m)
             return linalg.Error.DimensionMismatch;
@@ -70,7 +57,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => return @import("matmul/dvspe.zig").vm(allocator, a, b, ctx), // dense vector * sparse permutation matrix
+                .permutation => return @import("matmul/dvpe.zig").vm(allocator, a, b, ctx), // dense vector * permutation matrix
                 else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
@@ -81,14 +68,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             .numeric => unreachable,
         }
     } else if (comptime !types.isMatrix(B)) { // matrix * vector
-        const m: u32 = if (comptime isSquareMatrix(A))
-            a.size
-        else
-            a.rows;
-        const n: u32 = if (comptime isSquareMatrix(A))
-            a.size
-        else
-            a.cols;
+        const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+        const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
 
         if (b.len != n)
             return linalg.Error.DimensionMismatch;
@@ -137,8 +118,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .sparse_permutation => switch (comptime types.vectorType(B)) {
-                .dense => return @import("matmul/spedv.zig").mv(allocator, a, b, ctx), // sparse permutation matrix * dense vector
+            .permutation => switch (comptime types.vectorType(B)) {
+                .dense => return @import("matmul/pedv.zig").mv(allocator, a, b, ctx), // permutation matrix * dense vector
                 .sparse => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
@@ -146,23 +127,11 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
             .numeric => unreachable,
         }
     } else {
-        const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
-            a.size
-        else
-            a.rows;
-        const k: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A))
-            a.size
-        else
-            a.cols;
-        const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
-            b.size
-        else
-            b.cols;
+        const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+        const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
+        const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
 
-        if (k != (if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B))
-            b.size
-        else
-            b.rows))
+        if (k != (if (comptime types.isSquareMatrix(B)) b.size else b.rows))
             return linalg.Error.DimensionMismatch;
 
         switch (comptime types.matrixType(A)) {
@@ -196,7 +165,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => { // dense general matrix * sparse permutation matrix
+                .permutation => { // dense general matrix * permutation matrix
                     var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -258,7 +227,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => { // dense symmetric matrix * sparse permutation matrix
+                .permutation => { // dense symmetric matrix * permutation matrix
                     var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
@@ -319,7 +288,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => { // dense hermitian matrix * sparse permutation matrix
+                .permutation => { // dense hermitian matrix * permutation matrix
                     var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
@@ -419,7 +388,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => { // dense triangular matrix * sparse permutation matrix
+                .permutation => { // dense triangular matrix * permutation matrix
                     var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -473,7 +442,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .dense_permutation => { // dense diagonal matrix * sparse permutation matrix
+                .permutation => { // dense diagonal matrix * permutation matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -562,7 +531,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => { // dense banded matrix * sparse permutation matrix
+                .permutation => { // dense banded matrix * permutation matrix
                     var result: matrix.dense.General(C, types.orderOf(A)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -652,7 +621,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => { // dense tridiagonal matrix * sparse permutation matrix
+                .permutation => { // dense tridiagonal matrix * permutation matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
@@ -663,8 +632,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
                 else => @compileError("matmul not implemented for " ++ @typeName(A) ++ " and " ++ @typeName(B)),
                 .numeric => unreachable,
             },
-            .spatse_permutation => switch (comptime types.matrixType(B)) {
-                .dense_general => { // sparse permutation matrix * dense general matrix
+            .permutation => switch (comptime types.matrixType(B)) {
+                .dense_general => { // permutation matrix * dense general matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -673,7 +642,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .dense_symmetric => { // sparse permutation matrix * dense symmetric matrix
+                .dense_symmetric => { // permutation matrix * dense symmetric matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
@@ -681,7 +650,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .dense_hermitian => { // sparse permutation matrix * dense hermitian matrix
+                .dense_hermitian => { // permutation matrix * dense hermitian matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
@@ -689,7 +658,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .dense_triangular => { // sparse permutation matrix * dense triangular matrix
+                .dense_triangular => { // permutation matrix * dense triangular matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -697,7 +666,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .dense_diagonal => { // sparse permutation matrix * dense diagonal matrix
+                .dense_diagonal => { // permutation matrix * dense diagonal matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -705,7 +674,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .dense_banded => { // sparse permutation matrix * dense banded matrix
+                .dense_banded => { // permutation matrix * dense banded matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -713,7 +682,7 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .dense_tridiagonal => { // sparse permutation matrix * dense tridiagonal matrix
+                .dense_tridiagonal => { // permutation matrix * dense tridiagonal matrix
                     var result: matrix.dense.General(C, types.orderOf(B)) = try .init(allocator, n, n);
                     errdefer result.deinit(allocator);
 
@@ -721,8 +690,8 @@ pub inline fn matmul(allocator: std.mem.Allocator, a: anytype, b: anytype, ctx: 
 
                     return result;
                 },
-                .sparse_permutation => { // sparse permutation matrix * sparse permutation matrix
-                    var result: matrix.sparse.Permutation(C) = try .init(allocator, n);
+                .permutation => { // permutation matrix * permutation matrix
+                    var result: matrix.Permutation(C) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
                     var i: u32 = 0;
@@ -745,8 +714,8 @@ fn defaultSlowVM(result: anytype, x: anytype, a: anytype, ctx: anytype) !void {
     const A: type = @TypeOf(a);
     const C: type = Numeric(types.Child(@TypeOf(result)));
 
-    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
+    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+    const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
 
     var i: u32 = 0;
     while (i < n) : (i += 1) {
@@ -774,8 +743,8 @@ fn defaultSlowMV(result: anytype, a: anytype, x: anytype, ctx: anytype) !void {
     const A: type = @TypeOf(a);
     const C: type = Numeric(types.Child(@TypeOf(result)));
 
-    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
+    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+    const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
 
     var i: u32 = 0;
     while (i < m) : (i += 1) {
@@ -804,9 +773,9 @@ fn defaultSlowMM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     const B: type = @TypeOf(b);
     const C: type = Numeric(types.Child(@TypeOf(result)));
 
-    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B) or types.isPermutationMatrix(B)) b.size else b.cols;
-    const k: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A) or types.isPermutationMatrix(A)) a.size else a.cols;
+    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+    const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
+    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
 
     var i: u32 = 0;
     while (i < m) : (i += 1) {
@@ -839,9 +808,9 @@ fn defaultSlowTMM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     const B: type = @TypeOf(b);
     const C: type = Numeric(types.Child(@TypeOf(result)));
 
-    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B)) b.size else b.cols;
-    const k: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
+    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+    const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
+    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
 
     if (comptime types.uploOf(types.Child(@TypeOf(result))) == .upper) {
         var i: u32 = 0;
@@ -907,9 +876,9 @@ fn defaultSlowBMM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     const B: type = @TypeOf(b);
     const C: type = Numeric(types.Child(@TypeOf(result)));
 
-    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B)) b.size else b.cols;
-    const k: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
+    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+    const k: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
+    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
 
     var i: u32 = 0;
     while (i < m) : (i += 1) {
@@ -943,8 +912,8 @@ fn defaultSlowMP(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     // permute the columns of A.
     const A: type = @TypeOf(a);
 
-    const m: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.rows;
-    const n: u32 = if (comptime types.isSymmetricMatrix(A) or types.isHermitianMatrix(A) or types.isTridiagonalMatrix(A)) a.size else a.cols;
+    const m: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.rows;
+    const n: u32 = if (comptime types.isSquareMatrix(A)) a.size else a.cols;
 
     if (b.direction == .forward) {
         var j: u32 = 0;
@@ -993,8 +962,8 @@ fn defaultSlowMP(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
 fn defaultSlowPM(result: anytype, a: anytype, b: anytype, ctx: anytype) !void {
     const B: type = @TypeOf(b);
 
-    const m: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B)) b.size else b.rows;
-    const n: u32 = if (comptime types.isSymmetricMatrix(B) or types.isHermitianMatrix(B) or types.isTridiagonalMatrix(B)) b.size else b.cols;
+    const m: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.rows;
+    const n: u32 = if (comptime types.isSquareMatrix(B)) b.size else b.cols;
 
     if (a.direction == .forward) {
         var i: u32 = 0;
