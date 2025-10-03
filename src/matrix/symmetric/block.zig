@@ -1,7 +1,7 @@
 //! Storage scheme:
 //!
-//! If order is column major, CSC (Compressed Sparse Column), otherwise, i.e.,
-//! row major, CSR (Compressed Sparse Row), storing only the upper or lower
+//! If order is column major, BSC (Block Sparse Column), otherwise, i.e.,
+//! row major, BSR (Block Sparse Row), storing only the upper or lower
 //! triangular part of the matrix.
 
 const std = @import("std");
@@ -22,7 +22,7 @@ const Flags = matrix.Flags;
 
 const array = @import("../../array.zig");
 
-pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
+pub fn Block(T: type, uplo: Uplo, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("T must be a numeric type");
 
@@ -37,7 +37,7 @@ pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
         _plen: u32, // allocated length of ptr
         flags: Flags = .{},
 
-        pub const empty = Symmetric(T, uplo, order){
+        pub const empty = Block(T, uplo, order){
             .data = &.{},
             .idx = &.{},
             .ptr = &.{},

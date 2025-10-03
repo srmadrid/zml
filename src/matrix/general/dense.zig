@@ -22,9 +22,9 @@ const array = @import("../../array.zig");
 
 const linalg = @import("../../linalg.zig");
 
-pub fn General(T: type, order: Order) type {
+pub fn Dense(T: type, order: Order) type {
     if (!types.isNumeric(T))
-        @compileError("General requires a numeric type, got " ++ @typeName(T));
+        @compileError("Dense requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]T,
@@ -33,7 +33,7 @@ pub fn General(T: type, order: Order) type {
         ld: u32, // leading dimension
         flags: Flags = .{},
 
-        pub const empty: General(T, order) = .{
+        pub const empty: Dense(T, order) = .{
             .data = &.{},
             .rows = 0,
             .cols = 0,
@@ -45,7 +45,7 @@ pub fn General(T: type, order: Order) type {
             allocator: std.mem.Allocator,
             rows: u32,
             cols: u32,
-        ) !General(T, order) {
+        ) !Dense(T, order) {
             if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
 
@@ -64,8 +64,8 @@ pub fn General(T: type, order: Order) type {
             cols: u32,
             value: anytype,
             ctx: anytype,
-        ) !General(T, order) {
-            const mat: General(T, order) = try .init(allocator, rows, cols);
+        ) !Dense(T, order) {
+            const mat: Dense(T, order) = try .init(allocator, rows, cols);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -88,8 +88,8 @@ pub fn General(T: type, order: Order) type {
             allocator: std.mem.Allocator,
             size: u32,
             ctx: anytype,
-        ) !General(T, order) {
-            const mat: General(T, order) = try .init(allocator, size, size);
+        ) !Dense(T, order) {
+            const mat: Dense(T, order) = try .init(allocator, size, size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -125,7 +125,7 @@ pub fn General(T: type, order: Order) type {
             return mat;
         }
 
-        pub fn deinit(self: *General(T, order), allocator: ?std.mem.Allocator) void {
+        pub fn deinit(self: *Dense(T, order), allocator: ?std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.?.free(self.data[0 .. self.rows * self.cols]);
             }
@@ -133,7 +133,7 @@ pub fn General(T: type, order: Order) type {
             self.* = undefined;
         }
 
-        pub fn get(self: *const General(T, order), r: u32, c: u32) !T {
+        pub fn get(self: *const Dense(T, order), r: u32, c: u32) !T {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -143,7 +143,7 @@ pub fn General(T: type, order: Order) type {
                 self.data[r * self.ld + c];
         }
 
-        pub inline fn at(self: *const General(T, order), r: u32, c: u32) T {
+        pub inline fn at(self: *const Dense(T, order), r: u32, c: u32) T {
             // Unchecked version of get. Assumes row and col are valid.
             return if (comptime order == .col_major)
                 self.data[r + c * self.ld]
@@ -151,7 +151,7 @@ pub fn General(T: type, order: Order) type {
                 self.data[r * self.ld + c];
         }
 
-        pub fn set(self: *General(T, order), r: u32, c: u32, value: T) !void {
+        pub fn set(self: *Dense(T, order), r: u32, c: u32, value: T) !void {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -162,7 +162,7 @@ pub fn General(T: type, order: Order) type {
             }
         }
 
-        pub inline fn put(self: *General(T, order), r: u32, c: u32, value: T) void {
+        pub inline fn put(self: *Dense(T, order), r: u32, c: u32, value: T) void {
             // Unchecked version of set. Assumes row and col are valid.
             if (comptime order == .col_major) {
                 self.data[r + c * self.ld] = value;
@@ -171,8 +171,8 @@ pub fn General(T: type, order: Order) type {
             }
         }
 
-        pub fn copy(self: *const General(T, order), allocator: std.mem.Allocator, ctx: anytype) !General(T, order) {
-            var mat: General(T, order) = try .init(allocator, self.rows, self.cols);
+        pub fn copy(self: *const Dense(T, order), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, order) {
+            var mat: Dense(T, order) = try .init(allocator, self.rows, self.cols);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -210,7 +210,7 @@ pub fn General(T: type, order: Order) type {
             return mat;
         }
 
-        pub fn toDenseArray(self: *const General(T, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
+        pub fn toDenseArray(self: *const Dense(T, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
             errdefer result.deinit(allocator);
 
@@ -241,7 +241,7 @@ pub fn General(T: type, order: Order) type {
             return result;
         }
 
-        pub fn transpose(self: General(T, order)) General(T, order.invert()) {
+        pub fn transpose(self: Dense(T, order)) Dense(T, order.invert()) {
             return .{
                 .data = self.data,
                 .rows = self.cols,
@@ -254,12 +254,12 @@ pub fn General(T: type, order: Order) type {
         }
 
         pub fn submatrix(
-            self: *const General(T, order),
+            self: *const Dense(T, order),
             row_start: u32,
             row_end: u32,
             col_start: u32,
             col_end: u32,
-        ) !General(T, order) {
+        ) !Dense(T, order) {
             if (row_start >= self.rows or col_start >= self.cols or
                 row_end > self.rows or col_end > self.cols or
                 row_start >= row_end or col_start >= col_end)
@@ -282,7 +282,7 @@ pub fn General(T: type, order: Order) type {
             };
         }
 
-        pub fn row(self: *const General(T, order), r: u32) !vector.Dense(T) {
+        pub fn row(self: *const Dense(T, order), r: u32) !vector.Dense(T) {
             if (r >= self.rows)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -300,7 +300,7 @@ pub fn General(T: type, order: Order) type {
             };
         }
 
-        pub fn col(self: *const General(T, order), c: u32) !vector.Dense(T) {
+        pub fn col(self: *const Dense(T, order), c: u32) !vector.Dense(T) {
             if (c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -318,7 +318,7 @@ pub fn General(T: type, order: Order) type {
             };
         }
 
-        pub fn asSymmetricDenseMatrix(self: *const General(T, order), comptime uplo: Uplo) !matrix.dense.Symmetric(T, uplo, order) {
+        pub fn asSymmetricDenseMatrix(self: *const Dense(T, order), comptime uplo: Uplo) !matrix.dense.Symmetric(T, uplo, order) {
             if (self.rows != self.cols)
                 return matrix.Error.NotSquare;
 
@@ -330,7 +330,7 @@ pub fn General(T: type, order: Order) type {
             };
         }
 
-        pub fn asHermitianDenseMatrix(self: *const General(T, order), comptime uplo: Uplo) !matrix.dense.Hermitian(T, uplo, order) {
+        pub fn asHermitianDenseMatrix(self: *const Dense(T, order), comptime uplo: Uplo) !matrix.dense.Hermitian(T, uplo, order) {
             comptime if (!types.isComplex(T))
                 @compileError("Hermitian matrices require a complex type, got " ++ @typeName(T));
 
@@ -345,7 +345,7 @@ pub fn General(T: type, order: Order) type {
             };
         }
 
-        pub fn asTriangularDenseMatrix(self: *const General(T, order), comptime uplo: Uplo, comptime diag: Diag) !matrix.dense.Triangular(T, uplo, diag, order) {
+        pub fn asTriangularDenseMatrix(self: *const Dense(T, order), comptime uplo: Uplo, comptime diag: Diag) !matrix.dense.Triangular(T, uplo, diag, order) {
             return .{
                 .data = self.data,
                 .rows = self.rows,
@@ -355,7 +355,7 @@ pub fn General(T: type, order: Order) type {
             };
         }
 
-        pub fn asDenseArray(self: *const General(T, order)) array.Dense(T, order) {
+        pub fn asDenseArray(self: *const Dense(T, order)) array.Dense(T, order) {
             return .{
                 .data = self.data,
                 .ndim = 2,

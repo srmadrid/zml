@@ -23,7 +23,7 @@ const Flags = matrix.Flags;
 
 const array = @import("../../array.zig");
 
-pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
+pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("T must be a numeric type");
 
@@ -39,7 +39,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         _plen: u32, // allocated length of ptr
         flags: Flags = .{},
 
-        pub const empty = Triangular(T, uplo, diag, order){
+        pub const empty = Sparse(T, uplo, diag, order){
             .data = &.{},
             .idx = &.{},
             .ptr = &.{},

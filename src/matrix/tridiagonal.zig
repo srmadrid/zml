@@ -7,20 +7,20 @@
 
 const std = @import("std");
 
-const types = @import("../../types.zig");
+const types = @import("../types.zig");
 const EnsureMatrix = types.EnsureMatrix;
 const Coerce = types.Coerce;
 const Numeric = types.Numeric;
 const ReturnType2 = types.ReturnType2;
 const Order = types.Order;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
+const ops = @import("../ops.zig");
+const constants = @import("../constants.zig");
+const int = @import("../int.zig");
 
-const matrix = @import("../../matrix.zig");
+const matrix = @import("../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../../array.zig");
+const array = @import("../array.zig");
 
 pub fn Tridiagonal(T: type) type {
     if (!types.isNumeric(T))

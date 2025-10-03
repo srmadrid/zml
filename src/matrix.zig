@@ -1,7 +1,17 @@
-pub const dense = @import("matrix/dense.zig");
-pub const sparse = @import("matrix/sparse.zig");
+pub const general = @import("matrix/general.zig");
+pub const symmetric = @import("matrix/symmetric.zig");
+pub const hermitian = @import("matrix/hermitian.zig");
+pub const triangular = @import("matrix/triangular.zig");
+const diagonal = @import("matrix/diagonal.zig");
+pub const Diagonal = diagonal.Diagonal;
+const banded = @import("matrix/banded.zig");
+pub const Banded = banded.Banded;
+const tridiagonal = @import("matrix/tridiagonal.zig");
+pub const Tridiagonal = tridiagonal.Tridiagonal;
 const permutation = @import("matrix/permutation.zig");
 pub const Permutation = permutation.Permutation;
+
+pub const builder = @import("matrix/builder.zig");
 
 const matops = @import("matrix/ops.zig");
 pub const apply2 = matops.apply2;

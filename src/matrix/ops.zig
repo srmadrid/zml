@@ -42,17 +42,16 @@ pub fn apply2(
             .dense_symmetric => return @import("ops/dsy.zig").apply2(allocator, x, y, op, ctx),
             .dense_hermitian => return @import("ops/dhe.zig").apply2(allocator, x, y, op, ctx),
             .dense_triangular => return @import("ops/dtr.zig").apply2(allocator, x, y, op, ctx),
-            .dense_diagonal => return @import("ops/ddi.zig").apply2(allocator, x, y, op, ctx),
-            .dense_banded => return @import("ops/dba.zig").apply2(allocator, x, y, op, ctx),
-            .dense_tridiagonal => return @import("ops/dgt.zig").apply2(allocator, x, y, op, ctx),
+            .diagonal => return @import("ops/ddi.zig").apply2(allocator, x, y, op, ctx),
+            .banded => return @import("ops/dba.zig").apply2(allocator, x, y, op, ctx),
+            .tridiagonal => return @import("ops/dgt.zig").apply2(allocator, x, y, op, ctx),
             .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
             .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
             .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
             .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+            .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+            .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+            .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
             .permutation => @compileError("apply2 not implemented for permutation matrices yet"),
             .numeric => unreachable,
         }
@@ -62,17 +61,16 @@ pub fn apply2(
             .dense_symmetric => return @import("ops/dsy.zig").apply2(allocator, x, y, op, ctx),
             .dense_hermitian => return @import("ops/dhe.zig").apply2(allocator, x, y, op, ctx),
             .dense_triangular => return @import("ops/dtr.zig").apply2(allocator, x, y, op, ctx),
-            .dense_diagonal => return @import("ops/ddi.zig").apply2(allocator, x, y, op, ctx),
-            .dense_banded => return @import("ops/dba.zig").apply2(allocator, x, y, op, ctx),
-            .dense_tridiagonal => return @import("ops/dgt.zig").apply2(allocator, x, y, op, ctx),
+            .diagonal => return @import("ops/ddi.zig").apply2(allocator, x, y, op, ctx),
+            .banded => return @import("ops/dba.zig").apply2(allocator, x, y, op, ctx),
+            .tridiagonal => return @import("ops/dgt.zig").apply2(allocator, x, y, op, ctx),
             .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
             .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
             .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
             .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+            .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+            .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+            .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
             .permutation => @compileError("apply2 not implemented for permutation matrices yet"),
             .numeric => unreachable,
         }
@@ -92,11 +90,8 @@ pub fn apply2(
                 .dense_symmetric => return @import("ops/dgedsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/dgedhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => return @import("ops/dgedtr.zig").apply2(allocator, x, y, op, ctx),
-                .dense_diagonal => return @import("ops/dgeddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => return @import("ops/dgedba.zig").apply2(allocator, x, y, op, ctx),
-                .dense_tridiagonal => return @import("ops/dgedgt.zig").apply2(allocator, x, y, op, ctx),
                 .sparse_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -104,7 +99,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_symmetric => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -112,7 +107,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_hermitian => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -120,45 +115,40 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_triangular => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_banded => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_general => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_symmetric => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_symmetric => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_hermitian => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_hermitian => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowDGE(&result, x, y, op, ctx);
-
-                    return result;
-                },
+                .diagonal => return @import("ops/dgeddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => return @import("ops/dgedba.zig").apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return @import("ops/dgedgt.zig").apply2(allocator, x, y, op, ctx),
                 .permutation => return @import("ops/dgepe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
@@ -167,11 +157,8 @@ pub fn apply2(
                 .dense_symmetric => return @import("ops/dsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/dsydhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => return @import("ops/dsydtr.zig").apply2(allocator, x, y, op, ctx),
-                .dense_diagonal => return @import("ops/dsyddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => return @import("ops/dsydba.zig").apply2(allocator, x, y, op, ctx),
-                .dense_tridiagonal => return @import("ops/dsydgt.zig").apply2(allocator, x, y, op, ctx),
                 .sparse_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -179,7 +166,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_symmetric => {
-                    var result: matrix.dense.Symmetric(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                    var result: matrix.symmetric.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDSY(&result, x, y, op, ctx);
@@ -188,14 +175,14 @@ pub fn apply2(
                 },
                 .sparse_hermitian => {
                     if (comptime !types.isComplex(Numeric(X))) {
-                        var result: matrix.dense.Hermitian(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                        var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDHE(&result, x, y, op, ctx);
 
                         return result;
                     } else {
-                        var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                        var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDGE(&result, x, y, op, ctx);
@@ -204,47 +191,39 @@ pub fn apply2(
                     }
                 },
                 .sparse_triangular => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_banded => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_general => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowDGE(&result, x, y, op, ctx);
-
-                    return result;
-                },
-                .sparse_block_symmetric => {
-                    var result: matrix.dense.Symmetric(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                .block_symmetric => {
+                    var result: matrix.symmetric.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDSY(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_hermitian => {
+                .block_hermitian => {
                     if (comptime !types.isComplex(Numeric(X))) {
-                        var result: matrix.dense.Hermitian(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                        var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDHE(&result, x, y, op, ctx);
 
                         return result;
                     } else {
-                        var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                        var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDGE(&result, x, y, op, ctx);
@@ -252,6 +231,9 @@ pub fn apply2(
                         return result;
                     }
                 },
+                .diagonal => return @import("ops/dsyddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => return @import("ops/dsydba.zig").apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return @import("ops/dsydgt.zig").apply2(allocator, x, y, op, ctx),
                 .permutation => return @import("ops/dsype.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
@@ -260,11 +242,8 @@ pub fn apply2(
                 .dense_symmetric => return @import("ops/dhedsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/dhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => return @import("ops/dhedtr.zig").apply2(allocator, x, y, op, ctx),
-                .dense_diagonal => return @import("ops/dheddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => return @import("ops/dhedba.zig").apply2(allocator, x, y, op, ctx),
-                .dense_tridiagonal => return @import("ops/dhedgt.zig").apply2(allocator, x, y, op, ctx),
                 .sparse_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -273,14 +252,14 @@ pub fn apply2(
                 },
                 .sparse_symmetric => {
                     if (comptime !types.isComplex(Numeric(Y))) {
-                        var result: matrix.dense.Hermitian(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                        var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDHE(&result, x, y, op, ctx);
 
                         return result;
                     } else {
-                        var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                        var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDGE(&result, x, y, op, ctx);
@@ -289,7 +268,7 @@ pub fn apply2(
                     }
                 },
                 .sparse_hermitian => {
-                    var result: matrix.dense.Hermitian(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                    var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDHE(&result, x, y, op, ctx);
@@ -297,39 +276,31 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_triangular => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_banded => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_general => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowDGE(&result, x, y, op, ctx);
-
-                    return result;
-                },
-                .sparse_block_symmetric => {
+                .block_symmetric => {
                     if (comptime !types.isComplex(Numeric(Y))) {
-                        var result: matrix.dense.Hermitian(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                        var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDHE(&result, x, y, op, ctx);
 
                         return result;
                     } else {
-                        var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                        var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDGE(&result, x, y, op, ctx);
@@ -337,14 +308,17 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .sparse_block_hermitian => {
-                    var result: matrix.dense.Hermitian(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                .block_hermitian => {
+                    var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDHE(&result, x, y, op, ctx);
 
                     return result;
                 },
+                .diagonal => return @import("ops/dheddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => return @import("ops/dhedba.zig").apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return @import("ops/dhedgt.zig").apply2(allocator, x, y, op, ctx),
                 .permutation => return @import("ops/dhepe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
@@ -353,24 +327,8 @@ pub fn apply2(
                 .dense_symmetric => return @import("ops/dtrdsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/dtrdhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => return @import("ops/dtr.zig").apply2(allocator, x, y, op, ctx),
-                .dense_diagonal => return @import("ops/dtrddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => {
-                    var result: matrix.dense.Banded(R, types.orderOf(X)) = try .init(
-                        allocator,
-                        m,
-                        n,
-                        if (comptime types.uploOf(X) == .upper) y.lower else m - 1,
-                        if (comptime types.uploOf(X) == .upper) n - 1 else y.upper,
-                    );
-                    errdefer result.deinit(allocator);
-
-                    try defaultSlowDBA(&result, x, y, op, ctx);
-
-                    return result;
-                },
-                .dense_tridiagonal => return @import("ops/dtrdgt.zig").apply2(allocator, x, y, op, ctx),
                 .sparse_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -378,7 +336,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_symmetric => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -386,7 +344,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_hermitian => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -402,7 +360,7 @@ pub fn apply2(
 
                         return result;
                     } else {
-                        var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                        var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
 
                         try defaultSlowDGE(&result, x, y, op, ctx);
@@ -410,59 +368,133 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_general => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_symmetric => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_symmetric => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_hermitian => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_hermitian => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
+                .diagonal => return @import("ops/dtrddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => {
+                    var result: matrix.Banded(R, types.orderOf(X)) = try .init(
+                        allocator,
+                        m,
+                        n,
+                        if (comptime types.uploOf(X) == .upper) y.lower else m - 1,
+                        if (comptime types.uploOf(X) == .upper) n - 1 else y.upper,
+                    );
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDBA(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .tridiagonal => return @import("ops/dtrdgt.zig").apply2(allocator, x, y, op, ctx),
                 .permutation => return @import("ops/dtrpe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
-            .dense_diagonal => switch (comptime types.matrixType(Y)) {
+            .diagonal => switch (comptime types.matrixType(Y)) {
                 .dense_general => return @import("ops/ddidge.zig").apply2(allocator, x, y, op, ctx),
                 .dense_symmetric => return @import("ops/ddidsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/ddidhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => return @import("ops/ddidtr.zig").apply2(allocator, x, y, op, ctx),
-                .dense_diagonal => return @import("ops/ddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => return @import("ops/ddidba.zig").apply2(allocator, x, y, op, ctx),
-                .dense_tridiagonal => return @import("ops/ddidgt.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result.compile(allocator);
+                },
+                .sparse_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSSY(types.uploOf(Y), types.orderOf(Y), allocator, &result, x, y, op, ctx);
+
+                    return result.compileSymmetric(allocator, types.uploOf(Y));
+                },
+                .sparse_hermitian => {
+                    if (comptime !types.isComplex(Numeric(X))) {
+                        var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowSHE(types.uploOf(Y), types.orderOf(Y), allocator, &result, x, y, op, ctx);
+
+                        return result.compileHermitian(allocator, types.uploOf(Y));
+                    } else {
+                        var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + 2 * y.nnz);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowSGE(&result, x, y, op, ctx);
+
+                        return result.compile(allocator);
+                    }
+                },
                 .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result.compile(allocator);
+                },
+                .block_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSSY(types.uploOf(Y), types.orderOf(Y), allocator, &result, x, y, op, ctx);
+
+                    return result.compileSymmetric(allocator, types.uploOf(X));
+                },
+                .block_hermitian => {
+                    if (comptime !types.isComplex(Numeric(X))) {
+                        var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowSHE(types.uploOf(Y), types.orderOf(Y), allocator, &result, x, y, op, ctx);
+
+                        return result.compileHermitian(allocator, types.uploOf(X));
+                    } else {
+                        var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + 2 * y.nnz);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowSGE(&result, x, y, op, ctx);
+
+                        return result.compile(allocator);
+                    }
+                },
+                .diagonal => return @import("ops/ddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => return @import("ops/ddidba.zig").apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return @import("ops/ddidgt.zig").apply2(allocator, x, y, op, ctx),
                 .permutation => return @import("ops/ddipe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
-            .dense_banded => switch (comptime types.matrixType(Y)) {
+            .banded => switch (comptime types.matrixType(Y)) {
                 .dense_general => return @import("ops/dbadge.zig").apply2(allocator, x, y, op, ctx),
                 .dense_symmetric => return @import("ops/dbadsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/dbadhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => {
-                    var result: matrix.dense.Banded(R, types.orderOf(X)) = try .init(
+                    var result: matrix.Banded(R, types.orderOf(X)) = try .init(
                         allocator,
                         m,
                         n,
@@ -475,11 +507,8 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_diagonal => return @import("ops/dbaddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => return @import("ops/dba.zig").apply2(allocator, x, y, op, ctx),
-                .dense_tridiagonal => return @import("ops/dbadgt.zig").apply2(allocator, x, y, op, ctx),
                 .sparse_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -487,7 +516,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_symmetric => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -495,7 +524,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_hermitian => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
@@ -503,7 +532,7 @@ pub fn apply2(
                     return result;
                 },
                 .sparse_triangular => {
-                    var result: matrix.dense.Banded(R, types.orderOf(X)) = try .init(
+                    var result: matrix.Banded(R, types.orderOf(X)) = try .init(
                         allocator,
                         m,
                         n,
@@ -516,44 +545,43 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_general => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_symmetric => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_symmetric => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
-                .sparse_block_hermitian => {
-                    var result: matrix.dense.General(R, types.orderOf(X)) = try .init(allocator, m, n);
+                .block_hermitian => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowDGE(&result, x, y, op, ctx);
 
                     return result;
                 },
+                .diagonal => return @import("ops/dbaddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => return @import("ops/dba.zig").apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return @import("ops/dbadgt.zig").apply2(allocator, x, y, op, ctx),
                 .permutation => return @import("ops/dbape.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
-            .dense_tridiagonal => switch (comptime types.matrixType(Y)) {
+            .tridiagonal => switch (comptime types.matrixType(Y)) {
                 .dense_general => return @import("ops/dgtdge.zig").apply2(allocator, x, y, op, ctx),
                 .dense_symmetric => return @import("ops/dgtdsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/dgtdhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => return @import("ops/dgtdtr.zig").apply2(allocator, x, y, op, ctx),
-                .dense_diagonal => return @import("ops/dgtddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => return @import("ops/dgtdba.zig").apply2(allocator, x, y, op, ctx),
-                .dense_tridiagonal => return @import("ops/dgt.zig").apply2(allocator, x, y, op, ctx),
                 .sparse_general => {
-                    var result: matrix.sparse.Builder(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
@@ -561,19 +589,56 @@ pub fn apply2(
                     return try result.compile(allocator);
                 },
                 .sparse_symmetric => {
-                    var result: matrix.sparse.Builder(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
                     errdefer result.deinit(allocator);
 
                     try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
 
                     return try result.compile(allocator);
                 },
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse_hermitian => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_triangular => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_hermitian => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .diagonal => return @import("ops/dgtddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => return @import("ops/dgtdba.zig").apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return @import("ops/dgt.zig").apply2(allocator, x, y, op, ctx),
                 .permutation => return @import("ops/dgtpe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
@@ -582,55 +647,264 @@ pub fn apply2(
                 .dense_symmetric => return @import("ops/pedsy.zig").apply2(allocator, x, y, op, ctx),
                 .dense_hermitian => return @import("ops/pedhe.zig").apply2(allocator, x, y, op, ctx),
                 .dense_triangular => return @import("ops/pedtr.zig").apply2(allocator, x, y, op, ctx),
-                .dense_diagonal => return @import("ops/peddi.zig").apply2(allocator, x, y, op, ctx),
-                .dense_banded => return @import("ops/pedba.zig").apply2(allocator, x, y, op, ctx),
-                .dense_tridiagonal => return @import("ops/pedgt.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .permutation => @compileError("apply2 not implemented for two permutation matrices yet"),
+                .sparse_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_hermitian => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_triangular => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_hermitian => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .diagonal => return @import("ops/peddi.zig").apply2(allocator, x, y, op, ctx),
+                .banded => return @import("ops/pedba.zig").apply2(allocator, x, y, op, ctx),
+                .tridiagonal => return @import("ops/pedgt.zig").apply2(allocator, x, y, op, ctx),
+                .permutation => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
                 .numeric => unreachable,
             },
             .sparse_general => switch (comptime types.matrixType(Y)) {
-                .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
+                .dense_general => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .dense_symmetric => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .dense_hermitian => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .dense_triangular => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .sparse_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_hermitian => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_triangular => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .block_hermitian => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .diagonal => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + int.min(m, n));
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .banded => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .tridiagonal => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + 3 * int.min(m, n) - 2);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return result;
+                },
+                .permutation => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
                 .numeric => unreachable,
             },
             .sparse_symmetric => switch (comptime types.matrixType(Y)) {
-                .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+                .dense_general => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .dense_symmetric => {
+                    var result: matrix.symmetric.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDSY(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .dense_hermitian => {
+                    if (comptime !types.isComplex(Numeric(Y))) {
+                        var result: matrix.symmetric.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowDSY(&result, x, y, op, ctx);
+
+                        return result;
+                    } else {
+                        var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowDGE(&result, x, y, op, ctx);
+
+                        return result;
+                    }
+                },
+                .dense_triangular => {
+                    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowDGE(&result, x, y, op, ctx);
+
+                    return result;
+                },
+                .sparse_general => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
+                .sparse_symmetric => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSSY(types.uploOf(X), types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compileSymmetric(allocator, types.uploOf(X));
+                },
                 .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
+                .banded => @compileError("apply2 not implemented for sparse matrices yet"),
+                .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -639,17 +913,16 @@ pub fn apply2(
                 .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
+                .banded => @compileError("apply2 not implemented for sparse matrices yet"),
+                .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -658,93 +931,70 @@ pub fn apply2(
                 .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
+                .banded => @compileError("apply2 not implemented for sparse matrices yet"),
+                .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
-            .sparse_banded => switch (comptime types.matrixType(Y)) {
+            .block_general => switch (comptime types.matrixType(Y)) {
                 .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
+                .banded => @compileError("apply2 not implemented for sparse matrices yet"),
+                .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
-            .sparse_block_general => switch (comptime types.matrixType(Y)) {
+            .block_symmetric => switch (comptime types.matrixType(Y)) {
                 .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
+                .banded => @compileError("apply2 not implemented for sparse matrices yet"),
+                .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
-            .sparse_block_symmetric => switch (comptime types.matrixType(Y)) {
+            .block_hermitian => switch (comptime types.matrixType(Y)) {
                 .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
                 .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
-                .numeric => unreachable,
-            },
-            .sparse_block_hermitian => switch (comptime types.matrixType(Y)) {
-                .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_banded => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
+                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+                .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
+                .banded => @compileError("apply2 not implemented for sparse matrices yet"),
+                .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
@@ -897,9 +1147,17 @@ fn defaultSlowSGE(comptime order: types.Order, allocator: std.mem.Allocator, res
             var i: u32 = 0;
             while (i < m) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    try result.set(allocator, i, j, op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable));
+                    const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                    if (try ops.ne(rij, 0, ctx)) {
+                        try result.set(allocator, i, j, rij);
+                    }
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    try result.set(allocator, i, j, try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx));
+                    const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                    if (try ops.ne(rij, 0, ctx)) {
+                        try result.set(allocator, i, j, rij);
+                    }
                 }
             }
         }
@@ -909,9 +1167,199 @@ fn defaultSlowSGE(comptime order: types.Order, allocator: std.mem.Allocator, res
             var j: u32 = 0;
             while (j < n) : (j += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    try result.set(allocator, i, j, op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable));
+                    const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                    if (try ops.ne(rij, 0, ctx)) {
+                        try result.set(allocator, i, j, rij);
+                    }
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    try result.set(allocator, i, j, try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx));
+                    const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                    if (try ops.ne(rij, 0, ctx)) {
+                        try result.set(allocator, i, j, rij);
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn defaultSlowSSY(comptime uplo: types.Uplo, comptime order: types.Order, allocator: std.mem.Allocator, result: anytype, x: anytype, y: anytype, comptime op: anytype, ctx: anytype) !void {
+    const n: u32 = result.rows;
+    const opinfo = @typeInfo(@TypeOf(op));
+
+    if (comptime uplo == .upper) {
+        if (comptime order == .col_major) {
+            var j: u32 = 0;
+            while (j < n) : (j += 1) {
+                var i: u32 = 0;
+                while (i <= j) : (i += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
+                }
+            }
+        } else {
+            var i: u32 = 0;
+            while (i < n) : (i += 1) {
+                var j: u32 = i;
+                while (j < n) : (j += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        if (comptime order == .col_major) {
+            var j: u32 = 0;
+            while (j < n) : (j += 1) {
+                var i: u32 = j;
+                while (i < n) : (i += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
+                }
+            }
+        } else {
+            var i: u32 = 0;
+            while (i < n) : (i += 1) {
+                var j: u32 = 0;
+                while (j <= i) : (j += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn defaultSlowSHE(comptime uplo: types.Uplo, comptime order: types.Order, allocator: std.mem.Allocator, result: anytype, x: anytype, y: anytype, comptime op: anytype, ctx: anytype) !void {
+    const n: u32 = result.rows;
+    const opinfo = @typeInfo(@TypeOf(op));
+
+    if (comptime uplo == .upper) {
+        if (comptime order == .col_major) {
+            var j: u32 = 0;
+            while (j < n) : (j += 1) {
+                var i: u32 = 0;
+                while (i <= j) : (i += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
+                }
+            }
+        } else {
+            var i: u32 = 0;
+            while (i < n) : (i += 1) {
+                var j: u32 = i;
+                while (j < n) : (j += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        if (comptime order == .col_major) {
+            var j: u32 = 0;
+            while (j < n) : (j += 1) {
+                var i: u32 = j;
+                while (i < n) : (i += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
+                }
+            }
+        } else {
+            var i: u32 = 0;
+            while (i < n) : (i += 1) {
+                var j: u32 = 0;
+                while (j <= i) : (j += 1) {
+                    if (comptime opinfo.@"fn".params.len == 2) {
+                        const rij = op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    } else if (comptime opinfo.@"fn".params.len == 3) {
+                        const rij = try op(x.get(i, j) catch unreachable, y.get(i, j) catch unreachable, ctx);
+
+                        if (try ops.ne(rij, 0, ctx)) {
+                            try result.set(allocator, i, j, rij);
+                        }
+                    }
                 }
             }
         }

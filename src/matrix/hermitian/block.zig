@@ -6,23 +6,23 @@
 
 const std = @import("std");
 
-const types = @import("../../../types.zig");
+const types = @import("../../types.zig");
 const EnsureMatrix = types.EnsureMatrix;
 const Coerce = types.Coerce;
 const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
 const Order = types.Order;
 const Uplo = types.Uplo;
-const ops = @import("../../../ops.zig");
-const constants = @import("../../../constants.zig");
-const int = @import("../../../int.zig");
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
 
-const matrix = @import("../../../matrix.zig");
+const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../../../array.zig");
+const array = @import("../../array.zig");
 
-pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
+pub fn Block(T: type, uplo: Uplo, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("T must be a numeric type");
 
@@ -37,7 +37,7 @@ pub fn Symmetric(T: type, uplo: Uplo, order: Order) type {
         _plen: u32, // allocated length of ptr
         flags: Flags = .{},
 
-        pub const empty = Symmetric(T, uplo, order){
+        pub const empty = Block(T, uplo, order){
             .data = &.{},
             .idx = &.{},
             .ptr = &.{},

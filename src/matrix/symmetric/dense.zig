@@ -7,9 +7,9 @@ const std = @import("std");
 
 const types = @import("../../types.zig");
 const ReturnType2 = types.ReturnType2;
-const Numeric = types.Numeric;
-const Coerce = types.Coerce;
 const EnsureMatrix = types.EnsureMatrix;
+const Coerce = types.Coerce;
+const Numeric = types.Numeric;
 const Order = types.Order;
 const Uplo = types.Uplo;
 const ops = @import("../../ops.zig");
@@ -23,9 +23,9 @@ const array = @import("../../array.zig");
 
 const linalg = @import("../../linalg.zig");
 
-pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
-    if (!types.isNumeric(T) or !types.isComplex(T))
-        @compileError("Hermitian requires a complex numeric type, got " ++ @typeName(T));
+pub fn Dense(T: type, uplo: Uplo, order: Order) type {
+    if (!types.isNumeric(T))
+        @compileError("Dense requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]T,
@@ -33,7 +33,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
         ld: u32, // leading dimension
         flags: Flags = .{},
 
-        pub const empty: Hermitian(T, uplo, order) = .{
+        pub const empty: Dense(T, uplo, order) = .{
             .data = &.{},
             .size = 0,
             .ld = 0,
@@ -43,7 +43,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
         pub fn init(
             allocator: std.mem.Allocator,
             size: u32,
-        ) !Hermitian(T, uplo, order) {
+        ) !Dense(T, uplo, order) {
             if (size == 0)
                 return matrix.Error.ZeroDimension;
 
@@ -60,8 +60,8 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             size: u32,
             value: anytype,
             ctx: anytype,
-        ) !Hermitian(T, uplo, order) {
-            const mat: Hermitian(T, uplo, order) = try .init(allocator, size);
+        ) !Dense(T, uplo, order) {
+            const mat: Dense(T, uplo, order) = try .init(allocator, size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -117,8 +117,8 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             allocator: std.mem.Allocator,
             size: u32,
             ctx: anytype,
-        ) !Hermitian(T, uplo, order) {
-            const mat: Hermitian(T, uplo, order) = try .init(allocator, size);
+        ) !Dense(T, uplo, order) {
+            const mat: Dense(T, uplo, order) = try .init(allocator, size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -157,7 +157,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                                 mat.data[i * size + j] = constants.zero(T, ctx) catch unreachable;
                             }
                         }
-                    } else {
+                    } else { // rl
                         var i: u32 = 0;
                         while (i < size) : (i += 1) {
                             var j: u32 = 0;
@@ -176,7 +176,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             return mat;
         }
 
-        pub fn deinit(self: *Hermitian(T, uplo, order), allocator: ?std.mem.Allocator) void {
+        pub fn deinit(self: *Dense(T, uplo, order), allocator: ?std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.?.free(self.data[0 .. self.size * self.size]);
             }
@@ -184,42 +184,33 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             self.* = undefined;
         }
 
-        pub fn get(self: *const Hermitian(T, uplo, order), row: u32, col: u32) !T {
+        pub fn get(self: *const Dense(T, uplo, order), row: u32, col: u32) !T {
             if (row >= self.size or col >= self.size)
                 return matrix.Error.PositionOutOfBounds;
 
             var i: u32 = row;
             var j: u32 = col;
-            var noconj: bool = true;
             if (comptime uplo == .upper) {
                 if (i > j) {
                     const temp: u32 = i;
                     i = j;
                     j = temp;
-                    noconj = false;
                 }
             } else {
                 if (i < j) {
                     const temp: u32 = i;
                     i = j;
                     j = temp;
-                    noconj = false;
                 }
             }
 
-            if (noconj)
-                return if (comptime order == .col_major)
-                    self.data[i + j * self.ld]
-                else
-                    self.data[i * self.ld + j]
+            return if (comptime order == .col_major)
+                self.data[i + j * self.ld]
             else
-                return if (comptime order == .col_major)
-                    ops.conjugate(self.data[i + j * self.ld], .{}) catch unreachable
-                else
-                    ops.conjugate(self.data[i * self.ld + j], .{}) catch unreachable;
+                self.data[i * self.ld + j];
         }
 
-        pub inline fn at(self: *const Hermitian(T, uplo, order), row: u32, col: u32) T {
+        pub inline fn at(self: *const Dense(T, uplo, order), row: u32, col: u32) T {
             // Unchecked version of get. Assumes row and col are valid and on
             // the correct triangular part.
             return if (comptime order == .col_major)
@@ -228,46 +219,34 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                 self.data[row * self.ld + col];
         }
 
-        pub fn set(self: *Hermitian(T, uplo, order), row: u32, col: u32, value: T) !void {
+        pub fn set(self: *Dense(T, uplo, order), row: u32, col: u32, value: T) !void {
             if (row >= self.size or col >= self.size)
                 return matrix.Error.PositionOutOfBounds;
 
-            if (row == col and value.im != 0)
-                return matrix.Error.BreaksStructure;
-
             var i: u32 = row;
             var j: u32 = col;
-            var noconj: bool = true;
             if (comptime uplo == .upper) {
                 if (i > j) {
                     const temp: u32 = i;
                     i = j;
                     j = temp;
-                    noconj = false;
                 }
             } else {
                 if (i < j) {
                     const temp: u32 = i;
                     i = j;
                     j = temp;
-                    noconj = false;
                 }
             }
 
             if (comptime order == .col_major) {
-                self.data[i + j * self.ld] = if (noconj)
-                    value
-                else
-                    ops.conjugate(value, .{}) catch unreachable;
+                self.data[i + j * self.ld] = value;
             } else {
-                self.data[i * self.ld + j] = if (noconj)
-                    value
-                else
-                    ops.conjugate(value, .{}) catch unreachable;
+                self.data[i * self.ld + j] = value;
             }
         }
 
-        pub inline fn put(self: *Hermitian(T, uplo, order), row: u32, col: u32, value: T) void {
+        pub inline fn put(self: *Dense(T, uplo, order), row: u32, col: u32, value: T) void {
             // Unchecked version of set. Assumes row and col are valid and on
             // the correct triangular part.
             if (comptime order == .col_major) {
@@ -277,8 +256,8 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             }
         }
 
-        pub fn copy(self: *const Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !Hermitian(T, uplo, order) {
-            var mat: Hermitian(T, uplo, order) = try .init(allocator, self.size);
+        pub fn copy(self: *const Dense(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, uplo, order) {
+            var mat: Dense(T, uplo, order) = try .init(allocator, self.size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -345,11 +324,11 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
         }
 
         pub fn copyInverseUplo(
-            self: *const Hermitian(T, uplo, order),
+            self: *const Dense(T, uplo, order),
             allocator: std.mem.Allocator,
             ctx: anytype,
-        ) !Hermitian(T, uplo.invert(), order) {
-            var mat: Hermitian(T, uplo.invert(), order) = try .init(allocator, self.size);
+        ) !Dense(T, uplo.invert(), order) {
+            var mat: Dense(T, uplo.invert(), order) = try .init(allocator, self.size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -359,76 +338,52 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                     if (comptime uplo == .upper) { // cu -> cl
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
-                            var i: u32 = 0;
-                            while (i < j) : (i += 1) {
-                                try ops.set(
-                                    &mat.data[j + i * mat.ld],
-                                    ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable,
-                                    ctx,
-                                );
-                            }
-
-                            ops.set(
-                                &mat.data[j + j * mat.ld],
-                                self.data[j + j * self.ld].re,
+                            try linalg.blas.copy(
+                                types.scast(i32, j + 1),
+                                self.data + (0 + j * self.ld),
+                                1,
+                                mat.data + j,
+                                types.scast(i32, mat.ld),
                                 ctx,
-                            ) catch unreachable;
+                            );
                         }
                     } else { // cl -> cu
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
-                            ops.set(
-                                &mat.data[j + j * mat.ld],
-                                self.data[j + j * self.ld].re,
+                            try linalg.blas.copy(
+                                types.scast(i32, self.size - j),
+                                self.data + (j + j * self.ld),
+                                1,
+                                mat.data + (j + j * self.ld),
+                                types.scast(i32, mat.ld),
                                 ctx,
-                            ) catch unreachable;
-
-                            var i: u32 = j + 1;
-                            while (i < self.size) : (i += 1) {
-                                try ops.set(
-                                    &mat.data[j + i * mat.ld],
-                                    ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable,
-                                    ctx,
-                                );
-                            }
+                            );
                         }
                     }
                 } else {
                     if (comptime uplo == .upper) { // ru -> rl
                         var i: u32 = 0;
                         while (i < self.size) : (i += 1) {
-                            ops.set(
-                                &mat.data[i * mat.ld + i],
-                                self.data[i * self.ld + i].re,
+                            try linalg.blas.copy(
+                                types.scast(i32, self.size - i),
+                                self.data + (i * self.ld + i),
+                                1,
+                                mat.data + (i * mat.ld + i),
+                                types.scast(i32, mat.ld),
                                 ctx,
-                            ) catch unreachable;
-
-                            var j: u32 = i + 1;
-                            while (j < self.size) : (j += 1) {
-                                try ops.set(
-                                    &mat.data[j * mat.ld + i],
-                                    ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable,
-                                    ctx,
-                                );
-                            }
+                            );
                         }
                     } else { // rl -> ru
                         var i: u32 = 0;
                         while (i < self.size) : (i += 1) {
-                            var j: u32 = 0;
-                            while (j < i) : (j += 1) {
-                                try ops.set(
-                                    &mat.data[j * mat.ld + i],
-                                    ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable,
-                                    ctx,
-                                );
-                            }
-
-                            ops.set(
-                                &mat.data[i * mat.ld + i],
-                                self.data[i * self.ld + i].re,
+                            try linalg.blas.copy(
+                                types.scast(i32, i + 1),
+                                self.data + (i * self.ld + 0),
+                                1,
+                                mat.data + i,
+                                types.scast(i32, mat.ld),
                                 ctx,
-                            ) catch unreachable;
+                            );
                         }
                     }
                 }
@@ -439,7 +394,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             return mat;
         }
 
-        pub fn toGeneralDenseMatrix(self: Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !matrix.dense.General(T, order) {
+        pub fn toGeneralDenseMatrix(self: Dense(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !matrix.dense.General(T, order) {
             var result: matrix.dense.General(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
@@ -453,7 +408,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = 0;
                             while (i < j) : (i += 1) {
                                 result.data[i + j * result.ld] = self.data[i + j * self.ld];
-                                result.data[j + i * result.ld] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.ld] = self.data[i + j * self.ld];
                             }
 
                             result.data[j + j * result.ld] = self.data[j + j * self.ld];
@@ -466,7 +421,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = j + 1;
                             while (i < self.size) : (i += 1) {
                                 result.data[i + j * result.ld] = self.data[i + j * self.ld];
-                                result.data[j + i * result.ld] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.ld] = self.data[i + j * self.ld];
                             }
                         }
                     }
@@ -479,7 +434,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = i + 1;
                             while (j < self.size) : (j += 1) {
                                 result.data[i * result.ld + j] = self.data[i * self.ld + j];
-                                result.data[j * result.ld + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.ld + i] = self.data[i * self.ld + j];
                             }
                         }
                     } else { // rl
@@ -488,7 +443,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = 0;
                             while (j < i) : (j += 1) {
                                 result.data[i * result.ld + j] = self.data[i * self.ld + j];
-                                result.data[j * result.ld + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.ld + i] = self.data[i * self.ld + j];
                             }
 
                             result.data[i * result.ld + i] = self.data[i * self.ld + i];
@@ -502,7 +457,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Hermitian(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
+        pub fn toDenseArray(self: *const Dense(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 
@@ -516,12 +471,12 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = 0;
                             while (i < j) : (i += 1) {
                                 result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-                                result.data[j + i * result.strides[1]] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.strides[1]] = self.data[i + j * self.ld];
                             }
 
                             result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
                         }
-                    } else {
+                    } else { // cl
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
                             result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
@@ -529,7 +484,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = j + 1;
                             while (i < self.size) : (i += 1) {
                                 result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-                                result.data[j + i * result.strides[1]] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.strides[1]] = self.data[i + j * self.ld];
                             }
                         }
                     }
@@ -542,7 +497,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = i + 1;
                             while (j < self.size) : (j += 1) {
                                 result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-                                result.data[j * result.strides[0] + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.strides[0] + i] = self.data[i * self.ld + j];
                             }
                         }
                     } else { // rl
@@ -551,7 +506,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = 0;
                             while (j < i) : (j += 1) {
                                 result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-                                result.data[j * result.strides[0] + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.strides[0] + i] = self.data[i * self.ld + j];
                             }
 
                             result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];
@@ -565,7 +520,7 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
             return result;
         }
 
-        pub fn transpose(self: Hermitian(T, uplo, order)) Hermitian(T, uplo.invert(), order.invert()) {
+        pub fn transpose(self: Dense(T, uplo, order)) Dense(T, uplo.invert(), order.invert()) {
             return .{
                 .data = self.data,
                 .size = self.size,
@@ -577,14 +532,14 @@ pub fn Hermitian(T: type, uplo: Uplo, order: Order) type {
         }
 
         pub fn submatrix(
-            self: *const Hermitian(T, uplo, order),
+            self: *const Dense(T, uplo, order),
             start: u32,
             end: u32,
-        ) !Hermitian(T, uplo, order) {
+        ) !Dense(T, uplo, order) {
             if (start >= self.size or end > self.size or start >= end)
                 return matrix.Error.InvalidRange;
 
-            const sub_size = end - start;
+            const sub_size: u32 = end - start;
 
             return .{
                 .data = self.data + (start + start * self.ld),

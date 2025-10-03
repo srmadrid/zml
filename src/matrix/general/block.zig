@@ -5,22 +5,22 @@
 
 const std = @import("std");
 
-const types = @import("../../../types.zig");
+const types = @import("../../types.zig");
 const EnsureMatrix = types.EnsureMatrix;
 const Coerce = types.Coerce;
 const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
 const Order = types.Order;
-const ops = @import("../../../ops.zig");
-const constants = @import("../../../constants.zig");
-const int = @import("../../../int.zig");
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
 
-const matrix = @import("../../../matrix.zig");
+const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../../../array.zig");
+const array = @import("../../array.zig");
 
-pub fn General(T: type, order: Order) type {
+pub fn Block(T: type, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("T must be a numeric type");
 
@@ -28,7 +28,7 @@ pub fn General(T: type, order: Order) type {
         data: [*]T,
         flags: Flags = .{},
 
-        pub const empty = General(T, order){
+        pub const empty = Block(T, order){
             .data = &.{},
             .flags = .{ .owns_data = false },
         };

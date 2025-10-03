@@ -22,9 +22,9 @@ const Flags = matrix.Flags;
 
 const array = @import("../../array.zig");
 
-pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
+pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
     if (!types.isNumeric(T))
-        @compileError("Triangular requires a numeric type, got " ++ @typeName(T));
+        @compileError("Dense requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]T,
@@ -33,7 +33,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         ld: u32, // leading dimension
         flags: Flags = .{},
 
-        pub const empty: Triangular(T, uplo, diag, order) = .{
+        pub const empty: Dense(T, uplo, diag, order) = .{
             .data = &.{},
             .rows = 0,
             .cols = 0,
@@ -45,7 +45,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             allocator: std.mem.Allocator,
             rows: u32,
             cols: u32,
-        ) !Triangular(T, uplo, diag, order) {
+        ) !Dense(T, uplo, diag, order) {
             if (rows == 0 or cols == 0)
                 return matrix.Error.ZeroDimension;
 
@@ -67,8 +67,8 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             cols: u32,
             value: anytype,
             ctx: anytype,
-        ) !Triangular(T, uplo, diag, order) {
-            const mat: Triangular(T, uplo, diag, order) = try .init(allocator, rows, cols);
+        ) !Dense(T, uplo, diag, order) {
+            const mat: Dense(T, uplo, diag, order) = try .init(allocator, rows, cols);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -164,8 +164,8 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             allocator: std.mem.Allocator,
             size: u32,
             ctx: anytype,
-        ) !Triangular(T, uplo, diag, order) {
-            const mat: Triangular(T, uplo, diag, order) = try .init(allocator, size, size);
+        ) !Dense(T, uplo, diag, order) {
+            const mat: Dense(T, uplo, diag, order) = try .init(allocator, size, size);
             errdefer mat.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -263,7 +263,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             return mat;
         }
 
-        pub fn deinit(self: *Triangular(T, uplo, diag, order), allocator: ?std.mem.Allocator) void {
+        pub fn deinit(self: *Dense(T, uplo, diag, order), allocator: ?std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.?.free(self.data[0..if (comptime uplo == .upper)
                     int.min(self.rows, self.cols) * self.cols
@@ -274,7 +274,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             self.* = undefined;
         }
 
-        pub fn get(self: *const Triangular(T, uplo, diag, order), row: u32, col: u32) !T {
+        pub fn get(self: *const Dense(T, uplo, diag, order), row: u32, col: u32) !T {
             if (row >= self.rows or col >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -297,7 +297,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                 self.data[row * self.ld + col];
         }
 
-        pub inline fn at(self: *const Triangular(T, uplo, diag, order), row: u32, col: u32) T {
+        pub inline fn at(self: *const Dense(T, uplo, diag, order), row: u32, col: u32) T {
             // Unchecked version of get. Assumes row and col are valid and on
             // the correct triangular part, and outside the diagonal if diag
             // triangular.
@@ -307,7 +307,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                 self.data[row * self.ld + col];
         }
 
-        pub fn set(self: *Triangular(T, uplo, diag, order), row: u32, col: u32, value: T) !void {
+        pub fn set(self: *Dense(T, uplo, diag, order), row: u32, col: u32, value: T) !void {
             if (row >= self.rows or col >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -331,7 +331,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             }
         }
 
-        pub inline fn put(self: *Triangular(T, uplo, diag, order), row: u32, col: u32, value: T) void {
+        pub inline fn put(self: *Dense(T, uplo, diag, order), row: u32, col: u32, value: T) void {
             // Unchecked version of set. Assumes row and col are valid and on
             // the correct triangular part, and outside the diagonal if diag
             // triangular.
@@ -342,7 +342,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             }
         }
 
-        pub fn toGeneralDenseMatrix(self: Triangular(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !matrix.dense.General(T, order) {
+        pub fn toGeneralDenseMatrix(self: Dense(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !matrix.dense.General(T, order) {
             var result: matrix.dense.General(T, order) = try .init(allocator, self.rows, self.cols);
             errdefer result.deinit(allocator);
 
@@ -445,7 +445,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Triangular(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
+        pub fn toDenseArray(self: *const Dense(T, uplo, diag, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
             errdefer result.deinit(allocator);
 
@@ -548,7 +548,7 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             return result;
         }
 
-        pub fn transpose(self: Triangular(T, uplo, diag, order)) Triangular(T, uplo.invert(), diag, order.invert()) {
+        pub fn transpose(self: Dense(T, uplo, diag, order)) Dense(T, uplo.invert(), diag, order.invert()) {
             return .{
                 .data = self.data,
                 .rows = self.cols,
@@ -561,11 +561,11 @@ pub fn Triangular(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         }
 
         pub fn submatrix(
-            self: *const Triangular(T, uplo, diag, order),
+            self: *const Dense(T, uplo, diag, order),
             start: u32,
             row_end: u32,
             col_end: u32,
-        ) !Triangular(T, uplo, diag, order) {
+        ) !Dense(T, uplo, diag, order) {
             if (start >= int.min(self.rows, self.cols) or
                 row_end > self.rows or col_end > self.cols or
                 row_end < start or col_end < start)
