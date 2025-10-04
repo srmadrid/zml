@@ -897,8 +897,32 @@ pub fn apply2(
 
                     return try result.compileSymmetric(allocator, types.uploOf(X));
                 },
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
+                .sparse_hermitian => switch (comptime !types.isComplex(Numeric(Y))) {
+                    false => {
+                        var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowSSY(types.uploOf(X), types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                        return try result.compileSymmetric(allocator, types.uploOf(X));
+                    },
+                    true => {
+                        var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + 2 * y.nnz);
+                        errdefer result.deinit(allocator);
+
+                        try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                        return try result.compile(allocator);
+                    },
+                },
+                .sparse_triangular => {
+                    var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
+                    errdefer result.deinit(allocator);
+
+                    try defaultSlowSGE(types.orderOf(X), allocator, &result, x, y, op, ctx);
+
+                    return try result.compile(allocator);
+                },
                 .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
                 .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
                 .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),

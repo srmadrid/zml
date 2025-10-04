@@ -1087,6 +1087,40 @@ fn random_matrix_t(
             else
                 try builder.compileHermitian(allocator, zml.types.uploOf(T));
         },
+        .block_general => {
+            var bsize: u32 = if (rows < 4 or cols < 4) 1 else rand.intRangeAtMost(u32, 2, zml.int.min(rows, cols) / 2);
+            while (rows % bsize != 0 or cols % bsize != 0) : (bsize = rand.intRangeAtMost(u32, 2, zml.int.min(rows, cols) / 2)) {}
+            const nnzb: u32 = rand.intRangeAtMost(u32, (rows / bsize + cols / bsize) / 2, (rows / bsize) * (cols / bsize) / 2);
+
+            var builder: zml.matrix.builder.Block(zml.types.Numeric(T), zml.types.borderOf(T), zml.types.orderOf(T)) = try .init(allocator, bsize, rows, cols, nnzb);
+            errdefer builder.deinit(allocator);
+
+            // generate random (i, j) pairs
+            var used: std.AutoHashMap([2]u32, void) = .init(allocator);
+            defer used.deinit();
+            var count: u32 = 0;
+            while (count < nnzb) : (count += 1) {
+                const i = rand.intRangeAtMost(u32, 0, rows / bsize - 1);
+                const j = rand.intRangeAtMost(u32, 0, cols / bsize - 1);
+                if (!used.contains(.{ i, j })) {
+                    try used.put(.{ i, j }, {});
+                    var block = try random_matrix_t(
+                        zml.matrix.general.Dense(zml.types.Numeric(T), zml.types.borderOf(T)),
+                        allocator,
+                        rand,
+                        bsize,
+                        bsize,
+                    );
+                    defer block.deinit(allocator);
+
+                    try builder.setBlock(allocator, i, j, block);
+                } else {
+                    count -= 1; // try again
+                }
+            }
+
+            return try builder.compile(allocator);
+        },
         else => unreachable,
     }
 }
@@ -1109,6 +1143,9 @@ fn print_matrix(desc: []const u8, A: anytype) void {
 
         var j: u32 = 0;
         while (j < cols) : (j += 1) {
+            if ((comptime zml.types.isGeneralBlockMatrix(@TypeOf(A))) and j % A.bsize == 0 and j != 0) {
+                std.debug.print("    ", .{});
+            }
             if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(A)))) {
                 std.debug.print("{d:7.4} + {d:7.4}i  ", .{ (A.get(i, j) catch unreachable).re, (A.get(i, j) catch unreachable).im });
             } else {
@@ -1116,6 +1153,9 @@ fn print_matrix(desc: []const u8, A: anytype) void {
             }
         }
         std.debug.print("\n", .{});
+        if ((comptime zml.types.isGeneralBlockMatrix(@TypeOf(A))) and i % A.bsize == A.bsize - 1 and i != rows - 1) {
+            std.debug.print("\n", .{});
+        }
     }
     std.debug.print("\n", .{});
 }
@@ -1125,31 +1165,32 @@ fn matrixTesting(a: std.mem.Allocator) !void {
     const rand = prng.random();
 
     var A = try random_matrix_t(
-        zml.matrix.symmetric.Sparse(f64, .lower, .col_major),
+        zml.matrix.general.Block(f64, .col_major, .row_major),
         a,
         rand,
-        8,
-        8,
+        16,
+        16,
     );
     defer A.deinit(a);
 
+    std.debug.print("bsize = {d}, nnzb = {d}\n", .{ A.bsize, A.nnzb });
     print_matrix("A", A);
 
-    var B = try random_matrix_t(
-        zml.matrix.symmetric.Sparse(f64, .lower, .row_major),
-        a,
-        rand,
-        8,
-        8,
-    );
-    defer B.deinit(a);
+    // var B = try random_matrix_t(
+    //     zml.matrix.symmetric.Sparse(f64, .lower, .row_major),
+    //     a,
+    //     rand,
+    //     8,
+    //     8,
+    // );
+    // defer B.deinit(a);
 
-    print_matrix("B", B);
+    // print_matrix("B", B);
 
-    var R = try zml.add(A, B, .{ .matrix_allocator = a });
-    defer R.deinit(a);
+    // var R = try zml.add(A, B, .{ .matrix_allocator = a });
+    // defer R.deinit(a);
 
-    print_matrix("R = B + C", R);
+    // print_matrix("R = B + C", R);
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

@@ -22,7 +22,7 @@ const Flags = matrix.Flags;
 
 const array = @import("../../array.zig");
 
-pub fn Block(T: type, uplo: Uplo, order: Order) type {
+pub fn Block(T: type, uplo: Uplo, border: Order, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("T must be a numeric type");
 
@@ -37,7 +37,7 @@ pub fn Block(T: type, uplo: Uplo, order: Order) type {
         _plen: u32, // allocated length of ptr
         flags: Flags = .{},
 
-        pub const empty = Block(T, uplo, order){
+        pub const empty = Block(T, uplo, border, order){
             .data = &.{},
             .idx = &.{},
             .ptr = &.{},

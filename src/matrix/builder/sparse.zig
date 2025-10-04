@@ -159,9 +159,6 @@ pub fn Sparse(T: type, order: Order) type {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
-            if (self.flags.owns_data == false)
-                return;
-
             var i: u32 = 0;
             while (i < self.nnz) : (i += 1) {
                 if (self.row[i] == r and self.col[i] == c) {
@@ -236,9 +233,6 @@ pub fn Sparse(T: type, order: Order) type {
         pub fn accumulate(self: *Sparse(T, order), allocator: std.mem.Allocator, r: u32, c: u32, value: anytype, ctx: anytype) !void {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
-
-            if (self.flags.owns_data == false)
-                return;
 
             var i: u32 = 0;
             while (i < self.nnz) : (i += 1) {

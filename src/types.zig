@@ -654,13 +654,15 @@ pub fn isMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                const matrix_types: [if (isComplex(numeric_type)) 51 else 39]type = if (comptime isComplex(numeric_type)) .{
+                const matrix_types: [if (isComplex(numeric_type)) 61 else 45]type = if (comptime isComplex(numeric_type)) .{
                     matrix.general.Dense(numeric_type, .col_major),
                     matrix.general.Dense(numeric_type, .row_major),
                     matrix.general.Sparse(numeric_type, .col_major),
                     matrix.general.Sparse(numeric_type, .row_major),
-                    matrix.general.Block(numeric_type, .col_major),
-                    matrix.general.Block(numeric_type, .row_major),
+                    matrix.general.Block(numeric_type, .col_major, .col_major),
+                    matrix.general.Block(numeric_type, .row_major, .col_major),
+                    matrix.general.Block(numeric_type, .col_major, .row_major),
+                    matrix.general.Block(numeric_type, .row_major, .row_major),
                     matrix.symmetric.Dense(numeric_type, .upper, .col_major),
                     matrix.symmetric.Dense(numeric_type, .lower, .col_major),
                     matrix.symmetric.Dense(numeric_type, .upper, .row_major),
@@ -669,10 +671,14 @@ pub fn isMatrix(comptime T: type) bool {
                     matrix.symmetric.Sparse(numeric_type, .lower, .col_major),
                     matrix.symmetric.Sparse(numeric_type, .upper, .row_major),
                     matrix.symmetric.Sparse(numeric_type, .lower, .row_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .col_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .col_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .row_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .row_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .row_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .row_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .row_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .row_major),
                     matrix.hermitian.Dense(numeric_type, .upper, .col_major),
                     matrix.hermitian.Dense(numeric_type, .lower, .col_major),
                     matrix.hermitian.Dense(numeric_type, .upper, .row_major),
@@ -681,10 +687,14 @@ pub fn isMatrix(comptime T: type) bool {
                     matrix.hermitian.Sparse(numeric_type, .lower, .col_major),
                     matrix.hermitian.Sparse(numeric_type, .upper, .row_major),
                     matrix.hermitian.Sparse(numeric_type, .lower, .row_major),
-                    matrix.hermitian.Block(numeric_type, .upper, .col_major),
-                    matrix.hermitian.Block(numeric_type, .lower, .col_major),
-                    matrix.hermitian.Block(numeric_type, .upper, .row_major),
-                    matrix.hermitian.Block(numeric_type, .lower, .row_major),
+                    matrix.hermitian.Block(numeric_type, .upper, .col_major, .col_major),
+                    matrix.hermitian.Block(numeric_type, .lower, .col_major, .col_major),
+                    matrix.hermitian.Block(numeric_type, .upper, .row_major, .col_major),
+                    matrix.hermitian.Block(numeric_type, .lower, .row_major, .col_major),
+                    matrix.hermitian.Block(numeric_type, .upper, .col_major, .row_major),
+                    matrix.hermitian.Block(numeric_type, .lower, .col_major, .row_major),
+                    matrix.hermitian.Block(numeric_type, .upper, .row_major, .row_major),
+                    matrix.hermitian.Block(numeric_type, .lower, .row_major, .row_major),
                     matrix.triangular.Dense(numeric_type, .upper, .non_unit, .col_major),
                     matrix.triangular.Dense(numeric_type, .upper, .unit, .col_major),
                     matrix.triangular.Dense(numeric_type, .lower, .non_unit, .col_major),
@@ -711,8 +721,10 @@ pub fn isMatrix(comptime T: type) bool {
                     matrix.general.Dense(numeric_type, .row_major),
                     matrix.general.Sparse(numeric_type, .col_major),
                     matrix.general.Sparse(numeric_type, .row_major),
-                    matrix.general.Block(numeric_type, .col_major),
-                    matrix.general.Block(numeric_type, .row_major),
+                    matrix.general.Block(numeric_type, .col_major, .col_major),
+                    matrix.general.Block(numeric_type, .row_major, .col_major),
+                    matrix.general.Block(numeric_type, .col_major, .row_major),
+                    matrix.general.Block(numeric_type, .row_major, .row_major),
                     matrix.symmetric.Dense(numeric_type, .upper, .col_major),
                     matrix.symmetric.Dense(numeric_type, .lower, .col_major),
                     matrix.symmetric.Dense(numeric_type, .upper, .row_major),
@@ -721,10 +733,14 @@ pub fn isMatrix(comptime T: type) bool {
                     matrix.symmetric.Sparse(numeric_type, .lower, .col_major),
                     matrix.symmetric.Sparse(numeric_type, .upper, .row_major),
                     matrix.symmetric.Sparse(numeric_type, .lower, .row_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .col_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .col_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .row_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .row_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .col_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .row_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .row_major),
+                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .row_major),
+                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .row_major),
                     matrix.triangular.Dense(numeric_type, .upper, .non_unit, .col_major),
                     matrix.triangular.Dense(numeric_type, .upper, .unit, .col_major),
                     matrix.triangular.Dense(numeric_type, .lower, .non_unit, .col_major),
@@ -1098,8 +1114,11 @@ pub fn isGeneralBlockMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.general.Block(numeric_type, .col_major) or
-                    T == matrix.general.Block(numeric_type, .row_major)) return true;
+                if (T == matrix.general.Block(numeric_type, .col_major, .col_major) or
+                    T == matrix.general.Block(numeric_type, .row_major, .col_major) or
+                    T == matrix.general.Block(numeric_type, .col_major, .row_major) or
+                    T == matrix.general.Block(numeric_type, .row_major, .row_major))
+                    return true;
             }
 
             return false;
@@ -1125,10 +1144,14 @@ pub fn isSymmetricBlockMatrix(comptime T: type) bool {
             }
 
             inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.symmetric.Block(numeric_type, .upper, .col_major) or
-                    T == matrix.symmetric.Block(numeric_type, .lower, .col_major) or
-                    T == matrix.symmetric.Block(numeric_type, .upper, .row_major) or
-                    T == matrix.symmetric.Block(numeric_type, .lower, .row_major)) return true;
+                if (T == matrix.symmetric.Block(numeric_type, .upper, .col_major, .col_major) or
+                    T == matrix.symmetric.Block(numeric_type, .lower, .col_major, .col_major) or
+                    T == matrix.symmetric.Block(numeric_type, .upper, .row_major, .col_major) or
+                    T == matrix.symmetric.Block(numeric_type, .lower, .row_major, .col_major) or
+                    T == matrix.symmetric.Block(numeric_type, .upper, .col_major, .row_major) or
+                    T == matrix.symmetric.Block(numeric_type, .lower, .col_major, .row_major) or
+                    T == matrix.symmetric.Block(numeric_type, .upper, .row_major, .row_major) or
+                    T == matrix.symmetric.Block(numeric_type, .lower, .row_major, .row_major)) return true;
             }
 
             return false;
@@ -1154,10 +1177,14 @@ pub fn isHermitianBlockMatrix(comptime T: type) bool {
             }
 
             inline for (supported_complex_types) |numeric_type| {
-                if (T == matrix.hermitian.Block(numeric_type, .upper, .col_major) or
-                    T == matrix.hermitian.Block(numeric_type, .lower, .col_major) or
-                    T == matrix.hermitian.Block(numeric_type, .upper, .row_major) or
-                    T == matrix.hermitian.Block(numeric_type, .lower, .row_major)) return true;
+                if (T == matrix.hermitian.Block(numeric_type, .upper, .col_major, .col_major) or
+                    T == matrix.hermitian.Block(numeric_type, .lower, .col_major, .col_major) or
+                    T == matrix.hermitian.Block(numeric_type, .upper, .row_major, .col_major) or
+                    T == matrix.hermitian.Block(numeric_type, .lower, .row_major, .col_major) or
+                    T == matrix.hermitian.Block(numeric_type, .upper, .col_major, .row_major) or
+                    T == matrix.hermitian.Block(numeric_type, .lower, .col_major, .row_major) or
+                    T == matrix.hermitian.Block(numeric_type, .upper, .row_major, .row_major) or
+                    T == matrix.hermitian.Block(numeric_type, .lower, .row_major, .row_major)) return true;
             }
 
             return false;
@@ -1465,13 +1492,13 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     }
                 },
                 .sparse_triangular => return matrix.triangular.Sparse(Coerce(X, Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // numeric + sparse triangular matrix
-                .block_general => return matrix.general.Block(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + sparse block general matrix
-                .block_symmetric => return matrix.symmetric.Block(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)), // numeric + sparse block symmetric matrix
+                .block_general => return matrix.general.Block(Coerce(X, Numeric(Y)), borderOf(Y), orderOf(Y)), // numeric + sparse block general matrix
+                .block_symmetric => return matrix.symmetric.Block(Coerce(X, Numeric(Y)), uploOf(Y), borderOf(Y), orderOf(Y)), // numeric + sparse block symmetric matrix
                 .block_hermitian => {
                     if (comptime isComplex(X)) {
-                        return matrix.general.Block(Coerce(X, Numeric(Y)), orderOf(Y)); // numeric (complex) + sparse block hermitian matrix
+                        return matrix.general.Block(Coerce(X, Numeric(Y)), borderOf(Y), orderOf(Y)); // numeric (complex) + sparse block hermitian matrix
                     } else {
-                        return matrix.hermitian.Block(Coerce(X, Numeric(Y)), uploOf(Y), orderOf(Y)); // numeric (real) + sparse block hermitian matrix
+                        return matrix.hermitian.Block(Coerce(X, Numeric(Y)), uploOf(Y), borderOf(Y), orderOf(Y)); // numeric (real) + sparse block hermitian matrix
                     }
                 },
                 .diagonal => return matrix.Diagonal(Coerce(X, Numeric(Y))), // numeric + dense diagonal matrix
@@ -1757,7 +1784,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse triangular matrix + array
             },
             .block_general => switch (comptime domainType(Y)) {
-                .numeric => return matrix.general.Block(Coerce(Numeric(X), Y), orderOf(X)), // sparse block matrix + numeric
+                .numeric => return matrix.general.Block(Coerce(Numeric(X), Y), borderOf(X), orderOf(X)), // sparse block matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
                     .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + sparse general matrix
@@ -1775,7 +1802,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block matrix + array
             },
             .block_symmetric => switch (comptime domainType(Y)) {
-                .numeric => return matrix.symmetric.Block(Coerce(Numeric(X), Y), orderOf(X)), // sparse block symmetric matrix + numeric
+                .numeric => return matrix.symmetric.Block(Coerce(Numeric(X), Y), borderOf(X), orderOf(X)), // sparse block symmetric matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block symmetric matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
                     .dense_symmetric => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // sparse block symmetric matrix + dense symmetric matrix
@@ -1815,9 +1842,9 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             .block_hermitian => switch (comptime domainType(Y)) {
                 .numeric => {
                     if (comptime isComplex(Y)) {
-                        return matrix.general.Block(Coerce(Numeric(X), Y), orderOf(X)); // sparse block hermitian matrix + numeric (complex)
+                        return matrix.general.Block(Coerce(Numeric(X), Y), borderOf(X), orderOf(X)); // sparse block hermitian matrix + numeric (complex)
                     } else {
-                        return matrix.hermitian.Block(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)); // sparse block hermitian matrix + numeric (real)
+                        return matrix.hermitian.Block(Coerce(Numeric(X), Y), uploOf(X), borderOf(X), orderOf(X)); // sparse block hermitian matrix + numeric (real)
                     }
                 },
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block hermitian matrix + vector
@@ -2453,9 +2480,9 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse symmetric matrix
                         .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse hermitian matrix
                         .sparse_triangular => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // dense diagonal matrix * sparse triangular matrix
-                        .block_general => return matrix.general.Block(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block general matrix
-                        .block_symmetric => return matrix.general.Block(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block symmetric matrix
-                        .block_hermitian => return matrix.general.Block(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block hermitian matrix
+                        .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block general matrix
+                        .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block symmetric matrix
+                        .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block hermitian matrix
                         .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // dense diagonal matrix * dense diagonal matrix
                         .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * dense banded matrix
                         .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense diagonal matrix * dense tridiagonal matrix. Should be tridiagonal, but since the diagonal can be rectangular and tridiagonal must be square, we return banded
@@ -2796,9 +2823,9 @@ pub fn EnsureDomain(comptime X: type, comptime Y: type) type {
             .sparse_symmetric => return matrix.symmetric.Sparse(Y, uploOf(X), orderOf(X)),
             .sparse_hermitian => return matrix.hermitian.Sparse(Y, uploOf(X), orderOf(X)),
             .sparse_triangular => return matrix.triangular.Sparse(Y, uploOf(X), diagOf(X), orderOf(X)),
-            .block_general => return matrix.general.Block(Y, orderOf(X)),
-            .block_symmetric => return matrix.symmetric.Block(Y, uploOf(X), orderOf(X)),
-            .block_hermitian => return matrix.hermitian.Block(Y, uploOf(X), orderOf(X)),
+            .block_general => return matrix.general.Block(Y, borderOf(X), orderOf(X)),
+            .block_symmetric => return matrix.symmetric.Block(Y, uploOf(X), borderOf(X), orderOf(X)),
+            .block_hermitian => return matrix.hermitian.Block(Y, uploOf(X), borderOf(X), orderOf(X)),
             .diagonal => return matrix.Diagonal(Y),
             .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
@@ -2845,9 +2872,9 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
             .sparse_symmetric => return matrix.symmetric.Sparse(Y, uploOf(X), orderOf(X)),
             .sparse_hermitian => return matrix.hermitian.Sparse(Y, uploOf(X), orderOf(X)),
             .sparse_triangular => return matrix.triangular.Sparse(Y, uploOf(X), diagOf(X), orderOf(X)),
-            .block_general => return matrix.general.Block(Y, orderOf(X)),
-            .block_symmetric => return matrix.symmetric.Block(Y, uploOf(X), orderOf(X)),
-            .block_hermitian => return matrix.hermitian.Block(Y, uploOf(X), orderOf(X)),
+            .block_general => return matrix.general.Block(Y, borderOf(X), orderOf(X)),
+            .block_symmetric => return matrix.symmetric.Block(Y, uploOf(X), borderOf(X), orderOf(X)),
+            .block_hermitian => return matrix.hermitian.Block(Y, uploOf(X), borderOf(X), orderOf(X)),
             .diagonal => return matrix.Diagonal(Y),
             .banded => return matrix.Banded(Y, orderOf(X)),
             .tridiagonal => return matrix.Tridiagonal(Y),
@@ -3126,9 +3153,9 @@ pub fn EnsureFloat(comptime T: type) type {
             .sparse_symmetric => return matrix.symmetric.Sparse(EnsureFloat(Numeric(T)), uploOf(T), orderOf(T)),
             .sparse_hermitian => return matrix.hermitian.Sparse(EnsureFloat(Numeric(T)), uploOf(T), orderOf(T)),
             .sparse_triangular => return matrix.triangular.Sparse(EnsureFloat(Numeric(T)), uploOf(T), diagOf(T), orderOf(T)),
-            .block_general => return matrix.general.Block(EnsureFloat(Numeric(T)), orderOf(T)),
-            .block_symmetric => return matrix.symmetric.Block(EnsureFloat(Numeric(T)), uploOf(T), orderOf(T)),
-            .block_hermitian => return matrix.hermitian.Block(EnsureFloat(Numeric(T)), uploOf(T), orderOf(T)),
+            .block_general => return matrix.general.Block(EnsureFloat(Numeric(T)), borderOf(T), orderOf(T)),
+            .block_symmetric => return matrix.symmetric.Block(EnsureFloat(Numeric(T)), borderOf(T), uploOf(T), orderOf(T)),
+            .block_hermitian => return matrix.hermitian.Block(EnsureFloat(Numeric(T)), borderOf(T), uploOf(T), orderOf(T)),
             .diagonal => return matrix.Diagonal(EnsureFloat(Numeric(T))),
             .banded => return matrix.Banded(EnsureFloat(Numeric(T)), orderOf(T)),
             .tridiagonal => return matrix.Tridiagonal(EnsureFloat(Numeric(T))),
@@ -3269,11 +3296,16 @@ pub fn orderOf(comptime T: type) Order {
                 T == matrix.triangular.Sparse(Numeric(T), .upper, .unit, .row_major) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, .row_major) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, .row_major) or
-                T == matrix.general.Block(Numeric(T), .row_major) or
-                T == matrix.symmetric.Block(Numeric(T), .upper, .row_major) or
-                T == matrix.symmetric.Block(Numeric(T), .lower, .row_major) or
-                T == matrix.hermitian.Block(Numeric(T), .upper, .row_major) or
-                T == matrix.hermitian.Block(Numeric(T), .lower, .row_major) or
+                T == matrix.general.Block(Numeric(T), .col_major, .row_major) or
+                T == matrix.general.Block(Numeric(T), .row_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .upper, .col_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .lower, .col_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .upper, .row_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .lower, .row_major, .row_major) or
+                T == matrix.hermitian.Block(Numeric(T), .upper, .col_major, .row_major) or
+                T == matrix.hermitian.Block(Numeric(T), .lower, .col_major, .row_major) or
+                T == matrix.hermitian.Block(Numeric(T), .upper, .row_major, .row_major) or
+                T == matrix.hermitian.Block(Numeric(T), .lower, .row_major, .row_major) or
                 T == matrix.Banded(Numeric(T), .row_major))
                 return .row_major
             else
@@ -3293,9 +3325,12 @@ pub fn orderOf(comptime T: type) Order {
                 T == matrix.triangular.Sparse(Numeric(T), .upper, .unit, .row_major) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, .row_major) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, .row_major) or
-                T == matrix.general.Block(Numeric(T), .row_major) or
-                T == matrix.symmetric.Block(Numeric(T), .upper, .row_major) or
-                T == matrix.symmetric.Block(Numeric(T), .lower, .row_major) or
+                T == matrix.general.Block(Numeric(T), .col_major, .row_major) or
+                T == matrix.general.Block(Numeric(T), .row_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .upper, .col_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .lower, .col_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .upper, .row_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .lower, .row_major, .row_major) or
                 T == matrix.Banded(Numeric(T), .row_major))
                 return .row_major
             else
@@ -3303,6 +3338,32 @@ pub fn orderOf(comptime T: type) Order {
         }
     } else {
         @compileError("Cannot get order of a non-matrix or non-array type. Use `orderOf` only with matrix or array types.");
+    }
+}
+
+pub fn borderOf(comptime T: type) Order {
+    if (comptime isMatrix(T)) {
+        if (comptime isComplex(Numeric(T))) {
+            if (T == matrix.general.Block(Numeric(T), .col_major, .row_major) or
+                T == matrix.general.Block(Numeric(T), .col_major, .col_major) or
+                T == matrix.symmetric.Block(Numeric(T), .upper, .col_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .lower, .col_major, .row_major) or
+                T == matrix.hermitian.Block(Numeric(T), .upper, .col_major, .row_major) or
+                T == matrix.hermitian.Block(Numeric(T), .lower, .col_major, .row_major))
+                return .col_major
+            else
+                return .row_major;
+        } else {
+            if (T == matrix.general.Block(Numeric(T), .col_major, .row_major) or
+                T == matrix.general.Block(Numeric(T), .col_major, .col_major) or
+                T == matrix.symmetric.Block(Numeric(T), .upper, .col_major, .row_major) or
+                T == matrix.symmetric.Block(Numeric(T), .lower, .col_major, .row_major))
+                return .col_major
+            else
+                return .row_major;
+        }
+    } else {
+        @compileError("Cannot get block order of a non-matrix type. Use `borderOf` only with block matrix types.");
     }
 }
 
@@ -3317,8 +3378,8 @@ pub fn uploOf(comptime T: type) Uplo {
                 T == matrix.hermitian.Sparse(Numeric(T), .lower, orderOf(T)) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, orderOf(T)) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, orderOf(T)) or
-                T == matrix.symmetric.Block(Numeric(T), .lower, orderOf(T)) or
-                T == matrix.hermitian.Block(Numeric(T), .lower, orderOf(T)))
+                T == matrix.symmetric.Block(Numeric(T), .lower, borderOf(T), orderOf(T)) or
+                T == matrix.hermitian.Block(Numeric(T), .lower, borderOf(T), orderOf(T)))
                 return .lower
             else
                 return .upper;
@@ -3329,7 +3390,7 @@ pub fn uploOf(comptime T: type) Uplo {
                 T == matrix.symmetric.Sparse(Numeric(T), .lower, orderOf(T)) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, orderOf(T)) or
                 T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, orderOf(T)) or
-                T == matrix.symmetric.Block(Numeric(T), .lower, orderOf(T)))
+                T == matrix.symmetric.Block(Numeric(T), .lower, borderOf(T), orderOf(T)))
                 return .lower
             else
                 return .upper;
