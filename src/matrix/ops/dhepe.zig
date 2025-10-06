@@ -24,7 +24,7 @@ pub fn apply2(
     const Y: type = Numeric(@TypeOf(y));
     const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
 
-    var result: R = try .init(allocator, x.size, x.size);
+    var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, x.size, x.size);
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));

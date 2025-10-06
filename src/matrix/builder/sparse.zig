@@ -14,6 +14,7 @@ const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
 const Order = types.Order;
 const Uplo = types.Uplo;
+const Diag = types.Diag;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -390,6 +391,7 @@ pub fn Sparse(T: type, order: Order) type {
                         self.row[j] = self.row[i];
                         self.col[j] = self.col[i];
                     }
+
                     j += 1;
                 }
             }
@@ -617,6 +619,113 @@ pub fn Sparse(T: type, order: Order) type {
                 .ptr = ptr.ptr,
                 .nnz = cpy.nnz,
                 .size = cpy.rows,
+                .flags = .{ .owns_data = true },
+            };
+
+            cpy.* = undefined;
+
+            return result;
+        }
+
+        pub fn compileTriangular(self: *Sparse(T, order), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime diag: Diag) !matrix.triangular.Sparse(T, uplo, diag, order) {
+            self.removeTriangle(comptime uplo.invert(), diag == .unit);
+
+            var ptr: []u32 = try allocator.alloc(u32, if (comptime order == .col_major) self.cols + 1 else self.rows + 1);
+            errdefer allocator.free(ptr);
+            ptr[0] = 0;
+
+            var p: u32 = 0;
+            var i: u32 = 0;
+            while (p < ptr.len - 1) : (p += 1) {
+                if (comptime order == .col_major) {
+                    while (i < self.nnz and self.col[i] == p) : (i += 1) {}
+                    ptr[p + 1] = i;
+                } else {
+                    while (i < self.nnz and self.row[i] == p) : (i += 1) {}
+                    ptr[p + 1] = i;
+                }
+            }
+
+            if (comptime order == .col_major) {
+                allocator.free(self.col[0..self._clen]);
+
+                if (self._dlen > self.nnz)
+                    self.data = (try allocator.realloc(self.data[0..self._dlen], self.nnz)).ptr;
+
+                if (self._rlen > self.nnz)
+                    self.row = (try allocator.realloc(self.row[0..self._rlen], self.nnz)).ptr;
+            } else {
+                allocator.free(self.row[0..self._rlen]);
+
+                if (self._dlen > self.nnz)
+                    self.data = (try allocator.realloc(self.data[0..self._dlen], self.nnz)).ptr;
+
+                if (self._clen > self.nnz)
+                    self.col = (try allocator.realloc(self.col[0..self._clen], self.nnz)).ptr;
+            }
+
+            const result = matrix.triangular.Sparse(T, uplo, diag, order){
+                .data = self.data,
+                .idx = if (comptime order == .col_major) self.row else self.col,
+                .ptr = ptr.ptr,
+                .nnz = self.nnz,
+                .rows = self.rows,
+                .cols = self.cols,
+                .flags = .{ .owns_data = true },
+            };
+
+            self.* = undefined;
+
+            return result;
+        }
+
+        pub fn compileTriangularCopy(self: *Sparse(T, order), allocator: std.mem.Allocator, comptime uplo: Uplo, comptime diag: Diag, ctx: anytype) !matrix.triangular.Sparse(T, uplo, diag, order) {
+            var cpy = try self.copy(allocator, ctx);
+            errdefer cpy.deinit(allocator);
+
+            cpy.removeTriangle(comptime uplo.invert(), diag == .unit);
+
+            var ptr: []u32 = try allocator.alloc(u32, if (comptime order == .col_major) cpy.cols + 1 else cpy.rows + 1);
+            errdefer allocator.free(ptr);
+            ptr[0] = 0;
+
+            var p: u32 = 0;
+            var i: u32 = 0;
+            while (p < ptr.len - 1) : (p += 1) {
+                if (comptime order == .col_major) {
+                    while (i < cpy.nnz and cpy.col[i] == p) : (i += 1) {}
+                    ptr[p + 1] = i;
+                } else {
+                    while (i < cpy.nnz and cpy.row[i] == p) : (i += 1) {}
+                    ptr[p + 1] = i;
+                }
+            }
+
+            if (comptime order == .col_major) {
+                allocator.free(cpy.col[0..cpy._clen]);
+
+                if (cpy._dlen > cpy.nnz)
+                    cpy.data = (try allocator.realloc(cpy.data[0..cpy._dlen], cpy.nnz)).ptr;
+
+                if (cpy._rlen > cpy.nnz)
+                    cpy.row = (try allocator.realloc(cpy.row[0..cpy._rlen], cpy.nnz)).ptr;
+            } else {
+                allocator.free(cpy.row[0..cpy._rlen]);
+
+                if (cpy._dlen > cpy.nnz)
+                    cpy.data = (try allocator.realloc(cpy.data[0..cpy._dlen], cpy.nnz)).ptr;
+
+                if (cpy._clen > cpy.nnz)
+                    cpy.col = (try allocator.realloc(cpy.col[0..cpy._clen], cpy.nnz)).ptr;
+            }
+
+            const result = matrix.triangular.Sparse(T, uplo, diag, order){
+                .data = cpy.data,
+                .idx = if (comptime order == .col_major) cpy.row else cpy.col,
+                .ptr = ptr.ptr,
+                .nnz = cpy.nnz,
+                .rows = cpy.rows,
+                .cols = cpy.cols,
                 .flags = .{ .owns_data = true },
             };
 

@@ -1087,6 +1087,36 @@ fn random_matrix_t(
             else
                 try builder.compileHermitian(allocator, zml.types.uploOf(T));
         },
+        .sparse_triangular => {
+            const nnz: u32 = rand.intRangeAtMost(u32, (rows + cols) / 2, (rows * cols / 2) / 2);
+            var builder: zml.matrix.builder.Sparse(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, cols, nnz);
+            errdefer builder.deinit(allocator);
+
+            // generate random (i, j) pairs
+            var used: std.AutoHashMap([2]u32, void) = .init(allocator);
+            defer used.deinit();
+            var count: u32 = 0;
+            while (count < nnz) : (count += 1) {
+                const i = rand.intRangeAtMost(u32, 0, rows - 1);
+                const j = rand.intRangeAtMost(
+                    u32,
+                    if (comptime zml.types.uploOf(T) == .upper) i else 0,
+                    if (comptime zml.types.uploOf(T) == .upper) cols - 1 else i,
+                );
+                if (!used.contains(.{ i, j })) {
+                    try used.put(.{ i, j }, {});
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        try builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64)));
+                    } else {
+                        try builder.set(allocator, i, j, rand.float(zml.types.Numeric(T)));
+                    }
+                } else {
+                    count -= 1; // try again
+                }
+            }
+
+            return try builder.compileTriangular(allocator, zml.types.uploOf(T), zml.types.diagOf(T));
+        },
         .block_general => {
             var bsize: u32 = if (rows < 4 or cols < 4) 1 else rand.intRangeAtMost(u32, 2, zml.int.min(rows, cols) / 2);
             while (rows % bsize != 0 or cols % bsize != 0) : (bsize = rand.intRangeAtMost(u32, 2, zml.int.min(rows, cols) / 2)) {}
@@ -1165,32 +1195,31 @@ fn matrixTesting(a: std.mem.Allocator) !void {
     const rand = prng.random();
 
     var A = try random_matrix_t(
-        zml.matrix.general.Block(f64, .col_major, .row_major),
+        zml.matrix.triangular.Sparse(f64, .upper, .unit, .row_major),
         a,
         rand,
-        16,
-        16,
+        8,
+        8,
     );
     defer A.deinit(a);
 
-    std.debug.print("bsize = {d}, nnzb = {d}\n", .{ A.bsize, A.nnzb });
     print_matrix("A", A);
 
-    // var B = try random_matrix_t(
-    //     zml.matrix.symmetric.Sparse(f64, .lower, .row_major),
-    //     a,
-    //     rand,
-    //     8,
-    //     8,
-    // );
-    // defer B.deinit(a);
+    var B = try random_matrix_t(
+        zml.matrix.triangular.Dense(f64, .upper, .non_unit, .col_major),
+        a,
+        rand,
+        8,
+        8,
+    );
+    defer B.deinit(a);
 
-    // print_matrix("B", B);
+    print_matrix("B", B);
 
-    // var R = try zml.add(A, B, .{ .matrix_allocator = a });
-    // defer R.deinit(a);
+    var R = try zml.add(A, B, .{ .matrix_allocator = a });
+    defer R.deinit(a);
 
-    // print_matrix("R = B + C", R);
+    print_matrix("R = B + C", R);
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

@@ -20,21 +20,25 @@ pub fn apply2(
     comptime op: anytype,
     ctx: anytype,
 ) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
-    const X: type = Numeric(@TypeOf(x));
-    const Y: type = Numeric(@TypeOf(y));
-    const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = ReturnType2(op, Numeric(X), Numeric(Y));
 
-    var result: R = if (comptime types.isHermitianMatrix(R))
-        try .init( // Hermitian
-            allocator,
-            x.size,
-        )
+    var result: if (!types.isComplex(Numeric(Y)))
+        matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X))
     else
-        try .init( // General
-            allocator,
-            x.size,
-            x.size,
-        );
+        matrix.general.Dense(R, types.orderOf(X)) =
+        if (comptime !types.isComplex(Numeric(Y)))
+            try .init(
+                allocator,
+                x.size,
+            )
+        else
+            try .init(
+                allocator,
+                x.size,
+                x.size,
+            );
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));

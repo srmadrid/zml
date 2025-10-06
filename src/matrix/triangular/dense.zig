@@ -300,7 +300,7 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         pub inline fn at(self: *const Dense(T, uplo, diag, order), row: u32, col: u32) T {
             // Unchecked version of get. Assumes row and col are valid and on
             // the correct triangular part, and outside the diagonal if diag
-            // triangular.
+            // is unit.
             return if (comptime order == .col_major)
                 self.data[row + col * self.ld]
             else
@@ -313,15 +313,15 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
 
             if (comptime uplo == .upper) {
                 if (row > col)
-                    return matrix.Error.PositionOutOfBounds;
+                    return matrix.Error.BreaksStructure;
             } else {
                 if (row < col)
-                    return matrix.Error.PositionOutOfBounds;
+                    return matrix.Error.BreaksStructure;
             }
 
             if (comptime diag == .unit) {
                 if (row == col)
-                    return matrix.Error.PositionOutOfBounds;
+                    return matrix.Error.BreaksStructure;
             }
 
             if (comptime order == .col_major) {
@@ -334,7 +334,7 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         pub inline fn put(self: *Dense(T, uplo, diag, order), row: u32, col: u32, value: T) void {
             // Unchecked version of set. Assumes row and col are valid and on
             // the correct triangular part, and outside the diagonal if diag
-            // triangular.
+            // is unit.
             if (comptime order == .col_major) {
                 self.data[row + col * self.ld] = value;
             } else {

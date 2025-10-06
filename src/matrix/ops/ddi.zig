@@ -20,12 +20,12 @@ pub fn apply2(
     comptime op: anytype,
     ctx: anytype,
 ) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
-    const X: type = Numeric(@TypeOf(x));
-    const Y: type = Numeric(@TypeOf(y));
-    const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = ReturnType2(op, Numeric(X), Numeric(Y));
 
-    if (comptime !types.isDiagonalDenseMatrix(@TypeOf(x))) {
-        var result: R = try .init(allocator, y.rows, y.cols);
+    if (comptime !types.isDiagonalMatrix(@TypeOf(x))) {
+        var result: matrix.Diagonal(R) = try .init(allocator, y.rows, y.cols);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -39,8 +39,8 @@ pub fn apply2(
         }
 
         return result;
-    } else if (comptime !types.isDiagonalDenseMatrix(@TypeOf(y))) {
-        var result: R = try .init(allocator, x.rows, x.cols);
+    } else if (comptime !types.isDiagonalMatrix(@TypeOf(y))) {
+        var result: matrix.Diagonal(R) = try .init(allocator, x.rows, x.cols);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -56,7 +56,7 @@ pub fn apply2(
         return result;
     }
 
-    var result: R = try .init(allocator, x.rows, x.cols);
+    var result: matrix.Diagonal(R) = try .init(allocator, x.rows, x.cols);
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));

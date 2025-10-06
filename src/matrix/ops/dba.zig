@@ -24,8 +24,8 @@ pub fn apply2(
     const Y: type = Numeric(@TypeOf(y));
     const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
 
-    if (comptime !types.isBandedDenseMatrix(@TypeOf(x))) {
-        var result: R = try .init(allocator, y.rows, y.cols, y.lower, y.upper);
+    if (comptime !types.isBandedMatrix(@TypeOf(x))) {
+        var result: matrix.Banded(R, types.orderOf(Y)) = try .init(allocator, y.rows, y.cols, y.lower, y.upper);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -56,8 +56,8 @@ pub fn apply2(
         }
 
         return result;
-    } else if (comptime !types.isBandedDenseMatrix(@TypeOf(y))) {
-        var result: R = try .init(allocator, x.rows, x.cols, x.lower, x.upper);
+    } else if (comptime !types.isBandedMatrix(@TypeOf(y))) {
+        var result: matrix.Banded(R, types.orderOf(Y)) = try .init(allocator, x.rows, x.cols, x.lower, x.upper);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -90,7 +90,7 @@ pub fn apply2(
         return result;
     }
 
-    var result: R = try .init(allocator, x.rows, x.cols, int.max(x.lower, y.lower), int.max(x.upper, y.upper));
+    var result: matrix.Banded(R, types.orderOf(X)) = try .init(allocator, x.rows, x.cols, int.max(x.lower, y.lower), int.max(x.upper, y.upper));
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));

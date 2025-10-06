@@ -1447,6 +1447,17 @@ pub fn isComplex(comptime T: type) bool {
 /// This function takes two types `X` and `Y` and returns the smallest type that
 /// can represent both types without loss of information.
 ///
+/// For two matrices, the coerced type will use the order of the denser operand.
+/// Density is ranked (most to least) as:
+///   `general.Dense`, `symmetric.Dense`/`hermitian.Dense`, `triangular.Dense`,
+///   `Banded`, `general.Block`, `symmetric.Block`/`hermitian.Block`,
+///   `general.Sparse`, `symmetric.Sparse`/`hermitian.Sparse`, `triangular.Sparse`.
+/// If both operands fall in the same rank but have different orders, the result
+/// uses the left operand’s order. `Diagonal`, `Tridiagonal`, and `Permutation`
+/// do not contribute order information. If the denser operand is one of these
+/// (or both are), the result inherits the other operand’s order; if neither
+/// provides an order and the resulting type requires one, the default is
+/// `.col_major`.
 ///
 /// Parameters
 /// ----------
@@ -1501,9 +1512,9 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                         return matrix.hermitian.Block(Coerce(X, Numeric(Y)), uploOf(Y), borderOf(Y), orderOf(Y)); // numeric (real) + sparse block hermitian matrix
                     }
                 },
-                .diagonal => return matrix.Diagonal(Coerce(X, Numeric(Y))), // numeric + dense diagonal matrix
-                .banded => return matrix.Banded(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + dense banded matrix
-                .tridiagonal => return matrix.Tridiagonal(Coerce(X, Numeric(Y))), // numeric + dense tridiagonal matrix
+                .diagonal => return matrix.Diagonal(Coerce(X, Numeric(Y))), // numeric + diagonal matrix
+                .banded => return matrix.Banded(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + banded matrix
+                .tridiagonal => return matrix.Tridiagonal(Coerce(X, Numeric(Y))), // numeric + tridiagonal matrix
                 .permutation => return matrix.general.Sparse(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + permutation matrix
                 .numeric => unreachable,
             },
@@ -1548,6 +1559,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.symmetric.Dense(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)), // dense symmetric matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense symmetric matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense symmetric matrix + dense general matrix
                     .dense_symmetric => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // dense symmetric matrix + dense symmetric matrix
                     .dense_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
@@ -1572,7 +1584,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                             return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // dense symmetric matrix (real) + sparse block hermitian matrix
                         }
                     },
-                    .diagonal => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // dense symmetric matrix + dense diagonal matrix
+                    .diagonal => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // dense symmetric matrix + diagonal matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense symmetric matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // symmetric + array
@@ -1587,6 +1599,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 },
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense hermitian matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense hermitian matrix + dense general matrix
                     .dense_symmetric => {
                         if (comptime isComplex(Numeric(Y))) {
                             return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // dense hermitian matrix + dense symmetric matrix (complex)
@@ -1613,9 +1626,9 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .block_hermitian => return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // dense hermitian matrix + sparse block hermitian matrix
                     .diagonal => {
                         if (comptime isComplex(Numeric(Y))) {
-                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // dense hermitian matrix + dense diagonal matrix (complex)
+                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // dense hermitian matrix + diagonal matrix (complex)
                         } else {
-                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // dense hermitian matrix + dense diagonal matrix (real)
+                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // dense hermitian matrix + diagonal matrix (real)
                         }
                     },
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense hermitian matrix + rest of matrices
@@ -1626,6 +1639,9 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.triangular.Dense(Coerce(Numeric(X), Y), uploOf(X), .non_unit, orderOf(X)), // dense triangular matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense triangular matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense triangular matrix + dense general matrix
+                    .dense_symmetric => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense triangular matrix + dense symmetric matrix
+                    .dense_hermitian => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense triangular matrix + dense hermitian matrix
                     .dense_triangular => {
                         if (comptime uploOf(X) == uploOf(Y)) {
                             return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)); // dense triangular matrix + dense triangular matrix (same uplo)
@@ -1640,8 +1656,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                             return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // dense triangular matrix + sparse triangular matrix (different uplo)
                         }
                     },
-                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense triangular matrix + dense banded matrix
-                    .diagonal => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // dense triangular matrix + dense diagonal matrix
+                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense triangular matrix + banded matrix
+                    .diagonal => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // dense triangular matrix + diagonal matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense triangular matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense triangular matrix + array
@@ -1650,17 +1666,22 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.general.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse general matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse general matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + dense general matrix
+                    .dense_symmetric => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + dense symmetric matrix
+                    .dense_hermitian => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + dense hermitian matrix
+                    .dense_triangular => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + dense triangular matrix
                     .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + sparse general matrix
                     .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + sparse symmetric matrix
                     .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + sparse hermitian matrix
                     .sparse_triangular => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + sparse triangular matrix
-                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + sparse block general matrix
-                    .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + sparse block symmetric matrix
-                    .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + sparse block hermitian matrix
-                    .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + dense diagonal matrix
-                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + dense tridiagonal matrix
+                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + sparse block general matrix
+                    .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + sparse block symmetric matrix
+                    .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + sparse block hermitian matrix
+                    .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + diagonal matrix
+                    .banded => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse general matrix + banded matrix
+                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + tridiagonal matrix
                     .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + permutation matrix
-                    else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix + rest of matrices
+                    .numeric => unreachable,
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse general matrix + array
             },
@@ -1668,6 +1689,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)), // sparse symmetric matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse symmetric matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse symmetric matrix + dense general matrix
                     .dense_symmetric => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // sparse symmetric matrix + dense symmetric matrix
                     .dense_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
@@ -1676,7 +1698,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                             return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // sparse symmetric matrix (real) + dense hermitian matrix
                         }
                     },
-                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix + sparse general matrix
+                    .dense_triangular => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse symmetric matrix + dense triangular matrix
+                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse symmetric matrix + sparse general matrix
                     .sparse_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse symmetric matrix + sparse symmetric matrix
                     .sparse_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
@@ -1686,17 +1709,18 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                         }
                     },
                     .sparse_triangular => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix + sparse triangular matrix
-                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix + sparse block general matrix
-                    .block_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse symmetric matrix + sparse block symmetric matrix
+                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse symmetric matrix + sparse block general matrix
+                    .block_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // sparse symmetric matrix + sparse block symmetric matrix
                     .block_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
-                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse symmetric matrix (complex) + sparse block hermitian matrix
+                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // sparse symmetric matrix (complex) + sparse block hermitian matrix
                         } else {
-                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse symmetric matrix (real) + sparse block hermitian matrix
+                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // sparse symmetric matrix (real) + sparse block hermitian matrix
                         }
                     },
-                    .diagonal => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse symmetric matrix + dense diagonal matrix
-                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse symmetric matrix + dense tridiagonal matrix
+                    .diagonal => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse symmetric matrix + diagonal matrix
+                    .banded => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse symmetric matrix + banded matrix
+                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse symmetric matrix + tridiagonal matrix
                     .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix + permutation matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix + rest of matrices
                 },
@@ -1712,15 +1736,16 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 },
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse hermitian matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse hermitian matrix + dense general matrix
                     .dense_symmetric => {
                         if (comptime isComplex(Numeric(Y))) {
-                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse hermitian matrix + dense symmetric matrix (complex)
+                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // sparse hermitian matrix + dense symmetric matrix (complex)
                         } else {
-                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse hermitian matrix + dense symmetric matrix (real)
+                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // sparse hermitian matrix + dense symmetric matrix (real)
                         }
                     },
-                    .dense_hermitian => return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse hermitian matrix + dense hermitian matrix
-                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix + sparse general matrix
+                    .dense_hermitian => return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // sparse hermitian matrix + dense hermitian matrix
+                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse hermitian matrix + sparse general matrix
                     .sparse_symmetric => {
                         if (comptime isComplex(Numeric(X))) {
                             return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse hermitian matrix + sparse symmetric matrix (complex)
@@ -1730,23 +1755,24 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     },
                     .sparse_hermitian => return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse hermitian matrix + sparse hermitian matrix
                     .sparse_triangular => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix + sparse triangular matrix
-                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix + sparse block general matrix
+                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse hermitian matrix + sparse block general matrix
                     .block_symmetric => {
                         if (comptime isComplex(Numeric(X))) {
-                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse hermitian matrix (complex) + sparse block symmetric matrix
+                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // sparse hermitian matrix (complex) + sparse block symmetric matrix
                         } else {
-                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse hermitian matrix (real) + sparse block symmetric matrix
+                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // sparse hermitian matrix (real) + sparse block symmetric matrix
                         }
                     },
-                    .block_hermitian => return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse hermitian matrix + sparse block hermitian matrix
+                    .block_hermitian => return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // sparse hermitian matrix + sparse block hermitian matrix
                     .diagonal => {
                         if (comptime isComplex(Numeric(Y))) {
-                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse hermitian matrix (complex) + dense diagonal matrix
+                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse hermitian matrix (complex) + diagonal matrix
                         } else {
-                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse hermitian matrix (real) + dense diagonal matrix
+                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse hermitian matrix (real) + diagonal matrix
                         }
                     },
-                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse hermitian matrix + dense tridiagonal matrix
+                    .banded => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse hermitian matrix + banded matrix
+                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix + tridiagonal matrix
                     .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix + permutation matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix + rest of matrices
                 },
@@ -1756,9 +1782,12 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.triangular.Sparse(Coerce(Numeric(X), Y), uploOf(X), .non_unit, orderOf(X)), // sparse triangular matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse triangular matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + dense general matrix
+                    .dense_symmetric => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + dense symmetric matrix
+                    .dense_hermitian => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + dense hermitian matrix
                     .dense_triangular => {
                         if (comptime uploOf(X) == uploOf(Y)) {
-                            return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(Y)); // sparse triangular matrix + dense triangular matrix (same uplo)
+                            return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)); // sparse triangular matrix + dense triangular matrix (same uplo)
                         } else {
                             return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // sparse triangular matrix + dense triangular matrix (different uplo)
                         }
@@ -1776,8 +1805,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + sparse block general matrix
                     .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + sparse block symmetric matrix
                     .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + sparse block hermitian matrix
-                    .diagonal => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // sparse triangular matrix + dense diagonal matrix
-                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + dense banded matrix
+                    .diagonal => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // sparse triangular matrix + diagonal matrix
+                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + banded matrix
                     .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + permutation matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + rest of matrices
                 },
@@ -1787,6 +1816,10 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.general.Block(Coerce(Numeric(X), Y), borderOf(X), orderOf(X)), // sparse block matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block matrix + dense general matrix
+                    .dense_symmetric => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block matrix + dense symmetric matrix
+                    .dense_hermitian => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block matrix + dense hermitian matrix
+                    .dense_triangular => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block matrix + dense triangular matrix
                     .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + sparse general matrix
                     .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + sparse symmetric matrix
                     .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + sparse hermitian matrix
@@ -1794,8 +1827,9 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + sparse block general matrix
                     .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + sparse block symmetric matrix
                     .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + sparse block hermitian matrix
-                    .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + dense diagonal matrix
-                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + dense tridiagonal matrix
+                    .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + diagonal matrix
+                    .banded => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block matrix + banded matrix
+                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + tridiagonal matrix
                     .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + permutation matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + rest of matrices
                 },
@@ -1805,6 +1839,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.symmetric.Block(Coerce(Numeric(X), Y), borderOf(X), orderOf(X)), // sparse block symmetric matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block symmetric matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block symmetric matrix + dense general matrix
                     .dense_symmetric => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // sparse block symmetric matrix + dense symmetric matrix
                     .dense_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
@@ -1813,6 +1848,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                             return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // sparse block symmetric matrix (real) + dense hermitian matrix
                         }
                     },
+                    .dense_triangular => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block symmetric matrix + dense triangular matrix
                     .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + sparse general matrix
                     .sparse_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse block symmetric matrix + sparse symmetric matrix
                     .sparse_hermitian => {
@@ -1823,7 +1859,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                         }
                     },
                     .sparse_triangular => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + sparse triangular matrix
-                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + sparse block general matrix
+                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block symmetric matrix + sparse block general matrix
                     .block_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse block symmetric matrix + sparse block symmetric matrix
                     .block_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
@@ -1832,8 +1868,9 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                             return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse block symmetric matrix (real) + sparse block hermitian matrix
                         }
                     },
-                    .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + dense diagonal matrix
-                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + dense tridiagonal matrix
+                    .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + diagonal matrix
+                    .banded => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block symmetric matrix + banded matrix
+                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + tridiagonal matrix
                     .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + permutation matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + rest of matrices
                 },
@@ -1849,14 +1886,16 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 },
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block hermitian matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block hermitian matrix + dense general matrix
                     .dense_symmetric => {
                         if (comptime isComplex(Numeric(Y))) {
-                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse block hermitian matrix + dense symmetric matrix (complex)
+                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // sparse block hermitian matrix + dense symmetric matrix (complex)
                         } else {
-                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse block hermitian matrix + dense symmetric matrix (real)
+                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // sparse block hermitian matrix + dense symmetric matrix (real)
                         }
                     },
-                    .dense_hermitian => return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse block hermitian matrix + dense hermitian matrix
+                    .dense_hermitian => return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // sparse block hermitian matrix + dense hermitian matrix
+                    .dense_triangular => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block hermitian matrix + dense triangular matrix
                     .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + sparse general matrix
                     .sparse_symmetric => {
                         if (comptime isComplex(Numeric(Y))) {
@@ -1867,7 +1906,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     },
                     .sparse_hermitian => return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse block hermitian matrix + sparse hermitian matrix
                     .sparse_triangular => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + sparse triangular matrix
-                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + sparse block general matrix
+                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block hermitian matrix + sparse block general matrix
                     .block_symmetric => {
                         if (comptime isComplex(Numeric(Y))) {
                             return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse block hermitian matrix (complex) + sparse block symmetric matrix
@@ -1878,87 +1917,91 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .block_hermitian => return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // sparse block hermitian matrix + sparse block hermitian matrix
                     .diagonal => {
                         if (comptime isComplex(Numeric(Y))) {
-                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse block hermitian matrix (complex) + dense diagonal matrix
+                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)); // sparse block hermitian matrix (complex) + diagonal matrix
                         } else {
-                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse block hermitian matrix (real) + dense diagonal matrix
+                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)); // sparse block hermitian matrix (real) + diagonal matrix
                         }
                     },
-                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + dense tridiagonal matrix
+                    .banded => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse block hermitian matrix + banded matrix
+                    .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + tridiagonal matrix
                     .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + permutation matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block hermitian matrix + array
             },
             .diagonal => switch (comptime domainType(Y)) {
-                .numeric => return matrix.Diagonal(Coerce(Numeric(X), Y)), // dense diagonal matrix + numeric
-                .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense diagonal matrix + vector
+                .numeric => return matrix.Diagonal(Coerce(Numeric(X), Y)), // diagonal matrix + numeric
+                .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
-                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix + dense general matrix
-                    .dense_symmetric => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // dense diagonal matrix + dense symmetric matrix
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix + dense general matrix
+                    .dense_symmetric => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // diagonal matrix + dense symmetric matrix
                     .dense_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
-                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // dense diagonal matrix (complex) + dense hermitian matrix
+                            return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // diagonal matrix (complex) + dense hermitian matrix
                         } else {
-                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // dense diagonal matrix (real) + dense hermitian matrix
+                            return matrix.hermitian.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // diagonal matrix (real) + dense hermitian matrix
                         }
                     },
-                    .dense_triangular => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // dense diagonal matrix + dense triangular matrix
-                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix + sparse general matrix
-                    .sparse_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // dense diagonal matrix + sparse symmetric matrix
+                    .dense_triangular => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal matrix + dense triangular matrix
+                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix + sparse general matrix
+                    .sparse_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // diagonal matrix + sparse symmetric matrix
                     .sparse_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
-                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // dense diagonal matrix (complex) + sparse hermitian matrix
+                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // diagonal matrix (complex) + sparse hermitian matrix
                         } else {
-                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // dense diagonal matrix (real) + sparse hermitian matrix
+                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // diagonal matrix (real) + sparse hermitian matrix
                         }
                     },
-                    .sparse_triangular => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // dense diagonal matrix + sparse triangular matrix
-                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix + sparse block general matrix
-                    .block_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // dense diagonal matrix + sparse block symmetric matrix
+                    .sparse_triangular => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal matrix + sparse triangular matrix
+                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix + sparse block general matrix
+                    .block_symmetric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)), // diagonal matrix + sparse block symmetric matrix
                     .block_hermitian => {
                         if (comptime isComplex(Numeric(X))) {
-                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // dense diagonal matrix (complex) + sparse block hermitian matrix
+                            return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // diagonal matrix (complex) + sparse block hermitian matrix
                         } else {
-                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // dense diagonal matrix (real) + sparse block hermitian matrix
+                            return matrix.hermitian.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), orderOf(Y)); // diagonal matrix (real) + sparse block hermitian matrix
                         }
                     },
-                    .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // dense diagonal matrix + dense diagonal matrix
-                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix + dense banded matrix
-                    .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // dense diagonal matrix + dense tridiagonal matrix
-                    .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix + permutation matrix
+                    .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal matrix + diagonal matrix
+                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix + banded matrix
+                    .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal matrix + tridiagonal matrix
+                    .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // diagonal matrix + permutation matrix
                     .numeric => unreachable,
                 },
-                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense diagonal matrix + array
+                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal matrix + array
             },
             .banded => switch (comptime domainType(Y)) {
-                .numeric => return matrix.Banded(Coerce(Numeric(X), Y), orderOf(X)), // dense banded matrix + numeric
-                .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense banded matrix + vector
+                .numeric => return matrix.Banded(Coerce(Numeric(X), Y), orderOf(X)), // banded matrix + numeric
+                .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
-                    .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix + dense triangular matrix
-                    .sparse_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix + sparse triangular matrix
-                    .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix + dense diagonal matrix
-                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix + dense banded matrix
-                    .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix + dense tridiagonal matrix
-                    else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix + rest of matrices
+                    .dense_general => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // banded matrix + dense general matrix
+                    .dense_symmetric => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // banded matrix + dense symmetric matrix
+                    .dense_hermitian => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // banded matrix + dense hermitian matrix
+                    .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // banded matrix + dense triangular matrix
+                    .sparse_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix + sparse triangular matrix
+                    .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix + diagonal matrix
+                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix + banded matrix
+                    .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix + tridiagonal matrix
+                    else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix + rest of matrices
                 },
-                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense banded matrix + array
+                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded matrix + array
             },
             .tridiagonal => switch (comptime domainType(Y)) {
-                .numeric => return matrix.Tridiagonal(Coerce(Numeric(X), Y)), // dense tridiagonal matrix + numeric
-                .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense tridiagonal matrix + vector
+                .numeric => return matrix.Tridiagonal(Coerce(Numeric(X), Y)), // tridiagonal matrix + numeric
+                .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal matrix + vector
                 .matrix => switch (comptime matrixType(Y)) {
-                    .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // dense tridiagonal matrix + dense triangular matrix
-                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + sparse general matrix
-                    .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + sparse symmetric matrix
-                    .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + sparse hermitian matrix
-                    .sparse_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + sparse triangular matrix
-                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + sparse block general matrix
-                    .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + sparse block symmetric matrix
-                    .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + sparse block hermitian matrix
-                    .diagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // dense tridiagonal matrix + dense diagonal matrix
-                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + dense banded matrix
-                    .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // dense tridiagonal matrix + dense tridiagonal matrix
-                    .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix + permutation matrix
+                    .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y))), // tridiagonal matrix + dense triangular matrix
+                    .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + sparse general matrix
+                    .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + sparse symmetric matrix
+                    .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + sparse hermitian matrix
+                    .sparse_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + sparse triangular matrix
+                    .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + sparse block general matrix
+                    .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + sparse block symmetric matrix
+                    .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + sparse block hermitian matrix
+                    .diagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal matrix + diagonal matrix
+                    .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix + banded matrix
+                    .tridiagonal => return matrix.Tridiagonal(Coerce(Numeric(X), Numeric(Y))), // tridiagonal matrix + tridiagonal matrix
+                    .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // tridiagonal matrix + permutation matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal + array
@@ -2265,7 +2308,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 .numeric => {}, // Same as Coerce
                 .vector => Coerce(Numeric(X), Numeric(Y)), // sparse vector * vector
                 .matrix => switch (comptime matrixType(Y)) {
-                    .diagonal => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse vector * dense diagonal matrix
+                    .diagonal => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // sparse vector * diagonal matrix
                     else => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse vector * rest of matrices
                 },
                 .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse vector * array
@@ -2318,9 +2361,9 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                                 return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)); // dense triangular matrix * sparse triangular matrix (different uplo)
                             }
                         },
-                        .diagonal => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // dense triangular matrix * dense diagonal matrix
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense triangular matrix * dense banded matrix
-                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense triangular matrix * dense tridiagonal matrix
+                        .diagonal => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // dense triangular matrix * diagonal matrix
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense triangular matrix * banded matrix
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense triangular matrix * tridiagonal matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense triangular matrix * array
@@ -2336,8 +2379,8 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * sparse block general matrix
                         .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * sparse block symmetric matrix
                         .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * dense diagonal matrix
-                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * dense tridiagonal matrix
+                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * diagonal matrix
+                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * tridiagonal matrix
                         .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * rest of matrices
                     },
@@ -2354,8 +2397,8 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * sparse block general matrix
                         .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * sparse block symmetric matrix
                         .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * dense diagonal matrix
-                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * dense tridiagonal matrix
+                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * diagonal matrix
+                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * tridiagonal matrix
                         .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * rest of matrices
                     },
@@ -2372,8 +2415,8 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * sparse block general matrix
                         .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * sparse block symmetric matrix
                         .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * dense diagonal matrix
-                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * dense tridiagonal matrix
+                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * diagonal matrix
+                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * tridiagonal matrix
                         .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * rest of matrices
                     },
@@ -2411,9 +2454,9 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * sparse block general matrix
                         .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * sparse block symmetric matrix
                         .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // sparse triangular matrix * dense diagonal matrix
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * dense banded matrix
-                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * dense tridiagonal matrix
+                        .diagonal => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(X), .non_unit, orderOf(X)), // sparse triangular matrix * diagonal matrix
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * banded matrix
+                        .tridiagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * tridiagonal matrix
                         .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse triangular matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular * rest of matrices
                     },
@@ -2429,7 +2472,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * sparse block general matrix
                         .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * sparse block symmetric matrix
                         .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * dense diagonal matrix
+                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * diagonal matrix
                         .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * rest of matrices
                     },
@@ -2445,7 +2488,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * sparse block general matrix
                         .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * sparse block symmetric matrix
                         .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * dense diagonal matrix
+                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * diagonal matrix
                         .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * rest of matrices
                     },
@@ -2461,7 +2504,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * sparse block general matrix
                         .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * sparse block symmetric matrix
                         .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * dense diagonal matrix
+                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * diagonal matrix
                         .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * rest of matrices
                     },
@@ -2470,58 +2513,58 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 .diagonal => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
                     .vector => switch (comptime vectorType(Y)) {
-                        .dense => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense diagonal matrix * dense vector
-                        .sparse => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // dense diagonal matrix * sparse vector
+                        .dense => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // diagonal matrix * dense vector
+                        .sparse => return vector.Sparse(Coerce(Numeric(X), Numeric(Y))), // diagonal matrix * sparse vector
                         .numeric => unreachable,
                     },
                     .matrix => switch (comptime matrixType(Y)) {
-                        .dense_triangular => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // dense diagonal matrix * dense triangular matrix
-                        .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse general matrix
-                        .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse symmetric matrix
-                        .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse hermitian matrix
-                        .sparse_triangular => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // dense diagonal matrix * sparse triangular matrix
-                        .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block general matrix
-                        .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block symmetric matrix
-                        .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // dense diagonal matrix * dense diagonal matrix
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * dense banded matrix
-                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense diagonal matrix * dense tridiagonal matrix. Should be tridiagonal, but since the diagonal can be rectangular and tridiagonal must be square, we return banded
-                        .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * permutation matrix
-                        else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense diagonal matrix * rest of matrices
+                        .dense_triangular => return matrix.triangular.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal matrix * dense triangular matrix
+                        .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * sparse general matrix
+                        .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * sparse symmetric matrix
+                        .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * sparse hermitian matrix
+                        .sparse_triangular => return matrix.triangular.Sparse(Coerce(Numeric(X), Numeric(Y)), uploOf(Y), .non_unit, orderOf(Y)), // diagonal matrix * sparse triangular matrix
+                        .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * sparse block general matrix
+                        .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * sparse block symmetric matrix
+                        .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * sparse block hermitian matrix
+                        .diagonal => return matrix.Diagonal(Coerce(Numeric(X), Numeric(Y))), // diagonal matrix * diagonal matrix
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * banded matrix
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // diagonal matrix * tridiagonal matrix. Should be tridiagonal, but since the diagonal can be rectangular and tridiagonal must be square, we return banded
+                        .permutation => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * permutation matrix
+                        else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * rest of matrices
                     },
-                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense diagonal matrix * array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal matrix * array
                 },
                 .banded => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
-                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense banded matrix * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // banded matrix * vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix * dense triangular matrix
-                        .sparse_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix * sparse triangular matrix
-                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix * dense diagonal matrix
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix * dense banded matrix
-                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix * dense tridiagonal matrix
-                        else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense banded matrix * rest of matrices
+                        .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix * dense triangular matrix
+                        .sparse_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix * sparse triangular matrix
+                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix * diagonal matrix
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix * banded matrix
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix * tridiagonal matrix
+                        else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix * rest of matrices
                     },
-                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense banded matrix * array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded matrix * array
                 },
                 .tridiagonal => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
-                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense tridiagonal matrix * vector
+                    .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // tridiagonal matrix * vector
                     .matrix => switch (comptime matrixType(Y)) {
-                        .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * dense triangular matrix
-                        .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * sparse general matrix
-                        .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * sparse symmetric matrix
-                        .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * sparse hermitian matrix
-                        .sparse_triangular => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * sparse triangular matrix
-                        .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * sparse block general matrix
-                        .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * sparse block symmetric matrix
-                        .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * sparse block hermitian matrix
-                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense tridiagonal matrix * dense diagonal matrix
-                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * dense banded matrix
-                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * dense tridiagonal matrix
-                        else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // dense tridiagonal matrix * rest of matrices
+                        .dense_triangular => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * dense triangular matrix
+                        .sparse_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * sparse general matrix
+                        .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * sparse symmetric matrix
+                        .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * sparse hermitian matrix
+                        .sparse_triangular => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * sparse triangular matrix
+                        .block_general => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * sparse block general matrix
+                        .block_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * sparse block symmetric matrix
+                        .block_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * sparse block hermitian matrix
+                        .diagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // tridiagonal matrix * diagonal matrix
+                        .banded => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * banded matrix
+                        .tridiagonal => return matrix.Banded(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * tridiagonal matrix
+                        else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * rest of matrices
                     },
-                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense tridiagonal matrix * array
+                    .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal matrix * array
                 },
                 .permutation => switch (comptime domainType(Y)) {
                     .numeric => return matrix.general.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // permutation matrix * numeric
@@ -2535,7 +2578,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         .sparse_symmetric => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * sparse symmetric matrix
                         .sparse_hermitian => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * sparse hermitian matrix
                         .sparse_block => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * sparse block matrix
-                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * dense diagonal matrix
+                        .diagonal => return matrix.general.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * diagonal matrix
                         .permutation => return matrix.Permutation(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * permutation matrix
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * rest of matrices
                     },

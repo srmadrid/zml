@@ -21,23 +21,27 @@ pub fn apply2(
     comptime op: anytype,
     ctx: anytype,
 ) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
-    const X: type = Numeric(@TypeOf(x));
-    const Y: type = Numeric(@TypeOf(y));
-    const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = ReturnType2(op, Numeric(X), Numeric(Y));
 
     if (comptime !types.isHermitianDenseMatrix(@TypeOf(x))) {
-        const ruplo: Uplo = comptime types.uploOf(@TypeOf(y));
-        var result: R = if (comptime types.isHermitianDenseMatrix(R))
-            try .init( // Hermitian
-                allocator,
-                y.size,
-            )
+        const ruplo: Uplo = comptime types.uploOf(Y);
+        var result: if (!types.isComplex(X))
+            matrix.hermitian.Dense(R, ruplo, types.orderOf(Y))
         else
-            try .init( // General
-                allocator,
-                y.size,
-                y.size,
-            );
+            matrix.general.Dense(R, types.orderOf(Y)) =
+            if (comptime !types.isComplex(X))
+                try .init(
+                    allocator,
+                    x.size,
+                )
+            else
+                try .init(
+                    allocator,
+                    x.size,
+                    x.size,
+                );
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -601,18 +605,22 @@ pub fn apply2(
 
         return result;
     } else if (comptime !types.isHermitianDenseMatrix(@TypeOf(y))) {
-        const ruplo: Uplo = comptime types.uploOf(@TypeOf(x));
-        var result: R = if (comptime types.isHermitianDenseMatrix(R))
-            try .init( // Hermitian
-                allocator,
-                x.size,
-            )
+        const ruplo: Uplo = comptime types.uploOf(X);
+        var result: if (!types.isComplex(Y))
+            matrix.hermitian.Dense(R, ruplo, types.orderOf(X))
         else
-            try .init( // General
-                allocator,
-                x.size,
-                x.size,
-            );
+            matrix.general.Dense(R, types.orderOf(X)) =
+            if (comptime !types.isComplex(Y))
+                try .init(
+                    allocator,
+                    x.size,
+                )
+            else
+                try .init(
+                    allocator,
+                    x.size,
+                    x.size,
+                );
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
@@ -1177,7 +1185,7 @@ pub fn apply2(
         return result;
     }
 
-    var result: R = try .init(allocator, x.size);
+    var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, x.size);
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));

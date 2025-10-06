@@ -20,16 +20,16 @@ pub fn apply2(
     comptime op: anytype,
     ctx: anytype,
 ) !EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
-    const X: type = Numeric(@TypeOf(x));
-    const Y: type = Numeric(@TypeOf(y));
-    const R: type = EnsureMatrix(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = ReturnType2(op, Numeric(X), Numeric(Y));
 
-    if (comptime !types.isTridiagonalDenseMatrix(@TypeOf(x))) {
-        var result: R = try .init(allocator, y.size);
+    if (comptime !types.isTridiagonalMatrix(@TypeOf(x))) {
+        var result: matrix.Tridiagonal(R) = try .init(allocator, y.size);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
-        var rdata: [*]Numeric(R) = result.data;
+        var rdata: [*]R = result.data;
         var ydata: [*]Y = y.data + y.offset + y.osize + (y.osize - 1) - y.sdoffset;
 
         // Subdiagonal
@@ -69,12 +69,12 @@ pub fn apply2(
         }
 
         return result;
-    } else if (comptime !types.isTridiagonalDenseMatrix(@TypeOf(y))) {
-        var result: R = try .init(allocator, x.size);
+    } else if (comptime !types.isTridiagonalMatrix(@TypeOf(y))) {
+        var result: matrix.Tridiagonal(R) = try .init(allocator, x.size);
         errdefer result.deinit(allocator);
 
         const opinfo = @typeInfo(@TypeOf(op));
-        var rdata: [*]Numeric(R) = result.data;
+        var rdata: [*]R = result.data;
         var xdata: [*]X = x.data + x.offset + x.osize + (x.osize - 1) - x.sdoffset;
 
         // Subdiagonal
@@ -116,11 +116,11 @@ pub fn apply2(
         return result;
     }
 
-    var result: R = try .init(allocator, x.size);
+    var result: matrix.Tridiagonal(R) = try .init(allocator, x.size);
     errdefer result.deinit(allocator);
 
     const opinfo = @typeInfo(@TypeOf(op));
-    var rdata: [*]Numeric(R) = result.data;
+    var rdata: [*]R = result.data;
     var xdata: [*]X = x.data + x.offset + x.osize + (x.osize - 1) - x.sdoffset;
     var ydata: [*]Y = y.data + y.offset + y.osize + (y.osize - 1) - y.sdoffset;
 
