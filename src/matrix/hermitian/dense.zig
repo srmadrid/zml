@@ -214,9 +214,9 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                     self.data[i * self.ld + j]
             else
                 return if (comptime order == .col_major)
-                    ops.conjugate(self.data[i + j * self.ld], .{}) catch unreachable
+                    ops.conj(self.data[i + j * self.ld], .{}) catch unreachable
                 else
-                    ops.conjugate(self.data[i * self.ld + j], .{}) catch unreachable;
+                    ops.conj(self.data[i * self.ld + j], .{}) catch unreachable;
         }
 
         pub inline fn at(self: *const Dense(T, uplo, order), row: u32, col: u32) T {
@@ -258,12 +258,12 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                 self.data[i + j * self.ld] = if (noconj)
                     value
                 else
-                    ops.conjugate(value, .{}) catch unreachable;
+                    ops.conj(value, .{}) catch unreachable;
             } else {
                 self.data[i * self.ld + j] = if (noconj)
                     value
                 else
-                    ops.conjugate(value, .{}) catch unreachable;
+                    ops.conj(value, .{}) catch unreachable;
             }
         }
 
@@ -363,7 +363,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             while (i < j) : (i += 1) {
                                 try ops.set(
                                     &mat.data[j + i * mat.ld],
-                                    ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable,
+                                    ops.conj(self.data[i + j * self.ld], ctx) catch unreachable,
                                     ctx,
                                 );
                             }
@@ -387,7 +387,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             while (i < self.size) : (i += 1) {
                                 try ops.set(
                                     &mat.data[j + i * mat.ld],
-                                    ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable,
+                                    ops.conj(self.data[i + j * self.ld], ctx) catch unreachable,
                                     ctx,
                                 );
                             }
@@ -407,7 +407,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             while (j < self.size) : (j += 1) {
                                 try ops.set(
                                     &mat.data[j * mat.ld + i],
-                                    ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable,
+                                    ops.conj(self.data[i * self.ld + j], ctx) catch unreachable,
                                     ctx,
                                 );
                             }
@@ -419,7 +419,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             while (j < i) : (j += 1) {
                                 try ops.set(
                                     &mat.data[j * mat.ld + i],
-                                    ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable,
+                                    ops.conj(self.data[i * self.ld + j], ctx) catch unreachable,
                                     ctx,
                                 );
                             }
@@ -453,7 +453,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = 0;
                             while (i < j) : (i += 1) {
                                 result.data[i + j * result.ld] = self.data[i + j * self.ld];
-                                result.data[j + i * result.ld] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.ld] = ops.conj(self.data[i + j * self.ld], ctx) catch unreachable;
                             }
 
                             result.data[j + j * result.ld] = self.data[j + j * self.ld];
@@ -466,7 +466,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = j + 1;
                             while (i < self.size) : (i += 1) {
                                 result.data[i + j * result.ld] = self.data[i + j * self.ld];
-                                result.data[j + i * result.ld] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.ld] = ops.conj(self.data[i + j * self.ld], ctx) catch unreachable;
                             }
                         }
                     }
@@ -479,7 +479,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = i + 1;
                             while (j < self.size) : (j += 1) {
                                 result.data[i * result.ld + j] = self.data[i * self.ld + j];
-                                result.data[j * result.ld + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.ld + i] = ops.conj(self.data[i * self.ld + j], ctx) catch unreachable;
                             }
                         }
                     } else { // rl
@@ -488,7 +488,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = 0;
                             while (j < i) : (j += 1) {
                                 result.data[i * result.ld + j] = self.data[i * self.ld + j];
-                                result.data[j * result.ld + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.ld + i] = ops.conj(self.data[i * self.ld + j], ctx) catch unreachable;
                             }
 
                             result.data[i * result.ld + i] = self.data[i * self.ld + i];
@@ -516,7 +516,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = 0;
                             while (i < j) : (i += 1) {
                                 result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-                                result.data[j + i * result.strides[1]] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.strides[1]] = ops.conj(self.data[i + j * self.ld], ctx) catch unreachable;
                             }
 
                             result.data[j + j * result.strides[1]] = self.data[j + j * self.ld];
@@ -529,7 +529,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var i: u32 = j + 1;
                             while (i < self.size) : (i += 1) {
                                 result.data[i + j * result.strides[1]] = self.data[i + j * self.ld];
-                                result.data[j + i * result.strides[1]] = ops.conjugate(self.data[i + j * self.ld], ctx) catch unreachable;
+                                result.data[j + i * result.strides[1]] = ops.conj(self.data[i + j * self.ld], ctx) catch unreachable;
                             }
                         }
                     }
@@ -542,7 +542,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = i + 1;
                             while (j < self.size) : (j += 1) {
                                 result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-                                result.data[j * result.strides[0] + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.strides[0] + i] = ops.conj(self.data[i * self.ld + j], ctx) catch unreachable;
                             }
                         }
                     } else { // rl
@@ -551,7 +551,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                             var j: u32 = 0;
                             while (j < i) : (j += 1) {
                                 result.data[i * result.strides[0] + j] = self.data[i * self.ld + j];
-                                result.data[j * result.strides[0] + i] = ops.conjugate(self.data[i * self.ld + j], ctx) catch unreachable;
+                                result.data[j * result.strides[0] + i] = ops.conj(self.data[i * self.ld + j], ctx) catch unreachable;
                             }
 
                             result.data[i * result.strides[0] + i] = self.data[i * self.ld + i];

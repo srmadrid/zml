@@ -50,7 +50,7 @@ pub inline fn her2k(
             trans.reverse(),
             n,
             k,
-            ops.conjugate(alpha, ctx) catch unreachable,
+            ops.conj(alpha, ctx) catch unreachable,
             b,
             ldb,
             a,
@@ -220,10 +220,10 @@ fn k_her2k(
                         {
                             const temp1: T1 = ops.mul( // temp1 = alpha * conj(b[j + l * ldb])
                                 alpha,
-                                ops.conjugate(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
+                                ops.conj(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: T2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * a[j + l * lda])
+                            const temp2: T2 = ops.conj(ops.mul( // temp2 = conj(alpha * a[j + l * lda])
                                 alpha,
                                 a[scast(u32, j + l * lda)],
                                 ctx,
@@ -316,10 +316,10 @@ fn k_her2k(
                         {
                             const temp1: T1 = ops.mul( // temp1 = alpha * conj(b[j + l * ldb])
                                 alpha,
-                                ops.conjugate(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
+                                ops.conj(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: T2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * a[j + l * lda])
+                            const temp2: T2 = ops.conj(ops.mul( // temp2 = conj(alpha * a[j + l * lda])
                                 alpha,
                                 a[scast(u32, j + l * lda)],
                                 ctx,
@@ -384,7 +384,7 @@ fn k_her2k(
                                 &temp1,
                                 temp1,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
                                     b[scast(u32, l + j * ldb)],
                                     ctx,
                                 ) catch unreachable,
@@ -395,7 +395,7 @@ fn k_her2k(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(b[scast(u32, l + i * ldb)], ctx) catch unreachable,
+                                    ops.conj(b[scast(u32, l + i * ldb)], ctx) catch unreachable,
                                     a[scast(u32, l + j * lda)],
                                     ctx,
                                 ) catch unreachable,
@@ -414,7 +414,7 @@ fn k_her2k(
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(alpha, ctx) catch unreachable,
+                                            ops.conj(alpha, ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -440,7 +440,7 @@ fn k_her2k(
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(alpha, ctx) catch unreachable,
+                                            ops.conj(alpha, ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -458,7 +458,7 @@ fn k_her2k(
                                         temp1,
                                         ctx,
                                     ) catch unreachable, ops.mul(
-                                        ops.conjugate(alpha, ctx) catch unreachable,
+                                        ops.conj(alpha, ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable, ctx) catch unreachable,
@@ -482,7 +482,7 @@ fn k_her2k(
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(alpha, ctx) catch unreachable,
+                                            ops.conj(alpha, ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -508,7 +508,7 @@ fn k_her2k(
                                 &temp1,
                                 temp1,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
                                     b[scast(u32, l + j * ldb)],
                                     ctx,
                                 ) catch unreachable,
@@ -519,7 +519,7 @@ fn k_her2k(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(b[scast(u32, l + i * ldb)], ctx) catch unreachable,
+                                    ops.conj(b[scast(u32, l + i * ldb)], ctx) catch unreachable,
                                     a[scast(u32, l + j * lda)],
                                     ctx,
                                 ) catch unreachable,
@@ -538,7 +538,7 @@ fn k_her2k(
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(alpha, ctx) catch unreachable,
+                                            ops.conj(alpha, ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -564,7 +564,7 @@ fn k_her2k(
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(alpha, ctx) catch unreachable,
+                                            ops.conj(alpha, ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -584,7 +584,7 @@ fn k_her2k(
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(alpha, ctx) catch unreachable,
+                                            ops.conj(alpha, ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -610,7 +610,7 @@ fn k_her2k(
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(alpha, ctx) catch unreachable,
+                                            ops.conj(alpha, ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,

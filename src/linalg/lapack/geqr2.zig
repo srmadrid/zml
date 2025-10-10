@@ -48,7 +48,7 @@ pub fn geqr2(
                 n - i - 1,
                 a + utils.index(order, i, i, lda),
                 utils.col_ld(order, lda),
-                try ops.conjugate(tau[types.scast(u32, i)], ctx),
+                try ops.conj(tau[types.scast(u32, i)], ctx),
                 a + utils.index(order, i, i + 1, lda),
                 lda,
                 work,

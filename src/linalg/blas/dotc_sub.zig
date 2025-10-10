@@ -35,7 +35,7 @@ pub fn dotc_sub(
             for (0..scast(u32, n)) |_| {
                 try ops.mul_(
                     &temp,
-                    ops.conjugate(
+                    ops.conj(
                         x[scast(u32, ix)],
                         types.mixStructs(ctx, .{ .copy = false }),
                     ) catch unreachable,
@@ -65,7 +65,7 @@ pub fn dotc_sub(
                     ret,
                     ret.*,
                     ops.mul(
-                        ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                        ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                         y[scast(u32, iy)],
                         ctx,
                     ) catch unreachable,

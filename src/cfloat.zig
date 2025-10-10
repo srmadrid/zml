@@ -142,7 +142,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn conjugate(self: Cfloat(T)) Cfloat(T) {
+        pub fn conj(self: Cfloat(T)) Cfloat(T) {
             return .{
                 .re = self.re,
                 .im = -self.im,

@@ -149,7 +149,7 @@ pub fn larft(
             while (i < k - l) : (i += 1) {
                 try ops.set(
                     &t[utils.index(order, j, l + i, ldt)],
-                    try ops.conjugate(v[utils.index(order, l + i, j, ldv)], ctx),
+                    try ops.conj(v[utils.index(order, l + i, j, ldv)], ctx),
                     ctx,
                 );
             }
@@ -483,7 +483,7 @@ pub fn larft(
             while (i < l) : (i += 1) {
                 try ops.set(
                     &t[utils.index(order, k - l + i, j, ldt)],
-                    try ops.conjugate(v[utils.index(order, n - k + j, k - l + i, ldv)], ctx),
+                    try ops.conj(v[utils.index(order, n - k + j, k - l + i, ldv)], ctx),
                     ctx,
                 );
             }

@@ -192,7 +192,7 @@ fn k_gemv(
                                 y[scast(u32, i)],
                                 ops.mul(
                                     temp,
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -237,7 +237,7 @@ fn k_gemv(
                                 y[scast(u32, iy)],
                                 ops.mul(
                                     temp,
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -278,7 +278,7 @@ fn k_gemv(
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, i)],
                                     ctx,
                                 ) catch unreachable,
@@ -330,7 +330,7 @@ fn k_gemv(
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, ix)],
                                     ctx,
                                 ) catch unreachable,

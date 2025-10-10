@@ -61,7 +61,7 @@ fn k_hpr(
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[j])
-                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                                ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
@@ -109,7 +109,7 @@ fn k_hpr(
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[jx])
-                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                                ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
@@ -171,7 +171,7 @@ fn k_hpr(
                                     &ap[scast(u32, k)],
                                     ap[scast(u32, k)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, i)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -185,7 +185,7 @@ fn k_hpr(
                                 &ap[scast(u32, kk + j)],
                                 ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -219,7 +219,7 @@ fn k_hpr(
                                     &ap[scast(u32, k)],
                                     ap[scast(u32, k)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -233,7 +233,7 @@ fn k_hpr(
                                 &ap[scast(u32, kk + j)],
                                 ops.re(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -259,7 +259,7 @@ fn k_hpr(
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[j])
-                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                                ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
@@ -307,7 +307,7 @@ fn k_hpr(
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
                             const temp: C1 = ops.mul( // temp = alpha * conj(x[jx])
-                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                                ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
@@ -366,7 +366,7 @@ fn k_hpr(
                                 &ap[scast(u32, kk)],
                                 ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -380,7 +380,7 @@ fn k_hpr(
                                     &ap[scast(u32, k)],
                                     ap[scast(u32, k)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, i)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,
@@ -414,7 +414,7 @@ fn k_hpr(
                                 &ap[scast(u32, kk)],
                                 ops.re(ap[scast(u32, kk)], ctx) catch unreachable,
                                 ops.re(ops.mul(
-                                    ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable, ctx) catch unreachable,
@@ -430,7 +430,7 @@ fn k_hpr(
                                     &ap[scast(u32, k)],
                                     ap[scast(u32, k)],
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                                         temp,
                                         ctx,
                                     ) catch unreachable,

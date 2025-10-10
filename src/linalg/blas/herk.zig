@@ -207,7 +207,7 @@ fn k_herk(
                     while (l < k) : (l += 1) {
                         if (ops.ne(a[scast(u32, j + l * lda)], 0, ctx) catch unreachable) {
                             const temp: T1 = ops.mul( // temp = alpha * conj(a[j + l * lda])
-                                ops.conjugate(a[scast(u32, j + l * lda)], ctx) catch unreachable,
+                                ops.conj(a[scast(u32, j + l * lda)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
@@ -280,7 +280,7 @@ fn k_herk(
                     while (l < k) : (l += 1) {
                         if (ops.ne(a[scast(u32, j + l * lda)], 0, ctx) catch unreachable) {
                             const temp: T1 = ops.mul( // temp = alpha * conj(a[j + l * lda])
-                                ops.conjugate(a[scast(u32, j + l * lda)], ctx) catch unreachable,
+                                ops.conj(a[scast(u32, j + l * lda)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
@@ -327,7 +327,7 @@ fn k_herk(
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
                                     a[scast(u32, l + j * lda)],
                                     ctx,
                                 ) catch unreachable,
@@ -371,7 +371,7 @@ fn k_herk(
                             &rtemp,
                             rtemp,
                             ops.re(ops.mul(
-                                ops.conjugate(a[scast(u32, l + j * lda)], ctx) catch unreachable,
+                                ops.conj(a[scast(u32, l + j * lda)], ctx) catch unreachable,
                                 a[scast(u32, l + j * lda)],
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable,
@@ -417,7 +417,7 @@ fn k_herk(
                             &rtemp,
                             rtemp,
                             ops.re(ops.mul(
-                                ops.conjugate(a[scast(u32, l + j * lda)], ctx) catch unreachable,
+                                ops.conj(a[scast(u32, l + j * lda)], ctx) catch unreachable,
                                 a[scast(u32, l + j * lda)],
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable,
@@ -462,7 +462,7 @@ fn k_herk(
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
                                     a[scast(u32, l + j * lda)],
                                     ctx,
                                 ) catch unreachable,

@@ -79,7 +79,7 @@ pub fn rotg(
                     c.* = 0.0;
 
                     const g_abs = @sqrt(g.re * g.re + g.im * g.im);
-                    const g_conj = g.conjugate();
+                    const g_conj = g.conj();
                     s.* = Ca.init(g_conj.re / g_abs, g_conj.im / g_abs);
                     a.* = Ca.init(g_abs, 0.0);
                 } else {
@@ -94,13 +94,13 @@ pub fn rotg(
                         if (f2 >= h2 * safmin) {
                             c.* = @sqrt(f2 / h2);
                             const h = @sqrt(f2 * h2);
-                            const g_conj = g.conjugate();
+                            const g_conj = g.conj();
                             s.* = Ca.init((g_conj.re * f.re + g_conj.im * f.im) / h, (g_conj.im * f.re - g_conj.re * f.im) / h);
                             a.* = Ca.init(f.re / c.*, f.im / c.*);
                         } else {
                             const h = @sqrt(f2 * h2);
                             c.* = f2 / h;
-                            const g_conj = g.conjugate();
+                            const g_conj = g.conj();
                             s.* = Ca.init((g_conj.re * f.re + g_conj.im * f.im) / h, (g_conj.im * f.re - g_conj.re * f.im) / h);
                             a.* = Ca.init(h, 0.0);
                         }
@@ -113,7 +113,7 @@ pub fn rotg(
                         const h2 = f2 + g2;
 
                         c.* = @sqrt(f2 / h2);
-                        const g_conj = gs.conjugate();
+                        const g_conj = gs.conj();
                         s.* = Ca.init((g_conj.re * fs.re + g_conj.im * fs.im) / @sqrt(f2 * h2), (g_conj.im * fs.re - g_conj.re * fs.im) / @sqrt(f2 * h2));
                         a.* = Ca.init(fs.re / c.*, fs.im / c.*);
                         a.* = Ca.init(a.*.re * u, a.*.im * u);

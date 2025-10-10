@@ -226,7 +226,7 @@ fn k_gemmtr(
                                         &c[scast(u32, i + j * ldc)],
                                         c[scast(u32, i + j * ldc)],
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, i + l * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, i + l * lda)], ctx) catch unreachable,
                                             temp,
                                             ctx,
                                         ) catch unreachable,
@@ -264,7 +264,7 @@ fn k_gemmtr(
                             var l: i32 = 0;
                             while (l < k) : (l += 1) {
                                 const temp: T1 = ops.mul( // temp = alpha * conj(b[l + j * ldb])
-                                    ops.conjugate(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
+                                    ops.conj(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
                                     alpha,
                                     ctx,
                                 ) catch unreachable;
@@ -311,7 +311,7 @@ fn k_gemmtr(
                             var l: i32 = 0;
                             while (l < k) : (l += 1) {
                                 const temp: T1 = ops.mul( // temp = alpha * conj(b[l + j * ldb])
-                                    ops.conjugate(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
+                                    ops.conj(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
                                     alpha,
                                     ctx,
                                 ) catch unreachable;
@@ -322,7 +322,7 @@ fn k_gemmtr(
                                         &c[scast(u32, i + j * ldc)],
                                         c[scast(u32, i + j * ldc)],
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, i + l * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, i + l * lda)], ctx) catch unreachable,
                                             temp,
                                             ctx,
                                         ) catch unreachable,
@@ -408,7 +408,7 @@ fn k_gemmtr(
                                         &temp,
                                         temp,
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
                                             b[scast(u32, l + j * ldb)],
                                             ctx,
                                         ) catch unreachable,
@@ -471,7 +471,7 @@ fn k_gemmtr(
                                         temp,
                                         ops.mul(
                                             a[scast(u32, l + i * lda)],
-                                            ops.conjugate(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
+                                            ops.conj(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -530,8 +530,8 @@ fn k_gemmtr(
                                         &temp,
                                         temp,
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
-                                            ops.conjugate(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                            ops.conj(b[scast(u32, l + j * ldb)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -668,7 +668,7 @@ fn k_gemmtr(
                                         &c[scast(u32, i + j * ldc)],
                                         c[scast(u32, i + j * ldc)],
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, i + l * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, i + l * lda)], ctx) catch unreachable,
                                             temp,
                                             ctx,
                                         ) catch unreachable,
@@ -706,7 +706,7 @@ fn k_gemmtr(
                             var l: i32 = 0;
                             while (l < k) : (l += 1) {
                                 const temp: T1 = ops.mul( // temp = alpha * conj(b[j + l * ldb])
-                                    ops.conjugate(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
+                                    ops.conj(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
                                     alpha,
                                     ctx,
                                 ) catch unreachable;
@@ -753,7 +753,7 @@ fn k_gemmtr(
                             var l: i32 = 0;
                             while (l < k) : (l += 1) {
                                 const temp: T1 = ops.mul( // temp = alpha * conj(b[j + l * ldb])
-                                    ops.conjugate(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
+                                    ops.conj(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
                                     alpha,
                                     ctx,
                                 ) catch unreachable;
@@ -764,7 +764,7 @@ fn k_gemmtr(
                                         &c[scast(u32, i + j * ldc)],
                                         c[scast(u32, i + j * ldc)],
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, i + l * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, i + l * lda)], ctx) catch unreachable,
                                             temp,
                                             ctx,
                                         ) catch unreachable,
@@ -850,7 +850,7 @@ fn k_gemmtr(
                                         &temp,
                                         temp,
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
                                             b[scast(u32, j + l * ldb)],
                                             ctx,
                                         ) catch unreachable,
@@ -913,7 +913,7 @@ fn k_gemmtr(
                                         temp,
                                         ops.mul(
                                             a[scast(u32, l + i * lda)],
-                                            ops.conjugate(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
+                                            ops.conj(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -972,8 +972,8 @@ fn k_gemmtr(
                                         &temp,
                                         temp,
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, l + i * lda)], ctx) catch unreachable,
-                                            ops.conjugate(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i * lda)], ctx) catch unreachable,
+                                            ops.conj(b[scast(u32, j + l * ldb)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,

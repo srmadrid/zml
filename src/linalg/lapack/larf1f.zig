@@ -109,7 +109,7 @@ pub fn larf1f(
                     try ops.add_(
                         &work[types.scast(u32, i)],
                         work[types.scast(u32, i)],
-                        try ops.conjugate(c[utils.index(order, 0, i, ldc)], ctx),
+                        try ops.conj(c[utils.index(order, 0, i, ldc)], ctx),
                         ctx,
                     );
                 }
@@ -134,7 +134,7 @@ pub fn larf1f(
                         c[utils.index(order, 0, i, ldc)],
                         try ops.mul(
                             tau,
-                            try ops.conjugate(work[types.scast(u32, i)], ctx),
+                            try ops.conj(work[types.scast(u32, i)], ctx),
                             ctx,
                         ),
                         ctx,

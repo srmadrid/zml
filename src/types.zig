@@ -2894,9 +2894,9 @@ pub fn EnsureVector(comptime X: type, comptime Y: type) type {
             .numeric => unreachable,
         }
     } else if (isMatrix(X)) {
-        @compileError("Cannot ensure vector type from a matrix type. Use `EnsureDomain` or `EnsureMatrix` instead.");
+        return Y;
     } else if (isArray(X)) {
-        @compileError("Cannot ensure vector type from an array type. Use `EnsureDomain` or `EnsureArray` instead.");
+        return Y;
     } else {
         return Y;
     }
@@ -2904,7 +2904,7 @@ pub fn EnsureVector(comptime X: type, comptime Y: type) type {
 
 pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
     if (isVector(X)) {
-        @compileError("Cannot ensure matrix type from a vector type. Use `EnsureDomain` or `EnsureVector` instead.");
+        return Y;
     } else if (isMatrix(X)) {
         switch (matrixType(X)) {
             .dense_general => return matrix.general.Dense(Y, orderOf(X)),
@@ -2925,7 +2925,7 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
             .numeric => unreachable,
         }
     } else if (isArray(X)) {
-        @compileError("Cannot ensure matrix type from an array type. Use `EnsureDomain` or `EnsureArray` instead.");
+        return Y;
     } else {
         return Y;
     }
@@ -2949,9 +2949,9 @@ pub fn EnsureMatrix(comptime X: type, comptime Y: type) type {
 /// `type`: The coerced type.
 pub fn EnsureArray(comptime X: type, comptime Y: type) type {
     if (isVector(X)) {
-        @compileError("Cannot ensure array type from a vector type. Use `EnsureDomain` or `EnsureVector` instead.");
+        return Y;
     } else if (isMatrix(X)) {
-        @compileError("Cannot ensure array type from a matrix type. Use `EnsureDomain` or `EnsureMatrix` instead.");
+        return Y;
     } else if (isArray(X)) {
         switch (arrayType(X)) {
             .dense => return array.Dense(Y, orderOf(X)),
@@ -4000,6 +4000,7 @@ fn formatSpecCtxMismatch(
 /// Parameters
 /// ----------
 /// ctx (`anytype`): The context struct to validate. Must be a struct type.
+///
 /// spec (`anytype`): The specification struct that defines the expected fields
 /// and their types. Must have the following structure:
 /// ```zig
@@ -4183,7 +4184,7 @@ pub fn mixStructs(s1: anytype, s2: anytype) MixStructs(@TypeOf(s1), @TypeOf(s2))
     if (info1 != .@"struct" or info2 != .@"struct")
         @compileError("mixStructs: both types must be structs");
 
-    var result: MixStructs(S1, S2) = .{};
+    var result: MixStructs(S1, S2) = undefined;
     inline for (info1.@"struct".fields) |field| {
         if (@hasField(S2, field.name))
             @compileError("Field '" ++ field.name ++ "' already exists in the second struct");
@@ -4250,9 +4251,115 @@ pub fn stripStruct(s: anytype, comptime fields_to_remove: []const []const u8) St
     if (info != .@"struct")
         @compileError("Type must be a struct");
 
-    var result: StripStruct(S, fields_to_remove) = .{};
+    var result: StripStruct(S, fields_to_remove) = undefined;
     inline for (@typeInfo(@TypeOf(result)).@"struct".fields) |field| {
         @field(result, field.name) = @field(s, field.name);
+    }
+
+    return result;
+}
+
+pub fn RenameStructFields(comptime S: type, comptime fields_to_rename: anytype) type {
+    const info = @typeInfo(S);
+    if (info != .@"struct")
+        @compileError("Type must be a struct");
+
+    const F: type = @TypeOf(fields_to_rename);
+    const finfo = @typeInfo(F);
+
+    if (finfo != .@"struct")
+        @compileError("fields_to_rename must be a struct");
+
+    if (finfo.@"struct".fields.len > info.@"struct".fields.len)
+        @compileError("More fields to rename than fields in the struct");
+
+    // Check that all old names exist and new names do not exist in the original struct
+    inline for (finfo.@"struct".fields) |field| {
+        if (!@hasField(S, field.name))
+            @compileError("Field '" ++ field.name ++ "' does not exist in the struct");
+
+        if (@hasField(S, @field(fields_to_rename, field.name)))
+            @compileError("Field '" ++ @field(fields_to_rename, field.name) ++ "' already exists in the struct");
+    }
+
+    // Create new fields array
+    comptime var new_fields: [info.@"struct".fields.len]std.builtin.Type.StructField = undefined;
+    comptime var new_field_index: usize = 0;
+    inline for (info.@"struct".fields) |field| {
+        comptime var renamed = false;
+        inline for (finfo.@"struct".fields) |ffield| {
+            if (comptime std.mem.eql(u8, field.name, ffield.name)) {
+                new_fields[new_field_index] = .{
+                    .name = @as([:0]const u8, @field(fields_to_rename, ffield.name)),
+                    .type = field.type,
+                    .default_value_ptr = field.default_value_ptr,
+                    .is_comptime = field.is_comptime,
+                    .alignment = field.alignment,
+                };
+                renamed = true;
+                break;
+            }
+        }
+
+        if (!renamed) {
+            new_fields[new_field_index] = field;
+        }
+        new_field_index += 1;
+    }
+
+    return @Type(.{ .@"struct" = .{
+        .layout = .auto,
+        .fields = &new_fields,
+        .decls = &.{},
+        .is_tuple = false,
+    } });
+}
+
+/// Renames fields of a struct according to a mapping provided in another struct.
+///
+/// Parameters
+/// ----------
+/// `s` (`anytype`): The struct instance whose fields are to be renamed.
+/// Must be a struct type.
+///
+/// `fields_to_rename` (`anytype`): A struct instance that defines the mapping
+/// of old field names to new field names. Each field in this struct should
+/// have the name of the field to be renamed in `s`, and its value
+/// should be a string representing the new name. I.e.:
+/// ```zig
+/// .{
+///     .old_field_name1 = "new_field_name1",
+///     .old_field_name2 = "new_field_name2",
+///     ...
+/// }
+/// ```
+///
+/// Returns
+/// -------
+/// The new struct instance with fields renamed according to the mapping.
+pub fn renameStructFields(s: anytype, comptime fields_to_rename: anytype) RenameStructFields(@TypeOf(s), fields_to_rename) {
+    const S = @TypeOf(s);
+    const info = @typeInfo(S);
+    if (info != .@"struct")
+        @compileError("Type must be a struct");
+
+    const F: type = @TypeOf(fields_to_rename);
+    const finfo = @typeInfo(F);
+
+    var result: RenameStructFields(S, fields_to_rename) = undefined;
+    inline for (@typeInfo(@TypeOf(result)).@"struct".fields) |field| {
+        comptime var renamed = false;
+        inline for (finfo.@"struct".fields) |ffield| {
+            if (comptime std.mem.eql(u8, field.name, @field(fields_to_rename, ffield.name))) {
+                @field(result, field.name) = @field(s, ffield.name);
+                renamed = true;
+                break;
+            }
+        }
+
+        if (!renamed) {
+            @field(result, field.name) = @field(s, field.name);
+        }
     }
 
     return result;

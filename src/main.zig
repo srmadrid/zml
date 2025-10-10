@@ -563,7 +563,6 @@ pub fn main() !void {
     var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const a = gpa.allocator();
-    //_ = a;
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;
@@ -1195,7 +1194,7 @@ fn matrixTesting(a: std.mem.Allocator) !void {
     const rand = prng.random();
 
     var A = try random_matrix_t(
-        zml.matrix.triangular.Sparse(f64, .upper, .unit, .row_major),
+        zml.matrix.general.Dense(f64, .row_major),
         a,
         rand,
         8,
@@ -1206,7 +1205,7 @@ fn matrixTesting(a: std.mem.Allocator) !void {
     print_matrix("A", A);
 
     var B = try random_matrix_t(
-        zml.matrix.triangular.Dense(f64, .upper, .non_unit, .col_major),
+        zml.matrix.general.Dense(f64, .col_major),
         a,
         rand,
         8,

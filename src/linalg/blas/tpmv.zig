@@ -120,7 +120,7 @@ fn k_tpmv(
                                         x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -133,7 +133,7 @@ fn k_tpmv(
                                     ops.mul_( // x[j] *= conj(ap[kk + j])
                                         &x[scast(u32, j)],
                                         x[scast(u32, j)],
-                                        ops.conjugate(ap[scast(u32, kk + j)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -184,7 +184,7 @@ fn k_tpmv(
                                         x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -197,7 +197,7 @@ fn k_tpmv(
                                     ops.mul_( // x[jx] *= conj(ap[kk + j])
                                         &x[scast(u32, jx)],
                                         x[scast(u32, jx)],
-                                        ops.conjugate(ap[scast(u32, kk + j)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, kk + j)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -250,7 +250,7 @@ fn k_tpmv(
                                         x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -262,7 +262,7 @@ fn k_tpmv(
                                     ops.mul_( // x[j] *= conj(ap[kk - (n - 1) + j])
                                         &x[scast(u32, j)],
                                         x[scast(u32, j)],
-                                        ops.conjugate(ap[scast(u32, kk - (n - 1) + j)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, kk - (n - 1) + j)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -314,7 +314,7 @@ fn k_tpmv(
                                         x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -327,7 +327,7 @@ fn k_tpmv(
                                     ops.mul_( // x[jx] *= conj(ap[kk - (n - 1) + j])
                                         &x[scast(u32, jx)],
                                         x[scast(u32, jx)],
-                                        ops.conjugate(ap[scast(u32, kk - (n - 1) + j)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, kk - (n - 1) + j)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -378,7 +378,7 @@ fn k_tpmv(
                                 ops.mul_( // temp *= conj(ap[kk])
                                     &temp,
                                     temp,
-                                    ops.conjugate(ap[scast(u32, kk)], ctx) catch unreachable,
+                                    ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -390,7 +390,7 @@ fn k_tpmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                         x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
@@ -442,7 +442,7 @@ fn k_tpmv(
                                 ops.mul_( // temp *= conj(ap[kk])
                                     &temp,
                                     temp,
-                                    ops.conjugate(ap[scast(u32, kk)], ctx) catch unreachable,
+                                    ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -455,7 +455,7 @@ fn k_tpmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                         x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,
@@ -508,7 +508,7 @@ fn k_tpmv(
                                 ops.mul_( // temp *= conj(ap[kk])
                                     &temp,
                                     temp,
-                                    ops.conjugate(ap[scast(u32, kk)], ctx) catch unreachable,
+                                    ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -519,7 +519,7 @@ fn k_tpmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                         x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
@@ -571,7 +571,7 @@ fn k_tpmv(
                                 ops.mul_( // temp *= conj(ap[kk])
                                     &temp,
                                     temp,
-                                    ops.conjugate(ap[scast(u32, kk)], ctx) catch unreachable,
+                                    ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -585,7 +585,7 @@ fn k_tpmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(ap[scast(u32, k)], ctx) catch unreachable,
+                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
                                         x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,

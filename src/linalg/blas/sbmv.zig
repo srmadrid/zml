@@ -323,7 +323,7 @@ fn k_sbmv(
                         &y[scast(u32, j)],
                         y[scast(u32, j)],
                         ops.mul(
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                            ops.conj(alpha, ctx) catch unreachable,
                             temp2,
                             ctx,
                         ) catch unreachable,
@@ -388,7 +388,7 @@ fn k_sbmv(
                         &y[scast(u32, jy)],
                         y[scast(u32, jy)],
                         ops.mul(
-                            ops.conjugate(alpha, ctx) catch unreachable,
+                            ops.conj(alpha, ctx) catch unreachable,
                             temp2,
                             ctx,
                         ) catch unreachable,

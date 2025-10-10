@@ -201,7 +201,7 @@ fn k_gbmv(
                                 y[scast(u32, i)],
                                 ops.mul(
                                     temp,
-                                    ops.conjugate(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -247,7 +247,7 @@ fn k_gbmv(
                                 y[scast(u32, iy)],
                                 ops.mul(
                                     temp,
-                                    ops.conjugate(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -292,7 +292,7 @@ fn k_gbmv(
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, i)],
                                     ctx,
                                 ) catch unreachable,
@@ -345,7 +345,7 @@ fn k_gbmv(
                                 &temp,
                                 temp,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, ix)],
                                     ctx,
                                 ) catch unreachable,

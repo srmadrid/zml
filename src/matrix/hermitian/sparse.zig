@@ -90,7 +90,7 @@ pub fn Sparse(T: type, uplo: Uplo, order: Order) type {
                         return if (noconj)
                             self.data[i]
                         else
-                            ops.conjugate(self.data[i], .{}) catch unreachable
+                            ops.conj(self.data[i], .{}) catch unreachable
                     else if (self.idx[i] > rr)
                         break;
                 }
@@ -104,7 +104,7 @@ pub fn Sparse(T: type, uplo: Uplo, order: Order) type {
                         return if (noconj)
                             self.data[j]
                         else
-                            ops.conjugate(self.data[j], .{}) catch unreachable
+                            ops.conj(self.data[j], .{}) catch unreachable
                     else if (self.idx[j] > cc)
                         break;
                 }
@@ -178,7 +178,7 @@ pub fn Sparse(T: type, uplo: Uplo, order: Order) type {
                         self.data[i] = if (noconj)
                             value
                         else
-                            ops.conjugate(value, .{}) catch unreachable;
+                            ops.conj(value, .{}) catch unreachable;
                         return;
                     } else if (self.idx[i] > rr) {
                         break;
@@ -194,7 +194,7 @@ pub fn Sparse(T: type, uplo: Uplo, order: Order) type {
                         self.data[j] = if (noconj)
                             value
                         else
-                            ops.conjugate(value, .{}) catch unreachable;
+                            ops.conj(value, .{}) catch unreachable;
                         return;
                     } else if (self.idx[j] > cc) {
                         break;

@@ -382,7 +382,7 @@ pub fn lahef(
                         var d21: W = w[utils.index(order, k - 1, kw, ldw)];
                         const d11: W = try ops.div(
                             w[utils.index(order, k, kw, ldw)],
-                            try ops.conjugate(d21, ctx),
+                            try ops.conj(d21, ctx),
                             ctx,
                         );
                         const d22: W = try ops.div(
@@ -427,7 +427,7 @@ pub fn lahef(
 
                             try ops.mul_( // a[j + k * lda] = conj(d21) * (d22 * w[j + kw * ldw] - w[j + (kw - 1) * ldw]);
                                 &a[utils.index(order, j, k, lda)],
-                                try ops.conjugate(d21, ctx),
+                                try ops.conj(d21, ctx),
                                 try ops.sub(
                                     try ops.mul(
                                         d22,
@@ -876,7 +876,7 @@ pub fn lahef(
                             );
                             const d22: W = try ops.div(
                                 w[utils.index(order, k, k, ldw)],
-                                try ops.conjugate(d21, ctx),
+                                try ops.conj(d21, ctx),
                                 ctx,
                             );
                             const t: types.Scalar(W) = try ops.div(
@@ -901,7 +901,7 @@ pub fn lahef(
                             while (j < n) : (j += 1) {
                                 try ops.mul_( // a[j + k * lda] = conj(d21) * (d11 * w[j + k * ldw] - w[j + (k + 1) * ldw]);
                                     &a[utils.index(order, j, k, lda)],
-                                    try ops.conjugate(d21, ctx),
+                                    try ops.conj(d21, ctx),
                                     try ops.sub(
                                         try ops.mul(
                                             d11,

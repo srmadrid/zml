@@ -164,7 +164,7 @@ fn k_trmm(
                                             b[scast(u32, i + j * ldb)],
                                             ops.mul(
                                                 temp1,
-                                                ops.conjugate(a[scast(u32, i + k * lda)], ctx) catch unreachable,
+                                                ops.conj(a[scast(u32, i + k * lda)], ctx) catch unreachable,
                                                 ctx,
                                             ) catch unreachable,
                                             ctx,
@@ -174,7 +174,7 @@ fn k_trmm(
                                         ops.mul_( // b[k + j * ldb] = temp1 * conj(a[k + k * lda])
                                             &b[scast(u32, k + j * ldb)],
                                             temp1,
-                                            ops.conjugate(a[scast(u32, k + k * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable;
                                     } else {
@@ -234,7 +234,7 @@ fn k_trmm(
                                         ops.mul_( // b[k + j * ldb] *= conj(a[k + k * lda])
                                             &b[scast(u32, k + j * ldb)],
                                             b[scast(u32, k + j * ldb)],
-                                            ops.conjugate(a[scast(u32, k + k * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable;
                                     }
@@ -246,7 +246,7 @@ fn k_trmm(
                                             b[scast(u32, i + j * ldb)],
                                             ops.mul(
                                                 temp1,
-                                                ops.conjugate(a[scast(u32, i + k * lda)], ctx) catch unreachable,
+                                                ops.conj(a[scast(u32, i + k * lda)], ctx) catch unreachable,
                                                 ctx,
                                             ) catch unreachable,
                                             ctx,
@@ -293,7 +293,7 @@ fn k_trmm(
                                     ops.mul_( // temp *= conj(a[i + i * lda])
                                         &temp,
                                         temp,
-                                        ops.conjugate(a[scast(u32, i + i * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, i + i * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -304,7 +304,7 @@ fn k_trmm(
                                         &temp,
                                         temp,
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, k + i * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, k + i * lda)], ctx) catch unreachable,
                                             b[scast(u32, k + j * ldb)],
                                             ctx,
                                         ) catch unreachable,
@@ -356,7 +356,7 @@ fn k_trmm(
                                     ops.mul_( // temp *= conj(a[i + i * lda])
                                         &temp,
                                         temp,
-                                        ops.conjugate(a[scast(u32, i + i * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, i + i * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -367,7 +367,7 @@ fn k_trmm(
                                         &temp,
                                         temp,
                                         ops.mul(
-                                            ops.conjugate(a[scast(u32, k + i * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, k + i * lda)], ctx) catch unreachable,
                                             b[scast(u32, k + j * ldb)],
                                             ctx,
                                         ) catch unreachable,
@@ -407,7 +407,7 @@ fn k_trmm(
                                 ops.mul_( // temp *= conj(a[j + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, j + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -456,7 +456,7 @@ fn k_trmm(
                                     ops.mul_( // temp = alpha * conj(a[k + j * lda])
                                         &temp,
                                         alpha,
-                                        ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
 
@@ -496,7 +496,7 @@ fn k_trmm(
                                 ops.mul_( // temp *= conj(a[j + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, j + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -545,7 +545,7 @@ fn k_trmm(
                                     ops.mul_( // temp = alpha * conj(a[k + j * lda])
                                         &temp,
                                         alpha,
-                                        ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
 
@@ -587,7 +587,7 @@ fn k_trmm(
                                     ops.mul_( // temp *= conj(a[j + k * lda])
                                         &temp,
                                         temp,
-                                        ops.conjugate(a[scast(u32, j + k * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, j + k * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -622,7 +622,7 @@ fn k_trmm(
                                 ops.mul_( // temp *= conj(a[k + k * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, k + k * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -659,7 +659,7 @@ fn k_trmm(
                                     ops.mul_( // temp *= conj(a[j + k * lda])
                                         &temp,
                                         temp,
-                                        ops.conjugate(a[scast(u32, j + k * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, j + k * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -694,7 +694,7 @@ fn k_trmm(
                                 ops.mul_( // temp *= conj(a[k + k * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, k + k * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + k * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }

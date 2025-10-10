@@ -161,7 +161,7 @@ fn k_hemm(
                                 temp2,
                                 ops.mul(
                                     b[scast(u32, k + j * ldb)],
-                                    ops.conjugate(a[scast(u32, k + i * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + i * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -261,7 +261,7 @@ fn k_hemm(
                                 temp2,
                                 ops.mul(
                                     b[scast(u32, k + j * ldb)],
-                                    ops.conjugate(a[scast(u32, k + i * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + i * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -401,7 +401,7 @@ fn k_hemm(
                         ops.mul_( // temp1 = alpha * conj(a[j + k * lda]);
                             &temp1,
                             alpha,
-                            ops.conjugate(a[scast(u32, j + k * lda)], ctx) catch unreachable,
+                            ops.conj(a[scast(u32, j + k * lda)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     }
@@ -427,7 +427,7 @@ fn k_hemm(
                         ops.mul_( // temp1 = alpha * conj(a[j + k * lda]);
                             &temp1,
                             alpha,
-                            ops.conjugate(a[scast(u32, j + k * lda)], ctx) catch unreachable,
+                            ops.conj(a[scast(u32, j + k * lda)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
                     } else {

@@ -96,11 +96,11 @@ fn k_her2(
                             ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[j])
-                                ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
+                                ops.conj(y[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[j])
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * x[j])
                                 x[scast(u32, j)],
                                 alpha,
                                 ctx,
@@ -163,11 +163,11 @@ fn k_her2(
                             ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[jy])
-                                ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
+                                ops.conj(y[scast(u32, jy)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[jx])
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * x[jx])
                                 x[scast(u32, jx)],
                                 alpha,
                                 ctx,
@@ -242,8 +242,8 @@ fn k_her2(
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[j]))
-                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * conj(x[j]))
+                                ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
@@ -255,12 +255,12 @@ fn k_her2(
                                     a[scast(u32, i + j * lda)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
+                                            ops.conj(x[scast(u32, i)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(u32, i)], ctx) catch unreachable,
+                                            ops.conj(y[scast(u32, i)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -275,12 +275,12 @@ fn k_her2(
                                 ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
+                                        ops.conj(y[scast(u32, j)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -309,8 +309,8 @@ fn k_her2(
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[jx]))
-                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * conj(x[jx]))
+                                ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
@@ -324,12 +324,12 @@ fn k_her2(
                                     a[scast(u32, i + j * lda)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                                            ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(u32, iy)], ctx) catch unreachable,
+                                            ops.conj(y[scast(u32, iy)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -347,12 +347,12 @@ fn k_her2(
                                 ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
+                                        ops.conj(y[scast(u32, jy)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -382,11 +382,11 @@ fn k_her2(
                             ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[j])
-                                ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
+                                ops.conj(y[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[j])
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * x[j])
                                 x[scast(u32, j)],
                                 alpha,
                                 ctx,
@@ -449,11 +449,11 @@ fn k_her2(
                             ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
                         {
                             const temp1: C1 = ops.mul( // temp1 = alpha * conj(y[jx])
-                                ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
+                                ops.conj(y[scast(u32, jy)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * x[jx])
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * x[jx])
                                 x[scast(u32, jx)],
                                 alpha,
                                 ctx,
@@ -528,8 +528,8 @@ fn k_her2(
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[j]))
-                                ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * conj(x[j]))
+                                ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
@@ -539,12 +539,12 @@ fn k_her2(
                                 ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(u32, j)], ctx) catch unreachable,
+                                        ops.conj(y[scast(u32, j)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -560,12 +560,12 @@ fn k_her2(
                                     a[scast(u32, i + j * lda)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
+                                            ops.conj(x[scast(u32, i)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(u32, i)], ctx) catch unreachable,
+                                            ops.conj(y[scast(u32, i)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,
@@ -595,8 +595,8 @@ fn k_her2(
                                 alpha,
                                 ctx,
                             ) catch unreachable;
-                            const temp2: C2 = ops.conjugate(ops.mul( // temp2 = conj(alpha * conj(x[jx]))
-                                ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                            const temp2: C2 = ops.conj(ops.mul( // temp2 = conj(alpha * conj(x[jx]))
+                                ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                 alpha,
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
@@ -606,12 +606,12 @@ fn k_her2(
                                 ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
                                 ops.re(ops.add(
                                     ops.mul(
-                                        ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                                        ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                                         temp1,
                                         ctx,
                                     ) catch unreachable,
                                     ops.mul(
-                                        ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
+                                        ops.conj(y[scast(u32, jy)], ctx) catch unreachable,
                                         temp2,
                                         ctx,
                                     ) catch unreachable,
@@ -632,12 +632,12 @@ fn k_her2(
                                     a[scast(u32, i + j * lda)],
                                     ops.add(
                                         ops.mul(
-                                            ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                                            ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                                             temp1,
                                             ctx,
                                         ) catch unreachable,
                                         ops.mul(
-                                            ops.conjugate(y[scast(u32, iy)], ctx) catch unreachable,
+                                            ops.conj(y[scast(u32, iy)], ctx) catch unreachable,
                                             temp2,
                                             ctx,
                                         ) catch unreachable,

@@ -124,12 +124,12 @@ pub fn hetf2(
 
                         var j: i32 = kp + 1;
                         while (j < kk) : (j += 1) {
-                            const t: A = try ops.conjugate(a[utils.index(order, j, kk, lda)], ctx);
-                            a[utils.index(order, j, kk, lda)] = try ops.conjugate(a[utils.index(order, kp, j, lda)], ctx);
+                            const t: A = try ops.conj(a[utils.index(order, j, kk, lda)], ctx);
+                            a[utils.index(order, j, kk, lda)] = try ops.conj(a[utils.index(order, kp, j, lda)], ctx);
                             a[utils.index(order, kp, j, lda)] = t;
                         }
 
-                        try ops.conjugate_(
+                        try ops.conj_(
                             &a[utils.index(order, kp, kk, lda)],
                             a[utils.index(order, kp, kk, lda)],
                             ctx,
@@ -260,7 +260,7 @@ pub fn hetf2(
                                             ctx,
                                         ),
                                         try ops.mul(
-                                            try ops.conjugate(d12, ctx),
+                                            try ops.conj(d12, ctx),
                                             a[utils.index(order, j, k, lda)],
                                             ctx,
                                         ),
@@ -294,12 +294,12 @@ pub fn hetf2(
                                         try ops.add(
                                             try ops.mul(
                                                 a[utils.index(order, i, k, lda)],
-                                                try ops.conjugate(wk, ctx),
+                                                try ops.conj(wk, ctx),
                                                 ctx,
                                             ),
                                             try ops.mul(
                                                 a[utils.index(order, i, k - 1, lda)],
-                                                try ops.conjugate(wkm1, ctx),
+                                                try ops.conj(wkm1, ctx),
                                                 ctx,
                                             ),
                                             ctx,
@@ -440,12 +440,12 @@ pub fn hetf2(
 
                         var j: i32 = kk + 1;
                         while (j < kp) : (j += 1) {
-                            const t: A = try ops.conjugate(a[utils.index(order, j, kk, lda)], ctx);
-                            a[utils.index(order, j, kk, lda)] = try ops.conjugate(a[utils.index(order, kp, j, lda)], ctx);
+                            const t: A = try ops.conj(a[utils.index(order, j, kk, lda)], ctx);
+                            a[utils.index(order, j, kk, lda)] = try ops.conj(a[utils.index(order, kp, j, lda)], ctx);
                             a[utils.index(order, kp, j, lda)] = t;
                         }
 
-                        try ops.conjugate_(
+                        try ops.conj_(
                             &a[utils.index(order, kp, kk, lda)],
                             a[utils.index(order, kp, kk, lda)],
                             ctx,
@@ -588,7 +588,7 @@ pub fn hetf2(
                                             ctx,
                                         ),
                                         try ops.mul(
-                                            try ops.conjugate(d21, ctx),
+                                            try ops.conj(d21, ctx),
                                             a[utils.index(order, j, k, lda)],
                                             ctx,
                                         ),
@@ -605,12 +605,12 @@ pub fn hetf2(
                                         try ops.add(
                                             try ops.mul(
                                                 a[utils.index(order, i, k, lda)],
-                                                try ops.conjugate(wk, ctx),
+                                                try ops.conj(wk, ctx),
                                                 ctx,
                                             ),
                                             try ops.mul(
                                                 a[utils.index(order, i, k + 1, lda)],
-                                                try ops.conjugate(wkp1, ctx),
+                                                try ops.conj(wkp1, ctx),
                                                 ctx,
                                             ),
                                             ctx,

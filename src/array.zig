@@ -66,6 +66,8 @@ pub const min_ = arrops.min_;
 // Basic operations
 pub const abs = arrops.abs;
 pub const abs_ = arrops.abs_;
+pub const abs1 = arrops.abs1;
+pub const abs1_ = arrops.abs1_;
 pub const abs2 = arrops.abs2;
 pub const abs2_ = arrops.abs2_;
 

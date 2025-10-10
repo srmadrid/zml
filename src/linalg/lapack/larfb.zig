@@ -171,7 +171,7 @@ pub fn larfb(
                         try ops.sub_(
                             &c[utils.index(order, j, i, ldc)],
                             c[utils.index(order, j, i, ldc)],
-                            try ops.conjugate(work[utils.index(order, i, j, ldwork)], ctx),
+                            try ops.conj(work[utils.index(order, i, j, ldwork)], ctx),
                             ctx,
                         );
                     }
@@ -433,7 +433,7 @@ pub fn larfb(
                         try ops.sub_(
                             &c[utils.index(order, m - k + j, i, ldc)],
                             c[utils.index(order, m - k + j, i, ldc)],
-                            try ops.conjugate(work[utils.index(order, i, j, ldwork)], ctx),
+                            try ops.conj(work[utils.index(order, i, j, ldwork)], ctx),
                             ctx,
                         );
                     }
@@ -696,7 +696,7 @@ pub fn larfb(
                         try ops.sub_(
                             &c[utils.index(order, j, i, ldc)],
                             c[utils.index(order, j, i, ldc)],
-                            try ops.conjugate(work[utils.index(order, i, j, ldwork)], ctx),
+                            try ops.conj(work[utils.index(order, i, j, ldwork)], ctx),
                             ctx,
                         );
                     }
@@ -957,7 +957,7 @@ pub fn larfb(
                         try ops.sub_(
                             &c[utils.index(order, m - k + j, i, ldc)],
                             c[utils.index(order, m - k + j, i, ldc)],
-                            try ops.conjugate(work[utils.index(order, i, j, ldwork)], ctx),
+                            try ops.conj(work[utils.index(order, i, j, ldwork)], ctx),
                             ctx,
                         );
                     }

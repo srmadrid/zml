@@ -67,7 +67,7 @@ fn k_gerc(
                     if (ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable) {
                         const temp: C1 = ops.mul( // temp = alpha * conj(y[jy])
                             alpha,
-                            ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
+                            ops.conj(y[scast(u32, jy)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
@@ -96,7 +96,7 @@ fn k_gerc(
                     if (ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable) {
                         const temp: C1 = ops.mul( // temp = alpha * conj(y[jy])
                             alpha,
-                            ops.conjugate(y[scast(u32, jy)], ctx) catch unreachable,
+                            ops.conj(y[scast(u32, jy)], ctx) catch unreachable,
                             ctx,
                         ) catch unreachable;
 
@@ -138,7 +138,7 @@ fn k_gerc(
                                 &a[scast(u32, i + j * lda)],
                                 a[scast(u32, i + j * lda)],
                                 ops.mul(
-                                    ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, i)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable,
@@ -168,7 +168,7 @@ fn k_gerc(
                                 &a[scast(u32, i + j * lda)],
                                 a[scast(u32, i + j * lda)],
                                 ops.mul(
-                                    ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                                     temp,
                                     ctx,
                                 ) catch unreachable,

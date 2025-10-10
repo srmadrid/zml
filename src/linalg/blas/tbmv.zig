@@ -125,7 +125,7 @@ fn k_tbmv(
                                         x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -136,7 +136,7 @@ fn k_tbmv(
                                     ops.mul_( // x[j] *= conj(a[k + j * lda])
                                         &x[scast(u32, j)],
                                         x[scast(u32, j)],
-                                        ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -185,7 +185,7 @@ fn k_tbmv(
                                         x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -198,7 +198,7 @@ fn k_tbmv(
                                     ops.mul_( // x[jx] *= conj(a[k + j * lda])
                                         &x[scast(u32, jx)],
                                         x[scast(u32, jx)],
-                                        ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -251,7 +251,7 @@ fn k_tbmv(
                                         x[scast(u32, i)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -262,7 +262,7 @@ fn k_tbmv(
                                     ops.mul_( // x[j] *= conj(a[0 + j * lda])
                                         &x[scast(u32, j)],
                                         x[scast(u32, j)],
-                                        ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -312,7 +312,7 @@ fn k_tbmv(
                                         x[scast(u32, ix)],
                                         ops.mul(
                                             temp,
-                                            ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                            ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                             ctx,
                                         ) catch unreachable,
                                         ctx,
@@ -325,7 +325,7 @@ fn k_tbmv(
                                     ops.mul_( // x[jx] *= conj(a[0 + j * lda])
                                         &x[scast(u32, jx)],
                                         x[scast(u32, jx)],
-                                        ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                         ctx,
                                     ) catch unreachable;
                                 }
@@ -376,7 +376,7 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[k + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -387,7 +387,7 @@ fn k_tbmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                         x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
@@ -438,7 +438,7 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[k + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, k + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, k + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -449,7 +449,7 @@ fn k_tbmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                         x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,
@@ -499,7 +499,7 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[0 + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -510,7 +510,7 @@ fn k_tbmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                         x[scast(u32, i)],
                                         ctx,
                                     ) catch unreachable,
@@ -560,7 +560,7 @@ fn k_tbmv(
                                 ops.mul_( // temp *= conj(a[0 + j * lda])
                                     &temp,
                                     temp,
-                                    ops.conjugate(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, 0 + j * lda)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable;
                             }
@@ -571,7 +571,7 @@ fn k_tbmv(
                                     &temp,
                                     temp,
                                     ops.mul(
-                                        ops.conjugate(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
+                                        ops.conj(a[scast(u32, l + i + j * lda)], ctx) catch unreachable,
                                         x[scast(u32, ix)],
                                         ctx,
                                     ) catch unreachable,

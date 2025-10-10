@@ -372,7 +372,7 @@ fn lconvert(
                 d[i + (n - 1)] = try ops.copy(a[utils.cindex(order, i, i, n)], ctx); // diagonal (a11)
                 d[i] = try ops.copy(a[utils.cindex(order, i + 1, i, n)], ctx); // subdiagonal (a21)
                 d[i + (n - 1) + n] = if (hermitian)
-                    try ops.conjugate(a[utils.cindex(order, i + 1, i, n)], ctx)
+                    try ops.conj(a[utils.cindex(order, i + 1, i, n)], ctx)
                 else
                     try ops.copy(a[utils.cindex(order, i + 1, i, n)], ctx); // superdiagonal (a12)
                 d[i + 1 + (n - 1)] = try ops.copy(a[utils.cindex(order, i + 1, i + 1, n)], ctx); // diagonal (a22)
@@ -636,7 +636,7 @@ fn uconvert(
             if (comptime @TypeOf(d) != @TypeOf(null)) {
                 d[(i - 1) + (n - 1)] = try ops.copy(a[utils.cindex(order, i - 1, i - 1, n)], ctx); // diagonal (a11)
                 d[i - 1] = if (hermitian)
-                    try ops.conjugate(a[utils.cindex(order, i - 1, i, n)], ctx)
+                    try ops.conj(a[utils.cindex(order, i - 1, i, n)], ctx)
                 else
                     try ops.copy(a[utils.cindex(order, i - 1, i, n)], ctx); // subdiagonal (a21)
                 d[(i - 1) + (n - 1) + n] = try ops.copy(a[utils.cindex(order, i - 1, i, n)], ctx); // superdiagonal (a12)

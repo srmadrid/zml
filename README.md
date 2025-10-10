@@ -21,25 +21,25 @@ This library is in the early stages of development and might return incorrect re
       - `Sparse`
   - Matrices (`matrix`):
     - Diverse storage formats:
-      - Dense (`dense`):
-        - `General`
-        - `Symmetric`
-        - `Hermitian`
-        - `Triangular`
-        - `Diagonal`
-        - `Banded`
-        - `Tridiagonal`
-      - Sparse (`sparse`):
-        - `General`
-        - `Symmetric`
-        - `Hermitian`
-        - `Triangular`
-        - `Banded`
-        - Block (`block`):
-          - `General`
-          - `Symmetric`
-          - `Hermitian`
-        - `Permutation`
+      - General (`general`):
+        - `Dense`
+        - `Sparse` (CSR, CSC)
+        - `Block` (BSR, BSC)
+      - Symmetric (`symmetric`):
+        - `Dense`
+        - `Sparse` (CSR, CSC)
+        - `Block` (BSR, BSC)
+      - Hermitian (`hermitian`):
+        - `Dense`
+        - `Sparse` (CSR, CSC)
+        - `Block` (BSR, BSC)
+      - Triangular (`triangular`):
+        - `Dense`
+        - `Sparse` (CSR, CSC)
+      - `Diagonal`
+      - `Banded`
+      - `Tridiagonal`
+      - `Permutation`
     - Matrix addition/subtraction and scalar multiplication/division
     - Views
   - N-dimensional arrays (`array`):

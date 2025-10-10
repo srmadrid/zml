@@ -44,12 +44,12 @@ pub inline fn hemv(
         return k_hemv(
             uplo.invert(),
             n,
-            ops.conjugate(alpha, ctx) catch unreachable,
+            ops.conj(alpha, ctx) catch unreachable,
             a,
             lda,
             x,
             incx,
-            ops.conjugate(beta, ctx) catch unreachable,
+            ops.conj(beta, ctx) catch unreachable,
             y,
             incy,
             false,
@@ -118,7 +118,7 @@ fn k_hemv(
                         for (0..scast(u32, n)) |i| {
                             ops.mul_( // y[i] = conj(y[i]) * beta
                                 &y[i],
-                                ops.conjugate(y[i], ctx) catch unreachable,
+                                ops.conj(y[i], ctx) catch unreachable,
                                 beta,
                                 ctx,
                             ) catch unreachable;
@@ -153,7 +153,7 @@ fn k_hemv(
                         for (0..scast(u32, n)) |_| {
                             ops.mul_( // y[iy] = conj(y[iy]) * beta
                                 &y[scast(u32, iy)],
-                                ops.conjugate(y[scast(u32, iy)], ctx) catch unreachable,
+                                ops.conj(y[scast(u32, iy)], ctx) catch unreachable,
                                 beta,
                                 ctx,
                             ) catch unreachable;
@@ -169,7 +169,7 @@ fn k_hemv(
             if (!noconj) {
                 if (incy == 1) {
                     for (0..scast(u32, n)) |i| {
-                        ops.conjugate_( // y[i] = conj(y[i])
+                        ops.conj_( // y[i] = conj(y[i])
                             &y[i],
                             y[i],
                             ctx,
@@ -178,7 +178,7 @@ fn k_hemv(
                 } else {
                     var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
                     for (0..scast(u32, n)) |_| {
-                        ops.conjugate_( // y[iy] = conj(y[iy])
+                        ops.conj_( // y[iy] = conj(y[iy])
                             &y[scast(u32, iy)],
                             y[scast(u32, iy)],
                             ctx,
@@ -221,7 +221,7 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, i)],
                                     ctx,
                                 ) catch unreachable,
@@ -279,7 +279,7 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, ix)],
                                     ctx,
                                 ) catch unreachable,
@@ -318,7 +318,7 @@ fn k_hemv(
                     var j: i32 = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
-                            ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                            ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                             alpha,
                             ctx,
                         ) catch unreachable;
@@ -341,8 +341,8 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                    ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, i)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -374,7 +374,7 @@ fn k_hemv(
                     var j: i32 = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
-                            ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                            ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                             alpha,
                             ctx,
                         ) catch unreachable;
@@ -399,8 +399,8 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                    ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -474,7 +474,7 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, i)],
                                     ctx,
                                 ) catch unreachable,
@@ -538,7 +538,7 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
                                     x[scast(u32, ix)],
                                     ctx,
                                 ) catch unreachable,
@@ -566,7 +566,7 @@ fn k_hemv(
                     var j: i32 = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
-                            ops.conjugate(x[scast(u32, j)], ctx) catch unreachable,
+                            ops.conj(x[scast(u32, j)], ctx) catch unreachable,
                             alpha,
                             ctx,
                         ) catch unreachable;
@@ -600,8 +600,8 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                    ops.conjugate(x[scast(u32, i)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, i)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -625,7 +625,7 @@ fn k_hemv(
                     var j: i32 = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
-                            ops.conjugate(x[scast(u32, jx)], ctx) catch unreachable,
+                            ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
                             alpha,
                             ctx,
                         ) catch unreachable;
@@ -664,8 +664,8 @@ fn k_hemv(
                                 &temp2,
                                 temp2,
                                 ops.mul(
-                                    ops.conjugate(a[scast(u32, i + j * lda)], ctx) catch unreachable,
-                                    ops.conjugate(x[scast(u32, ix)], ctx) catch unreachable,
+                                    ops.conj(a[scast(u32, i + j * lda)], ctx) catch unreachable,
+                                    ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
                                     ctx,
                                 ) catch unreachable,
                                 ctx,
@@ -693,7 +693,7 @@ fn k_hemv(
         if (!noconj) {
             if (incy == 1) {
                 for (0..scast(u32, n)) |i| {
-                    ops.conjugate_( // y[i] = conj(y[i])
+                    ops.conj_( // y[i] = conj(y[i])
                         &y[i],
                         y[i],
                         ctx,
@@ -702,7 +702,7 @@ fn k_hemv(
             } else {
                 var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
                 for (0..scast(u32, n)) |_| {
-                    ops.conjugate_( // y[iy] = conj(y[iy])
+                    ops.conj_( // y[iy] = conj(y[iy])
                         &y[scast(u32, iy)],
                         y[scast(u32, iy)],
                         ctx,
