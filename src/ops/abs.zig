@@ -71,8 +71,7 @@ pub inline fn abs(
                     },
                 );
 
-                @compileError("Not yet implemented"); // Just to show how the context might be
-                //return integer.abs(ctx.allocator, x, y); // Inside, if allocator is null return view, else copy
+                return integer.abs(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
             },
             else => @compileError("zml.abs for " ++ @typeName(X) ++ " not implemented yet"),
         },

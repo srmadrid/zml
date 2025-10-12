@@ -25,6 +25,20 @@ const vector = @import("vector.zig");
 const matrix = @import("matrix.zig");
 const array = @import("array.zig");
 
+pub const Cmp = enum(u2) {
+    gt,
+    eq,
+    lt,
+
+    pub inline fn invert(self: Cmp) Cmp {
+        return switch (self) {
+            .gt => .lt,
+            .eq => .eq,
+            .lt => .gt,
+        };
+    }
+};
+
 pub const Order = enum(u1) {
     row_major,
     col_major,
@@ -3900,8 +3914,8 @@ pub fn validateContext(comptime Ctx: type, comptime spec: anytype) void {
             const type_info = @typeInfo(expected_type);
             const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
                 break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
-            } else if (actual_type == @TypeOf(null))
-                type_info == .optional
+            } else if (type_info == .optional)
+                actual_type == type_info.optional.child or actual_type == @TypeOf(null)
             else
                 actual_type == expected_type;
 
@@ -4142,8 +4156,19 @@ pub fn ctxHasField(
 
 pub fn getFieldOrDefault(ctx: anytype, comptime field_name: []const u8, comptime FieldType: type, default_value: FieldType) FieldType {
     const T = @TypeOf(ctx);
+
     if (@hasField(T, field_name)) {
-        if (@FieldType(T, field_name) != FieldType and @FieldType(T, field_name) != @TypeOf(.enum_literal))
+        const actual_type = @FieldType(T, field_name);
+        const type_info = @typeInfo(FieldType);
+        const expected_type = FieldType;
+        const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
+            break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
+        } else if (type_info == .optional)
+            actual_type == type_info.optional.child or actual_type == @TypeOf(null)
+        else
+            actual_type == expected_type;
+
+        if (!types_match)
             @compileError("Field '" ++ field_name ++ "' has type " ++ @typeName(@FieldType(T, field_name)) ++ ", expected " ++ @typeName(FieldType));
 
         return @field(ctx, field_name);

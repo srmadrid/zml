@@ -64,10 +64,17 @@ pub inline fn neg(
             .cfloat => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return .{
-                    .re = -x.re,
-                    .im = -x.im,
-                };
+                return cfloat.neg(x);
+            },
+            .integer => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                return integer.abs(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
             },
             else => @compileError("zml.neg for " ++ @typeName(X) ++ " not implemented yet"),
         },

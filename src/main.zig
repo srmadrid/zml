@@ -593,7 +593,9 @@ pub fn main() !void {
 
     // try decompPerfTesting(a);
 
-    try matrixTesting(a);
+    // try matrixTesting(a);
+
+    try bigintTesting(a);
 }
 
 fn ask_user(default: u32) !u32 {
@@ -1219,6 +1221,126 @@ fn matrixTesting(a: std.mem.Allocator) !void {
     defer R.deinit(a);
 
     print_matrix("R = B + C", R);
+}
+
+// fn printBigint(a: std.mem.Allocator, x: zml.Integer) !void {
+//     if (x.size == 0) {
+//         std.debug.print("0\n", .{});
+//         return;
+//     }
+
+//     var tmp: zml.Integer = try zml.abs(x, .{ .allocator = a });
+
+//     const BASE10: u64 = 1000000000; // 1e9 chunks
+//     var dec_chunks: []u32 = try a.alloc(u32, 0);
+//     defer a.free(dec_chunks);
+
+//     var dec_len: u32 = 0;
+//     var dec_cap: u32 = 0;
+//     while (tmp.size != 0) {
+//         // Divide tmp by 1e9, get remainder
+//         var q: zml.Integer = try .init(a, tmp.size);
+//         var rem: u64 = 0;
+
+//         var i: i32 = zml.scast(i32, tmp.size);
+//         while (i >= 0) : (i -= 1) {
+//             const cur: u64 = (rem << 32) | zml.scast(u64, tmp.limbs[zml.scast(u32, i)]);
+//             q.limbs[zml.scast(u32, i)] = zml.scast(u32, cur / BASE10);
+//             rem = cur % BASE10;
+//         }
+
+//         // store remainder chunk
+//         if (dec_len == dec_cap) {
+//             dec_cap = if (dec_cap != 0) dec_cap * 2 else 8;
+//             dec_chunks = try a.realloc(dec_chunks, dec_cap);
+//         }
+
+//         dec_chunks[dec_len] = zml.scast(u32, rem);
+//         dec_len += 1;
+
+//         tmp.deinit(a);
+
+//         tmp = q; // continue dividing
+//     }
+
+//     // Print sign
+//     if (!x.positive)
+//         std.debug.print("-", .{});
+
+//     // Print highest chunk normally, others padded with zeros
+//     std.debug.print("{}", .{dec_chunks[dec_len - 1]});
+//     var i: i32 = zml.scast(i32, dec_len - 1);
+//     while (i >= 0) : (i -= 1)
+//         std.debug.print("{d:0>9}", .{dec_chunks[zml.scast(u32, i)]});
+
+//     std.debug.print("\n", .{});
+
+//     tmp.deinit(a);
+// }
+
+fn printBigint(a: std.mem.Allocator, x: zml.Integer) !void {
+    if (x.size == 0) {
+        std.debug.print("0\n", .{});
+        return;
+    }
+
+    var tmp: zml.Integer = try zml.abs(x, .{ .allocator = a });
+    defer tmp.deinit(a);
+
+    if (!x.positive)
+        std.debug.print("-", .{});
+
+    var buf: [1024]u8 = undefined;
+    var len: u32 = 0;
+    while (tmp.size != 0) {
+        const remainder: u32 = divide_by_10(&tmp);
+        buf[len] = zml.scast(u8, remainder + '0');
+        len += 1;
+    }
+
+    while (len > 0) : (len -= 1) {
+        std.debug.print("{c}", .{buf[len]});
+    }
+    std.debug.print("{c}", .{buf[len]});
+
+    std.debug.print("\n", .{});
+}
+
+fn divide_by_10(x: *zml.Integer) u32 {
+    var remainder: u32 = 0;
+
+    var i: i32 = zml.scast(i32, x.size - 1);
+    while (i >= 0) : (i -= 1) {
+        // Current value is remainder * 2^32 + limbs[i]
+        const current: u64 = zml.scast(u64, remainder) * 0x100000000 + x.limbs[zml.scast(u32, i)];
+        x.limbs[zml.scast(u32, i)] = zml.scast(u32, current / 10);
+        if (x.limbs[zml.scast(u32, i)] == 0 and i == zml.scast(i32, x.size - 1))
+            x.size -= 1;
+
+        remainder = zml.scast(u32, current % 10);
+    }
+
+    return remainder;
+}
+
+fn bigintTesting(a: std.mem.Allocator) !void {
+    const aa: comptime_int = 8172365876470591875963450187264284046516450314851984656187436561096734876913704;
+    var ia: zml.Integer = try .initSet(a, aa);
+    defer ia.deinit(a);
+    std.debug.print("ia: ", .{});
+    try printBigint(a, ia);
+
+    const bb: comptime_int = 102638758947509831758973098532560308059872658152635472531472517568751324;
+    var ib: zml.Integer = try .initSet(a, bb);
+    defer ib.deinit(a);
+    std.debug.print("ib: ", .{});
+    try printBigint(a, ib);
+
+    var ic: zml.Integer = try zml.integer.div(a, ia, ib);
+    defer ic.deinit(a);
+    std.debug.print("ic: ", .{});
+    try printBigint(a, ic);
+    std.debug.print("ic limbs: {any}\n", .{ic.limbs[0..ic.size]});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

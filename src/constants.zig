@@ -45,22 +45,49 @@ pub inline fn one(
     comptime T: type,
     ctx: anytype,
 ) !T {
-    comptime if (types.isArbitraryPrecision(T)) {
-        validateContext(
-            @TypeOf(ctx),
-            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
-        );
-    } else {
-        validateContext(@TypeOf(ctx), .{});
-    };
-
     switch (types.numericType(T)) {
-        .bool => return true,
-        .int => return 1,
-        .float => return 1,
-        .cfloat => return .{
-            .re = 1,
-            .im = 0,
+        .bool => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return true;
+        },
+        .int => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return 1;
+        },
+        .float => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return 1.0;
+        },
+        .cfloat => {
+            comptime validateContext(@TypeOf(ctx), .{});
+
+            return .{ .re = 1.0, .im = 0.0 };
+        },
+        .integer => {
+            comptime validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                },
+            );
+
+            if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                var result: integer.Integer = try .init(allocator, 2);
+                result.limbs[0] = 1;
+                result.size = 1;
+                return result;
+            } else {
+                return .{
+                    .limbs = @constCast((&[_]u32{1}).ptr),
+                    .size = 1,
+                    ._llen = 0,
+                    .positive = true,
+                    .flags = .{ .owns_data = false },
+                };
+            }
         },
         else => @compileError("zml.one not implemented for " ++ @typeName(T) ++ " yet"),
     }

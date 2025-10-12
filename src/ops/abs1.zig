@@ -63,6 +63,16 @@ pub inline fn abs1(
 
                 return cfloat.abs1(x);
             },
+            .integer => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                return integer.abs(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
+            },
             else => @compileError("zml.abs1 for " ++ @typeName(X) ++ " not implemented yet"),
         },
         else => unreachable,

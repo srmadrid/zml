@@ -1,13 +1,207 @@
 const std = @import("std");
+const builtin = @import("builtin");
+
+const types = @import("types.zig");
+const int = @import("int.zig");
 
 pub const Integer = struct {
-    limbs: []u32,
+    limbs: [*]u32,
     size: u32,
+    _llen: u32,
     positive: bool,
+    flags: Flags,
 
     pub const empty: Integer = .{
         .limbs = &.{},
         .size = 0,
+        ._llen = 0,
         .positive = true,
+        .flags = .{ .owns_data = false },
     };
+
+    pub fn init(allocator: std.mem.Allocator, size: u32) !Integer {
+        if (size == 0)
+            return Error.ZeroSize;
+
+        return .{
+            .limbs = (try allocator.alloc(u32, size)).ptr,
+            .size = 0,
+            ._llen = size,
+            .positive = true,
+            .flags = .{ .owns_data = true },
+        };
+    }
+
+    pub fn initSet(allocator: std.mem.Allocator, value: anytype) !Integer {
+        const V: type = @TypeOf(value);
+
+        if (comptime types.isNumeric(V)) {
+            switch (comptime types.numericType(V)) {
+                .bool => {
+                    var integer: Integer = try init(allocator, 2);
+                    if (value) {
+                        integer.limbs[0] = 1;
+                        integer.size = 1;
+                    }
+
+                    return integer;
+                },
+                .int => {
+                    if (comptime V == comptime_int) {
+                        comptime var abs_value: comptime_int = int.abs(value);
+                        const size: u32 = types.scast(u32, std.math.log2(abs_value) / 32 + 1);
+
+                        var integer: Integer = try init(allocator, size);
+                        comptime var i: u32 = 0;
+                        inline while (abs_value != 0) : (i += 1) {
+                            integer.limbs[i] = @truncate(abs_value & 0xFFFFFFFF);
+                            integer.size += 1;
+                            abs_value >>= 32;
+                        }
+
+                        if (value < 0) integer.positive = false;
+
+                        return integer;
+                    }
+
+                    const bits: u16 = @typeInfo(V).int.bits;
+                    const size: u32 = if (bits <= 32) 1 else bits / 32;
+
+                    var integer: Integer = try init(allocator, size);
+                    if (value < 0) integer.positive = false;
+
+                    switch (bits) {
+                        8 => {
+                            const uvalue: u8 = if (comptime @typeInfo(V).int.signedness == .signed)
+                                value & 0x7F
+                            else
+                                value;
+
+                            if (uvalue != 0) {
+                                integer.limbs[0] = uvalue;
+                                integer.size = 1;
+                            }
+                        },
+                        16 => {
+                            const uvalue: u16 = if (comptime @typeInfo(V).int.signedness == .signed)
+                                value & 0x7FFF
+                            else
+                                value;
+
+                            if (uvalue != 0) {
+                                integer.limbs[0] = uvalue;
+                                integer.size = 1;
+                            }
+                        },
+                        32, 64, 128 => {
+                            if (value != 0) {
+                                var chunks: [bits / 32]u32 = @bitCast(value);
+                                if (comptime builtin.cpu.arch.endian() == .big) {
+                                    // Reverse
+                                    var i: u32 = 0;
+                                    while (i < (bits / 32) / 2) : (i += 1) {
+                                        const temp: u32 = chunks[i];
+                                        chunks[i] = chunks[bits / 32 - 1 - i];
+                                        chunks[bits / 32 - 1 - i] = temp;
+                                    }
+                                }
+
+                                if (comptime @typeInfo(V).int.signedness == .signed)
+                                    chunks[bits / 32 - 1] &= 0x7FFFFFFF; // Remove sign
+
+                                var i: u32 = 0;
+                                while (i < bits / 32) : (i += 1) {
+                                    integer.limbs[i] = chunks[i];
+                                }
+
+                                integer.size = bits / 32;
+                            }
+                        },
+                        else => unreachable,
+                    }
+
+                    return integer;
+                },
+                .float => @compileError("Cannot initialize an Integer from a float"),
+                .cfloat => @compileError("Cannot initialize an Integer from a cfloat"),
+                .integer => {},
+                .rational => @compileError("Cannot initialize an Integer from a Rational"),
+                .real => @compileError("Cannot initialize an Integer from a Real"),
+                .complex => @compileError("Cannot initialize an Integer from a Complex"),
+                .expression => {
+                    // Must check if expression evaluates to valid init type
+                },
+            }
+        } else {
+            if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
+        }
+    }
+
+    pub fn deinit(self: *Integer, allocator: ?std.mem.Allocator) void {
+        if (self.flags.owns_data) {
+            allocator.?.free(self.limbs[0..self._llen]);
+        }
+
+        self.* = undefined;
+    }
+
+    pub fn reserve(self: *Integer, allocator: std.mem.Allocator, new_size: u32) !void {
+        if (self.flags.owns_data == false)
+            return;
+
+        if (new_size > self._llen) {
+            self.limbs = (try allocator.realloc(self.limbs[0..self._llen], new_size)).ptr;
+            self._llen = new_size;
+        }
+    }
+
+    pub fn trim(self: *Integer, allocator: std.mem.Allocator) !void {
+        if (self.flags.owns_data == false or self.size == self._llen)
+            return;
+
+        self.limbs = (try allocator.realloc(self.limbs[0..self._llen], self.size)).ptr;
+        self._llen = self.size;
+    }
+
+    pub fn copy(self: *const Integer, allocator: std.mem.Allocator) !Integer {
+        var result: Integer = try .init(allocator, int.max(1, self.size));
+
+        var i: u32 = 0;
+        while (i < self.size) : (i += 1) {
+            result.limbs[i] = self.limbs[i];
+        }
+
+        result.size = self.size;
+        result.positive = self.positive;
+
+        return result;
+    }
+};
+
+// Arithmetic operations
+pub const add = @import("integer/add.zig").add;
+pub const sub = @import("integer/sub.zig").sub;
+pub const mul = @import("integer/mul.zig").mul;
+pub const div = @import("integer/div.zig").div;
+
+// Comparison operations
+pub const cmp = @import("integer/cmp.zig").cmp;
+pub const eq = @import("integer/eq.zig").eq;
+pub const ne = @import("integer/ne.zig").ne;
+pub const lt = @import("integer/lt.zig").lt;
+pub const le = @import("integer/le.zig").le;
+pub const gt = @import("integer/gt.zig").gt;
+pub const ge = @import("integer/ge.zig").ge;
+
+// Basic operations
+pub const abs = @import("integer/abs.zig").abs;
+pub const neg = @import("integer/neg.zig").neg;
+
+pub const Error = error{
+    ZeroSize,
+    ZeroDivision,
+};
+
+pub const Flags = packed struct {
+    owns_data: bool = true,
 };

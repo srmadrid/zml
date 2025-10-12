@@ -11,7 +11,51 @@ const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
 
+/// Performs element-wise addition between two operands of compatible types.
 ///
+/// The `add` routine computes the sum `x + y`, automatically coercing
+/// compatible operand types and validating the provided context. The operation
+/// is performed in the coerced precision, and the resulting value is returned
+/// as a new value. It supports both fixed-precision and arbitrary-precision
+/// arithmetic, as well as structured data domains. The supported type
+/// combinations are:
+/// - **Numeric + Numeric**: scalar addition.
+/// - **Vector + Vector**: element-wise addition between vectors of equal
+///   length.
+/// - **Matrix + Matrix**: element-wise addition between matrices of equal
+///   shape.
+/// - **Numeric + Array**, **Array + Numeric**, and **Array + Array**:
+///   broadcasted element-wise addition.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn add(x: X, y: Y, ctx: anytype) !Coerce(X, Y)
+/// ```
+///
+/// Parameters
+/// ----------
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// `ctx` (`anytype`):
+/// A context struct providing necessary resources and configuration for the
+/// operation. The required fields depend on the operand types. If the context
+/// is missing required fields or contains unnecessary or wrongly typed fields,
+/// the compiler will emit a detailed error message describing the expected
+/// structure.
+///
+/// Returns
+/// -------
+/// `Coerce(@TypeOf(x), @TypeOf(y))`:
+/// The result of the element-wise addition.
+///
+/// Errors
+/// ------
+/// ``
 pub inline fn add(
     x: anytype,
     y: anytype,

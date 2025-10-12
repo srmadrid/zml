@@ -404,6 +404,7 @@ pub inline fn abs1(
 pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128
 pub const abs = @import("cfloat/abs.zig").abs; // 0/106 tests fail
 pub const abs2 = @import("cfloat/abs2.zig").abs2;
+pub const neg = @import("cfloat/neg.zig").neg;
 pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // 446/1695 tests fail: 17 for cf32, 68 for cf64, 141 for cf80, 220 for cf128
 pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32, 4 for cf64, 8 for cf80, 12 for cf128
 pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for cf32, 133 for cf64, 217 for cf80, 640 for cf128

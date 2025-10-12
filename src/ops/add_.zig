@@ -11,7 +11,56 @@ const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
 
+/// Performs in-place element-wise addition between two operands of compatible
+/// types.
 ///
+/// The `add_` routine computes the sum `x + y` and stores the result directly
+/// into `o`, automatically validating the provided context. The operation is
+/// performed in the coerced precision and then cast to the output type. It
+/// supports both fixed-precision and arbitrary-precision arithmetic, as well as
+/// structured data domains. The supported type combinations are:
+/// - **Numeric = Numeric + Numeric**: scalar addition.
+/// - **Vector = Vector + Vector**: element-wise addition between vectors of
+///   equal length.
+/// - **Matrix = Matrix + Matrix**: element-wise addition between matrices of
+///   equal shape.
+/// - **Array = Numeric + Numeric**, **Array = Numeric + Array**, **Array =
+///   Array + Numeric**, and **Array = Array + Array**: broadcasted element-wise
+///   addition.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn add_(o: *O, x: X, y: Y, ctx: anytype) !void
+/// ```
+///
+/// Parameters
+/// ----------
+/// `o` (`anytype`):
+/// The output pointer where the result will be stored. For arbitrary-precision
+/// or structured types, `o` must point to a properly initialized value.
+///
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// `ctx` (`anytype`):
+/// A context struct providing necessary resources and configuration for the
+/// operation. The required fields depend on the output and operand types. If
+/// the context is missing required fields or contains unnecessary or wrongly
+/// typed fields, the compiler will emit a detailed error message describing the
+/// expected structure.
+///
+/// Returns
+/// -------
+/// `void`:
+/// The result is written in place to `o`.
+///
+/// Errors
+/// ------
+/// ``
 pub inline fn add_(
     o: anytype,
     x: anytype,
