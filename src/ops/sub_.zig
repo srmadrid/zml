@@ -33,7 +33,7 @@ pub inline fn sub_(
         !types.isNumeric(O) and !types.isNumeric(X) and !types.isNumeric(Y))
         @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
 
-    const C: type = types.Coerce(X, Y);
+    const C: type = types.Coerce(O, types.Coerce(X, Y));
 
     switch (comptime types.domainType(O)) {
         .array => switch (comptime types.domainType(X)) {
@@ -230,22 +230,12 @@ pub inline fn sub_(
                     switch (comptime types.numericType(C)) {
                         .bool => @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .int => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            };
+                            comptime types.validateContext(
+                                @TypeOf(ctx),
+                                .{
+                                    .mode = .{ .type = int.Mode, .required = false },
+                                },
+                            );
 
                             try ops.set(
                                 o,
@@ -258,16 +248,7 @@ pub inline fn sub_(
                             );
                         },
                         .float => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -276,16 +257,7 @@ pub inline fn sub_(
                             );
                         },
                         .cfloat => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -293,8 +265,44 @@ pub inline fn sub_(
                                 ctx,
                             );
                         },
-                        .integer => @compileError("zml.sub_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
-                        .rational => @compileError("zml.sub_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                        .integer => {
+                            if (comptime types.isArbitraryPrecision(O)) {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                try integer.sub_(ctx.allocator, o, x, y);
+                            } else {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                var result: integer.Integer = try integer.sub(
+                                    ctx.internal_allocator,
+                                    x,
+                                    y,
+                                );
+                                defer result.deinit(ctx.internal_allocator);
+
+                                ops.set(o, result, .{}) catch unreachable;
+                            }
+                        },
+                        .rational => {
+                            comptime types.validateContext(
+                                @TypeOf(ctx),
+                                .{
+                                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                },
+                            );
+
+                            return integer.sub(ctx.allocator, x, y);
+                        },
                         .real => @compileError("zml.sub_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .complex => @compileError("zml.sub_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .expression => @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

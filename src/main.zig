@@ -1324,19 +1324,21 @@ fn divide_by_10(x: *zml.Integer) u32 {
 }
 
 fn bigintTesting(a: std.mem.Allocator) !void {
-    const aa: comptime_int = 8172365876470591875963450187264284046516450314851984656187436561096734876913704;
+    const aa: comptime_int = 6173286686928736458187560348563498567861645879034598438571493075841389085349085;
+    std.debug.print("aa: {d}\n\n", .{aa});
     var ia: zml.Integer = try .initSet(a, aa);
     defer ia.deinit(a);
     std.debug.print("ia: ", .{});
     try printBigint(a, ia);
 
-    const bb: comptime_int = 102638758947509831758973098532560308059872658152635472531472517568751324;
+    const bb: comptime_int = 1860589614895683489501987250913470857834075134761438761084501847985134589684619;
     var ib: zml.Integer = try .initSet(a, bb);
     defer ib.deinit(a);
     std.debug.print("ib: ", .{});
     try printBigint(a, ib);
 
-    var ic: zml.Integer = try zml.integer.div(a, ia, ib);
+    var ic: zml.Integer = try .init(a, zml.int.max(ia.size, ib.size) + 1);
+    try zml.mul_(&ic, ia, ib, .{ .allocator = a });
     defer ic.deinit(a);
     std.debug.print("ic: ", .{});
     try printBigint(a, ic);

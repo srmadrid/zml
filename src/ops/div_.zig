@@ -33,7 +33,7 @@ pub inline fn div_(
         !types.isNumeric(O) and !types.isNumeric(X) and !types.isNumeric(Y))
         @compileError("zml.div_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
 
-    const C: type = types.Coerce(X, Y);
+    const C: type = types.Coerce(O, types.Coerce(X, Y));
 
     switch (comptime types.domainType(O)) {
         .array => switch (comptime types.domainType(X)) {
@@ -146,16 +146,7 @@ pub inline fn div_(
                     switch (comptime types.numericType(C)) {
                         .bool => @compileError("zml.div_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .int => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -164,16 +155,7 @@ pub inline fn div_(
                             );
                         },
                         .float => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -182,16 +164,7 @@ pub inline fn div_(
                             );
                         },
                         .cfloat => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -199,7 +172,34 @@ pub inline fn div_(
                                 ctx,
                             );
                         },
-                        .integer => @compileError("zml.div_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                        .integer => {
+                            if (comptime types.isArbitraryPrecision(O)) {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                try integer.div_(ctx.allocator, o, x, y);
+                            } else {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                var result: integer.Integer = try integer.div(
+                                    ctx.internal_allocator,
+                                    x,
+                                    y,
+                                );
+                                defer result.deinit(ctx.internal_allocator);
+
+                                ops.set(o, result, .{}) catch unreachable;
+                            }
+                        },
                         .rational => @compileError("zml.div_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .real => @compileError("zml.div_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .complex => @compileError("zml.div_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

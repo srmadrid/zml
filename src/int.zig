@@ -1,7 +1,7 @@
 const types = @import("types.zig");
 const scast = types.scast;
 const Coerce = types.Coerce;
-const Order = types.Order;
+const Cmp = types.Cmp;
 
 pub inline fn add(
     x: anytype,
@@ -89,7 +89,7 @@ pub inline fn div(
 pub inline fn cmp(
     x: anytype,
     y: anytype,
-) Order {
+) Cmp {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 

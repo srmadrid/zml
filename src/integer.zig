@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 
 const types = @import("types.zig");
 const int = @import("int.zig");
+const float = @import("float.zig");
 
 pub const Integer = struct {
     limbs: [*]u32,
@@ -16,125 +17,27 @@ pub const Integer = struct {
         .size = 0,
         ._llen = 0,
         .positive = true,
-        .flags = .{ .owns_data = false },
+        .flags = .{ .owns_data = false, .writable = false },
     };
 
     pub fn init(allocator: std.mem.Allocator, size: u32) !Integer {
-        if (size == 0)
-            return Error.ZeroSize;
+        // if (size == 0)
+        //     return Error.ZeroSize;
 
         return .{
             .limbs = (try allocator.alloc(u32, size)).ptr,
             .size = 0,
             ._llen = size,
             .positive = true,
-            .flags = .{ .owns_data = true },
+            .flags = .{ .owns_data = true, .writable = true },
         };
     }
 
     pub fn initSet(allocator: std.mem.Allocator, value: anytype) !Integer {
-        const V: type = @TypeOf(value);
+        var integer = try Integer.init(allocator, 0);
 
-        if (comptime types.isNumeric(V)) {
-            switch (comptime types.numericType(V)) {
-                .bool => {
-                    var integer: Integer = try init(allocator, 2);
-                    if (value) {
-                        integer.limbs[0] = 1;
-                        integer.size = 1;
-                    }
-
-                    return integer;
-                },
-                .int => {
-                    if (comptime V == comptime_int) {
-                        comptime var abs_value: comptime_int = int.abs(value);
-                        const size: u32 = types.scast(u32, std.math.log2(abs_value) / 32 + 1);
-
-                        var integer: Integer = try init(allocator, size);
-                        comptime var i: u32 = 0;
-                        inline while (abs_value != 0) : (i += 1) {
-                            integer.limbs[i] = @truncate(abs_value & 0xFFFFFFFF);
-                            integer.size += 1;
-                            abs_value >>= 32;
-                        }
-
-                        if (value < 0) integer.positive = false;
-
-                        return integer;
-                    }
-
-                    const bits: u16 = @typeInfo(V).int.bits;
-                    const size: u32 = if (bits <= 32) 1 else bits / 32;
-
-                    var integer: Integer = try init(allocator, size);
-                    if (value < 0) integer.positive = false;
-
-                    switch (bits) {
-                        8 => {
-                            const uvalue: u8 = if (comptime @typeInfo(V).int.signedness == .signed)
-                                value & 0x7F
-                            else
-                                value;
-
-                            if (uvalue != 0) {
-                                integer.limbs[0] = uvalue;
-                                integer.size = 1;
-                            }
-                        },
-                        16 => {
-                            const uvalue: u16 = if (comptime @typeInfo(V).int.signedness == .signed)
-                                value & 0x7FFF
-                            else
-                                value;
-
-                            if (uvalue != 0) {
-                                integer.limbs[0] = uvalue;
-                                integer.size = 1;
-                            }
-                        },
-                        32, 64, 128 => {
-                            if (value != 0) {
-                                var chunks: [bits / 32]u32 = @bitCast(value);
-                                if (comptime builtin.cpu.arch.endian() == .big) {
-                                    // Reverse
-                                    var i: u32 = 0;
-                                    while (i < (bits / 32) / 2) : (i += 1) {
-                                        const temp: u32 = chunks[i];
-                                        chunks[i] = chunks[bits / 32 - 1 - i];
-                                        chunks[bits / 32 - 1 - i] = temp;
-                                    }
-                                }
-
-                                if (comptime @typeInfo(V).int.signedness == .signed)
-                                    chunks[bits / 32 - 1] &= 0x7FFFFFFF; // Remove sign
-
-                                var i: u32 = 0;
-                                while (i < bits / 32) : (i += 1) {
-                                    integer.limbs[i] = chunks[i];
-                                }
-
-                                integer.size = bits / 32;
-                            }
-                        },
-                        else => unreachable,
-                    }
-
-                    return integer;
-                },
-                .float => @compileError("Cannot initialize an Integer from a float"),
-                .cfloat => @compileError("Cannot initialize an Integer from a cfloat"),
-                .integer => {},
-                .rational => @compileError("Cannot initialize an Integer from a Rational"),
-                .real => @compileError("Cannot initialize an Integer from a Real"),
-                .complex => @compileError("Cannot initialize an Integer from a Complex"),
-                .expression => {
-                    // Must check if expression evaluates to valid init type
-                },
-            }
-        } else {
-            if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
-        }
+        try integer.set(allocator, value);
+        return integer;
     }
 
     pub fn deinit(self: *Integer, allocator: ?std.mem.Allocator) void {
@@ -163,6 +66,309 @@ pub const Integer = struct {
         self._llen = self.size;
     }
 
+    pub fn trimSize(self: *Integer) void {
+        while (self.size > 0 and self.limbs[self.size - 1] == 0) {
+            self.size -= 1;
+        }
+
+        if (self.size == 0) self.positive = true;
+    }
+
+    pub fn set(self: *Integer, allocator: std.mem.Allocator, value: anytype) !void {
+        const V: type = @TypeOf(value);
+
+        if (!self.flags.writable)
+            return Error.NotWritable;
+
+        if (comptime types.isNumeric(V)) {
+            switch (comptime types.numericType(V)) {
+                .bool => {
+                    if (self) {
+                        self.limbs[0] = 1;
+                        self.size = 1;
+                        self.positive = true;
+                    } else {
+                        self.size = 0;
+                        self.positive = true;
+                    }
+                },
+                .int => {
+                    if (comptime V == comptime_int) {
+                        if (value == 0) {
+                            self.size = 0;
+                            self.positive = true;
+                            return;
+                        }
+
+                        comptime var abs_value: comptime_int = int.abs(value);
+                        const size: u32 = types.scast(u32, std.math.log2(abs_value) / 32 + 1);
+
+                        if (self.flags.owns_data) {
+                            try self.reserve(allocator, size);
+                        } else if (self._llen < size) {
+                            return Error.DataNotOwned;
+                        }
+
+                        comptime var i: u32 = 0;
+                        inline while (abs_value != 0) : (i += 1) {
+                            self.limbs[i] = @truncate(abs_value & 0xFFFFFFFF);
+                            self.size += 1;
+                            abs_value >>= 32;
+                        }
+
+                        if (value < 0) self.positive = false;
+
+                        return;
+                    }
+
+                    const bits: u16 = @typeInfo(V).int.bits;
+                    const size: u32 = if (bits <= 32) 1 else bits / 32;
+
+                    if (self.flags.owns_data) {
+                        try self.reserve(allocator, size);
+                    } else if (self._llen < size) {
+                        return Error.DataNotOwned;
+                    }
+
+                    if (value < 0) self.positive = false;
+
+                    switch (bits) {
+                        8 => {
+                            const uvalue: u8 = if (comptime @typeInfo(V).int.signedness == .signed)
+                                value & 0x7F
+                            else
+                                value;
+
+                            if (uvalue != 0) {
+                                self.limbs[0] = uvalue;
+                                self.size = 1;
+                            }
+                        },
+                        16 => {
+                            const uvalue: u16 = if (comptime @typeInfo(V).int.signedness == .signed)
+                                value & 0x7FFF
+                            else
+                                value;
+
+                            if (uvalue != 0) {
+                                self.limbs[0] = uvalue;
+                                self.size = 1;
+                            }
+                        },
+                        32, 64, 128 => {
+                            if (value != 0) {
+                                var chunks: [bits / 32]u32 = @bitCast(value);
+                                if (comptime builtin.cpu.arch.endian() == .big) {
+                                    // Reverse
+                                    var i: u32 = 0;
+                                    while (i < (bits / 32) / 2) : (i += 1) {
+                                        const temp: u32 = chunks[i];
+                                        chunks[i] = chunks[bits / 32 - 1 - i];
+                                        chunks[bits / 32 - 1 - i] = temp;
+                                    }
+                                }
+
+                                if (comptime @typeInfo(V).int.signedness == .signed)
+                                    chunks[bits / 32 - 1] &= 0x7FFFFFFF; // Remove sign
+
+                                var i: u32 = 0;
+                                while (i < bits / 32) : (i += 1) {
+                                    self.limbs[i] = chunks[i];
+                                }
+
+                                self.size = bits / 32;
+                            }
+                        },
+                        else => unreachable,
+                    }
+                },
+                .float => {
+                    if (float.trunc(value) != value)
+                        return Error.NonIntegerFloat;
+
+                    if (comptime V == comptime_float) {
+                        return self.set(allocator, comptime types.scast(comptime_int, value));
+                    }
+
+                    if (!std.math.isFinite(value))
+                        return Error.NonIntegerFloat;
+
+                    const bits: u16 = @typeInfo(V).float.bits;
+
+                    switch (bits) {
+                        16 => {
+                            const size: u32 = 1; // Max size for f16 is 1 limb (u32)
+
+                            if (self.flags.owns_data) {
+                                try self.reserve(allocator, size);
+                            } else if (self._llen < size) {
+                                return Error.DataNotOwned;
+                            }
+
+                            if (value < 0) self.positive = false;
+
+                            const uvalue: u16 = @bitCast(value);
+                            const exponent: i16 = types.scast(i16, (uvalue & 0x7C00) >> 10) - 15;
+                            var mantissa: u32 = types.scast(u32, uvalue & 0x3FF);
+
+                            if (exponent == -15) {
+                                return; // Zero or subnormal
+                            } else {
+                                mantissa |= 0x400;
+                            }
+
+                            if (exponent > 10) {
+                                mantissa <<= @as(u5, @intCast(exponent - 10));
+                            } else {
+                                mantissa >>= @as(u5, @intCast(10 - exponent));
+                            }
+
+                            // Mantissa is now the integer value
+                            if (mantissa != 0) {
+                                self.limbs[0] = mantissa;
+                                self.size = 1;
+                            }
+                        },
+                        32 => {
+                            const uvalue: u32 = @bitCast(value);
+                            const exponent: i32 = types.scast(i32, (uvalue & 0x7F800000) >> 23) - 127;
+                            var mantissa: u160 = @intCast(uvalue & 0x7FFFFF);
+
+                            const size: u32 = if (exponent <= 8) 1 else (types.scast(u32, exponent) / 32 + 1);
+                            if (self.flags.owns_data) {
+                                try self.reserve(allocator, size);
+                            } else if (self._llen < size) {
+                                return Error.DataNotOwned;
+                            }
+
+                            if (value < 0) self.positive = false;
+
+                            if (exponent == -127) {
+                                return; // Zero or subnormal
+                            } else {
+                                mantissa |= 0x800000;
+                            }
+
+                            if (exponent > 23) {
+                                mantissa <<= @as(u7, @intCast(exponent - 23));
+                            } else if (exponent >= 0) {
+                                mantissa >>= @as(u7, @intCast(23 - exponent));
+                            } else {
+                                mantissa = 0;
+                            }
+
+                            // Mantissa is now the integer value
+                            while (mantissa != 0) {
+                                self.limbs[self.size] = @truncate(mantissa & 0xFFFFFFFF);
+                                self.size += 1;
+                                mantissa >>= 32;
+                            }
+                        },
+                        64 => {
+                            const uvalue: u64 = @bitCast(value);
+                            const exponent: i32 = types.scast(i32, (uvalue & 0x7FF0000000000000) >> 52) - 1023;
+                            var mantissa: u1088 = @intCast(uvalue & 0xFFFFFFFFFFFFF);
+
+                            const size: u32 = if (exponent <= -21) 1 else (types.scast(u32, exponent) / 32 + 1);
+                            if (self.flags.owns_data) {
+                                try self.reserve(allocator, size);
+                            } else if (self._llen < size) {
+                                return Error.DataNotOwned;
+                            }
+
+                            if (value < 0) self.positive = false;
+
+                            if (exponent == -1023) {
+                                return; // Zero or subnormal
+                            } else {
+                                mantissa |= 0x10000000000000;
+                            }
+
+                            if (exponent > 52) {
+                                mantissa <<= @as(u11, @intCast(exponent - 52));
+                            } else if (exponent >= 0) {
+                                mantissa >>= @as(u11, @intCast(52 - exponent));
+                            } else {
+                                mantissa = 0;
+                            }
+
+                            // Mantissa is now the integer value
+                            while (mantissa != 0) {
+                                self.limbs[self.size] = @truncate(mantissa & 0xFFFFFFFF);
+                                self.size += 1;
+                                mantissa >>= 32;
+                            }
+                        },
+                        80 => {
+                            return self.set(allocator, types.scast(f128, value));
+                        },
+                        128 => {
+                            const uvalue: u128 = @bitCast(value);
+                            const exponent: i32 = types.scast(i32, (uvalue & 0x7FFF0000000000000000000000000000) >> 112) - 16383;
+                            var mantissa: u16512 = @intCast(uvalue & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+
+                            const size: u32 = if (exponent <= -81) 1 else (types.scast(u32, exponent) / 32 + 1);
+                            if (self.flags.owns_data) {
+                                try self.reserve(allocator, size);
+                            } else if (self._llen < size) {
+                                return Error.DataNotOwned;
+                            }
+
+                            if (value < 0) self.positive = false;
+
+                            if (exponent == -16383) {
+                                return; // Zero or subnormal
+                            } else {
+                                mantissa |= 0x10000000000000000000000000000;
+                            }
+
+                            if (exponent > 112) {
+                                mantissa <<= @as(u15, @intCast(exponent - 112));
+                            } else if (exponent >= 0) {
+                                mantissa >>= @as(u15, @intCast(112 - exponent));
+                            } else {
+                                mantissa = 0;
+                            }
+
+                            // Mantissa is now the integer value
+                            while (mantissa != 0) {
+                                self.limbs[self.size] = @truncate(mantissa & 0xFFFFFFFF);
+                                self.size += 1;
+                                mantissa >>= 32;
+                            }
+                        },
+                        else => unreachable,
+                    }
+                },
+                .cfloat => @compileError("Cannot initialize an Integer from a cfloat"),
+                .integer => {
+                    if (self.flags.owns_data) {
+                        try self.reserve(allocator, value.size);
+                    } else if (self._llen < value.size) {
+                        return Error.DataNotOwned;
+                    }
+
+                    var i: u32 = 0;
+                    while (i < value.size) : (i += 1) {
+                        self.limbs[i] = value.limbs[i];
+                    }
+                    self.size = value.size;
+                    self.positive = value.positive;
+
+                    return;
+                },
+                .rational => @compileError("Cannot initialize an Integer from a Rational"),
+                .real => @compileError("Cannot initialize an Integer from a Real"),
+                .complex => @compileError("Cannot initialize an Integer from a Complex"),
+                .expression => {
+                    // Must check if expression evaluates to valid init type
+                },
+            }
+        } else {
+            if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
+        }
+    }
+
     pub fn copy(self: *const Integer, allocator: std.mem.Allocator) !Integer {
         var result: Integer = try .init(allocator, int.max(1, self.size));
 
@@ -180,9 +386,13 @@ pub const Integer = struct {
 
 // Arithmetic operations
 pub const add = @import("integer/add.zig").add;
+pub const add_ = @import("integer/add_.zig").add_;
 pub const sub = @import("integer/sub.zig").sub;
+pub const sub_ = @import("integer/sub_.zig").sub_;
 pub const mul = @import("integer/mul.zig").mul;
+pub const mul_ = @import("integer/mul_.zig").mul_;
 pub const div = @import("integer/div.zig").div;
+pub const div_ = @import("integer/div_.zig").div_;
 
 // Comparison operations
 pub const cmp = @import("integer/cmp.zig").cmp;
@@ -200,8 +410,12 @@ pub const neg = @import("integer/neg.zig").neg;
 pub const Error = error{
     ZeroSize,
     ZeroDivision,
+    NonIntegerFloat,
+    NotWritable,
+    DataNotOwned,
 };
 
 pub const Flags = packed struct {
     owns_data: bool = true,
+    writable: bool = true,
 };

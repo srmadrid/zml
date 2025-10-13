@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const float = @import("../float.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
@@ -24,6 +25,7 @@ pub fn add(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                 if (x.positive == y.positive) {
                     var result: Integer = try add_abs(allocator, x, y);
                     result.positive = x.positive;
+                    result.trimSize();
                     return result;
                 }
 
@@ -32,28 +34,28 @@ pub fn add(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                 if (cmp_abs == .gt) {
                     var result: Integer = try sub_abs_pos_geq(allocator, x, y);
                     result.positive = x.positive;
+                    result.trimSize();
                     return result;
                 } else {
                     var result: Integer = try sub_abs_pos_geq(allocator, y, x);
                     result.positive = y.positive;
+                    result.trimSize();
                     return result;
                 }
             },
-            .float => {
-                // Check y is integer -> y == floor(y)
-                // If not, use rational.add
+            .float, .int => {
+                var temp: Integer = try .initSet(allocator, y);
+                defer temp.deinit(allocator);
+                return add(allocator, x, temp);
             },
-            .int => {},
             else => unreachable,
         },
-        .float => switch (comptime types.numericType(Y)) {
+        .float, .int => switch (comptime types.numericType(Y)) {
             .integer => {
-                // Check x is integer -> x == floor(x)
+                var temp: Integer = try .initSet(allocator, x);
+                defer temp.deinit(allocator);
+                return add(allocator, temp, y);
             },
-            else => unreachable,
-        },
-        .int => switch (comptime types.numericType(Y)) {
-            .integer => {},
             else => unreachable,
         },
         else => unreachable,

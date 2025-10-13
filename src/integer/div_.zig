@@ -5,15 +5,13 @@ const constants = @import("../constants.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
-pub fn div(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
+pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !void {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .integer and types.numericType(X) != .int) or
-        (types.numericType(X) != .integer and types.numericType(X) != .float) or
-        (types.numericType(X) != .int and types.numericType(X) != .integer) or
-        (types.numericType(X) != .float and types.numericType(X) != .integer))
-        @compileError("integer.div requires at least one of x or y to be an integer, the other must be an int, float or integer, got " ++
+    comptime if (types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
+        types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)
+        @compileError("integer.add_ requires x and y to be an int, float or integer, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
     switch (comptime types.numericType(X)) {
@@ -22,13 +20,12 @@ pub fn div(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                 if (x.size == 0) return integer.Error.ZeroDivision;
 
                 if (integer.lt(integer.abs(null, x) catch unreachable, integer.abs(null, y) catch unreachable))
-                    return .init(allocator, 2);
+                    return o.set(allocator, 0);
 
                 const n: u32 = y.size;
                 const m: u32 = x.size - n;
 
-                var q: Integer = try .init(allocator, m + 1);
-                errdefer q.deinit(allocator);
+                try o.reserve(allocator, m + 1);
                 var r: Integer = try x.copy(allocator);
                 defer r.deinit(allocator);
 
@@ -45,24 +42,22 @@ pub fn div(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                     const u_high: u32 = r.limbs[j + n];
                     const u_next: u32 = r.limbs[j + n - 1];
                     const qhat: u32 = estimateQuotientDigit(u_high, u_next, v.limbs[n - 1]);
-                    q.limbs[j] = qhat;
+                    o.limbs[j] = qhat;
 
                     if (mulSub(r.limbs[j .. j + n + 1], v.limbs[0..n], qhat)) {
-                        q.limbs[j] -= 1;
+                        o.limbs[j] -= 1;
                         addBack(r.limbs[j .. j + n], &r.limbs[j + n], v.limbs[0..n]);
                     }
 
                     if (j == 0) break;
                 }
 
-                q.size = m + 1;
-                q.trimSize();
+                o.size = m + 1;
+                o.trimSize();
 
                 if (s > 0) shiftRightInPlace(r.limbs[0..r.size], @intCast(s));
 
-                q.positive = x.positive == y.positive;
-
-                return q;
+                o.positive = x.positive == y.positive;
             },
             .float => {
                 // Check y is integer -> y == floor(y)

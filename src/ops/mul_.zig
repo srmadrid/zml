@@ -33,7 +33,7 @@ pub inline fn mul_(
         !types.isNumeric(O) and !types.isNumeric(X) and !types.isNumeric(Y))
         @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
 
-    const C: type = types.Coerce(X, Y);
+    const C: type = types.Coerce(O, types.Coerce(X, Y));
 
     switch (comptime types.domainType(O)) {
         .array => switch (comptime types.domainType(X)) {
@@ -133,22 +133,12 @@ pub inline fn mul_(
                     switch (comptime types.numericType(C)) {
                         .bool => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .int => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            };
+                            comptime types.validateContext(
+                                @TypeOf(ctx),
+                                .{
+                                    .mode = .{ .type = int.Mode, .required = false },
+                                },
+                            );
 
                             try ops.set(
                                 o,
@@ -161,16 +151,7 @@ pub inline fn mul_(
                             );
                         },
                         .float => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -179,16 +160,7 @@ pub inline fn mul_(
                             );
                         },
                         .cfloat => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -196,7 +168,34 @@ pub inline fn mul_(
                                 ctx,
                             );
                         },
-                        .integer => @compileError("zml.mul_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                        .integer => {
+                            if (comptime types.isArbitraryPrecision(O)) {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                try integer.mul_(ctx.allocator, o, x, y);
+                            } else {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                var result: integer.Integer = try integer.mul(
+                                    ctx.internal_allocator,
+                                    x,
+                                    y,
+                                );
+                                defer result.deinit(ctx.internal_allocator);
+
+                                ops.set(o, result, .{}) catch unreachable;
+                            }
+                        },
                         .rational => @compileError("zml.mul_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .real => @compileError("zml.mul_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .complex => @compileError("zml.mul_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

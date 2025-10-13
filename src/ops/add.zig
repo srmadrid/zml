@@ -15,10 +15,10 @@ const array = @import("../array.zig");
 ///
 /// The `add` routine computes the sum `x + y`, automatically coercing
 /// compatible operand types and validating the provided context. The operation
-/// is performed in the coerced precision, and the resulting value is returned
-/// as a new value. It supports both fixed-precision and arbitrary-precision
-/// arithmetic, as well as structured data domains. The supported type
-/// combinations are:
+/// is performed in the coerced precision of the operands, and the resulting
+/// value is returned as a new value. It supports both fixed-precision and
+/// arbitrary-precision arithmetic, as well as structured data domains. The
+/// supported type combinations are:
 /// - **Numeric + Numeric**: scalar addition.
 /// - **Vector + Vector**: element-wise addition between vectors of equal
 ///   length.
@@ -254,8 +254,7 @@ pub inline fn add(
                             },
                         );
 
-                        @compileError("Not yet implemented"); // Just to show how the context might be
-                        //return integer.add(ctx.allocator, x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
+                        return integer.add(ctx.allocator, x, y);
                     },
                     else => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }

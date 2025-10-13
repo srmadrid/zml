@@ -13,7 +13,7 @@ pub fn sub(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
         (types.numericType(X) != .integer and types.numericType(X) != .float) or
         (types.numericType(X) != .int and types.numericType(X) != .integer) or
         (types.numericType(X) != .float and types.numericType(X) != .integer))
-        @compileError("integer.add requires at least one of x or y to be an integer, the other must be an int, float or integer, got " ++
+        @compileError("integer.sub requires at least one of x or y to be an integer, the other must be an int, float or integer, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
     return integer.add(allocator, x, ops.neg(y, .{}) catch unreachable);

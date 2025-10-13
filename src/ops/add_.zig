@@ -16,9 +16,10 @@ const array = @import("../array.zig");
 ///
 /// The `add_` routine computes the sum `x + y` and stores the result directly
 /// into `o`, automatically validating the provided context. The operation is
-/// performed in the coerced precision and then cast to the output type. It
-/// supports both fixed-precision and arbitrary-precision arithmetic, as well as
-/// structured data domains. The supported type combinations are:
+/// performed in the coerced precision of the operands and the output, and the
+/// result is then cast to the output type. It supports both fixed-precision and
+/// arbitrary-precision arithmetic, as well as structured data domains. The
+/// supported type combinations are:
 /// - **Numeric = Numeric + Numeric**: scalar addition.
 /// - **Vector = Vector + Vector**: element-wise addition between vectors of
 ///   equal length.
@@ -82,7 +83,7 @@ pub inline fn add_(
         !types.isNumeric(O) and !types.isNumeric(X) and !types.isNumeric(Y))
         @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
 
-    const C: type = types.Coerce(X, Y);
+    const C: type = types.Coerce(O, types.Coerce(X, Y));
 
     switch (comptime types.domainType(O)) {
         .array => switch (comptime types.domainType(X)) {
@@ -279,22 +280,12 @@ pub inline fn add_(
                     switch (comptime types.numericType(C)) {
                         .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .int => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            };
+                            comptime types.validateContext(
+                                @TypeOf(ctx),
+                                .{
+                                    .mode = .{ .type = int.Mode, .required = false },
+                                },
+                            );
 
                             try ops.set(
                                 o,
@@ -307,16 +298,7 @@ pub inline fn add_(
                             );
                         },
                         .float => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -325,16 +307,7 @@ pub inline fn add_(
                             );
                         },
                         .cfloat => {
-                            comptime if (types.isArbitraryPrecision(O)) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            } else {
-                                types.validateContext(@TypeOf(ctx), .{});
-                            };
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             try ops.set(
                                 o,
@@ -342,7 +315,7 @@ pub inline fn add_(
                                 ctx,
                             );
                         },
-                        .integer => { // Sketch. Not implemented yet.
+                        .integer => {
                             if (comptime types.isArbitraryPrecision(O)) {
                                 comptime types.validateContext(
                                     @TypeOf(ctx),
@@ -351,14 +324,7 @@ pub inline fn add_(
                                     },
                                 );
 
-                                const result: integer.Integer = try integer.add(
-                                    ctx.allocator,
-                                    x,
-                                    y,
-                                );
-
-                                // Result will have at least one Integer. So keep it (no copying), and do not deinit it.
-                                try ops.set(o, result, ctx);
+                                try integer.add_(ctx.allocator, o, x, y);
                             } else {
                                 comptime types.validateContext(
                                     @TypeOf(ctx),

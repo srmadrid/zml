@@ -16,7 +16,8 @@ const linalg = @import("../linalg.zig");
 
 const utils = @import("utils.zig");
 
-pub fn LU(T: type, order: Order) type {
+pub fn LU(M: type) type {
+    // M is a matrix type. It conditions the parameters and information stored about the decomposition.
     return struct {
         l: matrix.Triangular(T, .lower, .unit, order),
         u: matrix.Triangular(T, .upper, .non_unit, order),

@@ -48,13 +48,13 @@ pub inline fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(
 
 pub const matmul = @import("linalg/matmul.zig").matmul;
 
-const _lu = @import("linalg/lu.zig");
-pub const LU = _lu.LU;
-pub const lu = _lu.lu;
-pub const PLU = _lu.PLU;
-pub const plu = _lu.plu;
-pub const PLUQ = _lu.PLUQ;
-pub const pluq = _lu.pluq;
+// const _lu = @import("linalg/lu.zig");
+// pub const LU = _lu.LU;
+// pub const lu = _lu.lu;
+// pub const PLU = _lu.PLU;
+// pub const plu = _lu.plu;
+// pub const PLUQ = _lu.PLUQ;
+// pub const pluq = _lu.pluq;
 
 const _cholesky = @import("linalg/cholesky.zig");
 pub const LLT = _cholesky.LLT;

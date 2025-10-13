@@ -157,6 +157,16 @@ pub inline fn div(
 
                         return cfloat.div(x, y);
                     },
+                    .integer => {
+                        comptime types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+
+                        return integer.div(ctx.allocator, x, y);
+                    },
                     else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }
             },

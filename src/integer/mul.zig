@@ -47,6 +47,7 @@ pub fn mul(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                 }
 
                 result.size = x.size + y.size;
+                result.trimSize();
                 result.positive = x.positive == y.positive;
                 return result;
             },

@@ -331,6 +331,16 @@ pub inline fn mul(
 
                         return cfloat.mul(x, y);
                     },
+                    .integer => {
+                        comptime types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+
+                        return integer.mul(ctx.allocator, x, y);
+                    },
                     else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }
             },
