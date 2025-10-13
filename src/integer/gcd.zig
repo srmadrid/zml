@@ -1,0 +1,141 @@
+const std = @import("std");
+
+const types = @import("../types.zig");
+const int = @import("../int.zig");
+const float = @import("../float.zig");
+const integer = @import("../integer.zig");
+const Integer = integer.Integer;
+
+pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if ((types.numericType(X) != .integer and types.numericType(X) != .int) or
+        (types.numericType(X) != .integer and types.numericType(X) != .float) or
+        (types.numericType(X) != .int and types.numericType(X) != .integer) or
+        (types.numericType(X) != .float and types.numericType(X) != .integer))
+        @compileError("integer.gcd requires at least one of x or y to be an integer, the other must be an int, float or integer, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    switch (comptime types.numericType(X)) {
+        .integer => switch (comptime types.numericType(Y)) {
+            .integer => {
+                if (x.size == 0) return integer.abs(allocator, y);
+                if (y.size == 0) return integer.abs(allocator, x);
+
+                var a = try integer.abs(allocator, x);
+                errdefer a.deinit(allocator);
+
+                var b = try integer.abs(allocator, y);
+                defer b.deinit(allocator);
+
+                // Remove common factors of 2 from both a and b, store in `shift`.
+                const shift: u32 = int.min(trailingZeroBits(a), trailingZeroBits(b));
+
+                var s: u32 = shift;
+                while (s >= 32) : (s -= 32) {
+                    removeFirstLimb(&a);
+                    removeFirstLimb(&b);
+                }
+
+                if (s > 0) {
+                    @import("div_.zig").shiftRightInPlace(a.limbs[0..a.size], @intCast(s));
+                    a.trimSize();
+                    @import("div_.zig").shiftRightInPlace(b.limbs[0..b.size], @intCast(s));
+                    b.trimSize();
+                }
+
+                // Make sure a is odd.
+                while (a.size != 0 and (a.limbs[0] & 1) == 0) {
+                    @import("div_.zig").shiftRightInPlace(a.limbs[0..a.size], 1);
+                    a.trimSize();
+                }
+
+                while (true) {
+                    while (b.size != 0 and (b.limbs[0] & 1) == 0) {
+                        @import("div_.zig").shiftRightInPlace(b.limbs[0..b.size], 1);
+                        b.trimSize();
+                    }
+
+                    if (b.size == 0) break;
+
+                    if (integer.gt(a, b)) {
+                        const tmp = a;
+                        a = b;
+                        b = tmp;
+                    }
+
+                    try integer.sub_(allocator, &b, b, a);
+                    b.trimSize();
+                }
+
+                // Restore common factors of 2.
+                const limb_shift = shift / 32;
+                const bit_shift: u5 = @intCast(shift % 32);
+
+                if (limb_shift > 0) try addZeroLimbs(allocator, &a, limb_shift);
+                if (bit_shift > 0) {
+                    @import("div_.zig").shiftLeftInPlace(a.limbs[0..a.size], &a.limbs[a.size], bit_shift);
+                    a.trimSize();
+                }
+
+                return a;
+            },
+            .float, .int => {
+                var temp: Integer = try .initSet(allocator, y);
+                defer temp.deinit(allocator);
+                return gcd(allocator, x, temp);
+            },
+            else => unreachable,
+        },
+        .float, .int => switch (comptime types.numericType(Y)) {
+            .integer => {
+                var temp: Integer = try .initSet(allocator, x);
+                defer temp.deinit(allocator);
+                return gcd(allocator, temp, y);
+            },
+            else => unreachable,
+        },
+        else => unreachable,
+    }
+}
+
+fn trailingZeroBits(self: Integer) u32 {
+    var count: u32 = 0;
+    var i: u32 = 0;
+    while (i < self.size) : (i += 1) {
+        const limb = self.limbs[i];
+        if (limb == 0) {
+            count += 32;
+        } else {
+            count += @ctz(limb);
+            break;
+        }
+    }
+    return count;
+}
+
+fn removeFirstLimb(self: *Integer) void {
+    if (self.size == 0) return;
+    self.size -= 1;
+    var i: u32 = 0;
+    while (i < self.size) : (i += 1) {
+        self.limbs[i] = self.limbs[i + 1];
+    }
+    self.limbs[self.size] = 0;
+    self.trimSize();
+}
+
+fn addZeroLimbs(allocator: std.mem.Allocator, self: *Integer, n: u32) !void {
+    if (n == 0) return;
+    try self.reserve(allocator, self.size + n);
+    var i: u32 = self.size;
+    while (i > 0) : (i -= 1) {
+        self.limbs[i + n] = self.limbs[i];
+    }
+    i = 0;
+    while (i < n) : (i += 1) {
+        self.limbs[i] = 0;
+    }
+    self.size += n;
+}

@@ -25,13 +25,14 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 const n: u32 = y.size;
                 const m: u32 = x.size - n;
 
-                try o.reserve(allocator, m + 1);
                 var r: Integer = try x.copy(allocator);
                 defer r.deinit(allocator);
 
                 const s: u32 = @clz(y.limbs[n - 1]);
                 var v: Integer = try y.copy(allocator);
                 defer v.deinit(allocator);
+
+                try o.reserve(allocator, m + 1);
                 if (s > 0) {
                     shiftLeftInPlace(v.limbs[0..v.size], &v.limbs[v.size], @intCast(s));
                     shiftLeftInPlace(r.limbs[0..r.size], &r.limbs[r.size], @intCast(s));
@@ -56,6 +57,7 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 o.trimSize();
 
                 if (s > 0) shiftRightInPlace(r.limbs[0..r.size], @intCast(s));
+                if (r.limbs[r.size - 1] == 0 and r.size > 1) r.size -= 1;
 
                 o.positive = x.positive == y.positive;
             },
@@ -80,7 +82,7 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
     }
 }
 
-fn shiftLeftInPlace(limbs: []u32, next: ?*u32, s: u5) void {
+pub fn shiftLeftInPlace(limbs: []u32, next: ?*u32, s: u5) void {
     if (s == 0 or limbs.len == 0) return;
 
     var carry: u32 = 0;
@@ -98,7 +100,7 @@ fn shiftLeftInPlace(limbs: []u32, next: ?*u32, s: u5) void {
     }
 }
 
-fn shiftRightInPlace(limbs: []u32, s: u5) void {
+pub fn shiftRightInPlace(limbs: []u32, s: u5) void {
     if (s == 0 or limbs.len == 0) return;
 
     var carry: u32 = 0;

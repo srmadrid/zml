@@ -27,21 +27,42 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                     return;
                 }
 
-                if (x.positive == y.positive) {
-                    try add_abs(allocator, o, x, y);
-                    o.positive = x.positive;
+                // Aliasing checks
+                var tx: Integer = if (std.meta.eql(o.*, x))
+                    try x.copy(allocator)
+                else blk: {
+                    var tmp: Integer = x;
+                    tmp.flags.owns_data = false;
+                    break :blk tmp;
+                };
+                defer tx.deinit(allocator);
+                var ty: Integer = if (std.meta.eql(o.*, y))
+                    try y.copy(allocator)
+                else blk: {
+                    var tmp: Integer = y;
+                    tmp.flags.owns_data = false;
+                    break :blk tmp;
+                };
+                defer ty.deinit(allocator);
+
+                if (tx.positive == ty.positive) {
+                    try add_abs(allocator, o, tx, ty);
+                    o.positive = tx.positive;
                     o.trimSize();
                     return;
                 }
 
-                const cmp_abs: types.Cmp = integer.cmp(integer.abs(null, x) catch unreachable, integer.abs(null, y) catch unreachable);
+                // Reset o's size
+                o.size = 0;
+
+                const cmp_abs: types.Cmp = integer.cmp(integer.abs(null, tx) catch unreachable, integer.abs(null, ty) catch unreachable);
                 if (cmp_abs == .eq) return o.set(allocator, 0);
                 if (cmp_abs == .gt) {
-                    try sub_abs_pos_geq(allocator, o, x, y);
-                    o.positive = x.positive;
+                    try sub_abs_pos_geq(allocator, o, tx, ty);
+                    o.positive = tx.positive;
                 } else {
-                    try sub_abs_pos_geq(allocator, o, y, x);
-                    o.positive = y.positive;
+                    try sub_abs_pos_geq(allocator, o, ty, tx);
+                    o.positive = ty.positive;
                 }
 
                 o.trimSize();
@@ -113,6 +134,8 @@ fn sub_abs_pos_geq(allocator: std.mem.Allocator, o: *Integer, x: Integer, y: Int
         o.limbs[o.size] = @truncate(s & 0xFFFFFFFF);
         o.size += 1;
     }
+
+    o.trimSize();
 
     return;
 }

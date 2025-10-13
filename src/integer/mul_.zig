@@ -18,26 +18,44 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             .integer => {
                 if (x.size == 0 or y.size == 0) return o.set(allocator, 0);
 
-                try o.reserve(allocator, x.size + y.size);
+                // Aliasing check.
+                var tx: Integer = if (std.meta.eql(o.*, x))
+                    try x.copy(allocator)
+                else blk: {
+                    var tmp: Integer = x;
+                    tmp.flags.owns_data = false;
+                    break :blk tmp;
+                };
+                defer tx.deinit(allocator);
+                var ty: Integer = if (std.meta.eql(o.*, y))
+                    try y.copy(allocator)
+                else blk: {
+                    var tmp: Integer = y;
+                    tmp.flags.owns_data = false;
+                    break :blk tmp;
+                };
+                defer ty.deinit(allocator);
+
+                try o.reserve(allocator, tx.size + ty.size);
 
                 var i: u32 = 0;
-                while (i < x.size + y.size) : (i += 1) {
+                while (i < tx.size + ty.size) : (i += 1) {
                     o.limbs[i] = 0;
                 }
 
                 i = 0;
-                while (i < x.size) : (i += 1) {
+                while (i < tx.size) : (i += 1) {
                     var carry: u128 = 0;
                     var j: u32 = 0;
-                    while (j < y.size) : (j += 1) {
+                    while (j < ty.size) : (j += 1) {
                         const acc: u128 = types.scast(u128, o.limbs[i + j]) +
-                            types.scast(u128, x.limbs[i]) * types.scast(u128, y.limbs[j]) + carry;
+                            types.scast(u128, tx.limbs[i]) * types.scast(u128, ty.limbs[j]) + carry;
                         o.limbs[i + j] = @truncate(acc & 0xFFFFFFFF);
                         carry = acc >> 32;
                     }
 
                     // Propagate leftover carry.
-                    var k: u32 = i + y.size;
+                    var k: u32 = i + ty.size;
                     while (carry != 0) : (k += 1) {
                         const acc: u128 = types.scast(u128, o.limbs[k]) + carry;
                         o.limbs[k] = @truncate(acc & 0xFFFFFFFF);
@@ -45,9 +63,9 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                     }
                 }
 
-                o.size = x.size + y.size;
+                o.size = tx.size + ty.size;
                 o.trimSize();
-                o.positive = x.positive == y.positive;
+                o.positive = tx.positive == ty.positive;
             },
             .float, .int => {
                 var temp: Integer = try .initSet(allocator, y);

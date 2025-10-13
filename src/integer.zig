@@ -407,6 +407,8 @@ pub const ge = @import("integer/ge.zig").ge;
 pub const abs = @import("integer/abs.zig").abs;
 pub const neg = @import("integer/neg.zig").neg;
 
+pub const gcd = @import("integer/gcd.zig").gcd;
+
 pub const Error = error{
     ZeroSize,
     ZeroDivision,
