@@ -340,7 +340,9 @@ pub const Integer = struct {
                         else => unreachable,
                     }
                 },
-                .cfloat => @compileError("Cannot initialize an Integer from a cfloat"),
+                .cfloat => {
+                    return self.set(allocator, value.re);
+                },
                 .integer => {
                     if (self.flags.owns_data) {
                         try self.reserve(allocator, value.size);

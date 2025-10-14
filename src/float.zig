@@ -123,9 +123,9 @@ pub inline fn cmp(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.cmp requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -141,9 +141,9 @@ pub inline fn eq(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.eq requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -157,9 +157,9 @@ pub inline fn ne(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.neq requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -173,9 +173,9 @@ pub inline fn lt(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.lt requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -189,9 +189,9 @@ pub inline fn le(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.le requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -205,9 +205,9 @@ pub inline fn gt(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.gt requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -221,9 +221,9 @@ pub inline fn ge(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.ge requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -238,9 +238,9 @@ pub inline fn max(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.ge requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -255,9 +255,9 @@ pub inline fn min(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .int and types.numericType(X) != .float) or
-        (types.numericType(Y) != .int and types.numericType(Y) != .float) or
-        (types.numericType(X) != .float and types.numericType(Y) != .float))
+    comptime if (!(types.numericType(X) == .int and types.numericType(X) == .float) and
+        (types.numericType(Y) == .int and types.numericType(Y) == .float) and
+        (types.numericType(X) == .float and types.numericType(Y) == .float))
         @compileError("float.min requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 

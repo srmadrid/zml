@@ -10,10 +10,11 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .integer and types.numericType(X) != .int) or
-        (types.numericType(X) != .integer and types.numericType(X) != .float) or
-        (types.numericType(X) != .int and types.numericType(X) != .integer) or
-        (types.numericType(X) != .float and types.numericType(X) != .integer))
+    comptime if (!(types.numericType(X) == .integer and types.numericType(Y) == .int) and
+        !(types.numericType(X) == .integer and types.numericType(Y) == .float) and
+        !(types.numericType(X) == .integer and types.numericType(Y) == .integer) and
+        !(types.numericType(X) == .int and types.numericType(Y) == .integer) and
+        !(types.numericType(X) == .float and types.numericType(Y) == .integer))
         @compileError("integer.gcd requires at least one of x or y to be an integer, the other must be an int, float or integer, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -51,13 +52,16 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                     a.trimSize();
                 }
 
-                while (true) {
+                while (b.size != 0) {
                     while (b.size != 0 and (b.limbs[0] & 1) == 0) {
                         @import("div_.zig").shiftRightInPlace(b.limbs[0..b.size], 1);
                         b.trimSize();
                     }
 
                     if (b.size == 0) break;
+
+                    a.trimSize();
+                    b.trimSize();
 
                     if (integer.gt(a, b)) {
                         const tmp = a;
@@ -66,7 +70,6 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                     }
 
                     try integer.sub_(allocator, &b, b, a);
-                    b.trimSize();
                 }
 
                 // Restore common factors of 2.
@@ -117,25 +120,29 @@ fn trailingZeroBits(self: Integer) u32 {
 
 fn removeFirstLimb(self: *Integer) void {
     if (self.size == 0) return;
-    self.size -= 1;
     var i: u32 = 0;
-    while (i < self.size) : (i += 1) {
+    while (i + 1 < self.size) : (i += 1) {
         self.limbs[i] = self.limbs[i + 1];
     }
-    self.limbs[self.size] = 0;
+    self.size -= 1;
+    if (self.size > 0) self.limbs[self.size] = 0;
     self.trimSize();
 }
 
 fn addZeroLimbs(allocator: std.mem.Allocator, self: *Integer, n: u32) !void {
-    if (n == 0) return;
+    if (n == 0 or self.size == 0) return;
+
     try self.reserve(allocator, self.size + n);
+
     var i: u32 = self.size;
     while (i > 0) : (i -= 1) {
-        self.limbs[i + n] = self.limbs[i];
+        self.limbs[i + n - 1] = self.limbs[i - 1];
     }
-    i = 0;
-    while (i < n) : (i += 1) {
-        self.limbs[i] = 0;
+
+    var j: u32 = 0;
+    while (j < n) : (j += 1) {
+        self.limbs[j] = 0;
     }
+
     self.size += n;
 }

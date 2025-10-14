@@ -28,7 +28,7 @@ pub fn cmp(x: anytype, y: anytype) Cmp {
                 if (x.size != y.size) {
                     cmp_abs = if (x.size < y.size) .lt else .gt;
                 } else {
-                    var i: i32 = types.scast(i32, x.size);
+                    var i: i32 = types.scast(i32, x.size - 1);
                     while (i >= 0) : (i -= 1) {
                         if (x.limbs[types.scast(u32, i)] != y.limbs[types.scast(u32, i)]) {
                             cmp_abs = if (x.limbs[types.scast(u32, i)] < y.limbs[types.scast(u32, i)]) .lt else .gt;

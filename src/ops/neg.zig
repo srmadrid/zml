@@ -74,7 +74,7 @@ pub inline fn neg(
                     },
                 );
 
-                return integer.abs(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
+                return integer.neg(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
             },
             else => @compileError("zml.neg for " ++ @typeName(X) ++ " not implemented yet"),
         },

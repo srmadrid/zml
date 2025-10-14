@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const int = @import("../int.zig");
 const float = @import("../float.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
@@ -48,24 +49,28 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 if (tx.positive == ty.positive) {
                     try add_abs(allocator, o, tx, ty);
                     o.positive = tx.positive;
-                    o.trimSize();
                     return;
                 }
 
                 // Reset o's size
                 o.size = 0;
 
-                const cmp_abs: types.Cmp = integer.cmp(integer.abs(null, tx) catch unreachable, integer.abs(null, ty) catch unreachable);
-                if (cmp_abs == .eq) return o.set(allocator, 0);
-                if (cmp_abs == .gt) {
-                    try sub_abs_pos_geq(allocator, o, tx, ty);
+                const cmp_abs: types.Cmp =
+                    integer.cmp(
+                        integer.abs(null, tx) catch unreachable,
+                        integer.abs(null, ty) catch unreachable,
+                    );
+
+                if (cmp_abs == .eq) {
+                    return o.set(allocator, 0);
+                } else if (cmp_abs == .gt) {
+                    try sub_abs(allocator, o, tx, ty);
                     o.positive = tx.positive;
                 } else {
-                    try sub_abs_pos_geq(allocator, o, ty, tx);
+                    try sub_abs(allocator, o, ty, tx);
                     o.positive = ty.positive;
                 }
 
-                o.trimSize();
                 return;
             },
             .float, .int => {
@@ -96,7 +101,8 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
 }
 
 fn add_abs(allocator: std.mem.Allocator, o: *Integer, x: Integer, y: Integer) !void {
-    try o.reserve(allocator, (if (x.size > y.size) x.size else y.size) + 1);
+    // No aliasing allowed.
+    try o.reserve(allocator, int.max(x.size, y.size) + 1);
     var carry: u64 = 0;
     var i: u32 = 0;
     while (i < x.size or i < y.size or carry != 0) : (i += 1) {
@@ -109,12 +115,13 @@ fn add_abs(allocator: std.mem.Allocator, o: *Integer, x: Integer, y: Integer) !v
     }
 
     o.size = i;
+    o.trimSize();
 
     return;
 }
 
-fn sub_abs_pos_geq(allocator: std.mem.Allocator, o: *Integer, x: Integer, y: Integer) !void {
-    // Assumes a >= b >= 0 in absolute value.
+fn sub_abs(allocator: std.mem.Allocator, o: *Integer, x: Integer, y: Integer) !void {
+    // Assumes a >= b >= 0 in absolute value. No aliasing allowed.
     try o.reserve(allocator, x.size);
     var borrow: u64 = 0;
     var i: u32 = 0;
@@ -131,10 +138,10 @@ fn sub_abs_pos_geq(allocator: std.mem.Allocator, o: *Integer, x: Integer, y: Int
             borrow = 0;
         }
 
-        o.limbs[o.size] = @truncate(s & 0xFFFFFFFF);
-        o.size += 1;
+        o.limbs[i] = @truncate(s & 0xFFFFFFFF);
     }
 
+    o.size = i;
     o.trimSize();
 
     return;

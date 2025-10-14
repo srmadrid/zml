@@ -64,8 +64,8 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 }
 
                 o.size = tx.size + ty.size;
-                o.trimSize();
                 o.positive = tx.positive == ty.positive;
+                o.trimSize();
             },
             .float, .int => {
                 var temp: Integer = try .initSet(allocator, y);

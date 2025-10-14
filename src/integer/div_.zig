@@ -17,37 +17,65 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
     switch (comptime types.numericType(X)) {
         .integer => switch (comptime types.numericType(Y)) {
             .integer => {
-                if (x.size == 0) return integer.Error.ZeroDivision;
+                if (y.size == 0) return integer.Error.ZeroDivision;
 
                 if (integer.lt(integer.abs(null, x) catch unreachable, integer.abs(null, y) catch unreachable))
                     return o.set(allocator, 0);
 
+                if (y.size == 1) {
+                    try o.reserve(allocator, x.size);
+                    var carry: u64 = 0;
+                    var i: u32 = x.size;
+                    while (i > 0) : (i -= 1) {
+                        const limb: u64 = (carry << 32) | types.scast(u64, x.limbs[i - 1]);
+                        const q: u32 = @truncate(limb / types.scast(u64, y.limbs[0]));
+                        carry = limb % types.scast(u64, y.limbs[0]);
+                        o.limbs[i - 1] = q;
+                    }
+
+                    o.size = x.size;
+                    o.trimSize();
+                    o.positive = x.positive == y.positive;
+                    return;
+                }
+
+                // x.size and y.size > 1
                 const n: u32 = y.size;
                 const m: u32 = x.size - n;
 
-                var r: Integer = try x.copy(allocator);
+                // Ensure o has enough capacity for the left shift
+                var r: Integer = try .init(allocator, x.size + 1);
+                try r.set(allocator, x);
                 defer r.deinit(allocator);
 
                 const s: u32 = @clz(y.limbs[n - 1]);
+
+                // We left shift so y.limbs[n - 1] & (1 << 31) != 0
+                // So, no need to allocate an extra limb for v
                 var v: Integer = try y.copy(allocator);
                 defer v.deinit(allocator);
 
-                try o.reserve(allocator, m + 1);
                 if (s > 0) {
-                    shiftLeftInPlace(v.limbs[0..v.size], &v.limbs[v.size], @intCast(s));
+                    shiftLeftInPlace(v.limbs[0..v.size], null, @intCast(s));
                     shiftLeftInPlace(r.limbs[0..r.size], &r.limbs[r.size], @intCast(s));
                 }
 
+                try o.reserve(allocator, m + 1);
+
                 var j: u32 = m;
                 while (true) : (j -= 1) {
-                    const u_high: u32 = r.limbs[j + n];
-                    const u_next: u32 = r.limbs[j + n - 1];
-                    const qhat: u32 = estimateQuotientDigit(u_high, u_next, v.limbs[n - 1]);
+                    const qhat: u32 = estimate_qhat(
+                        r.limbs[j + n],
+                        r.limbs[j + n - 1],
+                        r.limbs[j + n - 2],
+                        v.limbs[n - 1],
+                        v.limbs[n - 2],
+                    );
                     o.limbs[j] = qhat;
 
-                    if (mulSub(r.limbs[j .. j + n + 1], v.limbs[0..n], qhat)) {
+                    if (mul_sub_(r.limbs[j .. j + n + 1], v.limbs[0..n], qhat)) {
                         o.limbs[j] -= 1;
-                        addBack(r.limbs[j .. j + n], &r.limbs[j + n], v.limbs[0..n]);
+                        add_back(r.limbs[j .. j + n + 1], v.limbs[0..n]);
                     }
 
                     if (j == 0) break;
@@ -56,7 +84,7 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 o.size = m + 1;
                 o.trimSize();
 
-                if (s > 0) shiftRightInPlace(r.limbs[0..r.size], @intCast(s));
+                if (s > 0) shiftRightInPlace(r.limbs[0..n], @intCast(s));
                 if (r.limbs[r.size - 1] == 0 and r.size > 1) r.size -= 1;
 
                 o.positive = x.positive == y.positive;
@@ -86,9 +114,10 @@ pub fn shiftLeftInPlace(limbs: []u32, next: ?*u32, s: u5) void {
     if (s == 0 or limbs.len == 0) return;
 
     var carry: u32 = 0;
-    for (limbs) |*limb| {
-        const new_carry: u32 = limb.* >> @as(u5, @intCast(32 - @as(u6, @intCast(s))));
-        limb.* = (limb.* << s) | carry;
+    var i: u32 = 0;
+    while (i < limbs.len) : (i += 1) {
+        const new_carry: u32 = limbs[i] >> @as(u5, @intCast(32 - @as(u6, @intCast(s))));
+        limbs[i] = (limbs[i] << s) | carry;
         carry = new_carry;
     }
 
@@ -113,47 +142,66 @@ pub fn shiftRightInPlace(limbs: []u32, s: u5) void {
     }
 }
 
-fn estimateQuotientDigit(u_high: u32, u_next: u32, v_high: u32) u32 {
-    const B: u64 = 1 << 32;
-    const num: u64 = (@as(u64, u_high) << 32) | u_next;
-    var qhat: u64 = num / @as(u64, v_high);
-    if (qhat > (B - 1)) qhat = B - 1;
+fn estimate_qhat(
+    u_high: u32, // u[j+n]
+    u_next: u32, // u[j+n−1]
+    u_next2: u32, // u[j+n−2]
+    v_high: u32, // v[n−1]
+    v_next: u32, // v[n−2]
+) u32 {
+    const b: u64 = 1 << 32;
+    const num: u64 = (types.scast(u64, u_high) << 32) | u_next;
+    var qhat: u64 = num / types.scast(u64, v_high);
+    var rhat: u64 = num % types.scast(u64, v_high);
+
+    var i: usize = 0;
+    while (i < 2) : (i += 1) {
+        if (qhat >= b or (qhat * types.scast(u64, v_next) > (rhat << 32) + types.scast(u64, u_next2))) {
+            qhat -= 1;
+            rhat += types.scast(u64, v_high);
+            if (rhat >= b) break;
+        } else break;
+    }
+
     return @truncate(qhat);
 }
 
-fn mulSub(u_part: []u32, v: []const u32, qhat: u32) bool {
+fn mul_sub_(u_part: []u32, v: []const u32, qhat: u32) bool {
     var carry: u64 = 0;
     var borrow: u64 = 0;
-
     const n = v.len;
+
     var i: usize = 0;
     while (i < n) : (i += 1) {
-        const p: u64 = @as(u64, v[i]) * qhat + carry;
-        const sub: u64 = @as(u64, u_part[i]) -% (p & 0xFFFFFFFF) -% borrow;
-        u_part[i] = @truncate(sub);
+        const prod: u64 = types.scast(u64, v[i]) * qhat + carry;
+        carry = prod >> 32;
 
-        carry = p >> 32;
-        borrow = if (sub >> 63 != 0) 1 else 0; // borrow if underflow
+        const res = @subWithOverflow(@as(u64, u_part[i]), (prod & 0xFFFFFFFF) + borrow);
+        u_part[i] = @truncate(res[0]);
+        borrow = @intCast(res[1]);
     }
 
-    // subtract the final carry and borrow from the high limb
-    const sub_high: u64 = @as(u64, u_part[n]) -% carry -% borrow;
-    u_part[n] = @truncate(sub_high);
+    const high_res = @subWithOverflow(@as(u64, u_part[n]), carry + borrow);
+    u_part[n] = @truncate(high_res[0]);
 
-    return (sub_high >> 63) != 0; // true if borrow propagated out
+    return high_res[1] != 0;
 }
 
-fn addBack(u_part: []u32, next: *u32, v: []const u32) void {
+fn add_back(u_part: []u32, v: []const u32) void {
     var carry: u64 = 0;
     const n = v.len;
     var i: usize = 0;
+
     while (i < n) : (i += 1) {
-        const sum: u64 = @as(u64, u_part[i]) + v[i] + carry;
+        const sum: u64 = @as(u64, u_part[i]) + @as(u64, v[i]) + carry;
         u_part[i] = @truncate(sum);
         carry = sum >> 32;
     }
 
-    if (carry != 0) {
-        next.* +%= @truncate(carry);
+    var k = n;
+    while (carry != 0 and k < u_part.len) : (k += 1) {
+        const sum: u64 = @as(u64, u_part[k]) + carry;
+        u_part[k] = @truncate(sum);
+        carry = sum >> 32;
     }
 }

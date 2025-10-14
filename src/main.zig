@@ -1280,7 +1280,7 @@ fn matrixTesting(a: std.mem.Allocator) !void {
 
 fn printBigint(a: std.mem.Allocator, x: zml.Integer) !void {
     if (x.size == 0) {
-        std.debug.print("0\n", .{});
+        std.debug.print("0", .{});
         return;
     }
 
@@ -1302,8 +1302,6 @@ fn printBigint(a: std.mem.Allocator, x: zml.Integer) !void {
         std.debug.print("{c}", .{buf[len]});
     }
     std.debug.print("{c}", .{buf[len]});
-
-    std.debug.print("\n", .{});
 }
 
 fn divide_by_10(x: *zml.Integer) u32 {
@@ -1323,24 +1321,70 @@ fn divide_by_10(x: *zml.Integer) u32 {
     return remainder;
 }
 
+fn printRational(a: std.mem.Allocator, r: zml.Rational, decimals: u32) !void {
+    // Handle sign
+    if (!r.num.positive and r.num.size != 0)
+        std.debug.print("-", .{});
+
+    // Absolute values
+    var num: zml.Integer = try zml.abs(r.num, .{ .allocator = a });
+    defer num.deinit(a);
+
+    var den: zml.Integer = try zml.abs(r.den, .{ .allocator = a });
+    defer den.deinit(a);
+
+    // Integer division: q = num / den, rem = num % den
+    var q: zml.Integer = try zml.div(num, den, .{ .allocator = a });
+    defer q.deinit(a);
+
+    var prod: zml.Integer = try zml.mul(q, den, .{ .allocator = a });
+    defer prod.deinit(a);
+
+    var rem: zml.Integer = try zml.sub(num, prod, .{ .allocator = a });
+    defer rem.deinit(a);
+
+    // Print integer part
+    try printBigint(a, q);
+
+    if (rem.size == 0 or decimals == 0) {
+        std.debug.print("\n", .{});
+        return;
+    }
+
+    std.debug.print(".", .{});
+
+    std.debug.print("(Not implemented)\n", .{});
+
+    std.debug.print("\n", .{});
+}
+
 fn bigintTesting(a: std.mem.Allocator) !void {
-    const aa: comptime_int = 85478246037010456544255392750059586367881676254258276629570544722750254761036557456139779300298443789636185364982367563718;
-    std.debug.print("aa: {d}\n\n", .{aa});
-    var ia: zml.Integer = try .initSet(a, aa);
+    const aa1: comptime_int = 198650943586513054615834513;
+    std.debug.print("aa1: {d}\n\n", .{aa1});
+    const aa2: comptime_int = 398159487530857415897439057145;
+    std.debug.print("aa2: {d}\n\n", .{aa2});
+    var ia: zml.Rational = try .initSet(a, aa1, aa2);
     defer ia.deinit(a);
     std.debug.print("ia: ", .{});
-    try printBigint(a, ia);
+    try printRational(a, ia, 100);
 
-    const bb: comptime_int = 981098460143798547385697856745872759817187377777777;
-    var ib: zml.Integer = try .initSet(a, bb);
-    defer ib.deinit(a);
-    std.debug.print("ib: ", .{});
-    try printBigint(a, ib);
+    std.debug.print("\nia as fraction:\n", .{});
+    try printBigint(a, ia.num);
+    std.debug.print("\n-----------------------------------------------\n", .{});
+    try printBigint(a, ia.den);
+    std.debug.print("\n\n", .{});
 
-    var ic: zml.Integer = try zml.integer.gcd(a, ia, ib);
-    defer ic.deinit(a);
-    std.debug.print("ic: ", .{});
-    try printBigint(a, ic);
+    // const bb: comptime_int = 981098460143798547385697856745872759817187377777777;
+    // var ib: zml.Integer = try .initSet(a, bb);
+    // defer ib.deinit(a);
+    // std.debug.print("ib: ", .{});
+    // try printBigint(a, ib);
+
+    // var ic: zml.Integer = try zml.integer.gcd(a, ia.num, ia.den);
+    // defer ic.deinit(a);
+    // std.debug.print("ic: ", .{});
+    // try printBigint(a, ic);
+    // std.debug.print("\n", .{});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

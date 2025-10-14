@@ -12,9 +12,9 @@ pub inline fn add(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
+    comptime if (!(types.numericType(X) == .bool and types.numericType(X) == .int) and
+        !(types.numericType(Y) == .bool and types.numericType(Y) == .int) and
+        !(types.numericType(X) == .int and types.numericType(Y) == .int))
         @compileError("int.add requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -34,9 +34,9 @@ pub inline fn sub(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
+    comptime if (!(types.numericType(X) == .bool and types.numericType(X) == .int) and
+        !(types.numericType(Y) == .bool and types.numericType(Y) == .int) and
+        !(types.numericType(X) == .int and types.numericType(Y) == .int))
         @compileError("int.sub requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -56,9 +56,9 @@ pub inline fn mul(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
+    comptime if (!(types.numericType(X) == .bool and types.numericType(X) == .int) and
+        !(types.numericType(Y) == .bool and types.numericType(Y) == .int) and
+        !(types.numericType(X) == .int and types.numericType(Y) == .int))
         @compileError("int.mul requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
@@ -77,9 +77,9 @@ pub inline fn div(
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int) or
-        (types.numericType(X) != .int and types.numericType(Y) != .int))
+    comptime if (!(types.numericType(X) == .bool and types.numericType(X) == .int) and
+        !(types.numericType(Y) == .bool and types.numericType(Y) == .int) and
+        !(types.numericType(X) == .int and types.numericType(Y) == .int))
         @compileError("int.div requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
