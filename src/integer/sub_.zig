@@ -14,6 +14,9 @@ pub fn sub_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
         @compileError("integer.sub_ requires x and y to be an int, float or integer, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
+    if (!o.flags.writable)
+        return integer.Error.NotWritable;
+
     switch (comptime types.numericType(X)) {
         .integer => switch (comptime types.numericType(Y)) {
             .integer => {

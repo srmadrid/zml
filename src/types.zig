@@ -183,7 +183,6 @@ pub const IterationOrder = enum {
 /// - `rational`: Represents arbitrary precision rational type (`Rational`).
 /// - `real`: Represents arbitrary precision real type (`Real`).
 /// - `complex`: Represents complex arbitrary precision types:
-///   - `Complex(Integer)`
 ///   - `Complex(Rational)`
 ///   - `Complex(Real)`
 /// - `expression`: Represents symbolic expressions (Expression).
@@ -199,34 +198,32 @@ pub const NumericType = enum {
     expression,
 };
 
-const supported_numeric_types: [34]type = .{
-    bool,              u8,
-    u16,               u32,
-    u64,               u128,
-    usize,             c_uint,
-    i8,                i16,
-    i32,               i64,
-    i128,              isize,
-    c_int,             comptime_int,
-    f16,               f32,
-    f64,               f80,
-    f128,              comptime_float,
-    cf16,              cf32,
-    cf64,              cf80,
-    cf128,             comptime_complex,
-    Integer,           Rational,
-    Real,              Complex(Integer),
-    Complex(Rational),
+const supported_numeric_types: [33]type = .{
+    bool,    u8,
+    u16,     u32,
+    u64,     u128,
+    usize,   c_uint,
+    i8,      i16,
+    i32,     i64,
+    i128,    isize,
+    c_int,   comptime_int,
+    f16,     f32,
+    f64,     f80,
+    f128,    comptime_float,
+    cf16,    cf32,
+    cf64,    cf80,
+    cf128,   comptime_complex,
+    Integer, Rational,
+    Real,    Complex(Rational),
     Complex(Real),
     // Expression,
 };
 
-const supported_complex_types: [9]type = .{
-    cf16,             cf32,
-    cf64,             cf80,
-    cf128,            comptime_complex,
-    Complex(Integer), Complex(Rational),
-    Complex(Real), // Expression,
+const supported_complex_types: [8]type = .{
+    cf16,  cf32,
+    cf64,  cf80,
+    cf128, comptime_complex,
+    Complex(Rational), Complex(Real), // Expression,
 };
 
 pub const VectorType = enum {
@@ -357,7 +354,7 @@ pub inline fn numericType(comptime T: type) NumericType {
                 return .rational;
             } else if (T == Real) {
                 return .real;
-            } else if (T == Complex(Integer) or T == Complex(Rational) or T == Complex(Real)) {
+            } else if (T == Complex(Rational) or T == Complex(Real)) {
                 return .complex;
                 //} else if (T == Expression) {
                 //    return .expression;
@@ -390,7 +387,7 @@ pub fn isNumeric(comptime T: type) bool {
                 return true;
             } else if (T == Real) {
                 return true;
-            } else if (T == Complex(Integer) or T == Complex(Rational) or T == Complex(Real)) {
+            } else if (T == Complex(Rational) or T == Complex(Real)) {
                 return true;
                 //} else if (T == Expression) {
                 //    return .expression;
@@ -2201,13 +2198,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .integer => return Complex(Rational),
                 .rational => return Complex(Rational),
                 .real => return Complex(Real),
-                .complex => {
-                    if (Y == Complex(Integer)) {
-                        return Complex(Rational);
-                    } else {
-                        return Y;
-                    }
-                },
+                .complex => return Y,
                 else => return Y,
             }
         },
@@ -2226,13 +2217,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             .cfloat => return Complex(Rational),
             .integer => return X,
             .rational => return X,
-            .complex => {
-                if (Y == Complex(Integer)) {
-                    return Complex(Rational);
-                } else {
-                    return Y;
-                }
-            },
+            .complex => return Y,
             else => return Y,
         },
         .real => switch (ynumeric) {
@@ -2244,9 +2229,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             .rational => return X,
             .real => return X,
             .complex => {
-                if (Y == Complex(Integer)) {
-                    return Complex(Real);
-                } else if (Y == Complex(Rational)) {
+                if (Y == Complex(Rational)) {
                     return Complex(Real);
                 } else {
                     return Y;
@@ -2258,13 +2241,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             .bool => return X,
             .int => return X,
             .float => return X,
-            .cfloat => {
-                if (X == Complex(Integer)) {
-                    return Complex(Rational);
-                } else {
-                    return X;
-                }
-            },
+            .cfloat => return X,
             .integer => return X,
             .rational => return X,
             .real => return X,
@@ -2748,13 +2725,7 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                 .integer => T3 = Complex(Rational),
                 .rational => T3 = Complex(Rational),
                 .real => T3 = Complex(Real),
-                .complex => {
-                    if (T2 == Complex(Integer)) {
-                        T3 = Complex(Rational);
-                    } else {
-                        T3 = T2;
-                    }
-                },
+                .complex => T3 = T2,
                 else => T3 = T2,
             }
         },
@@ -2773,13 +2744,7 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             .cfloat => T3 = Complex(Rational),
             .integer => T3 = T1,
             .rational => T3 = T1,
-            .complex => {
-                if (T2 == Complex(Integer)) {
-                    T3 = Complex(Rational);
-                } else {
-                    T3 = T2;
-                }
-            },
+            .complex => T3 = T2,
             else => T3 = T2,
         },
         .real => switch (t2numeric) {
@@ -2791,9 +2756,7 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             .rational => T3 = T1,
             .real => T3 = T1,
             .complex => {
-                if (T2 == Complex(Integer)) {
-                    T3 = Complex(Real);
-                } else if (T2 == Complex(Rational)) {
+                if (T2 == Complex(Rational)) {
                     T3 = Complex(Real);
                 } else {
                     T3 = T2;
@@ -2807,8 +2770,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
             .float => T3 = T1,
             .cfloat => {
                 if (T1 == Complex(Integer)) {
-                    T3 = Complex(Rational);
-                } else if (T1 == Complex(Integer)) {
                     T3 = Complex(Rational);
                 } else {
                     T3 = T1;
@@ -3269,20 +3230,19 @@ pub fn Scalar(comptime T: type) type {
             cf64 => return f64,
             cf80 => return f80,
             cf128 => return f128,
-            comptime_complex => return comptime_complex,
+            comptime_complex => return comptime_float,
             std.math.Complex(f16) => return f16,
             std.math.Complex(f32) => return f32,
             std.math.Complex(f64) => return f64,
             std.math.Complex(f80) => return f80,
             std.math.Complex(f128) => return f128,
-            std.math.Complex(comptime_complex) => return comptime_complex,
+            std.math.Complex(comptime_float) => return comptime_float,
             else => unreachable,
         },
         .integer => return Integer,
         .rational => return Rational,
         .real => return Real,
         .complex => switch (T) {
-            Complex(Integer) => return Integer,
             Complex(Rational) => return Rational,
             Complex(Real) => return Real,
             else => unreachable,

@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const constants = @import("../constants.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
@@ -11,8 +10,11 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
 
     comptime if (types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
         types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)
-        @compileError("integer.add_ requires x and y to be an int, float or integer, got " ++
+        @compileError("integer.div_ requires x and y to be an int, float or integer, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
+
+    if (!o.flags.writable)
+        return integer.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
         .integer => switch (comptime types.numericType(Y)) {
@@ -56,8 +58,9 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 defer v.deinit(allocator);
 
                 if (s > 0) {
-                    shiftLeftInPlace(v.limbs[0..v.size], null, @intCast(s));
-                    shiftLeftInPlace(r.limbs[0..r.size], &r.limbs[r.size], @intCast(s));
+                    _ = shiftLeftInPlace(v.limbs[0..v.size], null, @intCast(s));
+                    if (shiftLeftInPlace(r.limbs[0..r.size], &r.limbs[r.size], @intCast(s)))
+                        r.size += 1;
                 }
 
                 try o.reserve(allocator, m + 1);
@@ -65,12 +68,13 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 var j: u32 = m;
                 while (true) : (j -= 1) {
                     const qhat: u32 = estimate_qhat(
-                        r.limbs[j + n],
-                        r.limbs[j + n - 1],
-                        r.limbs[j + n - 2],
+                        if (j + n < r.size) r.limbs[j + n] else 0,
+                        if (j + n - 1 < r.size) r.limbs[j + n - 1] else 0,
+                        if (j + n - 2 < r.size) r.limbs[j + n - 2] else 0,
                         v.limbs[n - 1],
                         v.limbs[n - 2],
                     );
+
                     o.limbs[j] = qhat;
 
                     if (mul_sub_(r.limbs[j .. j + n + 1], v.limbs[0..n], qhat)) {
@@ -89,29 +93,34 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
 
                 o.positive = x.positive == y.positive;
             },
-            .float => {
-                // Check y is integer -> y == floor(y)
-                // If not, use rational.add
+            .float, .int => {
+                var temp: Integer = try .initSet(allocator, y);
+                defer temp.deinit(allocator);
+                return div_(allocator, o, x, temp);
             },
-            .int => {},
             else => unreachable,
         },
-        .float => switch (comptime types.numericType(Y)) {
+        .float, .int => switch (comptime types.numericType(Y)) {
+            .float, .int => {
+                var tx: Integer = try .initSet(allocator, x);
+                defer tx.deinit(allocator);
+                var ty: Integer = try .initSet(allocator, y);
+                defer ty.deinit(allocator);
+                return div_(allocator, o, tx, ty);
+            },
             .integer => {
-                // Check x is integer -> x == floor(x)
+                var temp: Integer = try .initSet(allocator, x);
+                defer temp.deinit(allocator);
+                return div_(allocator, o, temp, y);
             },
-            else => unreachable,
-        },
-        .int => switch (comptime types.numericType(Y)) {
-            .integer => {},
             else => unreachable,
         },
         else => unreachable,
     }
 }
 
-pub fn shiftLeftInPlace(limbs: []u32, next: ?*u32, s: u5) void {
-    if (s == 0 or limbs.len == 0) return;
+pub fn shiftLeftInPlace(limbs: []u32, next: ?*u32, s: u5) bool {
+    if (s == 0 or limbs.len == 0) return false;
 
     var carry: u32 = 0;
     var i: u32 = 0;
@@ -126,7 +135,11 @@ pub fn shiftLeftInPlace(limbs: []u32, next: ?*u32, s: u5) void {
         if (next) |n| {
             n.* = carry;
         }
+
+        return true;
     }
+
+    return false;
 }
 
 pub fn shiftRightInPlace(limbs: []u32, s: u5) void {
@@ -175,10 +188,19 @@ fn mul_sub_(u_part: []u32, v: []const u32, qhat: u32) bool {
     while (i < n) : (i += 1) {
         const prod: u64 = types.scast(u64, v[i]) * qhat + carry;
         carry = prod >> 32;
+        const prod_low: u64 = prod & 0xFFFFFFFF;
 
-        const res = @subWithOverflow(@as(u64, u_part[i]), (prod & 0xFFFFFFFF) + borrow);
-        u_part[i] = @truncate(res[0]);
-        borrow = @intCast(res[1]);
+        // Compute u_part[i] - prod_low - borrow
+        const u_val: u64 = @as(u64, u_part[i]);
+        const sub_val: u64 = prod_low + borrow;
+
+        if (u_val >= sub_val) {
+            u_part[i] = @truncate(u_val - sub_val);
+            borrow = 0;
+        } else {
+            u_part[i] = @truncate(u_val + (1 << 32) - sub_val);
+            borrow = 1;
+        }
     }
 
     const high_res = @subWithOverflow(@as(u64, u_part[n]), carry + borrow);

@@ -78,7 +78,9 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
 
                 if (limb_shift > 0) try addZeroLimbs(allocator, &a, limb_shift);
                 if (bit_shift > 0) {
-                    @import("div_.zig").shiftLeftInPlace(a.limbs[0..a.size], &a.limbs[a.size], bit_shift);
+                    if (@import("div_.zig").shiftLeftInPlace(a.limbs[0..a.size], &a.limbs[a.size], bit_shift))
+                        a.size += 1;
+
                     a.trimSize();
                 }
 

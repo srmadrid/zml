@@ -6,7 +6,7 @@ const Real = @import("real.zig").Real;
 // Limit Complex to Rational and Real? i.e., remove Integer? If so, edit coercion functions
 
 pub fn Complex(comptime T: type) type {
-    if (T != Integer and T != Rational and T != Real)
+    if (T != Rational and T != Real)
         @compileError("Unsupported type for Complex: " ++ @typeName(T));
 
     return struct {

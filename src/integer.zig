@@ -2,8 +2,11 @@ const std = @import("std");
 const builtin = @import("builtin");
 
 const types = @import("types.zig");
+const constants = @import("constants.zig");
 const int = @import("int.zig");
 const float = @import("float.zig");
+const rational = @import("rational.zig");
+const Rational = rational.Rational;
 
 pub const Integer = struct {
     limbs: [*]u32,
@@ -50,7 +53,7 @@ pub const Integer = struct {
 
     pub fn reserve(self: *Integer, allocator: std.mem.Allocator, new_size: u32) !void {
         if (self.flags.owns_data == false)
-            return;
+            return Error.DataNotOwned;
 
         if (new_size > self._llen) {
             self.limbs = (try allocator.realloc(self.limbs[0..self._llen], new_size)).ptr;
@@ -83,6 +86,8 @@ pub const Integer = struct {
         if (comptime types.isNumeric(V)) {
             switch (comptime types.numericType(V)) {
                 .bool => {
+                    try self.reserve(allocator, 1);
+
                     if (self) {
                         self.limbs[0] = 1;
                         self.size = 1;
@@ -93,13 +98,15 @@ pub const Integer = struct {
                     }
                 },
                 .int => {
-                    if (comptime V == comptime_int) {
-                        if (value == 0) {
-                            self.size = 0;
-                            self.positive = true;
-                            return;
-                        }
+                    if (value == 0) {
+                        try self.reserve(allocator, 1);
 
+                        self.size = 0;
+                        self.positive = true;
+                        return;
+                    }
+
+                    if (comptime V == comptime_int) {
                         comptime var abs_value: comptime_int = int.abs(value);
                         const size: u32 = types.scast(u32, std.math.log2(abs_value) / 32 + 1);
 
@@ -183,15 +190,22 @@ pub const Integer = struct {
                     }
                 },
                 .float => {
-                    if (float.trunc(value) != value)
-                        return Error.NonIntegerFloat;
+                    const v: V = float.trunc(value);
 
-                    if (comptime V == comptime_float) {
-                        return self.set(allocator, comptime types.scast(comptime_int, value));
+                    if (v == 0) {
+                        try self.reserve(allocator, 1);
+
+                        self.size = 0;
+                        self.positive = true;
+                        return;
                     }
 
-                    if (!std.math.isFinite(value))
-                        return Error.NonIntegerFloat;
+                    if (comptime V == comptime_float) {
+                        return self.set(allocator, comptime types.scast(comptime_int, v));
+                    }
+
+                    if (!std.math.isFinite(v))
+                        return Error.NonInteger;
 
                     const bits: u16 = @typeInfo(V).float.bits;
 
@@ -207,7 +221,7 @@ pub const Integer = struct {
 
                             if (value < 0) self.positive = false;
 
-                            const uvalue: u16 = @bitCast(value);
+                            const uvalue: u16 = @bitCast(v);
                             const exponent: i16 = types.scast(i16, (uvalue & 0x7C00) >> 10) - 15;
                             var mantissa: u32 = types.scast(u32, uvalue & 0x3FF);
 
@@ -230,7 +244,7 @@ pub const Integer = struct {
                             }
                         },
                         32 => {
-                            const uvalue: u32 = @bitCast(value);
+                            const uvalue: u32 = @bitCast(v);
                             const exponent: i32 = types.scast(i32, (uvalue & 0x7F800000) >> 23) - 127;
                             var mantissa: u160 = @intCast(uvalue & 0x7FFFFF);
 
@@ -265,7 +279,7 @@ pub const Integer = struct {
                             }
                         },
                         64 => {
-                            const uvalue: u64 = @bitCast(value);
+                            const uvalue: u64 = @bitCast(v);
                             const exponent: i32 = types.scast(i32, (uvalue & 0x7FF0000000000000) >> 52) - 1023;
                             var mantissa: u1088 = @intCast(uvalue & 0xFFFFFFFFFFFFF);
 
@@ -303,7 +317,7 @@ pub const Integer = struct {
                             return self.set(allocator, types.scast(f128, value));
                         },
                         128 => {
-                            const uvalue: u128 = @bitCast(value);
+                            const uvalue: u128 = @bitCast(v);
                             const exponent: i32 = types.scast(i32, (uvalue & 0x7FFF0000000000000000000000000000) >> 112) - 16383;
                             var mantissa: u16512 = @intCast(uvalue & 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
 
@@ -359,16 +373,20 @@ pub const Integer = struct {
 
                     return;
                 },
-                .rational => @compileError("Cannot initialize an Integer from a Rational"),
-                .real => @compileError("Cannot initialize an Integer from a Real"),
-                .complex => @compileError("Cannot initialize an Integer from a Complex"),
-                .expression => {
-                    // Must check if expression evaluates to valid init type
+                .rational => {
+                    if (eq(value.den, 1, .{}) catch unreachable) {
+                        return self.set(allocator, value.num);
+                    } else {
+                        return div_(allocator, self, value.num, value.den);
+                    }
                 },
+                .real => {},
+                .complex => {
+                    return self.set(allocator, value.re);
+                },
+                .expression => {},
             }
-        } else {
-            if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
-        }
+        } else if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
     }
 
     pub fn copy(self: *const Integer, allocator: std.mem.Allocator) !Integer {
@@ -383,6 +401,17 @@ pub const Integer = struct {
         result.positive = self.positive;
 
         return result;
+    }
+
+    pub fn asRational(self: *const Integer) Rational {
+        var num: Integer = self.*;
+        num.flags.owns_data = false;
+
+        return .{
+            .num = num,
+            .den = constants.one(Integer, .{}) catch unreachable,
+            .flags = .{ .owns_data = false, .writable = false },
+        };
     }
 };
 
@@ -414,7 +443,7 @@ pub const gcd = @import("integer/gcd.zig").gcd;
 pub const Error = error{
     ZeroSize,
     ZeroDivision,
-    NonIntegerFloat,
+    NonInteger,
     NotWritable,
     DataNotOwned,
 };

@@ -1290,7 +1290,7 @@ fn printBigint(a: std.mem.Allocator, x: zml.Integer) !void {
     if (!x.positive)
         std.debug.print("-", .{});
 
-    var buf: [1024]u8 = undefined;
+    var buf: [2048]u8 = undefined;
     var len: u32 = 0;
     while (tmp.size != 0) {
         const remainder: u32 = divide_by_10(&tmp);
@@ -1312,10 +1312,12 @@ fn divide_by_10(x: *zml.Integer) u32 {
         // Current value is remainder * 2^32 + limbs[i]
         const current: u64 = zml.scast(u64, remainder) * 0x100000000 + x.limbs[zml.scast(u32, i)];
         x.limbs[zml.scast(u32, i)] = zml.scast(u32, current / 10);
-        if (x.limbs[zml.scast(u32, i)] == 0 and i == zml.scast(i32, x.size - 1))
-            x.size -= 1;
 
         remainder = zml.scast(u32, current % 10);
+    }
+
+    while (x.size > 0 and x.limbs[x.size - 1] == 0) {
+        x.size -= 1;
     }
 
     return remainder;
@@ -1347,44 +1349,73 @@ fn printRational(a: std.mem.Allocator, r: zml.Rational, decimals: u32) !void {
     try printBigint(a, q);
 
     if (rem.size == 0 or decimals == 0) {
-        std.debug.print("\n", .{});
         return;
     }
 
     std.debug.print(".", .{});
 
-    std.debug.print("(Not implemented)\n", .{});
+    // Print fractional part
+    var i: u32 = 0;
+    while (i < decimals and rem.size != 0) : (i += 1) {
+        // rem = rem * 10
+        var rem_times_10: zml.Integer = try zml.mul(rem, 10, .{ .allocator = a });
+        defer rem_times_10.deinit(a);
 
-    std.debug.print("\n", .{});
+        // digit = rem / den
+        var digit: zml.Integer = try zml.div(rem_times_10, den, .{ .allocator = a });
+        defer digit.deinit(a);
+
+        // rem = rem % den
+        try zml.mul_(&prod, digit, den, .{ .allocator = a });
+
+        const new_rem: zml.Integer = try zml.sub(rem_times_10, prod, .{ .allocator = a });
+
+        // Print digit
+        std.debug.print("{d}", .{if (digit.size == 0) 0 else digit.limbs[0]});
+
+        rem.deinit(a);
+        rem = new_rem;
+    }
 }
 
 fn bigintTesting(a: std.mem.Allocator) !void {
-    const aa1: comptime_int = 198650943586513054615834513;
-    std.debug.print("aa1: {d}\n\n", .{aa1});
-    const aa2: comptime_int = 398159487530857415897439057145;
-    std.debug.print("aa2: {d}\n\n", .{aa2});
+    const aa1: comptime_int = 213573495732409856148963987156347856094385609346109656834716915698347561837465871436598634;
+    const aa2: comptime_int = 717754735801349010983650164035961436510475601483756187346587164031746508173460571634058167;
     var ia: zml.Rational = try .initSet(a, aa1, aa2);
     defer ia.deinit(a);
     std.debug.print("ia: ", .{});
-    try printRational(a, ia, 100);
-
+    try printRational(a, ia, 50);
+    std.debug.print("\n", .{});
     std.debug.print("\nia as fraction:\n", .{});
     try printBigint(a, ia.num);
     std.debug.print("\n-----------------------------------------------\n", .{});
     try printBigint(a, ia.den);
     std.debug.print("\n\n", .{});
 
-    // const bb: comptime_int = 981098460143798547385697856745872759817187377777777;
-    // var ib: zml.Integer = try .initSet(a, bb);
-    // defer ib.deinit(a);
-    // std.debug.print("ib: ", .{});
-    // try printBigint(a, ib);
+    const bb1: comptime_int = 981098460143798547385697856745872759817187377777777;
+    const bb2: comptime_int = 3401987401987401987401987401987401987401987401987401;
+    var ib: zml.Rational = try .initSet(a, bb1, bb2);
+    defer ib.deinit(a);
+    std.debug.print("ib: ", .{});
+    try printRational(a, ib, 50);
+    std.debug.print("\n", .{});
+    std.debug.print("\nib as fraction:\n", .{});
+    try printBigint(a, ib.num);
+    std.debug.print("\n-----------------------------------------------\n", .{});
+    try printBigint(a, ib.den);
+    std.debug.print("\n\n", .{});
 
-    // var ic: zml.Integer = try zml.integer.gcd(a, ia.num, ia.den);
-    // defer ic.deinit(a);
-    // std.debug.print("ic: ", .{});
-    // try printBigint(a, ic);
-    // std.debug.print("\n", .{});
+    var ic: zml.Rational = try .init(a, 0, 0);
+    defer ic.deinit(a);
+    try zml.rational.div_(a, &ic, ia, ib);
+    std.debug.print("ic: ", .{});
+    try printRational(a, ic, 50);
+    std.debug.print("\n", .{});
+    std.debug.print("\nic as fraction:\n", .{});
+    try printBigint(a, ic.num);
+    std.debug.print("\n-----------------------------------------------\n", .{});
+    try printBigint(a, ic.den);
+    std.debug.print("\n\n", .{});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {
