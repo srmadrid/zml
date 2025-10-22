@@ -2,9 +2,12 @@ const std = @import("std");
 
 const types = @import("types.zig");
 const ops = @import("ops.zig");
+const constants = @import("constants.zig");
 const int = @import("int.zig");
 const integer = @import("integer.zig");
 const Integer = integer.Integer;
+const complex = @import("complex.zig");
+const Complex = complex.Complex;
 
 pub const Rational = struct {
     num: Integer,
@@ -14,6 +17,7 @@ pub const Rational = struct {
     pub const empty: Rational = .{
         .num = .empty,
         .den = .empty,
+        .flags = .{ .owns_data = false, .writable = false },
     };
 
     pub fn init(allocator: std.mem.Allocator, numsize: u32, densize: u32) !Rational {
@@ -83,16 +87,46 @@ pub const Rational = struct {
             .flags = .{ .owns_data = true, .writable = true },
         };
     }
+
+    pub fn asComplex(self: *const Rational) Complex(Rational) {
+        var re: Rational = self.*;
+        re.flags.owns_data = false;
+
+        return .{
+            .re = re,
+            .im = constants.one(Rational, .{}) catch unreachable,
+            .flags = .{ .owns_data = false, .writable = false },
+        };
+    }
+
+    pub fn toComplex(self: *Rational, allocator: std.mem.Allocator) !Complex(Rational) {
+        if (!self.flags.owns_data)
+            return Error.DataNotOwned;
+
+        const result: Complex(Rational) = .{
+            .re = self,
+            .im = try constants.one(Integer, .{ .allocator = allocator }),
+            .flags = .{ .owns_data = true, .writable = self.flags.writable },
+        };
+
+        self.* = undefined;
+
+        return result;
+    }
+
+    pub fn copyToComplex(self: *const Rational, allocator: std.mem.Allocator) !Complex(Rational) {
+        return try (try self.copy(allocator)).toComplex(allocator);
+    }
 };
 
 // Arithmetic operations
-// pub const add = @import("rational/add.zig").add;
+pub const add = @import("rational/add.zig").add;
 pub const add_ = @import("rational/add_.zig").add_;
-// pub const sub = @import("rational/sub.zig").sub;
+pub const sub = @import("rational/sub.zig").sub;
 pub const sub_ = @import("rational/sub_.zig").sub_;
-// pub const mul = @import("rational/mul.zig").mul;
+pub const mul = @import("rational/mul.zig").mul;
 pub const mul_ = @import("rational/mul_.zig").mul_;
-// pub const div = @import("rational/div.zig").div;
+pub const div = @import("rational/div.zig").div;
 pub const div_ = @import("rational/div_.zig").div_;
 
 // Comparison operations

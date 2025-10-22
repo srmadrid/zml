@@ -6,6 +6,7 @@ const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 const integer = @import("../integer.zig");
+const rational = @import("../rational.zig");
 
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
@@ -211,6 +212,16 @@ pub inline fn sub(
                         );
 
                         return integer.sub(ctx.allocator, x, y);
+                    },
+                    .rational => {
+                        comptime types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+
+                        return rational.sub(ctx.allocator, x, y);
                     },
                     else => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }

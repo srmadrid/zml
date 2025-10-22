@@ -6,6 +6,7 @@ const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 const integer = @import("../integer.zig");
+const rational = @import("../rational.zig");
 
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
@@ -340,6 +341,16 @@ pub inline fn mul(
                         );
 
                         return integer.mul(ctx.allocator, x, y);
+                    },
+                    .rational => {
+                        comptime types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+
+                        return rational.mul(ctx.allocator, x, y);
                     },
                     else => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }

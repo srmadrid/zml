@@ -22,7 +22,7 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 if (x.size == 0 or y.size == 0) return o.set(allocator, 0);
 
                 // Aliasing check.
-                var tx: Integer = if (std.meta.eql(o.*, x))
+                var tx: Integer = if (o.*.limbs == x.limbs)
                     try x.copy(allocator)
                 else blk: {
                     var tmp: Integer = x;
@@ -30,7 +30,7 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                     break :blk tmp;
                 };
                 defer tx.deinit(allocator);
-                var ty: Integer = if (std.meta.eql(o.*, y))
+                var ty: Integer = if (o.*.limbs == y.limbs)
                     try y.copy(allocator)
                 else blk: {
                     var tmp: Integer = y;

@@ -6,6 +6,7 @@ const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 const integer = @import("../integer.zig");
+const rational = @import("../rational.zig");
 
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
@@ -294,14 +295,43 @@ pub inline fn sub_(
                             }
                         },
                         .rational => {
-                            comptime types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
+                            if (comptime types.isArbitraryPrecision(O)) {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
 
-                            return integer.sub(ctx.allocator, x, y);
+                                if (comptime O == rational.Rational) {
+                                    try rational.sub_(ctx.allocator, o, x, y);
+                                } else {
+                                    var result: rational.Rational = try rational.sub(
+                                        ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(ctx.allocator);
+
+                                    try ops.set(o, result, .{ .allocator = ctx.allocator });
+                                }
+                            } else {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                var result: rational.Rational = try rational.sub(
+                                    ctx.internal_allocator,
+                                    x,
+                                    y,
+                                );
+                                defer result.deinit(ctx.internal_allocator);
+
+                                ops.set(o, result, .{}) catch unreachable;
+                            }
                         },
                         .real => @compileError("zml.sub_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                         .complex => @compileError("zml.sub_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

@@ -1405,9 +1405,8 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ib.den);
     std.debug.print("\n\n", .{});
 
-    var ic: zml.Rational = try .init(a, 0, 0);
+    var ic: zml.Rational = try zml.div(ia, ib, .{ .allocator = a });
     defer ic.deinit(a);
-    try zml.rational.div_(a, &ic, ia, ib);
     std.debug.print("ic: ", .{});
     try printRational(a, ic, 50);
     std.debug.print("\n", .{});

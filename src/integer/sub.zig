@@ -9,13 +9,15 @@ pub fn sub(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!(types.numericType(X) == .integer and types.numericType(Y) == .int) and
-        !(types.numericType(X) == .integer and types.numericType(Y) == .float) and
-        !(types.numericType(X) == .integer and types.numericType(Y) == .integer) and
-        !(types.numericType(X) == .int and types.numericType(Y) == .integer) and
-        !(types.numericType(X) == .float and types.numericType(Y) == .integer))
-        @compileError("integer.sub requires at least one of x or y to be an integer, the other must be an int, float or integer, got " ++
+    comptime if (types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
+        types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)
+        @compileError("integer.sub requires x and y to be an int, float or integer, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return integer.add(allocator, x, ops.neg(y, .{}) catch unreachable);
+    var result: Integer = try .init(allocator, 0);
+    errdefer result.deinit(allocator);
+
+    try integer.sub_(allocator, &result, x, y);
+
+    return result;
 }

@@ -7,6 +7,8 @@ const int = @import("int.zig");
 const float = @import("float.zig");
 const rational = @import("rational.zig");
 const Rational = rational.Rational;
+const complex = @import("complex.zig");
+const Complex = complex.Complex;
 
 pub const Integer = struct {
     limbs: [*]u32,
@@ -412,6 +414,55 @@ pub const Integer = struct {
             .den = constants.one(Integer, .{}) catch unreachable,
             .flags = .{ .owns_data = false, .writable = false },
         };
+    }
+
+    pub fn toRational(self: *Integer, allocator: std.mem.Allocator) !Rational {
+        if (!self.flags.owns_data)
+            return Error.DataNotOwned;
+
+        const result: Rational = .{
+            .num = self,
+            .den = try constants.one(Integer, .{ .allocator = allocator }),
+            .flags = .{ .owns_data = true, .writable = self.flags.writable },
+        };
+
+        self.* = undefined;
+
+        return result;
+    }
+
+    pub fn copyToRational(self: *const Integer, allocator: std.mem.Allocator) !Rational {
+        return try (try self.copy(allocator)).toRational(allocator);
+    }
+
+    pub fn asComplex(self: *const Integer) Complex(Rational) {
+        return .{
+            .re = self.asRational(),
+            .im = constants.one(Rational, .{}) catch unreachable,
+            .flags = .{ .owns_data = false, .writable = false },
+        };
+    }
+
+    pub fn toComplex(self: *Integer, allocator: std.mem.Allocator) !Complex(Rational) {
+        if (!self.flags.owns_data)
+            return Error.DataNotOwned;
+
+        var re: Rational = try self.toRational(allocator);
+        errdefer re.den.deinit(allocator);
+
+        const result: Complex(Rational) = .{
+            .re = re,
+            .im = try constants.one(Integer, .{ .allocator = allocator }),
+            .flags = .{ .owns_data = true, .writable = self.flags.writable },
+        };
+
+        self.* = undefined;
+
+        return result;
+    }
+
+    pub fn copyToComplex(self: *const Integer, allocator: std.mem.Allocator) !Complex(Rational) {
+        return try (try self.copy(allocator)).toComplex(allocator);
     }
 };
 
