@@ -394,8 +394,12 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
             return mat;
         }
 
-        pub fn toGeneralDenseMatrix(self: Dense(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !matrix.dense.General(T, order) {
-            var result: matrix.dense.General(T, order) = try .init(allocator, self.size, self.size);
+        pub fn copyToGeneralDenseMatrix(
+            self: Dense(T, uplo, order),
+            allocator: std.mem.Allocator,
+            ctx: anytype,
+        ) !matrix.general.Dense(T, order) {
+            var result: matrix.general.Dense(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -457,7 +461,11 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Dense(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
+        pub fn copyToDenseArray(
+            self: *const Dense(T, uplo, order),
+            allocator: std.mem.Allocator,
+            ctx: anytype,
+        ) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 

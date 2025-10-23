@@ -32,7 +32,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 }
 
                 // Aliasing checks
-                var tx: Integer = if (o.*.limbs == x.limbs)
+                var tx: Integer = if (o.limbs == x.limbs)
                     try x.copy(allocator)
                 else blk: {
                     var tmp: Integer = x;
@@ -40,7 +40,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                     break :blk tmp;
                 };
                 defer tx.deinit(allocator);
-                var ty: Integer = if (o.*.limbs == y.limbs)
+                var ty: Integer = if (o.limbs == y.limbs)
                     try y.copy(allocator)
                 else blk: {
                     var tmp: Integer = y;

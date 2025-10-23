@@ -43,14 +43,14 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
 
                 // Aliasing checks
                 var tx: Rational = undefined;
-                tx.num = if (o.*.num.limbs == x.num.limbs or o.*.den.limbs == x.num.limbs)
+                tx.num = if (o.num.limbs == x.num.limbs or o.den.limbs == x.num.limbs)
                     try x.num.copy(allocator)
                 else blk: {
                     var tmp: integer.Integer = x.num;
                     tmp.flags.owns_data = false;
                     break :blk tmp;
                 };
-                tx.den = if (o.*.num.limbs == x.den.limbs or o.*.den.limbs == x.den.limbs)
+                tx.den = if (o.num.limbs == x.den.limbs or o.den.limbs == x.den.limbs)
                     try x.den.copy(allocator)
                 else blk: {
                     var tmp: integer.Integer = x.den;
@@ -60,14 +60,14 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
                 tx.flags = .{ .owns_data = true, .writable = false };
                 defer tx.deinit(allocator);
                 var ty: Rational = undefined;
-                ty.num = if (o.*.num.limbs == y.num.limbs or o.*.den.limbs == y.num.limbs)
+                ty.num = if (o.num.limbs == y.num.limbs or o.den.limbs == y.num.limbs)
                     try y.num.copy(allocator)
                 else blk: {
                     var tmp: integer.Integer = y.num;
                     tmp.flags.owns_data = false;
                     break :blk tmp;
                 };
-                ty.den = if (o.*.num.limbs == y.den.limbs or o.*.den.limbs == y.den.limbs)
+                ty.den = if (o.num.limbs == y.den.limbs or o.den.limbs == y.den.limbs)
                     try y.den.copy(allocator)
                 else blk: {
                     var tmp: integer.Integer = y.den;

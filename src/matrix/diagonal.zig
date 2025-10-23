@@ -144,8 +144,13 @@ pub fn Diagonal(T: type) type {
             self.data[row] = value;
         }
 
-        pub fn toGeneralDenseMatrix(self: Diagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !matrix.dense.General(T, order) {
-            var result: matrix.dense.General(T, order) = try .init(allocator, self.rows, self.cols);
+        pub fn copyToGeneralDenseMatrix(
+            self: Diagonal(T),
+            allocator: std.mem.Allocator,
+            comptime order: Order,
+            ctx: anytype,
+        ) !matrix.general.Dense(T, order) {
+            var result: matrix.general.Dense(T, order) = try .init(allocator, self.rows, self.cols);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -193,7 +198,12 @@ pub fn Diagonal(T: type) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Diagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !array.Dense(T, order) {
+        pub fn copyToDenseArray(
+            self: *const Diagonal(T),
+            allocator: std.mem.Allocator,
+            comptime order: Order,
+            ctx: anytype,
+        ) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
             errdefer result.deinit(allocator);
 

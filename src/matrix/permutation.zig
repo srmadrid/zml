@@ -142,8 +142,13 @@ pub fn Permutation(T: type) type {
         //     }
         // }
 
-        pub fn toGeneralDenseMatrix(self: Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !matrix.dense.General(T, order) {
-            var result: matrix.dense.General(T, order) = try .init(allocator, self.size, self.size);
+        pub fn copyToGeneralDenseMatrix(
+            self: Permutation(T),
+            allocator: std.mem.Allocator,
+            comptime order: Order,
+            ctx: anytype,
+        ) !matrix.general.Dense(T, order) {
+            var result: matrix.general.Dense(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
             if (comptime order == .col_major) {
@@ -199,7 +204,12 @@ pub fn Permutation(T: type) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Permutation(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !array.Dense(T, order) {
+        pub fn copyToDenseArray(
+            self: *const Permutation(T),
+            allocator: std.mem.Allocator,
+            comptime order: Order,
+            ctx: anytype,
+        ) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 

@@ -44,14 +44,14 @@ pub fn Complex(comptime T: type) type {
 }
 
 // Arithmetic operations
-// pub const add = @import("complex/add.zig").add;
-// pub const add_ = @import("complex/add_.zig").add_;
-// pub const sub = @import("complex/sub.zig").sub;
-// pub const sub_ = @import("complex/sub_.zig").sub_;
-// pub const mul = @import("complex/mul.zig").mul;
-// pub const mul_ = @import("complex/mul_.zig").mul_;
-// pub const div = @import("complex/div.zig").div;
-// pub const div_ = @import("complex/div_.zig").div_;
+pub const add = @import("complex/add.zig").add;
+pub const add_ = @import("complex/add_.zig").add_;
+pub const sub = @import("complex/sub.zig").sub;
+pub const sub_ = @import("complex/sub_.zig").sub_;
+pub const mul = @import("complex/mul.zig").mul;
+pub const mul_ = @import("complex/mul_.zig").mul_;
+pub const div = @import("complex/div.zig").div;
+pub const div_ = @import("complex/div_.zig").div_;
 
 // Comparison operations
 // pub const eq = @import("complex/eq.zig").eq;

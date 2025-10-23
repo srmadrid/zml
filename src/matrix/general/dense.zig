@@ -210,7 +210,11 @@ pub fn Dense(T: type, order: Order) type {
             return mat;
         }
 
-        pub fn toDenseArray(self: *const Dense(T, order), allocator: std.mem.Allocator, ctx: anytype) !array.Dense(T, order) {
+        pub fn copyToDenseArray(
+            self: *const Dense(T, order),
+            allocator: std.mem.Allocator,
+            ctx: anytype,
+        ) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
             errdefer result.deinit(allocator);
 

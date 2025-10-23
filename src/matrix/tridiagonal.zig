@@ -185,8 +185,13 @@ pub fn Tridiagonal(T: type) type {
             self.data[idx] = value;
         }
 
-        pub fn toGeneralDenseMatrix(self: Tridiagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !matrix.dense.General(T, order) {
-            var result: matrix.dense.General(T, order) = try .init(allocator, self.size, self.size);
+        pub fn copyToGeneralDenseMatrix(
+            self: Tridiagonal(T),
+            allocator: std.mem.Allocator,
+            comptime order: Order,
+            ctx: anytype,
+        ) !matrix.general.Dense(T, order) {
+            var result: matrix.general.Dense(T, order) = try .init(allocator, self.size, self.size);
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
@@ -232,7 +237,12 @@ pub fn Tridiagonal(T: type) type {
             return result;
         }
 
-        pub fn toDenseArray(self: *const Tridiagonal(T), allocator: std.mem.Allocator, comptime order: Order, ctx: anytype) !array.Dense(T, order) {
+        pub fn copyToDenseArray(
+            self: *const Tridiagonal(T),
+            allocator: std.mem.Allocator,
+            comptime order: Order,
+            ctx: anytype,
+        ) !array.Dense(T, order) {
             var result: array.Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 
