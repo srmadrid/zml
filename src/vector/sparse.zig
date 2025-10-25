@@ -34,6 +34,35 @@ pub fn Sparse(T: type) type {
             .flags = .{ .owns_data = false },
         };
 
+        /// Initializes a new sparse vector with the given length and an initial
+        /// capacity for non-zero elements.
+        ///
+        /// Unlike for dense vectors, for elememts of arbitrary precision types
+        /// none are initialized and the `set` function initializes them as
+        /// needed.
+        ///
+        /// Parameters
+        /// ----------
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for the vector (FINISH DOC).
+        ///
+        /// `x` (`anytype`):
+        /// The left operand.
+        ///
+        /// `y` (`anytype`):
+        /// The right operand.
+        ///
+        /// `ctx` (`anytype`):
+        /// A context struct providing necessary resources and configuration for the
+        /// operation. The required fields depend on the output and operand types. If
+        /// the context is missing required fields or contains unnecessary or wrongly
+        /// typed fields, the compiler will emit a detailed error message describing the
+        /// expected structure.
+        ///
+        /// Returns
+        /// -------
+        /// `void`:
+        /// The result is written in place to `o`.
         pub fn init(allocator: std.mem.Allocator, len: u32, nnz: u32) !Sparse(T) {
             if (len == 0)
                 return vector.Error.ZeroLength;
@@ -219,6 +248,28 @@ pub fn Sparse(T: type) type {
             self.idx[i] = index;
             self.nnz += 1;
         }
+
+        pub fn cleanup(self: *Sparse(T), ctx: anytype) void {
+            return _cleanup(self, self.nnz, ctx);
+        }
+
+        pub fn _cleanup(self: *Sparse(T), num_elems: u32, ctx: anytype) void {
+            if (comptime types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+
+                var i: u32 = 0;
+                while (i < num_elems) : (i += 1) {
+                    ops.deinit(self.data[i], types.renameStructFields(ctx, .{ .element_allocator = "allocator" }));
+                }
+            } else {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+            }
+        }
     };
 }
 
@@ -231,15 +282,16 @@ pub fn apply2(
 ) !Sparse(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const R: type = Sparse(ReturnType2(op, Numeric(X), Numeric(Y)));
+    const R: type = ReturnType2(op, Numeric(X), Numeric(Y));
 
     if (comptime !types.isSparseVector(@TypeOf(x))) {
-        var result: R = try .init(allocator, y.len, y.nnz);
+        var result: Sparse(R) = try .init(allocator, y.len, y.nnz);
         errdefer result.deinit(allocator);
+        errdefer result.cleanup(ctx);
 
         const opinfo = @typeInfo(@TypeOf(op));
         var i: u32 = 0;
-        while (i < result.nnz) : (i += 1) {
+        while (i < y.nnz) : (i += 1) {
             if (comptime opinfo.@"fn".params.len == 2) {
                 result.data[i] = op(x, y.data[i]);
             } else if (comptime opinfo.@"fn".params.len == 3) {
@@ -252,8 +304,9 @@ pub fn apply2(
 
         return result;
     } else if (comptime !types.isSparseVector(@TypeOf(y))) {
-        var result: R = try .init(allocator, x.len);
+        var result: Sparse(R) = try .init(allocator, x.len);
         errdefer result.deinit(allocator);
+        errdefer result.cleanup(ctx);
 
         const opinfo = @typeInfo(@TypeOf(op));
         var i: u32 = 0;
@@ -274,8 +327,9 @@ pub fn apply2(
     if (x.len != y.len)
         return vector.Error.DimensionMismatch;
 
-    var result: R = try .init(allocator, x.len, int.min(x.nnz + y.nnz, x.len));
+    var result: Sparse(R) = try .init(allocator, x.len, int.min(x.nnz + y.nnz, x.len));
     errdefer result.deinit(allocator);
+    errdefer result.cleanup(ctx);
 
     const opinfo = @typeInfo(@TypeOf(op));
     var i: u32 = 0;

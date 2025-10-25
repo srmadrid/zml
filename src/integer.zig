@@ -141,24 +141,16 @@ pub const Integer = struct {
 
                     if (value < 0) self.positive = false;
 
+                    const uvalue: std.meta.Int(.unsigned, bits) = types.scast(std.meta.Int(.unsigned, bits), int.abs(value));
+
                     switch (bits) {
                         8 => {
-                            const uvalue: u8 = if (comptime @typeInfo(V).int.signedness == .signed)
-                                value & 0x7F
-                            else
-                                value;
-
                             if (uvalue != 0) {
                                 self.limbs[0] = uvalue;
                                 self.size = 1;
                             }
                         },
                         16 => {
-                            const uvalue: u16 = if (comptime @typeInfo(V).int.signedness == .signed)
-                                value & 0x7FFF
-                            else
-                                value;
-
                             if (uvalue != 0) {
                                 self.limbs[0] = uvalue;
                                 self.size = 1;
@@ -166,7 +158,7 @@ pub const Integer = struct {
                         },
                         32, 64, 128 => {
                             if (value != 0) {
-                                var chunks: [bits / 32]u32 = @bitCast(value);
+                                var chunks: [bits / 32]u32 = @bitCast(uvalue);
                                 if (comptime builtin.cpu.arch.endian() == .big) {
                                     // Reverse
                                     var i: u32 = 0;
@@ -176,9 +168,6 @@ pub const Integer = struct {
                                         chunks[bits / 32 - 1 - i] = temp;
                                     }
                                 }
-
-                                if (comptime @typeInfo(V).int.signedness == .signed)
-                                    chunks[bits / 32 - 1] &= 0x7FFFFFFF; // Remove sign
 
                                 var i: u32 = 0;
                                 while (i < bits / 32) : (i += 1) {
@@ -401,6 +390,79 @@ pub const Integer = struct {
 
         result.size = self.size;
         result.positive = self.positive;
+
+        return result;
+    }
+
+    pub fn toInt(self: *const Integer, comptime Int: type) Int {
+        comptime if (types.numericType(Int) != .int)
+            @compileError("integer.toInt requires Int to be an int type, got " ++ @typeName(Int));
+
+        const iinfo = @typeInfo(Int);
+
+        if (self.size == 0)
+            return 0;
+
+        const sbits: u32 = self.size * 32 - @clz(self.limbs[self.size - 1]);
+        if (iinfo.int.signedness == .unsigned) {
+            if (!self.positive)
+                return 0;
+
+            if (sbits > iinfo.int.bits) {
+                return int.maxVal(Int);
+            } else {
+                var result: Int = 0;
+
+                if (iinfo.int.bits >= 32) {
+                    var i: u32 = 0;
+                    while (i < self.size) : (i += 1) {
+                        result |= types.scast(Int, self.limbs[i]) << (@as(std.math.Log2Int(Int), @intCast(i)) * 32);
+                    }
+                } else {
+                    result = types.scast(Int, self.limbs[0]);
+                }
+
+                return result;
+            }
+        } else {
+            if (sbits > iinfo.int.bits - 1) {
+                return if (self.positive) int.maxVal(Int) else int.minVal(Int);
+            } else {
+                var result: Int = 0;
+
+                if (iinfo.int.bits >= 32) {
+                    var i: u32 = 0;
+                    while (i < self.size) : (i += 1) {
+                        result |= types.scast(Int, self.limbs[i]) << (@as(std.math.Log2Int(Int), @intCast(i)) * 32);
+                    }
+                } else {
+                    result = types.scast(Int, self.limbs[0]);
+                }
+
+                if (!self.positive)
+                    result = -result;
+
+                return result;
+            }
+        }
+    }
+
+    pub fn toFloat(self: *const Integer, comptime Float: type) Float {
+        comptime if (types.numericType(Float) != .float)
+            @compileError("integer.toFloat requires Float to be a float type, got " ++ @typeName(Float));
+
+        if (self.size == 0)
+            return 0.0;
+
+        var result: Float = 0.0;
+
+        var i: u32 = self.size;
+        while (i > 0) : (i -= 1) {
+            result = result * 4294967296.0 + types.scast(Float, self.limbs[i - 1]);
+        }
+
+        if (!self.positive)
+            result = -result;
 
         return result;
     }

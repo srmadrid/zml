@@ -78,24 +78,12 @@ pub const exp10 = arrops.exp10;
 pub const exp10_ = arrops.exp10_;
 pub const exp2 = arrops.exp2;
 pub const exp2_ = arrops.exp2_;
-pub const exp10m1 = arrops.exp10m1;
-pub const exp10m1_ = arrops.exp10m1_;
-pub const exp2m1 = arrops.exp2m1;
-pub const exp2m1_ = arrops.exp2m1_;
-pub const expm1 = arrops.expm1;
-pub const expm1_ = arrops.expm1_;
 pub const log = arrops.log;
 pub const log_ = arrops.log_;
 pub const log10 = arrops.log10;
 pub const log10_ = arrops.log10_;
 pub const log2 = arrops.log2;
 pub const log2_ = arrops.log2_;
-pub const log10p1 = arrops.log10p1;
-pub const log10p1_ = arrops.log10p1_;
-pub const log2p1 = arrops.log2p1;
-pub const log2p1_ = arrops.log2p1_;
-pub const log1p = arrops.log1p;
-pub const log1p_ = arrops.log1p_;
 
 // Power functions
 pub const pow = arrops.pow;
@@ -122,20 +110,6 @@ pub const atan = arrops.atan;
 pub const atan_ = arrops.atan_;
 pub const atan2 = arrops.atan2;
 pub const atan2_ = arrops.atan2_;
-pub const sinpi = arrops.sinpi;
-pub const sinpi_ = arrops.sinpi_;
-pub const cospi = arrops.cospi;
-pub const cospi_ = arrops.cospi_;
-pub const tanpi = arrops.tanpi;
-pub const tanpi_ = arrops.tanpi_;
-pub const asinpi = arrops.asinpi;
-pub const asinpi_ = arrops.asinpi_;
-pub const acospi = arrops.acospi;
-pub const acospi_ = arrops.acospi_;
-pub const atanpi = arrops.atanpi;
-pub const atanpi_ = arrops.atanpi_;
-pub const atan2pi = arrops.atan2pi;
-pub const atan2pi_ = arrops.atan2pi_;
 
 // Hyperbolic functions
 pub const sinh = arrops.sinh;

@@ -560,9 +560,10 @@ fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u3
 
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
-    var gpa = std.heap.DebugAllocator(.{}){};
+    var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     const a = gpa.allocator();
+    //const a = std.heap.page_allocator;
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;
@@ -1392,8 +1393,8 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ia.den);
     std.debug.print("\n\n", .{});
 
-    const bb1: comptime_int = 9810984601437985473856978567458727;
-    const bb2: comptime_int = 34019874019874019874019874019874019874019874019874013401987401987401987401987401987401981983745091873057349875014937519374019473591834718534651357143756948378;
+    const bb1: comptime_int = 1847351907430598143750984750981470136834096814309857091843750148165084360195649817258;
+    const bb2: comptime_int = 194651875104984751896409851609438182375981502189324610238;
     var ib: zml.Rational = try .initSet(a, bb1, bb2);
     defer ib.deinit(a);
     std.debug.print("ib: ", .{});
@@ -1415,6 +1416,9 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     std.debug.print("\n-----------------------------------------------\n", .{});
     try printBigint(a, ic.den);
     std.debug.print("\n\n", .{});
+
+    const ibi: i128 = ib.toInt(i128);
+    std.debug.print("ibi: {d}\n", .{ibi});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

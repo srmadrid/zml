@@ -7,6 +7,8 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
+const real = @import("../real.zig");
+const complex = @import("../complex.zig");
 
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
@@ -241,7 +243,45 @@ pub inline fn div_(
                             }
                         },
                         .real => @compileError("zml.div_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
-                        .complex => @compileError("zml.div_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                        .complex => {
+                            if (comptime types.isArbitraryPrecision(O)) {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                if (comptime O == complex.Complex(rational.Rational) or O == complex.Complex(real.Real)) {
+                                    try complex.div_(ctx.allocator, o, x, y);
+                                } else {
+                                    var result: types.Coerce(X, Y) = try complex.div(
+                                        ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(ctx.allocator);
+
+                                    try ops.set(o, result, .{ .allocator = ctx.allocator });
+                                }
+                            } else {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                var result: types.Coerce(X, Y) = try complex.div(
+                                    ctx.internal_allocator,
+                                    x,
+                                    y,
+                                );
+                                defer result.deinit(ctx.internal_allocator);
+
+                                ops.set(o, result, .{}) catch unreachable;
+                            }
+                        },
                         .expression => @compileError("zml.div_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                     }
                 },

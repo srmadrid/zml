@@ -13,7 +13,8 @@ pub const cf128 = Cfloat(f128);
 pub const comptime_complex = Cfloat(comptime_float);
 
 pub fn Cfloat(comptime T: type) type {
-    if (types.numericType(T) != .float) @compileError("Unsupported type for Cfloat: " ++ @typeName(T));
+    if (types.numericType(T) != .float)
+        @compileError("Unsupported type for Cfloat: " ++ @typeName(T));
 
     return struct {
         re: T,

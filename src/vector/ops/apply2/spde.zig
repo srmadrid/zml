@@ -12,6 +12,7 @@ const constants = @import("../../../constants.zig");
 const int = @import("../../../int.zig");
 
 const vector = @import("../../../vector.zig");
+const Dense = vector.Dense;
 
 pub fn apply2(
     allocator: std.mem.Allocator,
@@ -19,21 +20,24 @@ pub fn apply2(
     y: anytype,
     comptime op: anytype,
     ctx: anytype,
-) !EnsureVector(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
-    const X: type = Numeric(@TypeOf(x));
-    const Y: type = Numeric(@TypeOf(y));
-    const R: type = EnsureVector(Coerce(@TypeOf(x), @TypeOf(y)), ReturnType2(op, X, Y));
+) !Dense(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const R: type = ReturnType2(op, Numeric(X), Numeric(Y));
 
     if (x.len != y.len)
         return vector.Error.DimensionMismatch;
 
-    var result: R = try .init(allocator, x.len);
+    var result: Dense(R) = try .init(allocator, x.len);
     errdefer result.deinit(allocator);
+
+    var i: u32 = 0;
+
+    errdefer result._cleanup(i, ctx);
 
     const opinfo = @typeInfo(@TypeOf(op));
     if (y.inc == 1) {
         var ix: u32 = 0;
-        var i: u32 = 0;
         while (i < result.len) : (i += 1) {
             if (x.idx[ix] == i) {
                 if (comptime opinfo.@"fn".params.len == 2) {
@@ -54,7 +58,6 @@ pub fn apply2(
     } else {
         var ix: u32 = 0;
         var iy: i32 = if (y.inc < 0) (-types.scast(i32, y.len) + 1) * y.inc else 0;
-        var i: u32 = 0;
         while (i < result.len) : (i += 1) {
             if (x.idx[ix] == i) {
                 if (comptime opinfo.@"fn".params.len == 2) {

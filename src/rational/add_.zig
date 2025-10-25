@@ -7,14 +7,51 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 const Rational = rational.Rational;
 
+/// Performs in-place addition between two operands of any numeric type in
+/// `Rational` precision. For complex types, only the real part is considered.
+///
+/// Aliasing between the output operand `o` and the input operands `x` or `y` is
+/// allowed.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn add_(allocator: std.mem.Allocator, o: *Rational, x: X, y: Y, ctx: anytype) !void
+/// ```
+///
+/// Parameters
+/// ----------
+/// `allocator` (`std.mem.Allocator`):
+/// The allocator to use for memory allocations. Must be the same allocator used
+/// to initialize `o`.
+///
+/// `o` (`*Rational`):
+/// A pointer to the output operand where the result will be stored.
+///
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// Returns
+/// -------
+/// `void`
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails.
+///
+/// `rational.Error.NotWritable`:
+/// If the output operand `o` is not writable, or if its numerator or
+/// denominator are not writable when they need to be modified.
 pub fn add_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) !void {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(X) != .rational and types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
-        types.numericType(Y) != .rational and types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)
-        @compileError("rational.add_ requires x and y to be an int, float, integer or rational, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
+        @compileError("rational.add_ requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     if (!o.flags.writable)
         return rational.Error.NotWritable;

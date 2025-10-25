@@ -342,8 +342,38 @@ pub inline fn deinit(
             comptime types.validateContext(@TypeOf(ctx), .{});
 
             // No deinitialization needed for fixed precision types, this is a no-op.
-            return;
         },
-        else => @compileError("zml.deinit not implemented for " ++ @typeName(X) ++ " yet"),
+        .integer => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            x.deinit(ctx.allocator);
+        },
+        .rational => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            x.deinit(ctx.allocator);
+        },
+        .real => @compileError("zml.deinit not implemented for " ++ @typeName(X) ++ " yet"),
+        .complex => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            x.deinit(ctx.allocator);
+        },
+        .expression => @compileError("zml.deinit not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }

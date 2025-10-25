@@ -21,35 +21,27 @@ pub inline fn add(
     comptime if (!types.isVector(@TypeOf(x)) or !types.isVector(@TypeOf(y)))
         @compileError("Both arguments to add must be vector types");
 
-    if (comptime types.isArbitraryPrecision(C)) {
-        comptime types.validateContext(
+    comptime if (types.isArbitraryPrecision(C)) {
+        types.validateContext(
             @TypeOf(ctx),
-            .{ .element_allocator = .{ .type = std.mem.Allocator, .required = true } },
-        );
-
-        return vecops.apply2(
-            allocator,
-            x,
-            y,
-            ops.add,
-            types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+            .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
         );
     } else {
-        if (comptime types.numericType(C) == .int) {
-            comptime types.validateContext(
+        if (types.numericType(C) == .int) {
+            types.validateContext(
                 @TypeOf(ctx),
                 .{ .mode = .{ .type = int.Mode, .required = false } },
             );
         } else {
-            comptime types.validateContext(@TypeOf(ctx), .{});
+            types.validateContext(@TypeOf(ctx), .{});
         }
+    };
 
-        return vecops.apply2(
-            allocator,
-            x,
-            y,
-            ops.add,
-            ctx,
-        );
-    }
+    return vecops.apply2(
+        allocator,
+        x,
+        y,
+        ops.add,
+        ctx,
+    );
 }

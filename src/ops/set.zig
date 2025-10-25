@@ -6,6 +6,9 @@ const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 const integer = @import("../integer.zig");
+const rational = @import("../rational.zig");
+const real = @import("../real.zig");
+const complex = @import("../complex.zig");
 
 /// Sets the value of `o` to `x`.
 ///
@@ -53,7 +56,23 @@ pub inline fn set(
 
                 o.* = x.re != 0.0 or x.im != 0.0;
             },
-            else => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .integer => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = integer.ne(x, 0);
+            },
+            .rational => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = rational.ne(x, 0);
+            },
+            .real => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .complex => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = complex.ne(x, 0);
+            },
+            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
         .int => switch (comptime types.numericType(X)) {
             .bool => {
@@ -76,7 +95,23 @@ pub inline fn set(
 
                 o.* = @intFromFloat(x.re);
             },
-            else => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .integer => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = x.toInt(O);
+            },
+            .rational => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = x.toInt(O);
+            },
+            .real => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .complex => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = x.re.toInt(O);
+            },
+            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
         .float => switch (comptime types.numericType(X)) {
             .bool => {
@@ -99,7 +134,23 @@ pub inline fn set(
 
                 o.* = @floatCast(x.re);
             },
-            else => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .integer => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = try x.toFloat(O);
+            },
+            .rational => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = try x.toFloat(O);
+            },
+            .real => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .complex => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = x.re.toFloat(O);
+            },
+            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
         .cfloat => switch (comptime types.numericType(X)) {
             .bool => {
@@ -134,8 +185,75 @@ pub inline fn set(
                     .im = @floatCast(x.im),
                 };
             },
-            else => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .integer => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = .{
+                    .re = try x.toFloat(types.Scalar(O)),
+                    .im = 0.0,
+                };
+            },
+            .rational => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = .{
+                    .re = try x.toFloat(types.Scalar(O)),
+                    .im = 0.0,
+                };
+            },
+            .real => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+            .complex => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                o.* = .{
+                    .re = x.re.toFloat(types.Scalar(O)),
+                    .im = x.im.toFloat(types.Scalar(O)),
+                };
+            },
+            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
-        else => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+        .integer => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            try o.set(ctx.allocator, x);
+        },
+        .rational => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            try o.set(ctx.allocator, x, 1);
+        },
+        .real => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
+        .complex => {
+            if (comptime types.isComplex(X)) {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+
+                try o.set(ctx.allocator, x.re, x.im);
+            } else {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+
+                try o.set(ctx.allocator, x, 0);
+            }
+        },
+        .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
     }
 }

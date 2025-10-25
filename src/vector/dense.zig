@@ -125,6 +125,38 @@ pub fn Dense(T: type) type {
                 .flags = .{ .owns_data = false },
             };
         }
+
+        pub fn cleanup(self: *Dense(T), ctx: anytype) void {
+            return _cleanup(self, self.len, ctx);
+        }
+
+        pub fn _cleanup(self: *Dense(T), num_elems: u32, ctx: anytype) void {
+            if (comptime types.isArbitraryPrecision(T)) {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+
+                if (self.inc == 1) {
+                    var i: u32 = 0;
+                    while (i < num_elems) : (i += 1) {
+                        ops.deinit(self.data[i], ctx);
+                    }
+                } else {
+                    var is: i32 = if (self.inc < 0) (-types.scast(i32, self.len) + 1) * self.inc else 0;
+                    var i: u32 = 0;
+                    while (i < num_elems) : (i += 1) {
+                        ops.deinit(self.data[types.scast(u32, is)], ctx);
+
+                        is += self.inc;
+                    }
+                }
+            } else {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+            }
+        }
     };
 }
 
@@ -137,15 +169,18 @@ pub fn apply2(
 ) !Dense(ReturnType2(op, Numeric(@TypeOf(x)), Numeric(@TypeOf(y)))) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const R: type = Dense(ReturnType2(op, Numeric(X), Numeric(Y)));
+    const R: type = ReturnType2(op, Numeric(X), Numeric(Y));
 
     if (comptime !types.isDenseVector(@TypeOf(x))) {
-        var result: R = try .init(allocator, y.len);
+        var result: Dense(R) = try .init(allocator, y.len);
         errdefer result.deinit(allocator);
+
+        var i: u32 = 0;
+
+        errdefer result._cleanup(i, ctx);
 
         const opinfo = @typeInfo(@TypeOf(op));
         if (y.inc == 1) {
-            var i: u32 = 0;
             while (i < result.len) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i] = op(x, y.data[i]);
@@ -155,7 +190,6 @@ pub fn apply2(
             }
         } else {
             var iy: i32 = if (y.inc < 0) (-types.scast(i32, y.len) + 1) * y.inc else 0;
-            var i: u32 = 0;
             while (i < result.len) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i] = op(x, y.data[types.scast(u32, iy)]);
@@ -169,12 +203,15 @@ pub fn apply2(
 
         return result;
     } else if (comptime !types.isDenseVector(@TypeOf(y))) {
-        var result: R = try .init(allocator, x.len);
+        var result: Dense(R) = try .init(allocator, x.len);
         errdefer result.deinit(allocator);
+
+        var i: u32 = 0;
+
+        errdefer result._cleanup(i, ctx);
 
         const opinfo = @typeInfo(@TypeOf(op));
         if (x.inc == 1) {
-            var i: u32 = 0;
             while (i < result.len) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i] = op(x.data[i], y);
@@ -184,7 +221,6 @@ pub fn apply2(
             }
         } else {
             var ix: i32 = if (x.inc < 0) (-types.scast(i32, x.len) + 1) * x.inc else 0;
-            var i: u32 = 0;
             while (i < result.len) : (i += 1) {
                 if (comptime opinfo.@"fn".params.len == 2) {
                     result.data[i] = op(x.data[types.scast(u32, ix)], y);
@@ -202,12 +238,15 @@ pub fn apply2(
     if (x.len != y.len)
         return vector.Error.DimensionMismatch;
 
-    var result: R = try .init(allocator, x.len);
+    var result: Dense(R) = try .init(allocator, x.len);
     errdefer result.deinit(allocator);
+
+    var i: u32 = 0;
+
+    errdefer result._cleanup(i, ctx);
 
     const opinfo = @typeInfo(@TypeOf(op));
     if (x.inc == 1 and y.inc == 1) {
-        var i: u32 = 0;
         while (i < result.len) : (i += 1) {
             if (comptime opinfo.@"fn".params.len == 2) {
                 result.data[i] = op(x.data[i], y.data[i]);
@@ -218,7 +257,6 @@ pub fn apply2(
     } else {
         var ix: i32 = if (x.inc < 0) (-types.scast(i32, x.len) + 1) * x.inc else 0;
         var iy: i32 = if (y.inc < 0) (-types.scast(i32, y.len) + 1) * y.inc else 0;
-        var i: u32 = 0;
         while (i < result.len) : (i += 1) {
             if (comptime opinfo.@"fn".params.len == 2) {
                 result.data[i] = op(x.data[types.scast(u32, ix)], y.data[types.scast(u32, iy)]);

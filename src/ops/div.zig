@@ -7,6 +7,8 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
+const real = @import("../real.zig");
+const complex = @import("../complex.zig");
 
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
@@ -178,7 +180,18 @@ pub inline fn div(
 
                         return rational.div(ctx.allocator, x, y);
                     },
-                    else => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                    .real => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
+                    .complex => {
+                        comptime types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+
+                        return complex.div(ctx.allocator, x, y);
+                    },
+                    .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }
             },
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
