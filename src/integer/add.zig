@@ -12,7 +12,7 @@ const Integer = integer.Integer;
 /// Signature
 /// ---------
 /// ```zig
-/// fn add(allocator: std.mem.Allocator, x: X, y: Y) !Rational
+/// fn add(allocator: std.mem.Allocator, x: X, y: Y) !Integer
 /// ```
 ///
 /// Parameters

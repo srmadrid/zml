@@ -6,20 +6,103 @@ const float = @import("../float.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
+/// Compute the greatest common divisor of two numbers in `Integer` precision.
+/// Float, rational or real types are truncated towards zero, and for cfloat or
+/// complex types, only the real part is considered.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn gcd(allocator: std.mem.Allocator, x: X, y: Y) !Integer
+/// ```
+///
+/// Parameters
+/// ----------
+/// `allocator` (`std.mem.Allocator`):
+/// The allocator to use for memory allocations.
+///
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// Returns
+/// -------
+/// `Integer`:
+/// The greatest common divisor of `x` and `y`.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails.
 pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!(types.numericType(X) == .integer and types.numericType(Y) == .int) and
-        !(types.numericType(X) == .integer and types.numericType(Y) == .float) and
-        !(types.numericType(X) == .integer and types.numericType(Y) == .integer) and
-        !(types.numericType(X) == .int and types.numericType(Y) == .integer) and
-        !(types.numericType(X) == .float and types.numericType(Y) == .integer))
-        @compileError("integer.gcd requires at least one of x or y to be an integer, the other must be an int, float or integer, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
+        @compileError("integer.gcd requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     switch (comptime types.numericType(X)) {
+        .expression => @compileError("integer. gcd not implemented for Expression yet"),
+        .complex => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer. gcd not implemented for Complex + Expression yet"),
+            .complex => return gcd(allocator, x.re, y.re),
+            .real => @compileError("integer. gcd not implemented for Complex + Real yet"),
+            .rational => return gcd(allocator, x.re, y),
+            .integer => return gcd(allocator, x.re, y),
+            .cfloat => return gcd(allocator, x.re, y.re),
+            .float => return gcd(allocator, x.re, y),
+            .int => return gcd(allocator, x.re, y),
+            .bool => return gcd(allocator, x.re, y),
+        },
+        .real => @compileError("integer. gcd not implemented for Real yet"),
+        .rational => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer. gcd not implemented for Rational + Expression yet"),
+            .complex => return gcd(allocator, x, y.re),
+            .real => @compileError("integer. gcd not implemented for Rational + Real yet"),
+            .rational => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return gcd(allocator, tx, ty);
+            },
+            .integer => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                return gcd(allocator, tx, y);
+            },
+            .cfloat => return gcd(allocator, x, y.re),
+            .float => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, tx, ty[0]);
+            },
+            .int => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, tx, ty[0]);
+            },
+            .bool => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                return gcd(allocator, tx, types.cast(Integer, y, .{}) catch unreachable);
+            },
+        },
         .integer => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer. gcd not implemented for Integer + Expression yet"),
+            .complex => return gcd(allocator, x, y.re),
+            .real => @compileError("integer. gcd not implemented for Integer + Real yet"),
+            .rational => {
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return gcd(allocator, x, ty);
+            },
             .integer => {
                 if (x.size == 0) return integer.abs(allocator, y);
                 if (y.size == 0) return integer.abs(allocator, x);
@@ -86,22 +169,138 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
 
                 return a;
             },
-            .float, .int => {
-                var temp: Integer = try .initSet(allocator, y);
-                defer temp.deinit(allocator);
-                return gcd(allocator, x, temp);
+            .cfloat => return gcd(allocator, x, y.re),
+            .float => {
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, x, ty[0]);
             },
-            else => unreachable,
+            .int => {
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, x, ty[0]);
+            },
+            .bool => {
+                return gcd(allocator, x, types.cast(Integer, y, .{}) catch unreachable);
+            },
         },
-        .float, .int => switch (comptime types.numericType(Y)) {
+        .cfloat => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer. gcd not implemented for CFloat + Expression yet"),
+            .complex => return gcd(allocator, x.re, y.re),
+            .real => @compileError("integer. gcd not implemented for CFloat + Real yet"),
+            .rational => return gcd(allocator, x.re, y),
+            .integer => return gcd(allocator, x.re, y),
+            .cfloat => return gcd(allocator, x.re, y.re),
+            .float => return gcd(allocator, x.re, y),
+            .int => return gcd(allocator, x.re, y),
+            .bool => return gcd(allocator, x.re, y),
+        },
+        .float => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer. gcd not implemented for Float + Expression yet"),
+            .complex => return gcd(allocator, x, y.re),
+            .real => @compileError("integer. gcd not implemented for Float + Real yet"),
+            .rational => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return gcd(allocator, tx[0], ty);
+            },
             .integer => {
-                var temp: Integer = try .initSet(allocator, x);
-                defer temp.deinit(allocator);
-                return gcd(allocator, temp, y);
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return gcd(allocator, tx[0], y);
             },
-            else => unreachable,
+            .cfloat => return gcd(allocator, x, y.re),
+            .float => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, tx[0], ty[0]);
+            },
+            .int => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return gcd(allocator, tx[0], types.cast(Integer, y, .{}) catch unreachable);
+            },
         },
-        else => unreachable,
+        .int => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer. gcd not implemented for Int + Expression yet"),
+            .complex => return gcd(allocator, x, y.re),
+            .real => @compileError("integer. gcd not implemented for Int + Real yet"),
+            .rational => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return gcd(allocator, tx[0], ty);
+            },
+            .integer => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return gcd(allocator, tx[0], y);
+            },
+            .cfloat => return gcd(allocator, x, y.re),
+            .float => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, tx[0], ty[0]);
+            },
+            .int => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return gcd(allocator, tx[0], types.cast(Integer, y, .{}) catch unreachable);
+            },
+        },
+        .bool => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer. gcd not implemented for Bool + Expression yet"),
+            .complex => return gcd(allocator, x, y.re),
+            .real => @compileError("integer. gcd not implemented for Bool + Real yet"),
+            .rational => {
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, ty);
+            },
+            .integer => {
+                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, y);
+            },
+            .cfloat => return gcd(allocator, x, y.re),
+            .float => {
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, ty[0]);
+            },
+            .int => {
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, ty[0]);
+            },
+            .bool => {
+                return gcd(
+                    allocator,
+
+                    types.cast(Integer, x, .{}) catch unreachable,
+                    types.cast(Integer, y, .{}) catch unreachable,
+                );
+            },
+        },
     }
 }
 

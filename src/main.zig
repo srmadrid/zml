@@ -1380,8 +1380,10 @@ fn printRational(a: std.mem.Allocator, r: zml.Rational, decimals: u32) !void {
 }
 
 fn bigintTesting(a: std.mem.Allocator) !void {
-    const aa1: comptime_int = 93461096568347169156983475618374658714365986342135734957324098561489639871563478560943856093461096568347169156983475;
+    const aa1: f64 = 31626159.127367162395;
+    std.debug.print("aa1: {d}\n", .{aa1});
     const aa2: comptime_int = 317754735801349010983650164035961436510475601483756187346587164031746508173460571634058167717754735801349010983650164;
+    std.debug.print("aa2: {d}\n", .{aa2});
     var ia: zml.Rational = try .initSet(a, aa1, aa2);
     defer ia.deinit(a);
     std.debug.print("ia: ", .{});
@@ -1393,12 +1395,14 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ia.den);
     std.debug.print("\n\n", .{});
 
-    const bb1: comptime_int = -1847351907430598143750984750981470136834096814309857091843750148165084360195649817258;
+    const bb1: f128 = 187435897403761458716349351.18498573407;
+    std.debug.print("bb1: {d}\n", .{bb1});
     const bb2: comptime_int = 194651875104984751896409851609438182375981502189324610238;
+    std.debug.print("bb2: {d}\n", .{bb2});
     var ib: zml.Rational = try .initSet(a, bb1, bb2);
     defer ib.deinit(a);
     std.debug.print("ib: ", .{});
-    try printRational(a, ib, 150);
+    try printRational(a, ib, 50);
     std.debug.print("\n", .{});
     std.debug.print("\nib as fraction:\n", .{});
     try printBigint(a, ib.num);
@@ -1406,7 +1410,7 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ib.den);
     std.debug.print("\n\n", .{});
 
-    var ic: zml.Rational = try zml.div(ia, ib, .{ .allocator = a });
+    var ic: zml.Rational = try zml.add(ia, ib, .{ .allocator = a });
     defer ic.deinit(a);
     std.debug.print("ic: ", .{});
     try printRational(a, ic, 50);
@@ -1417,8 +1421,15 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ic.den);
     std.debug.print("\n\n", .{});
 
-    const ibi: f128 = ib.toFloat(f128);
-    std.debug.print("ibi: {d}\n", .{ibi});
+    // var ibi = @import("float/asInteger.zig").asInteger(bb1);
+    // ibi[0].limbs = &ibi[1];
+    // std.debug.print("bb1: {d}\n", .{bb1});
+    // std.debug.print("ibi: ", .{});
+    // try printBigint(a, ibi[0]);
+    // std.debug.print("\n", .{});
+
+    // std.debug.print("ib.num.limbs = {any}\n", .{ib.num.limbs[0..ib.num.size]});
+    // std.debug.print("ibi.limbs = {any}\n", .{ibi[0].limbs[0..ibi[0].size]});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

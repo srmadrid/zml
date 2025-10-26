@@ -3,6 +3,7 @@ const std = @import("std");
 pub const types = @import("types.zig");
 pub const scast = types.scast;
 pub const cast = types.cast;
+pub const Cmp = types.Cmp;
 pub const Order = types.Order;
 pub const Uplo = types.Uplo;
 pub const Diag = types.Diag;
@@ -30,6 +31,9 @@ pub const matrix = @import("matrix.zig");
 pub const array = @import("array.zig");
 
 const constants = @import("constants.zig");
+pub const zero = constants.zero;
+pub const one = constants.one;
+pub const two = constants.two;
 pub const pi = constants.pi;
 
 const ops = @import("ops.zig");

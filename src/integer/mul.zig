@@ -11,7 +11,7 @@ const Integer = integer.Integer;
 /// Signature
 /// ---------
 /// ```zig
-/// fn mul(allocator: std.mem.Allocator, x: X, y: Y) !Rational
+/// fn mul(allocator: std.mem.Allocator, x: X, y: Y) !Integer
 /// ```
 ///
 /// Parameters

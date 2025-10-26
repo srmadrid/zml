@@ -55,33 +55,199 @@ pub fn sub_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
         return integer.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
-        .integer => switch (comptime types.numericType(Y)) {
-            .integer => {
-                return integer.add_(allocator, o, x, integer.neg(null, y) catch unreachable);
-            },
-            .float, .int => {
-                var temp: Integer = try .initSet(allocator, y);
-                defer temp.deinit(allocator);
-                return integer.add_(allocator, o, x, integer.neg(null, temp) catch unreachable);
-            },
-            else => unreachable,
+        .expression => @compileError("integer.sub_ not implemented for Expression yet"),
+        .complex => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.sub_ not implemented for Complex + Expression yet"),
+            .complex => return sub_(allocator, o, x.re, y.re),
+            .real => @compileError("integer.sub_ not implemented for Complex + Real yet"),
+            .rational => return sub_(allocator, o, x.re, y),
+            .integer => return sub_(allocator, o, x.re, y),
+            .cfloat => return sub_(allocator, o, x.re, y.re),
+            .float => return sub_(allocator, o, x.re, y),
+            .int => return sub_(allocator, o, x.re, y),
+            .bool => return sub_(allocator, o, x.re, y),
         },
-        .float, .int => switch (comptime types.numericType(Y)) {
-            .float, .int => {
-                var tx: Integer = try .initSet(allocator, x);
+        .real => @compileError("integer.sub_ not implemented for Real yet"),
+        .rational => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.sub_ not implemented for Rational + Expression yet"),
+            .complex => return sub_(allocator, o, x, y.re),
+            .real => @compileError("integer.sub_ not implemented for Rational + Real yet"),
+            .rational => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
                 defer tx.deinit(allocator);
-                var ty: Integer = try .initSet(allocator, y);
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
                 defer ty.deinit(allocator);
                 return integer.add_(allocator, o, tx, integer.neg(null, ty) catch unreachable);
             },
             .integer => {
-                var temp: Integer = try .initSet(allocator, x);
-                defer temp.deinit(allocator);
-                return integer.add_(allocator, o, temp, integer.neg(null, y) catch unreachable);
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                return integer.add_(allocator, o, tx, integer.neg(null, y) catch unreachable);
             },
-            else => unreachable,
+            .cfloat => return sub_(allocator, o, x, y.re),
+            .float => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, tx, integer.neg(null, ty[0]) catch unreachable);
+            },
+            .int => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, tx, integer.neg(null, ty[0]) catch unreachable);
+            },
+            .bool => {
+                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                defer tx.deinit(allocator);
+                return integer.add_(allocator, o, tx, integer.neg(null, types.cast(Integer, y, .{}) catch unreachable) catch unreachable);
+            },
         },
-
-        else => unreachable,
+        .integer => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.sub_ not implemented for Integer + Expression yet"),
+            .complex => return sub_(allocator, o, x, y.re),
+            .real => @compileError("integer.sub_ not implemented for Integer + Real yet"),
+            .rational => {
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return integer.add_(allocator, o, x, integer.neg(null, ty) catch unreachable);
+            },
+            .integer => {
+                return integer.add_(allocator, o, x, integer.neg(null, y) catch unreachable);
+            },
+            .cfloat => return sub_(allocator, o, x, y.re),
+            .float => {
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, x, integer.neg(null, ty[0]) catch unreachable);
+            },
+            .int => {
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, x, integer.neg(null, ty[0]) catch unreachable);
+            },
+            .bool => {
+                return integer.add_(allocator, o, x, integer.neg(null, types.cast(Integer, y, .{}) catch unreachable) catch unreachable);
+            },
+        },
+        .cfloat => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.sub_ not implemented for CFloat + Expression yet"),
+            .complex => return sub_(allocator, o, x.re, y.re),
+            .real => @compileError("integer.sub_ not implemented for CFloat + Real yet"),
+            .rational => return sub_(allocator, o, x.re, y),
+            .integer => return sub_(allocator, o, x.re, y),
+            .cfloat => return sub_(allocator, o, x.re, y.re),
+            .float => return sub_(allocator, o, x.re, y),
+            .int => return sub_(allocator, o, x.re, y),
+            .bool => return sub_(allocator, o, x.re, y),
+        },
+        .float => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.sub_ not implemented for Float + Expression yet"),
+            .complex => return sub_(allocator, o, x, y.re),
+            .real => @compileError("integer.sub_ not implemented for Float + Real yet"),
+            .rational => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return integer.add_(allocator, o, tx[0], integer.neg(null, ty) catch unreachable);
+            },
+            .integer => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, y) catch unreachable);
+            },
+            .cfloat => return sub_(allocator, o, x, y.re),
+            .float => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, ty[0]) catch unreachable);
+            },
+            .int => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, ty[0]) catch unreachable);
+            },
+            .bool => {
+                var tx = @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, types.cast(Integer, y, .{}) catch unreachable) catch unreachable);
+            },
+        },
+        .int => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.sub_ not implemented for Int + Expression yet"),
+            .complex => return sub_(allocator, o, x, y.re),
+            .real => @compileError("integer.sub_ not implemented for Int + Real yet"),
+            .rational => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return integer.add_(allocator, o, tx[0], integer.neg(null, ty) catch unreachable);
+            },
+            .integer => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, y) catch unreachable);
+            },
+            .cfloat => return sub_(allocator, o, x, y.re),
+            .float => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, ty[0]) catch unreachable);
+            },
+            .int => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, ty[0]) catch unreachable);
+            },
+            .bool => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return integer.add_(allocator, o, tx[0], integer.neg(null, types.cast(Integer, y, .{}) catch unreachable) catch unreachable);
+            },
+        },
+        .bool => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.sub_ not implemented for Bool + Expression yet"),
+            .complex => return sub_(allocator, o, x, y.re),
+            .real => @compileError("integer.sub_ not implemented for Bool + Real yet"),
+            .rational => {
+                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                defer ty.deinit(allocator);
+                return integer.add_(allocator, o, types.cast(Integer, x, .{}) catch unreachable, integer.neg(null, ty) catch unreachable);
+            },
+            .integer => {
+                return integer.add_(allocator, o, types.cast(Integer, x, .{}) catch unreachable, integer.neg(null, y) catch unreachable);
+            },
+            .cfloat => return sub_(allocator, o, x, y.re),
+            .float => {
+                var ty = @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, types.cast(Integer, x, .{}) catch unreachable, integer.neg(null, ty[0]) catch unreachable);
+            },
+            .int => {
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return integer.add_(allocator, o, types.cast(Integer, x, .{}) catch unreachable, integer.neg(null, ty[0]) catch unreachable);
+            },
+            .bool => {
+                return integer.add_(
+                    allocator,
+                    o,
+                    types.cast(Integer, x, .{}) catch unreachable,
+                    integer.neg(null, types.cast(Integer, y, .{}) catch unreachable) catch unreachable,
+                );
+            },
+        },
     }
 }
