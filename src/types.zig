@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const constants = @import("constants.zig");
+
 pub const default_uint = usize;
 pub const default_int = isize;
 pub const default_float = f64;
@@ -3464,44 +3466,41 @@ pub inline fn scast(
         return value;
     }
 
-    const onumeric = numericType(O);
-    const inumeric = numericType(I);
-
-    switch (comptime inumeric) {
-        .bool => switch (comptime onumeric) {
+    switch (comptime numericType(I)) {
+        .bool => switch (comptime numericType(O)) {
             .bool => unreachable,
             .int => return if (value) 1 else 0,
-            .float => return if (value) 1 else 0,
+            .float => return if (value) 1.0 else 0.0,
             .cfloat => return .{
-                .re = if (value) 1 else 0,
-                .im = 0,
+                .re = if (value) 1.0 else 0.0,
+                .im = 0.0,
             },
             else => unreachable,
         },
-        .int => switch (comptime onumeric) {
-            .bool => return if (value != 0) true else false,
+        .int => switch (comptime numericType(O)) {
+            .bool => return value != 0,
             .int => return @intCast(value),
             .float => return @floatFromInt(value),
             .cfloat => return .{
                 .re = @floatFromInt(value),
-                .im = 0,
+                .im = 0.0,
             },
             else => unreachable,
         },
-        .float => switch (comptime onumeric) {
-            .bool => return if (value != 0) true else false,
+        .float => switch (comptime numericType(O)) {
+            .bool => return value != 0.0,
             .int => return @intFromFloat(value),
             .float => return @floatCast(value),
             .cfloat => return if (I == Scalar(O)) .{
                 .re = value,
-                .im = 0,
+                .im = 0.0,
             } else .{
                 .re = @floatCast(value),
-                .im = 0,
+                .im = 0.0,
             },
             else => unreachable,
         },
-        .cfloat => switch (comptime onumeric) {
+        .cfloat => switch (comptime numericType(O)) {
             .bool => return if (value.re != 0 or value.im != 0) true else false,
             .int => return @intFromFloat(value.re),
             .float => return if (Scalar(I) == O) value.re else @floatCast(value.re),
@@ -3511,7 +3510,35 @@ pub inline fn scast(
             },
             else => unreachable,
         },
-        else => unreachable,
+        .integer => switch (comptime numericType(O)) {
+            .bool => return integer.ne(value, 0),
+            .int => return value.toInt(O),
+            .float => return value.toFloat(O),
+            .cfloat => return .{
+                .re = value.toFloat(Scalar(O)),
+                .im = 0.0,
+            },
+            else => unreachable,
+        },
+        .rational => switch (comptime numericType(O)) {
+            .bool => return rational.ne(value, 0),
+            .int => return value.toInt(O),
+            .float => return value.toFloat(O),
+            .cfloat => return .{
+                .re = value.toFloat(Scalar(O)),
+                .im = 0.0,
+            },
+            else => unreachable,
+        },
+        .real => @compileError("Not implemented yet."),
+        .complex => switch (comptime numericType(O)) {
+            .bool => return complex.ne(value, 0),
+            .int => return value.toInt(O),
+            .float => return value.toFloat(O),
+            .cfloat => return value.toCFloat(O),
+            else => unreachable,
+        },
+        .expression => @compileError("Not implemented yet."),
     }
 }
 
@@ -3547,89 +3574,213 @@ pub inline fn cast(
     const I: type = @TypeOf(value);
     const O: type = T;
 
-    comptime if (isArbitraryPrecision(O)) {
-        if (I == O) {
-            validateContext(
-                @TypeOf(ctx),
-                .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    .copy = .{ .type = bool, .required = false },
-                },
-            );
-        } else {
-            validateContext(
-                @TypeOf(ctx),
-                .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                },
-            );
-        }
-    } else {
-        validateContext(@TypeOf(ctx), .{});
-    };
-
     if (I == O) {
         switch (comptime numericType(O)) {
-            .bool, .int, .float, .cfloat => return value,
-            .integer => if (getFieldOrDefault(ctx, "copy", bool, false)) {
-                // return integer.copy(ctx.allocator, value);
-                return value;
-            } else {
+            .bool, .int, .float, .cfloat => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
                 return value;
             },
-            .rational => if (getFieldOrDefault(ctx, "copy", bool, false)) {
-                // return rational.copy(ctx.allocator, value);
-                return value;
-            } else {
-                return value;
+            .integer => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return value.copy(allocator);
+                } else {
+                    return value;
+                }
             },
-            .real => if (getFieldOrDefault(ctx, "copy", bool, false)) {
-                // return real.copy(ctx.allocator, value);
-                return value;
-            } else {
-                return value;
+            .rational => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return value.copy(allocator);
+                } else {
+                    return value;
+                }
             },
-            .complex => if (getFieldOrDefault(ctx, "copy", bool, false)) {
-                // return complex.copy(ctx.allocator, value);
-                return value;
-            } else {
-                return value;
+            .real => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return value.copy(allocator);
+                } else {
+                    return value;
+                }
             },
-            .expression => if (getFieldOrDefault(ctx, "copy", bool, false)) {
-                // return expression.copy(ctx.allocator, value);
-                return value;
-            } else {
-                return value;
+            .complex => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return value.copy(allocator);
+                } else {
+                    return value;
+                }
+            },
+            .expression => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return value.copy(allocator);
+                } else {
+                    return value;
+                }
             },
         }
         return value;
     }
 
-    const onumeric = numericType(O);
-    const inumeric = comptime numericType(I);
-
-    switch (inumeric) {
-        .bool => switch (comptime onumeric) {
+    switch (comptime numericType(I)) {
+        .bool => switch (comptime numericType(O)) {
             .bool => unreachable,
-            .int => return if (value) 1 else 0,
-            .float => return if (value) 1 else 0,
-            .cfloat => return .{
-                .re = if (value) 1 else 0,
-                .im = 0,
+            .int => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return if (value) 1 else 0;
             },
-            .integer => @compileError("Not implemented yet: casting from bool to integer"),
-            .rational => @compileError("Not implemented yet: casting from bool to rational"),
-            .real => @compileError("Not implemented yet: casting from bool to real"),
-            .complex => @compileError("Not implemented yet: casting from bool to complex"),
+            .float => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return if (value) 1.0 else 0.0;
+            },
+            .cfloat => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return .{
+                    .re = if (value) 1.0 else 0.0,
+                    .im = 0.0,
+                };
+            },
+            .integer => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return if (value)
+                        constants.one(Integer, .{ .allocator = allocator })
+                    else
+                        constants.zero(Integer, .{ .allocator = allocator });
+                } else {
+                    return if (value)
+                        constants.one(Integer, .{}) catch unreachable
+                    else
+                        constants.zero(Integer, .{}) catch unreachable;
+                }
+            },
+            .rational => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return if (value)
+                        constants.one(Rational, .{ .allocator = allocator })
+                    else
+                        constants.zero(Rational, .{ .allocator = allocator });
+                } else {
+                    return if (value)
+                        constants.one(Rational, .{}) catch unreachable
+                    else
+                        constants.zero(Rational, .{}) catch unreachable;
+                }
+            },
+            .real => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return if (value)
+                        constants.one(Real, .{ .allocator = allocator })
+                    else
+                        constants.zero(Real, .{ .allocator = allocator });
+                } else {
+                    return if (value)
+                        constants.one(Real, .{}) catch unreachable
+                    else
+                        constants.zero(Real, .{}) catch unreachable;
+                }
+            },
+            .complex => {
+                comptime validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                    },
+                );
+
+                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                    return if (value)
+                        constants.one(O, .{ .allocator = allocator })
+                    else
+                        constants.zero(O, .{ .allocator = allocator });
+                } else {
+                    return if (value)
+                        constants.one(O, .{}) catch unreachable
+                    else
+                        constants.zero(O, .{}) catch unreachable;
+                }
+            },
             .expression => @compileError("Not implemented yet: casting from bool to expression"),
         },
-        .int => switch (comptime onumeric) {
-            .bool => return if (value != 0) true else false,
-            .int => return @intCast(value),
-            .float => return @floatFromInt(value),
-            .cfloat => return .{
-                .re = @floatFromInt(value),
-                .im = 0,
+        .int => switch (comptime numericType(O)) {
+            .bool => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return value != 0;
+            },
+            .int => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return @intCast(value);
+            },
+            .float => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return @floatFromInt(value);
+            },
+            .cfloat => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return .{
+                    .re = @floatFromInt(value),
+                    .im = 0.0,
+                };
             },
             .integer => @compileError("Not implemented yet: casting from int to integer"),
             .rational => @compileError("Not implemented yet: casting from int to rational"),
@@ -3637,16 +3788,32 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from int to complex"),
             .expression => @compileError("Not implemented yet: casting from int to expression"),
         },
-        .float => switch (comptime onumeric) {
-            .bool => return if (value != 0) true else false,
-            .int => return @intFromFloat(value),
-            .float => return @floatCast(value),
-            .cfloat => return if (I == Scalar(O)) .{
-                .re = value,
-                .im = 0,
-            } else .{
-                .re = @floatCast(value),
-                .im = 0,
+        .float => switch (comptime numericType(O)) {
+            .bool => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return value != 0.0;
+            },
+            .int => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return @intFromFloat(value);
+            },
+            .float => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return @floatCast(value);
+            },
+            .cfloat => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return if (comptime I == Scalar(O)) .{
+                    .re = value,
+                    .im = 0.0,
+                } else .{
+                    .re = @floatCast(value),
+                    .im = 0.0,
+                };
             },
             .integer => @compileError("Not implemented yet: casting from float to integer"),
             .rational => @compileError("Not implemented yet: casting from float to rational"),
@@ -3654,13 +3821,32 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from float to complex"),
             .expression => @compileError("Not implemented yet: casting from float to expression"),
         },
-        .cfloat => switch (comptime onumeric) {
-            .bool => return if (value.re != 0 or value.im != 0) true else false,
-            .int => return @intFromFloat(value.re),
-            .float => return if (Scalar(I) == O) value.re else @floatCast(value.re),
-            .cfloat => return .{
-                .re = @floatCast(value.re),
-                .im = @floatCast(value.im),
+        .cfloat => switch (comptime numericType(O)) {
+            .bool => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return value.re != 0.0 or value.im != 0.0;
+            },
+            .int => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return @intFromFloat(value.re);
+            },
+            .float => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return if (comptime Scalar(I) == O)
+                    value.re
+                else
+                    @floatCast(value.re);
+            },
+            .cfloat => {
+                comptime validateContext(@TypeOf(ctx), .{});
+
+                return .{
+                    .re = @floatCast(value.re),
+                    .im = @floatCast(value.im),
+                };
             },
             .integer => @compileError("Not implemented yet: casting from cfloat to integer"),
             .rational => @compileError("Not implemented yet: casting from cfloat to rational"),
@@ -3668,7 +3854,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from cfloat to complex"),
             .expression => @compileError("Not implemented yet: casting from cfloat to expression"),
         },
-        .integer => switch (comptime onumeric) {
+        .integer => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from integer to bool"),
             .int => @compileError("Not implemented yet: casting from integer to int"),
             .float => @compileError("Not implemented yet: casting from integer to float"),
@@ -3679,7 +3865,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from integer to complex"),
             .expression => @compileError("Not implemented yet: casting from integer to expression"),
         },
-        .rational => switch (comptime onumeric) {
+        .rational => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from rational to bool"),
             .int => @compileError("Not implemented yet: casting from rational to int"),
             .float => @compileError("Not implemented yet: casting from rational to float"),
@@ -3690,7 +3876,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from rational to complex"),
             .expression => @compileError("Not implemented yet: casting from rational to expression"),
         },
-        .real => switch (comptime onumeric) {
+        .real => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from real to bool"),
             .int => @compileError("Not implemented yet: casting from real to int"),
             .float => @compileError("Not implemented yet: casting from real to float"),
@@ -3701,7 +3887,7 @@ pub inline fn cast(
             .complex => @compileError("Not implemented yet: casting from real to complex"),
             .expression => @compileError("Not implemented yet: casting from real to expression"),
         },
-        .complex => switch (comptime onumeric) {
+        .complex => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from complex to bool"),
             .int => @compileError("Not implemented yet: casting from complex to int"),
             .float => @compileError("Not implemented yet: casting from complex to float"),
@@ -3709,10 +3895,10 @@ pub inline fn cast(
             .integer => @compileError("Not implemented yet: casting from complex to integer"),
             .rational => @compileError("Not implemented yet: casting from complex to rational"),
             .real => @compileError("Not implemented yet: casting from complex to real"),
-            .complex => return value, // Will have to check the type held by the Complex
+            .complex => @compileError("Not implemented yet: casting from complex to complex"),
             .expression => @compileError("Not implemented yet: casting from complex to expression"),
         },
-        .expression => switch (comptime onumeric) {
+        .expression => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from expression to bool"),
             .int => @compileError("Not implemented yet: casting from expression to int"),
             .float => @compileError("Not implemented yet: casting from expression to float"),

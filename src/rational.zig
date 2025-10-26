@@ -10,6 +10,8 @@ const Integer = integer.Integer;
 const complex = @import("complex.zig");
 const Complex = complex.Complex;
 
+/// A rational number represented as a fraction of two arbitrary-precision
+/// integers.
 pub const Rational = struct {
     num: Integer,
     den: Integer,
@@ -76,10 +78,10 @@ pub const Rational = struct {
     /// The allocator to use for memory allocations.
     ///
     /// `numerator` (`anytype`):
-    /// The value to set the numerator to.
+    /// The value to set the numerator to. Must be a numeric type or a string.
     ///
     /// `denominator` (`anytype`):
-    /// The value to set the denominator to.
+    /// The value to set the denominator to. Must be a numeric type or a string.
     ///
     /// Returns
     /// -------
@@ -116,10 +118,11 @@ pub const Rational = struct {
         return r;
     }
 
-    /// Deinitializes the `Rational`, freeing any allocated memory.
+    /// Deinitializes the `Rational`, freeing any allocated memory and
+    /// invalidating it.
     ///
     /// If the `Rational` does not own its data, no memory is freed and this
-    /// becomes a no-op.
+    /// only invalidates it.
     ///
     /// Parameters
     /// ----------
@@ -207,8 +210,8 @@ pub const Rational = struct {
         };
     }
 
-    /// Converts the `Rational` to an integer type `Int`, performing truncation
-    /// if necessary.
+    /// Converts the `Rational` to an int type `Int`, performing truncation if
+    /// necessary.
     ///
     /// Parameters
     /// ----------
@@ -216,12 +219,12 @@ pub const Rational = struct {
     /// A pointer to the `Rational` to convert.
     ///
     /// `Int` (`type`):
-    /// The integer type to convert to.
+    /// The int type to convert to.
     ///
     /// Returns
     /// -------
     /// `Int`:
-    /// The converted integer value.
+    /// The converted int value.
     pub fn toInt(self: *const Rational, comptime Int: type) Int {
         comptime if (types.numericType(Int) != .int)
             @compileError("rational.toInt requires Int to be an int type, got " ++ @typeName(Int));
@@ -247,7 +250,7 @@ pub const Rational = struct {
         return types.scast(Int, q);
     }
 
-    /// Converts the `Rational` to a floating-point type `Float`.
+    /// Converts the `Rational` to a float type `Float`.
     ///
     /// Parameters
     /// ----------
@@ -255,12 +258,12 @@ pub const Rational = struct {
     /// A pointer to the `Rational` to convert.
     ///
     /// `Float` (`type`):
-    /// The floating-point type to convert to.
+    /// The float type to convert to.
     ///
     /// Returns
     /// -------
     /// `Float`:
-    /// The converted floating-point value.
+    /// The converted float value.
     pub fn toFloat(self: *const Rational, comptime Float: type) Float {
         comptime if (types.numericType(Float) != .float)
             @compileError("rational.toFloat requires Float to be a float type, got " ++ @typeName(Float));
@@ -290,7 +293,7 @@ pub const Rational = struct {
         return .{
             .re = re,
             .im = constants.zero(Rational, .{}) catch unreachable,
-            .flags = .{ .owns_data = false, .writable = false },
+            .flags = .{ .owns_data = false, .writable = true },
         };
     }
 
@@ -325,7 +328,7 @@ pub const Rational = struct {
         const result: Complex(Rational) = .{
             .re = self,
             .im = try constants.zero(Integer, .{ .allocator = allocator }),
-            .flags = .{ .owns_data = true, .writable = self.flags.writable },
+            .flags = .{ .owns_data = true, .writable = true },
         };
 
         self.* = undefined;

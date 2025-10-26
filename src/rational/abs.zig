@@ -12,10 +12,9 @@ const Rational = rational.Rational;
 /// Parameters
 /// ----------
 /// `allocator` (`?std.mem.Allocator`):
-/// The allocator to use for memory allocations. If provided it must be the same
-/// allocator used to initialize `o`.
+/// The allocator to use for memory allocations.
 ///
-/// `x` (Rational):
+/// `x` (`Rational`):
 /// The input `Rational`.
 ///
 /// Returns

@@ -10,6 +10,7 @@ const Rational = rational.Rational;
 const complex = @import("complex.zig");
 const Complex = complex.Complex;
 
+/// Arbitrary-precision integer type.
 pub const Integer = struct {
     limbs: [*]u32,
     size: u32,
@@ -25,10 +26,29 @@ pub const Integer = struct {
         .flags = .{ .owns_data = false, .writable = false },
     };
 
+    /// Initializes a new `Integer` with the specified size.
+    ///
+    /// Sizes of zero are allowed, resulting in an integer with no allocated
+    /// limbs.
+    ///
+    /// Parameters
+    /// ----------
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations.
+    ///
+    /// `size` (`u32`):
+    /// The size of the integer in limbs.
+    ///
+    /// Returns
+    /// -------
+    /// `Integer`:
+    /// The newly initialized `Integer`.
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
     pub fn init(allocator: std.mem.Allocator, size: u32) !Integer {
-        // if (size == 0)
-        //     return Error.ZeroSize;
-
         return .{
             .limbs = (try allocator.alloc(u32, size)).ptr,
             .size = 0,
@@ -38,6 +58,33 @@ pub const Integer = struct {
         };
     }
 
+    /// Initializes a new `Integer` with the specified value.
+    ///
+    /// Signature
+    /// ---------
+    /// ```zig
+    /// fn initSet(allocator: std.mem.Allocator, value: V) !Integer
+    /// ```
+    ///
+    /// Parameters
+    /// ----------
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations.
+    ///
+    /// `value` (`anytype`):
+    /// The value to set the integer to. Must be a numeric type or a string.
+    /// Float values are truncated towards zero, and complex values use their
+    /// real part.
+    ///
+    /// Returns
+    /// -------
+    /// `Integer`:
+    /// The newly initialized `Integer`.
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
     pub fn initSet(allocator: std.mem.Allocator, value: anytype) !Integer {
         var integer = try Integer.init(allocator, 0);
 
@@ -45,6 +92,24 @@ pub const Integer = struct {
         return integer;
     }
 
+    /// Deinitializes the `Integer`, freeing any allocated memory and
+    /// invalidating it.
+    ///
+    /// If the `Integer` does not own its data, no memory is freed and this only
+    /// invalidates it.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Integer`):
+    /// A pointer to the `Integer` to deinitialize.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory deallocation. Must be the same allocator
+    /// used to initialize `self`.
+    ///
+    /// Returns
+    /// -------
+    /// `void`
     pub fn deinit(self: *Integer, allocator: ?std.mem.Allocator) void {
         if (self.flags.owns_data) {
             allocator.?.free(self.limbs[0..self._llen]);
@@ -53,8 +118,36 @@ pub const Integer = struct {
         self.* = undefined;
     }
 
+    /// Reserves space for at least `new_size` limbs.
+    ///
+    /// If the current allocated size is already greater than or equal to
+    /// `new_size`, this is a no-op.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Integer`):
+    /// A pointer to the `Integer` to reserve space for.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations. Must be the same allocator
+    /// used to initialize `self`.
+    ///
+    /// `new_size` (`u32`):
+    /// The new size to reserve space for, in limbs.
+    ///
+    /// Returns
+    /// -------
+    /// `void`
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
+    ///
+    /// `integer.Error.DataNotOwned`:
+    /// If the `Integer` does not own its data.
     pub fn reserve(self: *Integer, allocator: std.mem.Allocator, new_size: u32) !void {
-        if (self.flags.owns_data == false)
+        if (!self.flags.owns_data)
             return Error.DataNotOwned;
 
         if (new_size > self._llen) {
@@ -63,15 +156,50 @@ pub const Integer = struct {
         }
     }
 
+    /// Trims the allocated memory to fit the current size.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Integer`):
+    /// A pointer to the `Integer` to trim.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations. Must be the same allocator
+    /// used to initialize `self`.
+    ///
+    /// Returns
+    /// -------
+    /// `void`
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
+    ///
+    /// `integer.Error.DataNotOwned`:
+    /// If the `Integer` does not own its data.
     pub fn trim(self: *Integer, allocator: std.mem.Allocator) !void {
-        if (self.flags.owns_data == false or self.size == self._llen)
+        if (!self.flags.owns_data)
+            return Error.DataNotOwned;
+
+        if (self.size == self._llen)
             return;
 
         self.limbs = (try allocator.realloc(self.limbs[0..self._llen], self.size)).ptr;
         self._llen = self.size;
     }
 
-    pub fn trimSize(self: *Integer) void {
+    /// Truncates leading zero limbs by adjusting the size.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Integer`):
+    /// A pointer to the `Integer` to truncate.
+    ///
+    /// Returns
+    /// -------
+    /// `void`
+    pub fn truncate(self: *Integer) void {
         while (self.size > 0 and self.limbs[self.size - 1] == 0) {
             self.size -= 1;
         }
@@ -79,6 +207,42 @@ pub const Integer = struct {
         if (self.size == 0) self.positive = true;
     }
 
+    /// Sets the value of the `Integer`.
+    ///
+    /// Signature
+    /// ---------
+    /// ```zig
+    /// fn set(allocator: std.mem.Allocator, value: V) !void
+    /// ```
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Integer`):
+    /// A pointer to the `Integer` to set.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations. Must be the same allocator
+    /// used to initialize `self`.
+    ///
+    /// `value` (`anytype`):
+    /// The value to set the integer to. Must be a numeric type or a string.
+    /// Float values are truncated towards zero, and complex values use their
+    /// real part.
+    ///
+    /// Returns
+    /// -------
+    /// `void`
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
+    ///
+    /// `integer.Error.NotWritable`:
+    /// If the `Integer` is not writable.
+    ///
+    /// `integer.Error.NotFinite`:
+    /// If the value is a float or complex number that is not finite.
     pub fn set(self: *Integer, allocator: std.mem.Allocator, value: anytype) !void {
         const V: type = @TypeOf(value);
 
@@ -196,7 +360,7 @@ pub const Integer = struct {
                     }
 
                     if (!std.math.isFinite(v))
-                        return Error.NonInteger;
+                        return Error.NotFinite;
 
                     const bits: u16 = @typeInfo(V).float.bits;
 
@@ -380,6 +544,25 @@ pub const Integer = struct {
         } else if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
     }
 
+    /// Creates a copy of the `Integer`.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*const Integer`):
+    /// A pointer to the `Integer` to copy.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations.
+    ///
+    /// Returns
+    /// -------
+    /// `Integer`:
+    /// The newly created copy of the `Integer`.
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
     pub fn copy(self: *const Integer, allocator: std.mem.Allocator) !Integer {
         var result: Integer = try .init(allocator, int.max(1, self.size));
 
@@ -394,6 +577,20 @@ pub const Integer = struct {
         return result;
     }
 
+    /// Converts the `Integer` to an int type `Int`.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*const Integer`):
+    /// A pointer to the `Integer` to convert.
+    ///
+    /// `Int` (`type`):
+    /// The int type to convert to.
+    ///
+    /// Returns
+    /// -------
+    /// `Int`:
+    /// The converted int value.
     pub fn toInt(self: *const Integer, comptime Int: type) Int {
         comptime if (types.numericType(Int) != .int)
             @compileError("integer.toInt requires Int to be an int type, got " ++ @typeName(Int));
@@ -447,6 +644,20 @@ pub const Integer = struct {
         }
     }
 
+    /// Converts the `Integer` to a float type `Float`.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*const Integer`):
+    /// A pointer to the `Integer` to convert.
+    ///
+    /// `Float` (`type`):
+    /// The float type to convert to.
+    ///
+    /// Returns
+    /// -------
+    /// `Float`:
+    /// The converted float value.
     pub fn toFloat(self: *const Integer, comptime Float: type) Float {
         comptime if (types.numericType(Float) != .float)
             @compileError("integer.toFloat requires Float to be a float type, got " ++ @typeName(Float));
@@ -467,6 +678,17 @@ pub const Integer = struct {
         return result;
     }
 
+    /// Returns a view of the `Integer` as a rational number.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*const Integer`):
+    /// A pointer to the `Integer` to view as a ratioal number.
+    ///
+    /// Returns
+    /// -------
+    /// `Rational`:
+    /// The `Integer` viewed as a rational number.
     pub fn asRational(self: *const Integer) Rational {
         var num: Integer = self.*;
         num.flags.owns_data = false;
@@ -474,10 +696,33 @@ pub const Integer = struct {
         return .{
             .num = num,
             .den = constants.one(Integer, .{}) catch unreachable,
-            .flags = .{ .owns_data = false, .writable = false },
+            .flags = .{ .owns_data = false, .writable = true },
         };
     }
 
+    /// Converts the `Integer` into a rational number. After the conversion, the new complex number takes ownership of the data
+    /// and the original `Integer` is invalidated.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Integer`):
+    /// A pointer to the `Integer` to convert.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations.
+    ///
+    /// Returns
+    /// -------
+    /// `Rational`:
+    /// The newly created rational number.
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
+    ///
+    /// `rational.Error.DataNotOwned`:
+    /// If the `Integer` does not own its data.
     pub fn toRational(self: *Integer, allocator: std.mem.Allocator) !Rational {
         if (!self.flags.owns_data)
             return Error.DataNotOwned;
@@ -485,7 +730,7 @@ pub const Integer = struct {
         const result: Rational = .{
             .num = self,
             .den = try constants.one(Integer, .{ .allocator = allocator }),
-            .flags = .{ .owns_data = true, .writable = self.flags.writable },
+            .flags = .{ .owns_data = true, .writable = true },
         };
 
         self.* = undefined;
@@ -493,18 +738,79 @@ pub const Integer = struct {
         return result;
     }
 
+    /// Creates a copy of the `Integer` as a rational number.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*const Integer`):
+    /// A pointer to the `Integer` to copy.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations.
+    ///
+    /// Returns
+    /// -------
+    /// `Rational`:
+    /// The newly created rational number.
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
     pub fn copyToRational(self: *const Integer, allocator: std.mem.Allocator) !Rational {
-        return try (try self.copy(allocator)).toRational(allocator);
+        var num: Integer = try self.copy(allocator);
+        errdefer num.deinit(allocator);
+
+        return .{
+            .num = num,
+            .den = try constants.one(Integer, .{ .allocator = allocator }),
+            .flags = .{ .owns_data = true, .writable = true },
+        };
     }
 
+    /// Returns a view of the `Integer` as a complex number.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*const Integer`):
+    /// A pointer to the `Integer` to view as a complex number.
+    ///
+    /// Returns
+    /// -------
+    /// `Complex(Rational)`:
+    /// The `Integer` viewed as a complex number.
     pub fn asComplex(self: *const Integer) Complex(Rational) {
         return .{
             .re = self.asRational(),
-            .im = constants.one(Rational, .{}) catch unreachable,
+            .im = constants.zero(Rational, .{}) catch unreachable,
             .flags = .{ .owns_data = false, .writable = false },
         };
     }
 
+    /// Converts the `Integer` into a complex number. After the conversion, the
+    /// new complex number takes ownership of the data and the original
+    /// `Integer` is invalidated.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Integer`):
+    /// A pointer to the `Integer` to convert.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations.
+    ///
+    /// Returns
+    /// -------
+    /// `Complex(Rational)`:
+    /// The newly created complex number.
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
+    ///
+    /// `rational.Error.DataNotOwned`:
+    /// If the `Integer` does not own its data.
     pub fn toComplex(self: *Integer, allocator: std.mem.Allocator) !Complex(Rational) {
         if (!self.flags.owns_data)
             return Error.DataNotOwned;
@@ -514,7 +820,7 @@ pub const Integer = struct {
 
         const result: Complex(Rational) = .{
             .re = re,
-            .im = try constants.one(Integer, .{ .allocator = allocator }),
+            .im = try constants.zero(Integer, .{ .allocator = allocator }),
             .flags = .{ .owns_data = true, .writable = self.flags.writable },
         };
 
@@ -523,8 +829,34 @@ pub const Integer = struct {
         return result;
     }
 
+    /// Creates a copy of the `Integer` as a complex number.
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*const Integer`):
+    /// A pointer to the `Integer` to copy.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations.
+    ///
+    /// Returns
+    /// -------
+    /// `Complex(Rational)`:
+    /// The newly created complex number.
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
     pub fn copyToComplex(self: *const Integer, allocator: std.mem.Allocator) !Complex(Rational) {
-        return try (try self.copy(allocator)).toComplex(allocator);
+        var re: Rational = try self.copyToRational(allocator);
+        errdefer re.den.deinit(allocator);
+
+        return .{
+            .re = re,
+            .im = try constants.zero(Integer, .{ .allocator = allocator }),
+            .flags = .{ .owns_data = true, .writable = false },
+        };
     }
 };
 
@@ -554,9 +886,8 @@ pub const neg = @import("integer/neg.zig").neg;
 pub const gcd = @import("integer/gcd.zig").gcd;
 
 pub const Error = error{
-    ZeroSize,
     ZeroDivision,
-    NonInteger,
+    NotFinite,
     NotWritable,
     DataNotOwned,
 };

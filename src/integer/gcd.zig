@@ -41,27 +41,27 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
 
                 if (s > 0) {
                     @import("div_.zig").shiftRightInPlace(a.limbs[0..a.size], @intCast(s));
-                    a.trimSize();
+                    a.truncate();
                     @import("div_.zig").shiftRightInPlace(b.limbs[0..b.size], @intCast(s));
-                    b.trimSize();
+                    b.truncate();
                 }
 
                 // Make sure a is odd.
                 while (a.size != 0 and (a.limbs[0] & 1) == 0) {
                     @import("div_.zig").shiftRightInPlace(a.limbs[0..a.size], 1);
-                    a.trimSize();
+                    a.truncate();
                 }
 
                 while (b.size != 0) {
                     while (b.size != 0 and (b.limbs[0] & 1) == 0) {
                         @import("div_.zig").shiftRightInPlace(b.limbs[0..b.size], 1);
-                        b.trimSize();
+                        b.truncate();
                     }
 
                     if (b.size == 0) break;
 
-                    a.trimSize();
-                    b.trimSize();
+                    a.truncate();
+                    b.truncate();
 
                     if (integer.gt(a, b)) {
                         const tmp = a;
@@ -81,7 +81,7 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                     if (@import("div_.zig").shiftLeftInPlace(a.limbs[0..a.size], &a.limbs[a.size], bit_shift))
                         a.size += 1;
 
-                    a.trimSize();
+                    a.truncate();
                 }
 
                 return a;
@@ -128,7 +128,7 @@ fn removeFirstLimb(self: *Integer) void {
     }
     self.size -= 1;
     if (self.size > 0) self.limbs[self.size] = 0;
-    self.trimSize();
+    self.truncate();
 }
 
 fn addZeroLimbs(allocator: std.mem.Allocator, self: *Integer, n: u32) !void {

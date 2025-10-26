@@ -4,14 +4,54 @@ const types = @import("../types.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
+/// Performs in-place division between two operands of any numeric type in
+/// `Integer` precision. Float, rational or real types are truncated towards
+/// zero, and for cfloat or complex types, only the real part is considered.
+///
+/// Aliasing between the output operand `o` and the input operands `x` or `y` is
+/// allowed.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn div_(allocator: std.mem.Allocator, o: *Integer, x: X, y: Y, ctx: anytype) !void
+/// ```
+///
+/// Parameters
+/// ----------
+/// `allocator` (`std.mem.Allocator`):
+/// The allocator to use for memory allocations. Must be the same allocator used
+/// to initialize `o`.
+///
+/// `o` (`*Integer`):
+/// A pointer to the output operand where the result will be stored.
+///
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// Returns
+/// -------
+/// `void`
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails.
+///
+/// `integer.Error.NotWritable`:
+/// If the output operand `o` is not writable.
+///
+/// `integer.Error.ZeroDivision`:
+/// If `y` is zero.
 pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !void {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
-        types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)
-        @compileError("integer.div_ requires x and y to be an int, float or integer, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
+        @compileError("integer.div_ requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     if (!o.flags.writable)
         return integer.Error.NotWritable;
@@ -19,7 +59,8 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
     switch (comptime types.numericType(X)) {
         .integer => switch (comptime types.numericType(Y)) {
             .integer => {
-                if (y.size == 0) return integer.Error.ZeroDivision;
+                if (y.size == 0)
+                    return integer.Error.ZeroDivision;
 
                 if (integer.lt(integer.abs(null, x) catch unreachable, integer.abs(null, y) catch unreachable))
                     return o.set(allocator, 0);
@@ -36,7 +77,7 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                     }
 
                     o.size = x.size;
-                    o.trimSize();
+                    o.truncate();
                     o.positive = x.positive == y.positive;
                     return;
                 }
@@ -86,7 +127,7 @@ pub fn div_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 }
 
                 o.size = m + 1;
-                o.trimSize();
+                o.truncate();
 
                 if (s > 0) shiftRightInPlace(r.limbs[0..n], @intCast(s));
                 if (r.limbs[r.size - 1] == 0 and r.size > 1) r.size -= 1;

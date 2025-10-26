@@ -8,7 +8,8 @@ const rational = @import("../rational.zig");
 const Rational = rational.Rational;
 
 /// Performs in-place addition between two operands of any numeric type in
-/// `Rational` precision. For complex types, only the real part is considered.
+/// `Rational` precision. For cfloat or complex types, only the real part is
+/// considered.
 ///
 /// Aliasing between the output operand `o` and the input operands `x` or `y` is
 /// allowed.

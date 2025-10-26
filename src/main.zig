@@ -1393,7 +1393,7 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ia.den);
     std.debug.print("\n\n", .{});
 
-    const bb1: comptime_int = 1847351907430598143750984750981470136834096814309857091843750148165084360195649817258;
+    const bb1: comptime_int = -1847351907430598143750984750981470136834096814309857091843750148165084360195649817258;
     const bb2: comptime_int = 194651875104984751896409851609438182375981502189324610238;
     var ib: zml.Rational = try .initSet(a, bb1, bb2);
     defer ib.deinit(a);
@@ -1417,7 +1417,7 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ic.den);
     std.debug.print("\n\n", .{});
 
-    const ibi: i128 = ib.toInt(i128);
+    const ibi: f128 = ib.toFloat(f128);
     std.debug.print("ibi: {d}\n", .{ibi});
 }
 

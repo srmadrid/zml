@@ -6,7 +6,8 @@ const rational = @import("../rational.zig");
 const Rational = rational.Rational;
 
 /// Performs multiplication between two operands of any numeric type in
-/// `Rational` precision. For complex types, only the real part is considered.
+/// `Rational` precision. For cfloat or complex types, only the real part is
+/// considered.
 ///
 /// Signature
 /// ---------
