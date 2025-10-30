@@ -47,7 +47,7 @@ pub fn asInteger(x: anytype) !t: {
             return .{
                 .{
                     .limbs = undefined,
-                    .size = 1,
+                    .size = 0,
                     ._llen = 1,
                     .positive = true,
                     .flags = .{ .owns_data = false, .writable = false },
@@ -73,6 +73,19 @@ pub fn asInteger(x: anytype) !t: {
     };
 
     var limbs: [size]u32 = undefined;
+
+    if (v == 0) {
+        return .{
+            .{
+                .limbs = undefined,
+                .size = 0,
+                ._llen = size,
+                .positive = true,
+                .flags = .{ .owns_data = false, .writable = false },
+            },
+            limbs,
+        };
+    }
 
     var actual_size: u32 = 0;
     switch (bits) {

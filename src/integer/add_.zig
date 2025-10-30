@@ -89,7 +89,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             .float => {
                 var tx: Integer = try integer.div(allocator, x.num, x.den);
                 defer tx.deinit(allocator);
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return add_(allocator, o, tx, ty[0]);
             },
@@ -173,7 +173,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             },
             .cfloat => return add_(allocator, o, x, y.re),
             .float => {
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return add_(allocator, o, x, ty[0]);
             },
@@ -202,34 +202,34 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             .complex => return add_(allocator, o, x, y.re),
             .real => @compileError("integer.add_ not implemented for Float + Real yet"),
             .rational => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 var ty: Integer = try integer.div(allocator, y.num, y.den);
                 defer ty.deinit(allocator);
                 return add_(allocator, o, tx[0], ty);
             },
             .integer => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 return add_(allocator, o, tx[0], y);
             },
             .cfloat => return add_(allocator, o, x, y.re),
             .float => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return add_(allocator, o, tx[0], ty[0]);
             },
             .int => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 var ty = @import("../int/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return add_(allocator, o, tx[0], ty[0]);
             },
             .bool => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 return add_(allocator, o, tx[0], types.cast(Integer, y, .{}) catch unreachable);
             },
@@ -254,7 +254,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             .float => {
                 var tx = @import("../int/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return add_(allocator, o, tx[0], ty[0]);
             },
@@ -285,7 +285,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             },
             .cfloat => return add_(allocator, o, x, y.re),
             .float => {
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return add_(allocator, o, types.cast(Integer, x, .{}) catch unreachable, ty[0]);
             },

@@ -77,7 +77,7 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             .float => {
                 var tx: Integer = try integer.div(allocator, x.num, x.den);
                 defer tx.deinit(allocator);
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return gcd(allocator, tx, ty[0]);
             },
@@ -171,7 +171,7 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             },
             .cfloat => return gcd(allocator, x, y.re),
             .float => {
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return gcd(allocator, x, ty[0]);
             },
@@ -200,34 +200,34 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             .complex => return gcd(allocator, x, y.re),
             .real => @compileError("integer. gcd not implemented for Float + Real yet"),
             .rational => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 var ty: Integer = try integer.div(allocator, y.num, y.den);
                 defer ty.deinit(allocator);
                 return gcd(allocator, tx[0], ty);
             },
             .integer => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 return gcd(allocator, tx[0], y);
             },
             .cfloat => return gcd(allocator, x, y.re),
             .float => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return gcd(allocator, tx[0], ty[0]);
             },
             .int => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 var ty = @import("../int/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return gcd(allocator, tx[0], ty[0]);
             },
             .bool => {
-                var tx = @import("../float/asInteger.zig").asInteger(x);
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 return gcd(allocator, tx[0], types.cast(Integer, y, .{}) catch unreachable);
             },
@@ -252,7 +252,7 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             .float => {
                 var tx = @import("../int/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return gcd(allocator, tx[0], ty[0]);
             },
@@ -283,7 +283,7 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             },
             .cfloat => return gcd(allocator, x, y.re),
             .float => {
-                var ty = @import("../float/asInteger.zig").asInteger(y);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
                 return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, ty[0]);
             },

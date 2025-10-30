@@ -1291,7 +1291,7 @@ fn printBigint(a: std.mem.Allocator, x: zml.Integer) !void {
     if (!x.positive)
         std.debug.print("-", .{});
 
-    var buf: [2048]u8 = undefined;
+    var buf: [8192]u8 = undefined;
     var len: u32 = 0;
     while (tmp.size != 0) {
         const remainder: u32 = divide_by_10(&tmp);
@@ -1380,7 +1380,7 @@ fn printRational(a: std.mem.Allocator, r: zml.Rational, decimals: u32) !void {
 }
 
 fn bigintTesting(a: std.mem.Allocator) !void {
-    const aa1: f64 = 31626159.127367162395;
+    const aa1: f64 = 0.0;
     std.debug.print("aa1: {d}\n", .{aa1});
     const aa2: comptime_int = 317754735801349010983650164035961436510475601483756187346587164031746508173460571634058167717754735801349010983650164;
     std.debug.print("aa2: {d}\n", .{aa2});
@@ -1397,7 +1397,7 @@ fn bigintTesting(a: std.mem.Allocator) !void {
 
     const bb1: f128 = 187435897403761458716349351.18498573407;
     std.debug.print("bb1: {d}\n", .{bb1});
-    const bb2: comptime_int = 194651875104984751896409851609438182375981502189324610238;
+    const bb2: comptime_int = -194651875104984751896409851609438182375981502189324610238;
     std.debug.print("bb2: {d}\n", .{bb2});
     var ib: zml.Rational = try .initSet(a, bb1, bb2);
     defer ib.deinit(a);
@@ -1421,15 +1421,14 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ic.den);
     std.debug.print("\n\n", .{});
 
-    // var ibi = @import("float/asInteger.zig").asInteger(bb1);
-    // ibi[0].limbs = &ibi[1];
-    // std.debug.print("bb1: {d}\n", .{bb1});
-    // std.debug.print("ibi: ", .{});
-    // try printBigint(a, ibi[0]);
-    // std.debug.print("\n", .{});
-
-    // std.debug.print("ib.num.limbs = {any}\n", .{ib.num.limbs[0..ib.num.size]});
-    // std.debug.print("ibi.limbs = {any}\n", .{ibi[0].limbs[0..ibi[0].size]});
+    const f: u128 = zml.int.maxVal(u128);
+    std.debug.print("f:  {d}\n", .{f});
+    var r = zml.asRational(f);
+    r[0].num.limbs = &r[1];
+    const id: zml.Rational = r[0];
+    std.debug.print("id: ", .{});
+    try printRational(a, id, 75);
+    std.debug.print("\n\n", .{});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

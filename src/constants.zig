@@ -65,7 +65,7 @@ pub inline fn zero(
             comptime validateContext(
                 @TypeOf(ctx),
                 .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
                 },
             );
 
@@ -84,8 +84,8 @@ pub inline fn zero(
                 };
             } else {
                 return .{
-                    .num = zero(integer.Integer, .{}),
-                    .den = one(integer.Integer, .{}),
+                    .num = zero(integer.Integer, .{}) catch unreachable,
+                    .den = one(integer.Integer, .{}) catch unreachable,
                     .flags = .{ .owns_data = false, .writable = false },
                 };
             }
@@ -146,7 +146,7 @@ pub inline fn one(
             comptime validateContext(
                 @TypeOf(ctx),
                 .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
                 },
             );
 
@@ -167,8 +167,8 @@ pub inline fn one(
                 };
             } else {
                 return .{
-                    .num = one(integer.Integer, .{}),
-                    .den = one(integer.Integer, .{}),
+                    .num = one(integer.Integer, .{}) catch unreachable,
+                    .den = one(integer.Integer, .{}) catch unreachable,
                     .flags = .{ .owns_data = false, .writable = false },
                 };
             }
@@ -229,7 +229,7 @@ pub inline fn two(
             comptime validateContext(
                 @TypeOf(ctx),
                 .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
                 },
             );
 
@@ -250,8 +250,8 @@ pub inline fn two(
                 };
             } else {
                 return .{
-                    .num = two(integer.Integer, .{}),
-                    .den = one(integer.Integer, .{}),
+                    .num = two(integer.Integer, .{}) catch unreachable,
+                    .den = one(integer.Integer, .{}) catch unreachable,
                     .flags = .{ .owns_data = false, .writable = false },
                 };
             }

@@ -29,8 +29,14 @@ pub fn cmp(x: anytype, y: anytype) Cmp {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (types.numericType(X) != .integer and types.numericType(Y) != .integer)
-        @compileError("integer.cmp requires at least x or y to be of integer type, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!(types.numericType(X) == .integer and types.numericType(Y) == .integer) and
+        !(types.numericType(X) == .integer and types.numericType(Y) == .float) and
+        !(types.numericType(X) == .integer and types.numericType(Y) == .int) and
+        !(types.numericType(X) == .integer and types.numericType(Y) == .bool) and
+        !(types.numericType(X) == .float and types.numericType(Y) == .integer) and
+        !(types.numericType(X) == .int and types.numericType(Y) == .integer) and
+        !(types.numericType(X) == .bool and types.numericType(Y) == .integer))
+        @compileError("integer.cmp requires x or y to be an integer type, the other must be an integer, float, int or bool type, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     switch (comptime types.numericType(X)) {
         .integer => switch (comptime types.numericType(Y)) {
@@ -55,16 +61,41 @@ pub fn cmp(x: anytype, y: anytype) Cmp {
 
                 return if (x.positive) cmp_abs else cmp_abs.invert();
             },
-            .float => {},
-            .int => {},
+            .float => {
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return cmp(x, ty[0]);
+            },
+            .int => {
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+                return cmp(x, ty[0]);
+            },
+            .bool => {
+                return cmp(x, types.cast(Integer, y, .{}) catch unreachable);
+            },
             else => unreachable,
         },
         .float => switch (comptime types.numericType(Y)) {
-            .integer => {},
+            .integer => {
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return cmp(tx[0], y);
+            },
             else => unreachable,
         },
         .int => switch (comptime types.numericType(Y)) {
-            .integer => {},
+            .integer => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                return cmp(tx[0], y);
+            },
+            else => unreachable,
+        },
+        .bool => switch (comptime types.numericType(Y)) {
+            .integer => {
+                return cmp(types.cast(Integer, x, .{}) catch unreachable, y);
+            },
             else => unreachable,
         },
         else => unreachable,

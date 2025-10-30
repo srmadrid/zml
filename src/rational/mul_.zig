@@ -59,7 +59,23 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
         return rational.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
+        .expression => @compileError("integer.mul_ not implemented for Expression yet"),
+        .complex => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.mul_ not implemented for Complex + Expression yet"),
+            .complex => return mul_(allocator, o, x.re, y.re),
+            .real => @compileError("integer.mul_ not implemented for Complex + Real yet"),
+            .rational => return mul_(allocator, o, x.re, y),
+            .integer => return mul_(allocator, o, x.re, y),
+            .cfloat => return mul_(allocator, o, x.re, y.re),
+            .float => return mul_(allocator, o, x.re, y),
+            .int => return mul_(allocator, o, x.re, y),
+            .bool => return mul_(allocator, o, x.re, y),
+        },
+        .real => @compileError("integer.mul_ not implemented for Real yet"),
         .rational => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.mul_ not implemented for Rational + Expression yet"),
+            .complex => return mul_(allocator, o, x, y.re),
+            .real => @compileError("integer.mul_ not implemented for Rational + Real yet"),
             .rational => {
                 if (x.num.size == 0 or y.num.size == 0) {
                     if (integer.ne(o.num, y.num)) {
@@ -169,56 +185,164 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
                     }
                 }
 
+                o.num.positive = (tx.num.positive == ty.num.positive);
+
                 if (o.num.flags.writable and o.den.flags.writable)
                     try o.reduce(allocator);
 
                 return;
             },
-            .integer => {
-                return mul_(allocator, o, x, y.asRational());
+            .integer => return mul_(allocator, o, x, y.asRational()),
+            .cfloat => return mul_(allocator, o, x, y.re),
+            .float => {
+                var ty = try @import("../float/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1][0];
+                ty[0].den.limbs = &ty[1][1];
+                return mul_(allocator, o, x, ty[0]);
             },
-            .float, .int => {
-                var temp: Rational = try .initSet(allocator, y, 1);
-                defer temp.deinit(allocator);
-                return mul_(allocator, o, x, temp);
+            .int => {
+                var ty = @import("../int/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1];
+                return mul_(allocator, o, x, ty[0]);
             },
-            else => unreachable,
+            .bool => return mul_(allocator, o, x, types.cast(Rational, y, .{}) catch unreachable),
         },
         .integer => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.mul_ not implemented for Integer + Expression yet"),
+            .complex => return mul_(allocator, o, x, y.re),
+            .real => @compileError("integer.mul_ not implemented for Integer + Real yet"),
+            .rational => return mul_(allocator, o, x.asRational(), y),
+            .integer => return mul_(allocator, o, x.asRational(), y.asRational()),
+            .cfloat => return mul_(allocator, o, x, y.re),
+            .float => {
+                var ty = try @import("../float/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1][0];
+                ty[0].den.limbs = &ty[1][1];
+                return mul_(allocator, o, x.asRational(), ty[0]);
+            },
+            .int => {
+                var ty = @import("../int/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1];
+                return mul_(allocator, o, x.asRational(), ty[0]);
+            },
+            .bool => {
+                return mul_(allocator, o, x.asRational(), types.cast(Rational, y, .{}) catch unreachable);
+            },
+        },
+        .cfloat => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.mul_ not implemented for CFloat + Expression yet"),
+            .complex => return mul_(allocator, o, x.re, y.re),
+            .real => @compileError("integer.mul_ not implemented for CFloat + Real yet"),
+            .rational => return mul_(allocator, o, x.re, y),
+            .integer => return mul_(allocator, o, x.re, y),
+            .cfloat => return mul_(allocator, o, x.re, y.re),
+            .float => return mul_(allocator, o, x.re, y),
+            .int => return mul_(allocator, o, x.re, y),
+            .bool => return mul_(allocator, o, x.re, y),
+        },
+        .float => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.mul_ not implemented for Float + Expression yet"),
+            .complex => return mul_(allocator, o, x, y.re),
+            .real => @compileError("integer.mul_ not implemented for Float + Real yet"),
             .rational => {
-                return mul_(allocator, o, x.asRational(), y);
+                var tx = try @import("../float/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1][0];
+                tx[0].den.limbs = &tx[1][1];
+                return mul_(allocator, o, tx[0], y);
             },
             .integer => {
-                return mul_(allocator, o, x.asRational(), y.asRational());
+                var tx = try @import("../float/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1][0];
+                tx[0].den.limbs = &tx[1][1];
+                return mul_(allocator, o, tx[0], y.asRational());
             },
-            .float, .int => {
-                var temp: Rational = try .initSet(allocator, y, 1);
-                defer temp.deinit(allocator);
-                return mul_(allocator, o, x.asRational(), temp);
+            .cfloat => return mul_(allocator, o, x, y.re),
+            .float => {
+                var tx = try @import("../float/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1][0];
+                tx[0].den.limbs = &tx[1][1];
+                var ty = try @import("../float/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1][0];
+                ty[0].den.limbs = &ty[1][1];
+                return mul_(allocator, o, tx[0], ty[0]);
             },
-            else => unreachable,
+            .int => {
+                var tx = try @import("../float/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1][0];
+                tx[0].den.limbs = &tx[1][1];
+                var ty = @import("../int/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1];
+                return mul_(allocator, o, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = try @import("../float/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1][0];
+                tx[0].den.limbs = &tx[1][1];
+                return mul_(allocator, o, tx[0], types.cast(Rational, y, .{}) catch unreachable);
+            },
         },
-        .float, .int => switch (comptime types.numericType(Y)) {
+        .int => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.mul_ not implemented for Int + Expression yet"),
+            .complex => return mul_(allocator, o, x, y.re),
+            .real => @compileError("integer.mul_ not implemented for Int + Real yet"),
             .rational => {
-                var temp: Rational = try .initSet(allocator, x, 1);
-                defer temp.deinit(allocator);
-                return mul_(allocator, o, temp, y);
+                var tx = @import("../int/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1];
+                return mul_(allocator, o, tx[0], y);
             },
             .integer => {
-                var temp: Rational = try .initSet(allocator, x, 1);
-                defer temp.deinit(allocator);
-                return mul_(allocator, o, temp, y.asRational());
+                var tx = @import("../int/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1];
+                return mul_(allocator, o, tx[0], y.asRational());
             },
-            .float, .int => {
-                var tx: Rational = try .initSet(allocator, x, 1);
-                defer tx.deinit(allocator);
-                var ty: Rational = try .initSet(allocator, y, 1);
-                defer ty.deinit(allocator);
-                return mul_(allocator, o, tx, ty);
+            .cfloat => return mul_(allocator, o, x, y.re),
+            .float => {
+                var tx = @import("../int/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1];
+                var ty = try @import("../float/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1][0];
+                ty[0].den.limbs = &ty[1][1];
+                return mul_(allocator, o, tx[0], ty[0]);
             },
-            else => unreachable,
+            .int => {
+                var tx = @import("../int/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1];
+                var ty = @import("../int/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1];
+                return mul_(allocator, o, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = @import("../int/asRational.zig").asRational(x);
+                tx[0].num.limbs = &tx[1];
+                return mul_(allocator, o, tx[0], types.cast(Rational, y, .{}) catch unreachable);
+            },
         },
-
-        else => unreachable,
+        .bool => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("integer.mul_ not implemented for Bool + Expression yet"),
+            .complex => return mul_(allocator, o, x, y.re),
+            .real => @compileError("integer.mul_ not implemented for Bool + Real yet"),
+            .rational => return mul_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, y),
+            .integer => return mul_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, y.asRational()),
+            .cfloat => return mul_(allocator, o, x, y.re),
+            .float => {
+                var ty = try @import("../float/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1][0];
+                ty[0].den.limbs = &ty[1][1];
+                return mul_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, ty[0]);
+            },
+            .int => {
+                var ty = @import("../int/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1];
+                return mul_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, ty[0]);
+            },
+            .bool => {
+                return mul_(
+                    allocator,
+                    o,
+                    types.cast(Rational, x, .{}) catch unreachable,
+                    types.cast(Rational, y, .{}) catch unreachable,
+                );
+            },
+        },
     }
 }
