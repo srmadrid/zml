@@ -1380,31 +1380,31 @@ fn printRational(a: std.mem.Allocator, r: zml.Rational, decimals: u32) !void {
 }
 
 fn bigintTesting(a: std.mem.Allocator) !void {
-    const aa1: f64 = 0.0;
+    const aa1: comptime_int = 18743589740376145871634935141879840845719843570914875098417509843750198405;
     std.debug.print("aa1: {d}\n", .{aa1});
-    const aa2: comptime_int = 317754735801349010983650164035961436510475601483756187346587164031746508173460571634058167717754735801349010983650164;
-    std.debug.print("aa2: {d}\n", .{aa2});
+    const aa2: comptime_int = 19465187510498475189640985160943818237598150218932461028917543890757545138;
+    std.debug.print("aa2: {d}\n\n", .{aa2});
     var ia: zml.Rational = try .initSet(a, aa1, aa2);
     defer ia.deinit(a);
     std.debug.print("ia: ", .{});
-    try printRational(a, ia, 50);
+    try printRational(a, ia, 100);
     std.debug.print("\n", .{});
-    std.debug.print("\nia as fraction:\n", .{});
+    std.debug.print("\n\nia as fraction:\n", .{});
     try printBigint(a, ia.num);
     std.debug.print("\n-----------------------------------------------\n", .{});
     try printBigint(a, ia.den);
     std.debug.print("\n\n", .{});
 
-    const bb1: f128 = 187435897403761458716349351.18498573407;
+    const bb1: comptime_int = 18743589740376145871634935141879840845719843570914875098417509843750198405;
     std.debug.print("bb1: {d}\n", .{bb1});
-    const bb2: comptime_int = -194651875104984751896409851609438182375981502189324610238;
-    std.debug.print("bb2: {d}\n", .{bb2});
+    const bb2: comptime_int = 19465187510498475189640985160943818237598150218932461028917543890757545138;
+    std.debug.print("bb2: {d}\n\n", .{bb2});
     var ib: zml.Rational = try .initSet(a, bb1, bb2);
     defer ib.deinit(a);
     std.debug.print("ib: ", .{});
-    try printRational(a, ib, 50);
+    try printRational(a, ib, 100);
     std.debug.print("\n", .{});
-    std.debug.print("\nib as fraction:\n", .{});
+    std.debug.print("\n\nib as fraction:\n", .{});
     try printBigint(a, ib.num);
     std.debug.print("\n-----------------------------------------------\n", .{});
     try printBigint(a, ib.den);
@@ -1421,14 +1421,13 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try printBigint(a, ic.den);
     std.debug.print("\n\n", .{});
 
-    const f: u128 = zml.int.maxVal(u128);
-    std.debug.print("f:  {d}\n", .{f});
-    var r = zml.asRational(f);
-    r[0].num.limbs = &r[1];
-    const id: zml.Rational = r[0];
-    std.debug.print("id: ", .{});
-    try printRational(a, id, 75);
-    std.debug.print("\n\n", .{});
+    std.debug.print("ia: ", .{});
+    try printRational(a, ia, 75);
+    std.debug.print("\n", .{});
+    std.debug.print("ib: ", .{});
+    try printRational(a, ib, 75);
+    std.debug.print("\n", .{});
+    std.debug.print("cmp(ia, ib) = {}\n", .{zml.rational.cmp(ia, ib)});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

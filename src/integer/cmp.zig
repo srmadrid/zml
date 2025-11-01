@@ -5,7 +5,8 @@ const Cmp = types.Cmp;
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
-/// Compares an `Integer` with another numeric type for ordering.
+/// Compares an `Integer` with another lower or equal precision numeric type for
+/// ordering.
 ///
 /// Signature
 /// ---------

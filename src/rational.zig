@@ -379,13 +379,13 @@ pub const div = @import("rational/div.zig").div;
 pub const div_ = @import("rational/div_.zig").div_;
 
 // Comparison operations
-// pub const cmp = @import("rational/cmp.zig").cmp;
-// pub const eq = @import("rational/eq.zig").eq;
-// pub const ne = @import("rational/ne.zig").ne;
-// pub const lt = @import("rational/lt.zig").lt;
-// pub const le = @import("rational/le.zig").le;
-// pub const gt = @import("rational/gt.zig").gt;
-// pub const ge = @import("rational/ge.zig").ge;
+pub const cmp = @import("rational/cmp.zig").cmp;
+pub const eq = @import("rational/eq.zig").eq;
+pub const ne = @import("rational/ne.zig").ne;
+pub const lt = @import("rational/lt.zig").lt;
+pub const le = @import("rational/le.zig").le;
+pub const gt = @import("rational/gt.zig").gt;
+pub const ge = @import("rational/ge.zig").ge;
 
 // Basic operations
 pub const abs = @import("rational/abs.zig").abs;
