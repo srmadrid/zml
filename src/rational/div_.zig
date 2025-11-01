@@ -62,11 +62,11 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
         return rational.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
-        .expression => @compileError("integer.div_ not implemented for Expression yet"),
+        .expression => @compileError("rational.div_ not implemented for Expression yet"),
         .complex => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.div_ not implemented for Complex + Expression yet"),
+            .expression => @compileError("rational.div_ not implemented for Complex + Expression yet"),
             .complex => return div_(allocator, o, x.re, y.re),
-            .real => @compileError("integer.div_ not implemented for Complex + Real yet"),
+            .real => @compileError("rational.div_ not implemented for Complex + Real yet"),
             .rational => return div_(allocator, o, x.re, y),
             .integer => return div_(allocator, o, x.re, y),
             .cfloat => return div_(allocator, o, x.re, y.re),
@@ -74,11 +74,11 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             .int => return div_(allocator, o, x.re, y),
             .bool => return div_(allocator, o, x.re, y),
         },
-        .real => @compileError("integer.div_ not implemented for Real yet"),
+        .real => @compileError("rational.div_ not implemented for Real yet"),
         .rational => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.div_ not implemented for Rational + Expression yet"),
+            .expression => @compileError("rational.div_ not implemented for Rational + Expression yet"),
             .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("integer.div_ not implemented for Rational + Real yet"),
+            .real => @compileError("rational.div_ not implemented for Rational + Real yet"),
             .rational => {
                 if (y.num.size == 0)
                     return rational.Error.ZeroDivision;
@@ -214,9 +214,9 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             .bool => return div_(allocator, o, x, types.cast(Rational, y, .{}) catch unreachable),
         },
         .integer => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.div_ not implemented for Integer + Expression yet"),
+            .expression => @compileError("rational.div_ not implemented for Integer + Expression yet"),
             .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("integer.div_ not implemented for Integer + Real yet"),
+            .real => @compileError("rational.div_ not implemented for Integer + Real yet"),
             .rational => return div_(allocator, o, x.asRational(), y),
             .integer => return div_(allocator, o, x.asRational(), y.asRational()),
             .cfloat => return div_(allocator, o, x, y.re),
@@ -236,9 +236,9 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             },
         },
         .cfloat => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.div_ not implemented for CFloat + Expression yet"),
+            .expression => @compileError("rational.div_ not implemented for CFloat + Expression yet"),
             .complex => return div_(allocator, o, x.re, y.re),
-            .real => @compileError("integer.div_ not implemented for CFloat + Real yet"),
+            .real => @compileError("rational.div_ not implemented for CFloat + Real yet"),
             .rational => return div_(allocator, o, x.re, y),
             .integer => return div_(allocator, o, x.re, y),
             .cfloat => return div_(allocator, o, x.re, y.re),
@@ -247,9 +247,9 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             .bool => return div_(allocator, o, x.re, y),
         },
         .float => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.div_ not implemented for Float + Expression yet"),
+            .expression => @compileError("rational.div_ not implemented for Float + Expression yet"),
             .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("integer.div_ not implemented for Float + Real yet"),
+            .real => @compileError("rational.div_ not implemented for Float + Real yet"),
             .rational => {
                 var tx = try @import("../float/asRational.zig").asRational(x);
                 tx[0].num.limbs = &tx[1][0];
@@ -288,9 +288,9 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             },
         },
         .int => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.div_ not implemented for Int + Expression yet"),
+            .expression => @compileError("rational.div_ not implemented for Int + Expression yet"),
             .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("integer.div_ not implemented for Int + Real yet"),
+            .real => @compileError("rational.div_ not implemented for Int + Real yet"),
             .rational => {
                 var tx = @import("../int/asRational.zig").asRational(x);
                 tx[0].num.limbs = &tx[1];
@@ -324,9 +324,9 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             },
         },
         .bool => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.div_ not implemented for Bool + Expression yet"),
+            .expression => @compileError("rational.div_ not implemented for Bool + Expression yet"),
             .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("integer.div_ not implemented for Bool + Real yet"),
+            .real => @compileError("rational.div_ not implemented for Bool + Real yet"),
             .rational => return div_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, y),
             .integer => return div_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, y.asRational()),
             .cfloat => return div_(allocator, o, x, y.re),

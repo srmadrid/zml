@@ -23,16 +23,16 @@ pub fn add_(allocator: std.mem.Allocator, o: anytype, x: anytype, y: anytype) !v
     comptime if (types.numericType(O) != .complex)
         @compileError("complex.add_ requires o to be a complex, got " ++ @typeName(O));
 
-    comptime if (types.numericType(X) != .complex and types.numericType(X) != .real and types.numericType(X) != .rational and types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
-        types.numericType(Y) != .complex and types.numericType(X) != .real and types.numericType(Y) != .rational and types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)
-        @compileError("rational.add_ requires x and y to be an int, float, integer, rational, real or complex, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
+        @compileError("complex.add_ requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     if (!o.flags.writable)
         return rational.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
+        .expression => @compileError("complex.add_ not implemented for Expression yet"),
         .complex => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("complex.add_ not implemented for Complex + Expression yet"),
             .complex => {
                 if (x.num.size == 0) {
                     try o.re.set(allocator, y.re);
@@ -60,51 +60,295 @@ pub fn add_(allocator: std.mem.Allocator, o: anytype, x: anytype, y: anytype) !v
 
                 return;
             },
-            .rational, .integer => {
-                return add_(allocator, o, x, y.asComplex());
+            .real => @compileError("complex.add_ not implemented for Complex + Real yet"),
+            .rational => return add_(allocator, o, x, y.asComplex()),
+            .integer => return add_(allocator, o, x, y.asComplex()),
+            .cfloat => {
+                var ty = try @import("../cfloat/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                ty[0].im.num.limbs = &ty[1][2];
+                ty[0].im.den.limbs = &ty[1][3];
+                return add_(allocator, o, x, ty[0]);
             },
-            .float, .int => {
-                var temp: complex.Complex(rational.Rational) = try .initSet(allocator, y, 0);
-                defer temp.deinit(allocator);
-                return add_(allocator, o, x, temp);
+            .float => {
+                var ty = try @import("../float/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                return add_(allocator, o, x, ty[0]);
             },
-            else => unreachable,
+            .int => {
+                var ty = @import("../int/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1];
+                return add_(allocator, o, x, ty[0]);
+            },
+            .bool => return add_(allocator, o, x, types.cast(X, y, .{}) catch unreachable),
         },
-        .rational, .integer => switch (comptime types.numericType(Y)) {
+        .real => @compileError("complex.add_ not implemented for Real yet"),
+        .rational => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("complex.add_ not implemented for Rational + Expression yet"),
+            .complex => return add_(allocator, o, x.asComplex(), y),
+            .real => @compileError("complex.add_ not implemented for Rational + Real yet"),
+            .rational => return add_(allocator, o, x.asComplex(), y.asComplex()),
+            .integer => return add_(allocator, o, x.asComplex(), y.asComplex()),
+            .cfloat => {
+                var ty = try @import("../cfloat/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                ty[0].im.num.limbs = &ty[1][2];
+                ty[0].im.den.limbs = &ty[1][3];
+                return add_(allocator, o, x.asComplex(), ty[0]);
+            },
+            .float => {
+                var ty = try @import("../float/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                return add_(allocator, o, x.asComplex(), ty[0]);
+            },
+            .int => {
+                var ty = @import("../int/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1];
+                return add_(allocator, o, x.asComplex(), ty[0]);
+            },
+            .bool => return add_(allocator, o, x.asComplex(), types.cast(complex.Complex(rational.Rational), y, .{}) catch unreachable),
+        },
+        .integer => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("complex.add_ not implemented for Integer + Expression yet"),
+            .complex => return add_(allocator, o, x.asComplex(), y),
+            .real => @compileError("complex.add_ not implemented for Integer + Real yet"),
+            .rational => return add_(allocator, o, x.asComplex(), y.asComplex()),
+            .integer => return add_(allocator, o, x.asComplex(), y.asComplex()),
+            .cfloat => {
+                var ty = try @import("../cfloat/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                ty[0].im.num.limbs = &ty[1][2];
+                ty[0].im.den.limbs = &ty[1][3];
+                return add_(allocator, o, x.asComplex(), ty[0]);
+            },
+            .float => {
+                var ty = try @import("../float/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                return add_(allocator, o, x.asComplex(), ty[0]);
+            },
+            .int => {
+                var ty = @import("../int/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1];
+                return add_(allocator, o, x.asComplex(), ty[0]);
+            },
+            .bool => {
+                return add_(allocator, o, x.asComplex(), types.cast(complex.Complex(rational.Rational), y, .{}) catch unreachable);
+            },
+        },
+        .cfloat => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("complex.add_ not implemented for CFloat + Expression yet"),
             .complex => {
-                return add_(allocator, o, x.asComplex(), y);
+                var tx = try @import("../cfloat/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                tx[0].im.num.limbs = &tx[1][2];
+                tx[0].im.den.limbs = &tx[1][3];
+                return add_(allocator, o, tx[0], y);
             },
-            .rational, .integer => {
-                return add_(allocator, o, x.asComplex(), y.asComplex());
+            .real => @compileError("complex.add_ not implemented for CFloat + Real yet"),
+            .rational => {
+                var tx = try @import("../cfloat/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                tx[0].im.num.limbs = &tx[1][2];
+                tx[0].im.den.limbs = &tx[1][3];
+                return add_(allocator, o, tx[0], y.asComplex());
             },
-            .float, .int => {
-                var temp: complex.Complex(rational.Rational) = try .initSet(allocator, y, 0);
-                defer temp.deinit(allocator);
-                return add_(allocator, o, x.asComplex(), temp);
+            .integer => {
+                var tx = try @import("../cfloat/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                tx[0].im.num.limbs = &tx[1][2];
+                tx[0].im.den.limbs = &tx[1][3];
+                return add_(allocator, o, tx[0], y.asComplex());
             },
-            else => unreachable,
+            .cfloat => {
+                var tx = try @import("../cfloat/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                tx[0].im.num.limbs = &tx[1][2];
+                tx[0].im.den.limbs = &tx[1][3];
+                var ty = try @import("../cfloat/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                ty[0].im.num.limbs = &ty[1][2];
+                ty[0].im.den.limbs = &ty[1][3];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .float => {
+                var tx = try @import("../cfloat/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                tx[0].im.num.limbs = &tx[1][2];
+                tx[0].im.den.limbs = &tx[1][3];
+                var ty = try @import("../float/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .int => {
+                var tx = try @import("../cfloat/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                tx[0].im.num.limbs = &tx[1][2];
+                tx[0].im.den.limbs = &tx[1][3];
+                var ty = @import("../int/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = try @import("../cfloat/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                tx[0].im.num.limbs = &tx[1][2];
+                tx[0].im.den.limbs = &tx[1][3];
+                return add_(allocator, o, tx[0], types.cast(complex.Complex(rational.Rational), y, .{}) catch unreachable);
+            },
         },
-        .float, .int => switch (comptime types.numericType(Y)) {
+        .float => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("complex.add_ not implemented for Float + Expression yet"),
             .complex => {
-                var temp: complex.Complex(rational.Rational) = try .initSet(allocator, x, 0);
-                defer temp.deinit(allocator);
-                return add_(allocator, o, temp, y);
+                var tx = try @import("../float/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                return add_(allocator, o, tx[0], y);
             },
-            .rational, .integer => {
-                var temp: complex.Complex(rational.Rational) = try .initSet(allocator, x, 0);
-                defer temp.deinit(allocator);
-                return add_(allocator, o, temp, y.asComplex());
+            .real => @compileError("complex.add_ not implemented for Float + Real yet"),
+            .rational => {
+                var tx = try @import("../float/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                return add_(allocator, o, tx[0], y.asComplex());
             },
-            .float, .int => {
-                var tx: complex.Complex(rational.Rational) = try .initSet(allocator, x, 0);
-                defer tx.deinit(allocator);
-                var ty: complex.Complex(rational.Rational) = try .initSet(allocator, y, 0);
-                defer ty.deinit(allocator);
-                return add_(allocator, o, tx, ty);
+            .integer => {
+                var tx = try @import("../float/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                return add_(allocator, o, tx[0], y.asComplex());
             },
-            else => unreachable,
+            .cfloat => {
+                var tx = try @import("../float/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                var ty = try @import("../cfloat/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                ty[0].im.num.limbs = &ty[1][2];
+                ty[0].im.den.limbs = &ty[1][3];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .float => {
+                var tx = try @import("../float/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                var ty = try @import("../float/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .int => {
+                var tx = try @import("../float/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                var ty = @import("../int/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = try @import("../float/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1][0];
+                tx[0].re.den.limbs = &tx[1][1];
+                return add_(allocator, o, tx[0], types.cast(complex.Complex(rational.Rational), y, .{}) catch unreachable);
+            },
         },
-
-        else => unreachable,
+        .int => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("complex.add_ not implemented for Int + Expression yet"),
+            .complex => {
+                var tx = @import("../int/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1];
+                return add_(allocator, o, tx[0], y);
+            },
+            .real => @compileError("complex.add_ not implemented for Int + Real yet"),
+            .rational => {
+                var tx = @import("../int/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1];
+                return add_(allocator, o, tx[0], y.asComplex());
+            },
+            .integer => {
+                var tx = @import("../int/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1];
+                return add_(allocator, o, tx[0], y.asComplex());
+            },
+            .cfloat => {
+                var tx = @import("../int/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1];
+                var ty = try @import("../cfloat/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                ty[0].im.num.limbs = &ty[1][2];
+                ty[0].im.den.limbs = &ty[1][3];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .float => {
+                var tx = @import("../int/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1];
+                var ty = try @import("../float/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .int => {
+                var tx = @import("../int/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1];
+                var ty = @import("../int/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1];
+                return add_(allocator, o, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = @import("../int/asComplex.zig").asComplex(x);
+                tx[0].re.num.limbs = &tx[1];
+                return add_(allocator, o, tx[0], types.cast(complex.Complex(rational.Rational), y, .{}) catch unreachable);
+            },
+        },
+        .bool => switch (comptime types.numericType(Y)) {
+            .expression => @compileError("complex.add_ not implemented for Bool + Expression yet"),
+            .complex => return add_(allocator, o, types.cast(complex.Complex(rational.Rational), x, .{}) catch unreachable, y),
+            .real => @compileError("complex.add_ not implemented for Bool + Real yet"),
+            .rational => return add_(allocator, o, types.cast(complex.Complex(rational.Rational), x, .{}) catch unreachable, y.asComplex()),
+            .integer => return add_(allocator, o, types.cast(complex.Complex(rational.Rational), x, .{}) catch unreachable, y.asComplex()),
+            .cfloat => {
+                var ty = try @import("../cfloat/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                ty[0].im.num.limbs = &ty[1][2];
+                ty[0].im.den.limbs = &ty[1][3];
+                return add_(allocator, o, types.cast(complex.Complex(rational.Rational), x, .{}) catch unreachable, ty[0]);
+            },
+            .float => {
+                var ty = try @import("../float/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1][0];
+                ty[0].re.den.limbs = &ty[1][1];
+                return add_(allocator, o, types.cast(complex.Complex(rational.Rational), x, .{}) catch unreachable, ty[0]);
+            },
+            .int => {
+                var ty = @import("../int/asComplex.zig").asComplex(y);
+                ty[0].re.num.limbs = &ty[1];
+                return add_(allocator, o, types.cast(complex.Complex(rational.Rational), x, .{}) catch unreachable, ty[0]);
+            },
+            .bool => {
+                return add_(
+                    allocator,
+                    o,
+                    types.cast(complex.Complex(rational.Rational), x, .{}) catch unreachable,
+                    types.cast(complex.Complex(rational.Rational), y, .{}) catch unreachable,
+                );
+            },
+        },
     }
 }
