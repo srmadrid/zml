@@ -87,6 +87,7 @@ pub const Integer = struct {
     /// If memory allocation fails.
     pub fn initSet(allocator: std.mem.Allocator, value: anytype) !Integer {
         var integer = try Integer.init(allocator, 0);
+        errdefer integer.deinit(allocator);
 
         try integer.set(allocator, value);
         return integer;
@@ -254,7 +255,7 @@ pub const Integer = struct {
                 .bool => {
                     try self.reserve(allocator, 1);
 
-                    if (self) {
+                    if (value) {
                         self.limbs[0] = 1;
                         self.size = 1;
                         self.positive = true;
@@ -299,11 +300,11 @@ pub const Integer = struct {
                         return div_(allocator, self, value.num, value.den);
                     }
                 },
-                .real => {},
+                .real => @compileError("Real type not supported yet"),
                 .complex => {
                     return self.set(allocator, value.re);
                 },
-                .expression => {},
+                .expression => @compileError("Expression type not supported yet"),
             }
         } else if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
     }

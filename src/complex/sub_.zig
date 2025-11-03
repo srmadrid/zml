@@ -10,6 +10,45 @@ const complex = @import("../complex.zig");
 
 const check_aliasing = @import("check_aliasing.zig").check_aliasing;
 
+/// Performs in-place subtraction between two operands of any numeric type in
+/// `Complex` precision.
+///
+/// Aliasing between the output operand `o` and the input operands `x` or `y` is
+/// allowed.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn sub_(allocator: std.mem.Allocator, o: *Complex, x: X, y: Y, ctx: anytype) !void
+/// ```
+///
+/// Parameters
+/// ----------
+/// `allocator` (`std.mem.Allocator`):
+/// The allocator to use for memory allocations. Must be the same allocator used
+/// to initialize `o`.
+///
+/// `o` (`*Complex`):
+/// A pointer to the output operand where the result will be stored.
+///
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// Returns
+/// -------
+/// `void`
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails.
+///
+/// `rational.Error.NotWritable`:
+/// If the output operand `o` is not writable, or if its numerator or
+/// denominator are not writable when they need to be modified.
 pub fn sub_(allocator: std.mem.Allocator, o: anytype, x: anytype, y: anytype) !void {
     comptime var O: type = @TypeOf(o);
     const X: type = @TypeOf(x);

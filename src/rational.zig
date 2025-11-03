@@ -96,25 +96,10 @@ pub const Rational = struct {
     /// `rational.Error.ZeroDenominator`:
     /// If the denominator is zero.
     pub fn initSet(allocator: std.mem.Allocator, numerator: anytype, denominator: anytype) !Rational {
-        // Edit to properly handle floats, cfloats, complexes and other rationals correctly.
-        // If two complex numbers are given, perform complex division before, or just ignore im part (integer just ignores it, but noe division is ever involved there)?
-        if (ops.eq(denominator, 0, .{}) catch unreachable)
-            return Error.ZeroDenominator;
+        var r: Rational = try Rational.init(allocator, 0, 0);
+        errdefer r.deinit(allocator);
 
-        var num: Integer = try Integer.initSet(allocator, numerator);
-        errdefer num.deinit(allocator);
-
-        var den: Integer = try Integer.initSet(allocator, denominator);
-        errdefer den.deinit(allocator);
-
-        var r: Rational = .{
-            .num = num,
-            .den = den,
-            .flags = .{ .owns_data = true, .writable = true },
-        };
-
-        try r.reduce(allocator);
-
+        try r.set(allocator, numerator, denominator);
         return r;
     }
 
@@ -177,6 +162,398 @@ pub const Rational = struct {
 
         try integer.div_(allocator, &self.num, self.num, g);
         try integer.div_(allocator, &self.den, self.den, g);
+    }
+
+    /// Sets the value of the `Rational`. If either `numerator` or `denominator`
+    /// is not an integer type, a full division is performed to set the value.
+    ///
+    /// Signature
+    /// ---------
+    /// ```zig
+    /// fn set(allocator: std.mem.Allocator, numerator: N, denominator: D) !void
+    /// ```
+    ///
+    /// Parameters
+    /// ----------
+    /// `self` (`*Rational`):
+    /// A pointer to the `Rational` to set.
+    ///
+    /// `allocator` (`std.mem.Allocator`):
+    /// The allocator to use for memory allocations. Must be the same allocator
+    /// used to initialize `self`.
+    ///
+    /// `numerator` (`anytype`):
+    /// The value to set the numerator to. Must be a numeric type or a string.
+    /// Complex values use their real part.
+    ///
+    /// `denominator` (`anytype`):
+    /// The value to set the denominator to. Must be a numeric type or a string.
+    /// Complex values use their real part.
+    ///
+    /// Returns
+    /// -------
+    /// `void`
+    ///
+    /// Errors
+    /// ------
+    /// `std.mem.Allocator.Error.OutOfMemory`:
+    /// If memory allocation fails.
+    ///
+    /// `rational.Error.NotWritable`:
+    /// If the `Rational` is not writable.
+    ///
+    /// `rational.Error.NotFinite`:
+    /// If the value is a float or complex number that is not finite.
+    ///
+    /// `rational.Error.ZeroDenominator`:
+    /// If the denominator is zero.
+    pub fn set(self: *Rational, allocator: std.mem.Allocator, numerator: anytype, denominator: anytype) !void {
+        const N: type = @TypeOf(numerator);
+        const D: type = @TypeOf(denominator);
+
+        if (!self.flags.writable)
+            return Error.NotWritable;
+
+        if (comptime types.isNumeric(N) and types.isNumeric(D)) {
+            switch (comptime types.numericType(N)) {
+                .bool => switch (comptime types.numericType(D)) {
+                    .bool => {
+                        if (!denominator)
+                            return Error.ZeroDenominator;
+
+                        try self.num.reserve(allocator, 1);
+                        try self.den.reserve(allocator, 1);
+
+                        if (numerator) {
+                            self.num.limbs[0] = 1;
+                            self.num.size = 1;
+                            self.num.positive = true;
+                        } else {
+                            self.num.size = 0;
+                            self.num.positive = true;
+                        }
+
+                        self.den.limbs[0] = 1;
+                        self.den.size = 1;
+                    },
+                    .int => {
+                        if (denominator == 0)
+                            return Error.ZeroDenominator;
+
+                        if (!numerator) {
+                            try self.num.reserve(allocator, 1);
+                            self.num.size = 0;
+                            self.num.positive = true;
+
+                            try self.den.reserve(allocator, 1);
+                            self.den.limbs[0] = 1;
+                            self.den.size = 1;
+                        } else {
+                            var dvalue = @import("int/asInteger.zig").asInteger(denominator);
+                            dvalue[0].limbs = &dvalue[1];
+
+                            try self.num.set(allocator, 1);
+                            try self.den.set(allocator, dvalue[0]);
+                        }
+                    },
+                    .float => {
+                        if (denominator == 0.0)
+                            return Error.ZeroDenominator;
+
+                        if (!numerator) {
+                            try self.num.reserve(allocator, 1);
+                            self.num.size = 0;
+                            self.num.positive = true;
+
+                            try self.den.reserve(allocator, 1);
+                            self.den.limbs[0] = 1;
+                            self.den.size = 1;
+                        } else {
+                            var dvalue = try @import("float/asRational.zig").asRational(denominator);
+                            dvalue[0].num.limbs = &dvalue[1][0];
+                            dvalue[0].den.limbs = &dvalue[1][1];
+
+                            try self.num.set(allocator, dvalue[0].den);
+                            try self.den.set(allocator, dvalue[0].num);
+                        }
+                    },
+                    .cfloat => return self.set(allocator, numerator, denominator.re),
+                    .integer => {
+                        if (denominator.size == 0)
+                            return Error.ZeroDenominator;
+
+                        if (!numerator) {
+                            try self.num.reserve(allocator, 1);
+                            self.num.size = 0;
+                            self.num.positive = true;
+
+                            try self.den.set(allocator, denominator);
+                        } else {
+                            try self.num.set(allocator, 1);
+                            try self.den.set(allocator, denominator);
+                        }
+                    },
+                    .rational => {
+                        if (denominator.num.size == 0)
+                            return Error.ZeroDenominator;
+
+                        if (!numerator) {
+                            try self.num.reserve(allocator, 1);
+                            self.num.size = 0;
+                            self.num.positive = true;
+
+                            try self.den.set(allocator, denominator);
+                        } else {
+                            try self.num.set(allocator, denominator.den);
+                            try self.den.set(allocator, denominator.num);
+                        }
+                    },
+                    .real => @compileError("Real type not supported yet"),
+                    .complex => return self.set(allocator, numerator, denominator.re),
+                    .expression => @compileError("Expression type not supported yet"),
+                },
+                .int => switch (comptime types.numericType(D)) {
+                    .bool => {
+                        if (!denominator)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = @import("int/asInteger.zig").asInteger(numerator);
+                        nvalue[0].limbs = &nvalue[1];
+
+                        try self.num.set(allocator, nvalue[0]);
+                        try self.den.set(allocator, 1);
+                    },
+                    .int => {
+                        if (denominator == 0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = @import("int/asInteger.zig").asInteger(numerator);
+                        nvalue[0].limbs = &nvalue[1];
+
+                        var dvalue = @import("int/asInteger.zig").asInteger(denominator);
+                        dvalue[0].limbs = &dvalue[1];
+
+                        try self.num.set(allocator, nvalue[0]);
+                        try self.den.set(allocator, dvalue[0]);
+                    },
+                    .float => {
+                        if (denominator == 0.0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = @import("int/asRational.zig").asRational(numerator);
+                        nvalue[0].num.limbs = &nvalue[1];
+
+                        var dvalue = try @import("float/asRational.zig").asRational(denominator);
+                        dvalue[0].num.limbs = &dvalue[1][0];
+                        dvalue[0].den.limbs = &dvalue[1][1];
+
+                        try div_(allocator, self, nvalue[0], dvalue[0]);
+                    },
+                    .cfloat => return self.set(allocator, numerator, denominator.re),
+                    .integer => {
+                        if (denominator.size == 0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = @import("int/asInteger.zig").asInteger(numerator);
+                        nvalue[0].limbs = &nvalue[1];
+
+                        try self.num.set(allocator, nvalue[0]);
+                        try self.den.set(allocator, denominator);
+                    },
+                    .rational => {
+                        if (denominator.num.size == 0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = @import("int/asRational.zig").asRational(numerator);
+                        nvalue[0].num.limbs = &nvalue[1];
+
+                        try div_(allocator, self, nvalue[0], denominator);
+                    },
+                    .real => @compileError("Real type not supported yet"),
+                    .complex => return self.set(allocator, numerator, denominator.re),
+                    .expression => @compileError("Expression type not supported yet"),
+                },
+                .float => switch (comptime types.numericType(D)) {
+                    .bool => {
+                        if (!denominator)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = try @import("float/asRational.zig").asRational(numerator);
+                        nvalue[0].num.limbs = &nvalue[1][0];
+                        nvalue[0].den.limbs = &nvalue[1][1];
+
+                        try self.num.set(allocator, nvalue[0].num);
+                        try self.den.set(allocator, nvalue[0].den);
+                    },
+                    .int => {
+                        if (denominator == 0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = try @import("float/asRational.zig").asRational(numerator);
+                        nvalue[0].num.limbs = &nvalue[1][0];
+                        nvalue[0].den.limbs = &nvalue[1][1];
+
+                        var dvalue = @import("int/asRational.zig").asRational(denominator);
+                        dvalue[0].num.limbs = &dvalue[1];
+
+                        try div_(allocator, self, nvalue[0], dvalue[0]);
+                    },
+                    .float => {
+                        if (denominator == 0.0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = try @import("float/asRational.zig").asRational(numerator);
+                        nvalue[0].num.limbs = &nvalue[1][0];
+                        nvalue[0].den.limbs = &nvalue[1][1];
+
+                        var dvalue = try @import("float/asRational.zig").asRational(denominator);
+                        dvalue[0].num.limbs = &dvalue[1][0];
+                        dvalue[0].den.limbs = &dvalue[1][1];
+
+                        try div_(allocator, self, nvalue[0], dvalue[0]);
+                    },
+                    .cfloat => return self.set(allocator, numerator, denominator.re),
+                    .integer => {
+                        if (denominator.size == 0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = try @import("float/asRational.zig").asRational(numerator);
+                        nvalue[0].num.limbs = &nvalue[1][0];
+                        nvalue[0].den.limbs = &nvalue[1][1];
+
+                        try div_(allocator, self, nvalue[0], denominator.asRational());
+                    },
+                    .rational => {
+                        if (denominator.num.size == 0)
+                            return Error.ZeroDenominator;
+
+                        var nvalue = try @import("float/asRational.zig").asRational(numerator);
+                        nvalue[0].num.limbs = &nvalue[1][0];
+                        nvalue[0].den.limbs = &nvalue[1][1];
+
+                        try div_(allocator, self, nvalue[0], denominator);
+                    },
+                    .real => @compileError("Real type not supported yet"),
+                    .complex => return self.set(allocator, numerator, denominator.re),
+                    .expression => @compileError("Expression type not supported yet"),
+                },
+                .cfloat => switch (comptime types.numericType(D)) {
+                    .bool => return self.set(allocator, numerator.re, denominator),
+                    .int => return self.set(allocator, numerator.re, denominator),
+                    .float => return self.set(allocator, numerator.re, denominator),
+                    .cfloat => return self.set(allocator, numerator.re, denominator.re),
+                    .integer => return self.set(allocator, numerator.re, denominator),
+                    .rational => return self.set(allocator, numerator.re, denominator),
+                    .real => @compileError("Real type not supported yet"),
+                    .complex => return self.set(allocator, numerator.re, denominator.re),
+                    .expression => @compileError("Expression type not supported yet"),
+                },
+                .integer => switch (comptime types.numericType(D)) {
+                    .bool => {
+                        if (!denominator)
+                            return Error.ZeroDenominator;
+
+                        try self.num.set(allocator, numerator);
+                        try self.den.set(allocator, 1);
+                    },
+                    .int => {
+                        if (denominator == 0)
+                            return Error.ZeroDenominator;
+
+                        try self.num.set(allocator, numerator);
+                        try self.den.set(allocator, denominator);
+                    },
+                    .float => {
+                        if (denominator == 0.0)
+                            return Error.ZeroDenominator;
+
+                        var dvalue = try @import("float/asRational.zig").asRational(denominator);
+                        dvalue[0].num.limbs = &dvalue[1][0];
+                        dvalue[0].den.limbs = &dvalue[1][1];
+
+                        try div_(allocator, self, numerator.asRational(), dvalue[0]);
+                    },
+                    .cfloat => return self.set(allocator, numerator, denominator.re),
+                    .integer => {
+                        if (denominator.size == 0)
+                            return Error.ZeroDenominator;
+
+                        try self.num.set(allocator, numerator);
+                        try self.den.set(allocator, denominator);
+                    },
+                    .rational => {
+                        if (denominator.num.size == 0)
+                            return Error.ZeroDenominator;
+
+                        try div_(allocator, self, numerator.asRational(), denominator);
+                    },
+                    .real => @compileError("Real type not supported yet"),
+                    .complex => return self.set(allocator, numerator, denominator.re),
+                    .expression => @compileError("Expression type not supported yet"),
+                },
+                .rational => switch (comptime types.numericType(D)) {
+                    .bool => {
+                        if (!denominator)
+                            return Error.ZeroDenominator;
+
+                        try self.num.set(allocator, numerator.num);
+                        try self.den.set(allocator, numerator.den);
+                    },
+                    .int => {
+                        if (denominator == 0)
+                            return Error.ZeroDenominator;
+
+                        var dvalue = @import("int/asRational.zig").asRational(denominator);
+                        dvalue[0].num.limbs = &dvalue[1];
+
+                        try div_(allocator, self, numerator, dvalue[0]);
+                    },
+                    .float => {
+                        if (denominator == 0.0)
+                            return Error.ZeroDenominator;
+
+                        var dvalue = try @import("float/asRational.zig").asRational(denominator);
+                        dvalue[0].num.limbs = &dvalue[1][0];
+                        dvalue[0].den.limbs = &dvalue[1][1];
+
+                        try div_(allocator, self, numerator, dvalue[0]);
+                    },
+                    .cfloat => return self.set(allocator, numerator, denominator.re),
+                    .integer => {
+                        if (denominator.size == 0)
+                            return Error.ZeroDenominator;
+
+                        try div_(allocator, self, numerator, denominator.asRational());
+                    },
+                    .rational => {
+                        if (denominator.num.size == 0)
+                            return Error.ZeroDenominator;
+
+                        try div_(allocator, self, numerator, denominator);
+                    },
+                    .real => @compileError("Real type not supported yet"),
+                    .complex => return self.set(allocator, numerator, denominator.re),
+                    .expression => @compileError("Expression type not supported yet"),
+                },
+                .real => @compileError("Real type not supported yet"),
+                .complex => switch (comptime types.numericType(D)) {
+                    .bool => return self.set(allocator, numerator.re, denominator),
+                    .int => return self.set(allocator, numerator.re, denominator),
+                    .float => return self.set(allocator, numerator.re, denominator),
+                    .cfloat => return self.set(allocator, numerator.re, denominator.re),
+                    .integer => return self.set(allocator, numerator.re, denominator),
+                    .rational => return self.set(allocator, numerator.re, denominator),
+                    .real => @compileError("Real type not supported yet"),
+                    .complex => return self.set(allocator, numerator.re, denominator.re),
+                    .expression => @compileError("Expression type not supported yet"),
+                },
+                .expression => @compileError("Expression type not supported yet"),
+            }
+        } else if (comptime N == []const u8 or N == []u8) {
+            @compileError("String type not supported yet");
+        } else {
+            @compileError("Value must be a numeric type or a string");
+        }
     }
 
     /// Creates a copy of the `Rational`.

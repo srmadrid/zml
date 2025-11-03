@@ -10,6 +10,35 @@ const Complex = complex.Complex;
 
 const check_aliasing = @import("check_aliasing.zig").check_aliasing;
 
+/// Performs addition between two operands of any numeric type in `Complex`
+/// precision.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn add(allocator: std.mem.Allocator, x: X, y: Y) !Complex
+/// ```
+///
+/// Parameters
+/// ----------
+/// `allocator` (`std.mem.Allocator`):
+/// The allocator to use for memory allocations.
+///
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// Returns
+/// -------
+/// `Complex`:
+/// The result of the addition.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails.
 pub fn add(allocator: std.mem.Allocator, x: anytype, y: anytype) !Complex(Scalar(Coerce(Rational, Coerce(x, y)))) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
