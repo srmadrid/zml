@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const Coerce = types.Coerce;
 const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
@@ -11,12 +10,17 @@ const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
 
+/// The return type of the `max` routine for inputs of types `X` and `Y`.
+pub fn Max(X: type, Y: type) type {
+    return types.Coerce(X, Y);
+}
+
 ///
 pub inline fn max(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !Coerce(@TypeOf(x), @TypeOf(y)) {
+) !Max(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 

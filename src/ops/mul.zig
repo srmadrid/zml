@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const MulCoerce = types.MulCoerce;
 const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
@@ -14,12 +13,76 @@ const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
 
+/// The return type of the `mul` routine for inputs of types `X` and `Y`.
+pub fn Mul(X: type, Y: type) type {
+    return types.MulCoerce(X, Y);
+}
+
+/// Performs multiplication between two operands of compatible types.
 ///
+/// The `mul` routine computes the product `x * y`, automatically coercing
+/// compatible operand types and validating the provided context. The operation
+/// is performed in the coerced precision of the operands, and the resulting
+/// value is returned as a new value. It supports both fixed-precision and
+/// arbitrary-precision arithmetic, as well as structured data domains. The
+/// supported type combinations are:
+/// - **Numeric * Numeric**: scalar multiplication.
+/// - **Numeric * Vector** and **Vector * Numeric**: element-wise multiplication
+///   of a vector by a scalar.
+/// - **Numeric * Matrix** and **Matrix * Numeric**: element-wise multiplication
+///   of a matrix by a scalar.
+/// - **Vector * Vector**: vector dot product.
+/// - **Vector * Matrix** and **Matrix * Vector**: matrix-vector multiplication,
+///   with the vector treated as a row or column vector, respectively.
+/// - **Matrix * Matrix**: matrix-matrix multiplication.
+/// - **Numeric * Array**, **Array * Numeric**, and **Array * Array**:
+///   broadcasted element-wise multiplication.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn mul(x: X, y: Y, ctx: anytype) !Mul(X, Y)
+/// ```
+///
+/// Parameters
+/// ----------
+/// `x` (`anytype`):
+/// The left operand.
+///
+/// `y` (`anytype`):
+/// The right operand.
+///
+/// `ctx` (`anytype`):
+/// A context struct providing necessary resources and configuration for the
+/// operation. The required fields depend on the operand types. If the context
+/// is missing required fields or contains unnecessary or wrongly typed fields,
+/// the compiler will emit a detailed error message describing the expected
+/// structure.
+///
+/// Returns
+/// -------
+/// `Mul(@TypeOf(x), @TypeOf(y))`:
+/// The result of the multiplication.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails. Can only happen if the coerced type is of
+/// arbitrary precision or a structured data type.
+///
+/// `array.Error.NotBroadcastable`:
+/// If the two arrays cannot be broadcasted to a common shape. Can only happen
+/// if at least one of the operands is an array.
+///
+/// `linalg.Error.DimensionMismatch`:
+/// If the dimensions of the operands are incompatible for matrix,
+/// matrix-vector, vector-matrix, or vector-vector multiplication. Can only
+/// happen in the above cases.
 pub inline fn mul(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !MulCoerce(@TypeOf(x), @TypeOf(y)) {
+) !Mul(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 

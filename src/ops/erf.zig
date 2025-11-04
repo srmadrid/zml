@@ -10,11 +10,58 @@ const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
 
+/// The return type of the `erf` routine for an input of type `X`.
+pub fn Erf(X: type) type {
+    return switch (comptime types.domainType(X)) {
+        .array => types.EnsureArray(X, Erf(types.Numeric(X))),
+        .matrix => @compileError("zml.Erf not implemented for matrices yet"),
+        .vector => @compileError("zml.Erf not defined for " ++ @typeName(X)),
+        .numeric => types.EnsureFloat(X),
+    };
+}
+
+/// Returns the error function at `x`, `²/π ∫₀ˣ e^(−t²)dt`.
 ///
+/// The `erf` routine computes the error function at its input `x`,
+/// `²/π ∫₀ˣ e^(−t²)dt`, validating the provided context. It supports both
+/// fixed-precision and arbitrary-precision arithmetic, as well as structured
+/// data domains. The supported domains are:
+/// - **Numeric**: scalar error function.
+/// - **Matrix**: matrix error function (not implemented yet).
+/// - **Array**: element-wise error function.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn erf(x: X, ctx: anytype) !Erf(X)
+/// ```
+///
+/// Parameters
+/// ----------
+/// `x` (`anytype`):
+/// The operand to compute the error function at.
+///
+/// `ctx` (`anytype`):
+/// A context struct providing necessary resources and configuration for the
+/// operation. The required fields depend on the operand types. If the context
+/// is missing required fields or contains unnecessary or wrongly typed fields,
+/// the compiler will emit a detailed error message describing the expected
+/// structure.
+///
+/// Returns
+/// -------
+/// `Erf(@TypeOf(x))`:
+/// The error function at `x`.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails. Can only happen if the type is of arbitrary
+/// precision or a structured data type.
 pub inline fn erf(
     x: anytype,
     ctx: anytype,
-) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
+) !Erf(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
     comptime if (!types.isArray(X) and !types.isNumeric(X))
@@ -22,21 +69,16 @@ pub inline fn erf(
 
     switch (comptime types.domainType(X)) {
         .array => {
-            comptime if (types.isArbitraryPrecision(Numeric(X))) {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            } else {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+            comptime switch (types.numericType(types.Numeric(X))) {
+                .bool, .int, .float, .cfloat => {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                },
+                else => @compileError("zml.erf for " ++ @typeName(X) ++ " not implemented yet"),
             };
 
             return array.erf(

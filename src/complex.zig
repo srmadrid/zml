@@ -21,6 +21,48 @@ pub fn Complex(comptime T: type) type {
             .flags = .{ .owns_data = false, .writable = false },
         };
 
+        /// Initializes a new `Complex` with the specified numerator and
+        /// denominator.
+        ///
+        /// Signature
+        /// ---------
+        /// ```zig
+        /// fn initSet(allocator: std.mem.Allocator, real: R, imaginary: I) !Complex
+        /// ```
+        ///
+        /// Parameters
+        /// ----------
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory allocations.
+        ///
+        /// `real` (`anytype`):
+        /// The value to set the real part to. Must be a numeric type or a
+        /// string.
+        ///
+        /// `imaginary` (`anytype`):
+        /// The value to set the imaginary part to. Must be a numeric type or a
+        /// string.
+        ///
+        /// Returns
+        /// -------
+        /// `Complex`:
+        /// The newly initialized `Complex`.
+        ///
+        /// Errors
+        /// ------
+        /// `std.mem.Allocator.Error.OutOfMemory`:
+        /// If memory allocation fails.
+        pub fn initSet(allocator: std.mem.Allocator, real: anytype, imaginary: anytype) !Complex(T) {
+            var c: Complex(T) = undefined;
+            c.re = try .init(allocator, 0, 0);
+            c.im = try .init(allocator, 0, 0);
+            c.flags = .{ .owns_data = true, .writable = true };
+            errdefer c.deinit(allocator);
+
+            try c.set(allocator, real, imaginary);
+            return c;
+        }
+
         /// Deinitializes the `Complex`, freeing any allocated memory and
         /// invalidating it.
         ///
@@ -87,7 +129,7 @@ pub fn Complex(comptime T: type) type {
         ///
         /// `complex.Error.NotFinite`:
         /// If either value is a float or complex number that is not finite.
-        pub fn set(self: anytype, allocator: std.mem.Allocator, real: anytype, imaginary: anytype) !void {
+        pub fn set(self: *Complex(T), allocator: std.mem.Allocator, real: anytype, imaginary: anytype) !void {
             comptime var S: type = @TypeOf(self);
 
             comptime if (!types.isPointer(S) or types.isConstPointer(S))

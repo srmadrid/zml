@@ -1,8 +1,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureArray = types.EnsureArray;
-const Coerce = types.Coerce;
 const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
@@ -12,12 +10,22 @@ const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
 
+/// The return type of the `lt` routine for inputs of types `X` and `Y`.
+pub fn Lt(X: type, Y: type) type {
+    return switch (comptime types.domainType(types.Coerce(X, Y))) {
+        .array => types.EnsureArray(types.Coerce(X, Y), bool),
+        .matrix => bool,
+        .vector => bool,
+        .numeric => bool,
+    };
+}
+
 ///
 pub inline fn lt(
     x: anytype,
     y: anytype,
     ctx: anytype,
-) !EnsureArray(Coerce(@TypeOf(x), @TypeOf(y)), bool) {
+) !Lt(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 

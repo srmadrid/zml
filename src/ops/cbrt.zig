@@ -10,11 +10,58 @@ const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
 
+/// The return type of the `cbrt` routine for an input of type `X`.
+pub fn Cbrt(X: type) type {
+    return switch (comptime types.domainType(X)) {
+        .array => types.EnsureArray(X, Cbrt(types.Numeric(X))),
+        .matrix => @compileError("zml.Cbrt not implemented for matrices yet"),
+        .vector => @compileError("zml.Cbrt not defined for " ++ @typeName(X)),
+        .numeric => types.EnsureFloat(X),
+    };
+}
+
+/// Returns the cube root of `x`, `∛x`.
 ///
+/// The `cbrt` routine computes the cube root of its input `x`, `∛x`,
+/// validating the provided context. It supports both fixed-precision and
+/// arbitrary-precision arithmetic, as well as structured data domains. The
+/// supported domains are:
+/// - **Numeric**: scalar square root.
+/// - **Matrix**: matrix square root (not implemented yet).
+/// - **Array**: element-wise square root.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn cbrt(x: X, ctx: anytype) !Cbrt(X)
+/// ```
+///
+/// Parameters
+/// ----------
+/// `x` (`anytype`):
+/// The operand to compute the cube root of.
+///
+/// `ctx` (`anytype`):
+/// A context struct providing necessary resources and configuration for the
+/// operation. The required fields depend on the operand types. If the context
+/// is missing required fields or contains unnecessary or wrongly typed fields,
+/// the compiler will emit a detailed error message describing the expected
+/// structure.
+///
+/// Returns
+/// -------
+/// `Cbrt(@TypeOf(x))`:
+/// The cube root of `x`.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails. Can only happen if the type is of arbitrary
+/// precision or a structured data type.
 pub inline fn cbrt(
     x: anytype,
     ctx: anytype,
-) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
+) !Cbrt(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
     comptime if (!types.isArray(X) and !types.isNumeric(X))
@@ -22,21 +69,16 @@ pub inline fn cbrt(
 
     switch (comptime types.domainType(X)) {
         .array => {
-            comptime if (types.isArbitraryPrecision(Numeric(X))) {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            } else {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+            comptime switch (types.numericType(types.Numeric(X))) {
+                .bool, .int, .float, .cfloat => {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                },
+                else => @compileError("zml.cbrt for " ++ @typeName(X) ++ " not implemented yet"),
             };
 
             return array.cbrt(

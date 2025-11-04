@@ -10,11 +10,58 @@ const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
 
+/// The return type of the `lgamma` routine for an input of type `X`.
+pub fn Lgamma(X: type) type {
+    return switch (comptime types.domainType(X)) {
+        .array => types.EnsureArray(X, Lgamma(types.Numeric(X))),
+        .matrix => @compileError("zml.Lgamma not implemented for matrices yet"),
+        .vector => @compileError("zml.Lgamma not defined for " ++ @typeName(X)),
+        .numeric => types.EnsureFloat(X),
+    };
+}
+
+/// Returns the log-gamma function at `x`, `log(∫₀^∞ tˣ⁻¹ e⁻ᵗ dt)`.
 ///
+/// The `lgamma` routine computes the log-gamma function at its input `x`,
+/// `log(∫₀^∞ tˣ⁻¹ e⁻ᵗ dt)`, validating the provided context. It supports both
+/// fixed-precision and arbitrary-precision arithmetic, as well as structured
+/// data domains. The supported domains are:
+/// - **Numeric**: scalar log-gamma function.
+/// - **Matrix**: matrix log-gamma function (not implemented yet).
+/// - **Array**: element-wise log-gamma function.
+///
+/// Signature
+/// ---------
+/// ```zig
+/// fn lgamma(x: X, ctx: anytype) !Lgamma(X)
+/// ```
+///
+/// Parameters
+/// ----------
+/// `x` (`anytype`):
+/// The operand to compute the log-gamma function at.
+///
+/// `ctx` (`anytype`):
+/// A context struct providing necessary resources and configuration for the
+/// operation. The required fields depend on the operand types. If the context
+/// is missing required fields or contains unnecessary or wrongly typed fields,
+/// the compiler will emit a detailed error message describing the expected
+/// structure.
+///
+/// Returns
+/// -------
+/// `Lgamma(@TypeOf(x))`:
+/// The log-gamma function at `x`.
+///
+/// Errors
+/// ------
+/// `std.mem.Allocator.Error.OutOfMemory`:
+/// If memory allocation fails. Can only happen if the type is of arbitrary
+/// precision or a structured data type.
 pub inline fn lgamma(
     x: anytype,
     ctx: anytype,
-) !EnsureArray(@TypeOf(x), EnsureFloat(Numeric(@TypeOf(x)))) {
+) !Lgamma(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
     comptime if (!types.isArray(X) and !types.isNumeric(X))
@@ -22,21 +69,16 @@ pub inline fn lgamma(
 
     switch (comptime types.domainType(X)) {
         .array => {
-            comptime if (types.isArbitraryPrecision(Numeric(X))) {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
-            } else {
-                types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+            comptime switch (types.numericType(types.Numeric(X))) {
+                .bool, .int, .float, .cfloat => {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                },
+                else => @compileError("zml.lgamma for " ++ @typeName(X) ++ " not implemented yet"),
             };
 
             return array.lgamma(

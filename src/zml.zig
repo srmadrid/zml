@@ -39,104 +39,144 @@ pub const pi = constants.pi;
 const ops = @import("ops.zig");
 
 // Arithmetic operations
+pub const Add = ops.Add;
 pub const add = ops.add;
 pub const add_ = ops.add_;
+pub const Sub = ops.Sub;
 pub const sub = ops.sub;
 pub const sub_ = ops.sub_;
+pub const Mul = ops.Mul;
 pub const mul = ops.mul;
 pub const mul_ = ops.mul_;
+pub const Div = ops.Div;
 pub const div = ops.div;
 pub const div_ = ops.div_;
 
 // Comparison operations
+pub const Eq = ops.Eq;
 pub const eq = ops.eq;
 pub const eq_ = ops.eq_;
+pub const Ne = ops.Ne;
 pub const ne = ops.ne;
 pub const ne_ = ops.ne_;
+pub const Lt = ops.Lt;
 pub const lt = ops.lt;
 pub const lt_ = ops.lt_;
+pub const Le = ops.Le;
 pub const le = ops.le;
 pub const le_ = ops.le_;
+pub const Gt = ops.Gt;
 pub const gt = ops.gt;
 pub const gt_ = ops.gt_;
+pub const Ge = ops.Ge;
 pub const ge = ops.ge;
 pub const ge_ = ops.ge_;
+pub const Max = ops.Max;
 pub const max = ops.max;
 pub const max_ = ops.max_;
+pub const Min = ops.Min;
 pub const min = ops.min;
 pub const min_ = ops.min_;
 
 // Basic operations
+pub const Abs = ops.Abs;
 pub const abs = ops.abs;
 pub const abs_ = ops.abs_;
+pub const Abs1 = ops.Abs1;
 pub const abs1 = ops.abs1;
 pub const abs1_ = ops.abs1_;
+pub const Abs2 = ops.Abs2;
 pub const abs2 = ops.abs2;
 pub const abs2_ = ops.abs2_;
+pub const Neg = ops.Neg;
 pub const neg = ops.neg;
 pub const neg_ = ops.neg_;
 
 // Exponential functions
+pub const Exp = ops.Exp;
 pub const exp = ops.exp;
 pub const exp_ = ops.exp_;
+pub const Exp10 = ops.Exp10;
 pub const exp10 = ops.exp10;
 pub const exp10_ = ops.exp10_;
+pub const Exp2 = ops.Exp2;
 pub const exp2 = ops.exp2;
 pub const exp2_ = ops.exp2_;
+pub const Log = ops.Log;
 pub const log = ops.log;
 pub const log_ = ops.log_;
+pub const Log10 = ops.Log10;
 pub const log10 = ops.log10;
 pub const log10_ = ops.log10_;
+pub const Log2 = ops.Log2;
 pub const log2 = ops.log2;
 pub const log2_ = ops.log2_;
 
 // Power functions
 pub const pow = ops.pow;
 pub const pow_ = ops.pow_;
+pub const Sqrt = ops.Sqrt;
 pub const sqrt = ops.sqrt;
 pub const sqrt_ = ops.sqrt_;
+pub const Cbrt = ops.Cbrt;
 pub const cbrt = ops.cbrt;
 pub const cbrt_ = ops.cbrt_;
 pub const hypot = ops.hypot;
 pub const hypot_ = ops.hypot_;
 
 // Trigonometric functions
+pub const Sin = ops.Sin;
 pub const sin = ops.sin;
 pub const sin_ = ops.sin_;
+pub const Cos = ops.Cos;
 pub const cos = ops.cos;
 pub const cos_ = ops.cos_;
+pub const Tan = ops.Tan;
 pub const tan = ops.tan;
 pub const tan_ = ops.tan_;
+pub const Asin = ops.Asin;
 pub const asin = ops.asin;
 pub const asin_ = ops.asin_;
+pub const Acos = ops.Acos;
 pub const acos = ops.acos;
 pub const acos_ = ops.acos_;
+pub const Atan = ops.Atan;
 pub const atan = ops.atan;
 pub const atan_ = ops.atan_;
 pub const atan2 = ops.atan2;
 pub const atan2_ = ops.atan2_;
 
 // Hyperbolic functions
+pub const Sinh = ops.Sinh;
 pub const sinh = ops.sinh;
 pub const sinh_ = ops.sinh_;
+pub const Cosh = ops.Cosh;
 pub const cosh = ops.cosh;
 pub const cosh_ = ops.cosh_;
+pub const Tanh = ops.Tanh;
 pub const tanh = ops.tanh;
 pub const tanh_ = ops.tanh_;
+pub const Asinh = ops.Asinh;
 pub const asinh = ops.asinh;
 pub const asinh_ = ops.asinh_;
+pub const Acosh = ops.Acosh;
 pub const acosh = ops.acosh;
 pub const acosh_ = ops.acosh_;
+pub const Atanh = ops.Atanh;
 pub const atanh = ops.atanh;
 pub const atanh_ = ops.atanh_;
 
 // Error and gamma functions
+pub const Erf = ops.Erf;
 pub const erf = ops.erf;
 pub const erf_ = ops.erf_;
+pub const Erfc = ops.Erfc;
 pub const erfc = ops.erfc;
 pub const erfc_ = ops.erfc_;
+pub const Gamma = ops.Gamma;
 pub const gamma = ops.gamma;
 pub const gamma_ = ops.gamma_;
+pub const Lgamma = ops.Lgamma;
 pub const lgamma = ops.lgamma;
 pub const lgamma_ = ops.lgamma_;
 

@@ -3223,9 +3223,9 @@ pub fn Scalar(comptime T: type) type {
     const numeric = numericType(T);
 
     switch (comptime numeric) {
+        .bool => return T,
         .int => return T,
         .float => return T,
-        .bool => return T,
         .cfloat => switch (T) {
             cf16 => return f16,
             cf32 => return f32,
