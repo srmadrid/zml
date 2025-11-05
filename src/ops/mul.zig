@@ -72,7 +72,7 @@ pub fn Mul(X: type, Y: type) type {
 ///
 /// `array.Error.NotBroadcastable`:
 /// If the two arrays cannot be broadcasted to a common shape. Can only happen
-/// if at least one of the operands is an array.
+/// if both operands are arrays.
 ///
 /// `linalg.Error.DimensionMismatch`:
 /// If the dimensions of the operands are incompatible for matrix,
@@ -97,16 +97,9 @@ pub inline fn mul(
     switch (comptime types.domainType(X)) {
         .array => switch (comptime types.domainType(Y)) {
             .array, .numeric => { // array * array, array * numeric
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -114,14 +107,24 @@ pub inline fn mul(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return array.mul(
@@ -135,21 +138,35 @@ pub inline fn mul(
         },
         .matrix => switch (comptime types.domainType(Y)) {
             .matrix => { // matrix * matrix
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .add_mode = .{ .type = int.Mode, .required = false },
+                                .mul_mode = .{ .type = int.Mode, .required = false },
+                            },
+                        );
+                    },
+                    .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return matrix.mul(
@@ -160,21 +177,35 @@ pub inline fn mul(
                 );
             },
             .vector => { // matrix * vector
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .add_mode = .{ .type = int.Mode, .required = false },
+                                .mul_mode = .{ .type = int.Mode, .required = false },
+                            },
+                        );
+                    },
+                    .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return matrix.mul(
@@ -185,16 +216,9 @@ pub inline fn mul(
                 );
             },
             .numeric => { // matrix * numeric
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -202,14 +226,24 @@ pub inline fn mul(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return matrix.mul(
@@ -223,21 +257,35 @@ pub inline fn mul(
         },
         .vector => switch (comptime types.domainType(Y)) {
             .matrix => { // vector * matrix
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .add_mode = .{ .type = int.Mode, .required = false },
+                                .mul_mode = .{ .type = int.Mode, .required = false },
+                            },
+                        );
+                    },
+                    .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return matrix.mul(
@@ -248,15 +296,27 @@ pub inline fn mul(
                 );
             },
             .vector => { // vector * vector
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(@TypeOf(ctx), .{});
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .add_mode = .{ .type = int.Mode, .required = false },
+                            },
+                        );
+                    },
+                    .float, .cfloat => {
+                        types.validateContext(@TypeOf(ctx), .{});
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return vector.mul(
@@ -270,16 +330,9 @@ pub inline fn mul(
         },
         .numeric => switch (comptime types.domainType(Y)) {
             .array => { // numeric * array
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -287,14 +340,24 @@ pub inline fn mul(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return array.mul(
@@ -305,16 +368,9 @@ pub inline fn mul(
                 );
             },
             .matrix => { // numeric * matrix
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -322,14 +378,24 @@ pub inline fn mul(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return matrix.mul(
@@ -340,16 +406,9 @@ pub inline fn mul(
                 );
             },
             .vector => { // numeric * vector
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -357,14 +416,24 @@ pub inline fn mul(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return vector.mul(

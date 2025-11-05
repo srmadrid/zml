@@ -113,6 +113,7 @@ pub const log2 = ops.log2;
 pub const log2_ = ops.log2_;
 
 // Power functions
+pub const Pow = ops.Pow;
 pub const pow = ops.pow;
 pub const pow_ = ops.pow_;
 pub const Sqrt = ops.Sqrt;
@@ -121,6 +122,7 @@ pub const sqrt_ = ops.sqrt_;
 pub const Cbrt = ops.Cbrt;
 pub const cbrt = ops.cbrt;
 pub const cbrt_ = ops.cbrt_;
+pub const Hypot = ops.Hypot;
 pub const hypot = ops.hypot;
 pub const hypot_ = ops.hypot_;
 
@@ -143,6 +145,7 @@ pub const acos_ = ops.acos_;
 pub const Atan = ops.Atan;
 pub const atan = ops.atan;
 pub const atan_ = ops.atan_;
+pub const Atan2 = ops.Atan2;
 pub const atan2 = ops.atan2;
 pub const atan2_ = ops.atan2_;
 

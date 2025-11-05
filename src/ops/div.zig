@@ -66,7 +66,7 @@ pub fn Div(X: type, Y: type) type {
 ///
 /// `array.Error.NotBroadcastable`:
 /// If the two arrays cannot be broadcasted to a common shape. Can only happen
-/// if at least one of the operands is an array.
+/// if both operands are arrays.
 ///
 /// `integer.Error.ZeroDivision`:
 /// If `y` is zero. Can only happen if the coerced type is an integer.
@@ -98,21 +98,25 @@ pub inline fn div(
     switch (comptime types.domainType(X)) {
         .array => switch (comptime types.domainType(Y)) {
             .array, .numeric => { // array/array, array/numeric
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int, .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return array.div(
@@ -126,21 +130,25 @@ pub inline fn div(
         },
         .matrix => switch (comptime types.domainType(Y)) {
             .numeric => { // matrix/numeric
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int, .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return matrix.div(
@@ -154,21 +162,25 @@ pub inline fn div(
         },
         .vector => switch (comptime types.domainType(Y)) {
             .numeric => { // vector/numeric
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int, .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return vector.div(
@@ -182,21 +194,25 @@ pub inline fn div(
         },
         .numeric => switch (comptime types.domainType(Y)) {
             .array => { // numeric/array
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int, .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return array.div(

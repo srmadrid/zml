@@ -24,10 +24,13 @@ const array = @import("array.zig");
 
 // Utility operations
 pub const copysign = @import("ops/copysign.zig").copysign;
+pub const Re = @import("ops/re.zig").Re;
 pub const re = @import("ops/re.zig").re;
 pub const re_ = @import("ops/re_.zig").re_;
+pub const Im = @import("ops/im.zig").Im;
 pub const im = @import("ops/im.zig").im;
 pub const im_ = @import("ops/im_.zig").im_;
+pub const Conj = @import("ops/conj.zig").Conj;
 pub const conj = @import("ops/conj.zig").conj;
 pub const conj_ = @import("ops/conj_.zig").conj_;
 
@@ -106,6 +109,7 @@ pub const log2 = @import("ops/log2.zig").log2;
 pub const log2_ = @import("ops/log2_.zig").log2_;
 
 // Power functions
+pub const Pow = @import("ops/pow.zig").Pow;
 pub const pow = @import("ops/pow.zig").pow;
 pub const pow_ = @import("ops/pow_.zig").pow_;
 pub const Sqrt = @import("ops/sqrt.zig").Sqrt;
@@ -114,6 +118,7 @@ pub const sqrt_ = @import("ops/sqrt_.zig").sqrt_;
 pub const Cbrt = @import("ops/cbrt.zig").Cbrt;
 pub const cbrt = @import("ops/cbrt.zig").cbrt;
 pub const cbrt_ = @import("ops/cbrt_.zig").cbrt_;
+pub const Hypot = @import("ops/hypot.zig").Hypot;
 pub const hypot = @import("ops/hypot.zig").hypot;
 pub const hypot_ = @import("ops/hypot_.zig").hypot_;
 
@@ -136,6 +141,7 @@ pub const acos_ = @import("ops/acos_.zig").acos_;
 pub const Atan = @import("ops/atan.zig").Atan;
 pub const atan = @import("ops/atan.zig").atan;
 pub const atan_ = @import("ops/atan_.zig").atan_;
+pub const Atan2 = @import("ops/atan2.zig").Atan2;
 pub const atan2 = @import("ops/atan2.zig").atan2;
 pub const atan2_ = @import("ops/atan2_.zig").atan2_;
 

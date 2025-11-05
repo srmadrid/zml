@@ -68,7 +68,7 @@ pub fn Add(X: type, Y: type) type {
 ///
 /// `array.Error.NotBroadcastable`:
 /// If the two arrays cannot be broadcasted to a common shape. Can only happen
-/// if at least one of the operands is an array.
+/// if both operands are arrays.
 ///
 /// `matrix.Error.DimensionMismatch`:
 /// If the two matrices do not have the same shape. Can only happen if both
@@ -96,16 +96,9 @@ pub inline fn add(
     switch (comptime types.domainType(X)) {
         .array => switch (comptime types.domainType(Y)) {
             .array, .numeric => { // array + array, array + numeric
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -113,14 +106,24 @@ pub inline fn add(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return array.add(
@@ -134,16 +137,9 @@ pub inline fn add(
         },
         .matrix => switch (comptime types.domainType(Y)) {
             .matrix => { // matrix + matrix
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -151,14 +147,24 @@ pub inline fn add(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return matrix.add(
@@ -172,16 +178,9 @@ pub inline fn add(
         },
         .vector => switch (comptime types.domainType(Y)) {
             .vector => { // vector + vector
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -189,14 +188,24 @@ pub inline fn add(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return vector.add(
@@ -210,16 +219,9 @@ pub inline fn add(
         },
         .numeric => switch (comptime types.domainType(Y)) {
             .array => { // numeric + array
-                comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                } else {
-                    if (types.numericType(types.Numeric(C)) == .int) {
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -227,14 +229,24 @@ pub inline fn add(
                                 .mode = .{ .type = int.Mode, .required = false },
                             },
                         );
-                    } else {
+                    },
+                    .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
                             },
                         );
-                    }
+                    },
+                    .integer, .rational, .real, .complex, .expression => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
                 };
 
                 return array.add(
