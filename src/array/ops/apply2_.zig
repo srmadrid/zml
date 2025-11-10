@@ -24,19 +24,13 @@ pub fn apply2_(
     comptime if (!types.isArray(O))
         @compileError("apply2_: o must be an array, got " ++ @typeName(O));
 
+    comptime if (!types.isArray(X) and !types.isArray(Y))
+        @compileError("apply2_: at least one of x or y must be an array, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+
     comptime if (@typeInfo(@TypeOf(op_)) != .@"fn" or (@typeInfo(@TypeOf(op_)).@"fn".params.len != 3 and @typeInfo(@TypeOf(op_)).@"fn".params.len != 4))
         @compileError("apply2_: op must be a function of three arguments, or a function of four arguments with the fourth argument being a context, got " ++ @typeName(@TypeOf(op_)));
 
     if (comptime !types.isArray(X)) {
-        if (comptime !types.isArray(Y)) {
-            switch (comptime types.arrayType(O)) {
-                .dense => return dense.apply2_(o, x, y, op_, ctx),
-                .strided => return strided.apply2_(o, x, y, op_, ctx),
-                .sparse => @compileError("apply2_ not implemented for sparse arrays yet"),
-                .numeric => unreachable,
-            }
-        }
-
         switch (comptime types.arrayType(O)) {
             .dense => switch (comptime types.arrayType(Y)) {
                 .dense => return dense.apply2_(o, x, y, op_, ctx),

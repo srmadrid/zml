@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `asinh` routine for an input of type `X`.
 pub fn Asinh(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Asinh(types.Numeric(X))),
         .matrix => @compileError("zml.Asinh not implemented for matrices yet"),
         .vector => @compileError("zml.Asinh not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Asinh(X: type) type {
 /// - **Numeric**: scalar hyperbolic arcsine.
 /// - **Matrix**: matrix hyperbolic arcsine (not implemented yet).
 /// - **Array**: element-wise hyperbolic arcsine.
+/// - **Expression**: symbolic hyperbolic arcsine.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn asinh(
 ) !Asinh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.asinh not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.asinh not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

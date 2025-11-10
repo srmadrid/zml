@@ -9,11 +9,20 @@ const integer = @import("../integer.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `atan2` routine for inputs of types `X` and `Y`.
 pub fn Atan2(X: type, Y: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => switch (comptime types.domainType(Y)) {
+            .expression => expression.Expression,
+            .array => expression.Expression,
+            .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .vector => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .numeric => expression.Expression,
+        },
         .array => switch (comptime types.domainType(Y)) {
+            .expression => expression.Expression,
             .array => types.EnsureArray(Y, Atan2(types.Numeric(X), types.Numeric(Y))),
             .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -22,6 +31,7 @@ pub fn Atan2(X: type, Y: type) type {
         .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .vector => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => expression.Expression,
             .array => types.EnsureArray(Y, Atan2(X, types.Numeric(Y))),
             .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -40,9 +50,12 @@ pub fn Atan2(X: type, Y: type) type {
 /// value is returned as a new value. It supports both fixed-precision and
 /// arbitrary-precision arithmetic, as well as structured data domains. The
 /// supported type combinations are:
-/// - **Numeric ^ Numeric**: scalar arctangent.
-/// - **Numeric * Array**, **Array ^ Numeric**, and **Array ^ Array**:
+/// - **(Numeric, Numeric)**: scalar arctangent.
+/// - **(Numeric, Array)**, **(Array, Numeric)**, and **(Array, Array)**:
 ///   broadcasted element-wise arctangent.
+/// - **(Numeric, Expression)**, **(Array, Expression)**,
+///   **(Expression, Numeric)**, **(Expression, Array)**, and
+///   **(Expression, Expression)**: symbolic arctangent.
 ///
 /// Signature
 /// ---------
@@ -87,14 +100,12 @@ pub inline fn atan2(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.atan2 not implemented yet for expression types"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.atan2 not implemented yet for expression types"),
             .array, .numeric => { // atan2(array, array), atan2(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
                     types.validateContext(
@@ -123,6 +134,7 @@ pub inline fn atan2(
             else => @compileError("zml.atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.atan2 not implemented yet for expression types"),
             .array => { // atan2(numeric, array)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
                     types.validateContext(

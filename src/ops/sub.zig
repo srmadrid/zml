@@ -12,6 +12,7 @@ const complex = @import("../complex.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `sub` routine for inputs of types `X` and `Y`.
 pub fn Sub(X: type, Y: type) type {
@@ -20,7 +21,7 @@ pub fn Sub(X: type, Y: type) type {
 
 /// Performs subtraction between two operands of compatible types.
 ///
-/// The `sub` routine computes the subtraction `x - y`, automatically coercing
+/// The `sub` routine computes the difference `x - y`, automatically coercing
 /// compatible operand types and validating the provided context. The operation
 /// is performed in the coerced precision of the operands, and the resulting
 /// value is returned as a new value. It supports both fixed-precision and
@@ -33,6 +34,11 @@ pub fn Sub(X: type, Y: type) type {
 ///   shape.
 /// - **Numeric - Array**, **Array - Numeric**, and **Array - Array**:
 ///   broadcasted element-wise subtraction.
+/// - **Numeric - Expression**, **Vector - Expression**,
+///   **Matrix - Expression**, **Array - Expression**,
+///   **Expression - Numeric**, **Expression - Vector**,
+///   **Expression - Matrix**, **Expression - Array**, and
+///   **Expression - Expression**: symbolic subtraction.
 ///
 /// Signature
 /// ---------
@@ -85,16 +91,12 @@ pub inline fn sub(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isMatrix(X) and !types.isMatrix(Y) and
-        !types.isVector(X) and !types.isVector(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array, .numeric => { // array - array, array - numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -103,7 +105,7 @@ pub inline fn sub(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .defualt = null },
                             },
                         );
                     },
@@ -115,7 +117,7 @@ pub inline fn sub(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -136,6 +138,7 @@ pub inline fn sub(
             else => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .matrix => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .matrix => { // matrix - matrix
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -144,7 +147,7 @@ pub inline fn sub(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = null },
                             },
                         );
                     },
@@ -156,7 +159,7 @@ pub inline fn sub(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -177,6 +180,7 @@ pub inline fn sub(
             else => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .vector => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .vector => { // vector - vector
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -185,7 +189,7 @@ pub inline fn sub(
                             @TypeOf(ctx),
                             .{
                                 .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = null },
                             },
                         );
                     },
@@ -197,7 +201,7 @@ pub inline fn sub(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -218,6 +222,7 @@ pub inline fn sub(
             else => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array => { // numeric - array
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -226,7 +231,7 @@ pub inline fn sub(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = null },
                             },
                         );
                     },
@@ -238,7 +243,7 @@ pub inline fn sub(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -260,14 +265,14 @@ pub inline fn sub(
                 switch (comptime types.numericType(C)) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                     .int => {
-                        comptime types.validateContext(
-                            @TypeOf(ctx),
+                        const spec =
                             .{
-                                .mode = .{ .type = int.Mode, .required = false },
-                            },
-                        );
+                                .mode = .{ .type = int.Mode, .required = false, .default = null },
+                            };
 
-                        return int.sub(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
+                        comptime types.validateContext(@TypeOf(ctx), spec);
+
+                        return int.sub(x, y, types.getFieldOrDefault(ctx, spec, "mode"));
                     },
                     .float => {
                         comptime types.validateContext(@TypeOf(ctx), .{});
@@ -310,7 +315,6 @@ pub inline fn sub(
 
                         return complex.sub(ctx.allocator, x, y);
                     },
-                    .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }
             },
             else => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),

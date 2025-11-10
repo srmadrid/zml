@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `cbrt` routine for an input of type `X`.
 pub fn Cbrt(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Cbrt(types.Numeric(X))),
         .matrix => @compileError("zml.Cbrt not implemented for matrices yet"),
         .vector => @compileError("zml.Cbrt not defined for " ++ @typeName(X)),
@@ -26,9 +28,10 @@ pub fn Cbrt(X: type) type {
 /// validating the provided context. It supports both fixed-precision and
 /// arbitrary-precision arithmetic, as well as structured data domains. The
 /// supported domains are:
-/// - **Numeric**: scalar square root.
-/// - **Matrix**: matrix square root (not implemented yet).
-/// - **Array**: element-wise square root.
+/// - **Numeric**: scalar cube root.
+/// - **Matrix**: matrix cube root (not implemented yet).
+/// - **Array**: element-wise cube root.
+/// - **Expression**: symbolic cube root.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn cbrt(
 ) !Cbrt(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.cbrt not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.cbrt not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

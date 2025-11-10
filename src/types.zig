@@ -12,7 +12,7 @@ const cf32 = @import("cfloat.zig").cf32;
 const cf64 = @import("cfloat.zig").cf64;
 const cf80 = @import("cfloat.zig").cf80;
 const cf128 = @import("cfloat.zig").cf128;
-const comptime_complex = @import("cfloat.zig").comptime_complex;
+const comptime_cfloat = @import("cfloat.zig").comptime_cfloat;
 const integer = @import("integer.zig");
 const Integer = integer.Integer;
 const rational = @import("rational.zig");
@@ -21,11 +21,11 @@ const real = @import("real.zig");
 const Real = real.Real;
 const complex = @import("complex.zig");
 const Complex = complex.Complex;
-//pub const Expression = @import("../expression/expression.zig").Expression;
 
 const vector = @import("vector.zig");
 const matrix = @import("matrix.zig");
 const array = @import("array.zig");
+const Expression = @import("expression.zig").Expression;
 
 pub const Cmp = enum(u2) {
     gt,
@@ -180,7 +180,7 @@ pub const IterationOrder = enum {
 ///   - `comptime_float`
 /// - `cfloat`: Represents complex floating-point types:
 ///   - `cf16`, `cf32`, `cf64`, `cf80`, `cf128`
-///   - `comptime_complex`
+///   - `comptime_cfloat`
 /// - `integer`: Represents arbitrary precision integer type (`Integer`).
 /// - `rational`: Represents arbitrary precision rational type (`Rational`).
 /// - `real`: Represents arbitrary precision real type (`Real`).
@@ -197,7 +197,6 @@ pub const NumericType = enum {
     rational,
     real,
     complex,
-    expression,
 };
 
 const supported_numeric_types: [33]type = .{
@@ -214,7 +213,7 @@ const supported_numeric_types: [33]type = .{
     f128,    comptime_float,
     cf16,    cf32,
     cf64,    cf80,
-    cf128,   comptime_complex,
+    cf128,   comptime_cfloat,
     Integer, Rational,
     Real,    Complex(Rational),
     Complex(Real),
@@ -224,7 +223,7 @@ const supported_numeric_types: [33]type = .{
 const supported_complex_types: [8]type = .{
     cf16,  cf32,
     cf64,  cf80,
-    cf128, comptime_complex,
+    cf128, comptime_cfloat,
     Complex(Rational), Complex(Real), // Expression,
 };
 
@@ -265,6 +264,7 @@ pub const Domain = enum {
     vector,
     matrix,
     array,
+    expression,
 };
 
 pub const useless_allocator: std.mem.Allocator = .{
@@ -345,7 +345,7 @@ pub inline fn numericType(comptime T: type) NumericType {
         },
         .float, .comptime_float => return .float,
         else => {
-            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or
+            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_cfloat or
                 T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
                 T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
             {
@@ -358,8 +358,6 @@ pub inline fn numericType(comptime T: type) NumericType {
                 return .real;
             } else if (T == Complex(Rational) or T == Complex(Real)) {
                 return .complex;
-                //} else if (T == Expression) {
-                //    return .expression;
             } else {
                 @compileError("Unsupported numeric type: " ++ @typeName(T));
             }
@@ -378,7 +376,7 @@ pub fn isNumeric(comptime T: type) bool {
         },
         .float, .comptime_float => return true,
         else => {
-            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_complex or
+            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_cfloat or
                 T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
                 T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
             {
@@ -391,8 +389,6 @@ pub fn isNumeric(comptime T: type) bool {
                 return true;
             } else if (T == Complex(Rational) or T == Complex(Real)) {
                 return true;
-                //} else if (T == Expression) {
-                //    return .expression;
             } else {
                 return false;
             }
@@ -475,6 +471,8 @@ pub inline fn domainType(comptime T: type) Domain {
         return .matrix;
     } else if (comptime isArray(T)) {
         return .array;
+    } else if (comptime isExpression(T)) {
+        return .expression;
     }
 
     @compileError("Unsupported type for domainType: " ++ @typeName(T));
@@ -1389,6 +1387,12 @@ pub fn isSparseArray(comptime T: type) bool {
     }
 }
 
+pub fn isExpression(comptime T: type) bool {
+    _ = T;
+    return false;
+    // return T == Expression;
+}
+
 /// Checks if the input numeric type is of fixed precision.
 ///
 /// This function checks if the input type is a fixed precision numeric type,
@@ -1430,7 +1434,6 @@ pub fn isArbitraryPrecision(comptime T: type) bool {
         .rational => return true,
         .real => return true,
         .complex => return true,
-        .expression => return true,
         else => return false,
     }
 }
@@ -1537,6 +1540,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .sparse => return array.Sparse(Coerce(X, Numeric(Y)), orderOf(Y)), // numeric + sparse array
                 .numeric => unreachable,
             },
+            .expression => Expression, // numeric + expression
         },
         .vector => switch (comptime vectorType(X)) {
             .dense => switch (comptime domainType(Y)) {
@@ -1548,6 +1552,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 },
                 .matrix => @compileError("Cannot coerce vector and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense vector + matrix
                 .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense vector + array
+                .expression => Expression, // dense vector + expression
             },
             .sparse => switch (comptime domainType(Y)) {
                 .numeric => return vector.Sparse(Coerce(Numeric(X), Y)), // sparse vector + numeric
@@ -1558,6 +1563,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 },
                 .matrix => @compileError("Cannot coerce vector and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse vector + matrix
                 .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse vector + array
+                .expression => Expression, // sparse vector + expression
             },
             .numeric => unreachable,
         },
@@ -1566,7 +1572,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .numeric => return matrix.general.Dense(Coerce(Numeric(X), Y), orderOf(X)), // dense general matrix + numeric
                 .vector => @compileError("Cannot coerce matrix and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense general matrix + vector
                 .matrix => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense general matrix + matrix
-                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // general + array
+                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense general matrix + array
+                .expression => Expression, // dense general matrix + expression
             },
             .dense_symmetric => switch (comptime domainType(Y)) {
                 .numeric => return matrix.symmetric.Dense(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)), // dense symmetric matrix + numeric
@@ -1600,7 +1607,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .diagonal => return matrix.symmetric.Dense(Coerce(Numeric(X), Numeric(Y)), uploOf(X), orderOf(X)), // dense symmetric matrix + diagonal matrix
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense symmetric matrix + rest of matrices
                 },
-                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // symmetric + array
+                .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense symmetric matrix + array
+                .expression => Expression, // dense symmetric matrix + expression
             },
             .dense_hermitian => switch (comptime domainType(Y)) {
                 .numeric => {
@@ -1647,6 +1655,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense hermitian matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense hermitian matrix + array
+                .expression => Expression, // dense hermitian matrix + expression
             },
             .dense_triangular => switch (comptime domainType(Y)) {
                 .numeric => return matrix.triangular.Dense(Coerce(Numeric(X), Y), uploOf(X), .non_unit, orderOf(X)), // dense triangular matrix + numeric
@@ -1674,6 +1683,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense triangular matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense triangular matrix + array
+                .expression => Expression, // dense triangular matrix + expression
             },
             .sparse_general => switch (comptime domainType(Y)) {
                 .numeric => return matrix.general.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse general matrix + numeric
@@ -1697,6 +1707,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .numeric => unreachable,
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse general matrix + array
+                .expression => Expression, // sparse general matrix + expression
             },
             .sparse_symmetric => switch (comptime domainType(Y)) {
                 .numeric => return matrix.symmetric.Sparse(Coerce(Numeric(X), Y), uploOf(X), orderOf(X)), // sparse symmetric matrix + numeric
@@ -1738,6 +1749,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse symmetric matrix + array
+                .expression => Expression, // sparse symmetric matrix + expression
             },
             .sparse_hermitian => switch (comptime domainType(Y)) {
                 .numeric => {
@@ -1790,6 +1802,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse hermitian matrix + array
+                .expression => Expression, // sparse hermitian matrix + expression
             },
             .sparse_triangular => switch (comptime domainType(Y)) {
                 .numeric => return matrix.triangular.Sparse(Coerce(Numeric(X), Y), uploOf(X), .non_unit, orderOf(X)), // sparse triangular matrix + numeric
@@ -1824,6 +1837,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // sparse triangular matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse triangular matrix + array
+                .expression => Expression, // sparse triangular matrix + expression
             },
             .block_general => switch (comptime domainType(Y)) {
                 .numeric => return matrix.general.Block(Coerce(Numeric(X), Y), borderOf(X), orderOf(X)), // sparse block matrix + numeric
@@ -1847,6 +1861,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block matrix + array
+                .expression => Expression, // sparse block matrix + expression
             },
             .block_symmetric => switch (comptime domainType(Y)) {
                 .numeric => return matrix.symmetric.Block(Coerce(Numeric(X), Y), borderOf(X), orderOf(X)), // sparse block symmetric matrix + numeric
@@ -1888,6 +1903,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block symmetric matrix + array
+                .expression => Expression, // sparse block symmetric matrix + expression
             },
             .block_hermitian => switch (comptime domainType(Y)) {
                 .numeric => {
@@ -1941,6 +1957,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block hermitian matrix + array
+                .expression => Expression, // sparse block hermitian matrix + expression
             },
             .diagonal => switch (comptime domainType(Y)) {
                 .numeric => return matrix.Diagonal(Coerce(Numeric(X), Y)), // diagonal matrix + numeric
@@ -1982,6 +1999,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .numeric => unreachable,
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal matrix + array
+                .expression => Expression, // diagonal matrix + expression
             },
             .banded => switch (comptime domainType(Y)) {
                 .numeric => return matrix.Banded(Coerce(Numeric(X), Y), orderOf(X)), // banded matrix + numeric
@@ -1998,6 +2016,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded matrix + array
+                .expression => Expression, // banded matrix + expression
             },
             .tridiagonal => switch (comptime domainType(Y)) {
                 .numeric => return matrix.Tridiagonal(Coerce(Numeric(X), Y)), // tridiagonal matrix + numeric
@@ -2018,6 +2037,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal + array
+                .expression => Expression, // tridiagonal + expression
             },
             .permutation => switch (comptime domainType(Y)) {
                 .numeric => return matrix.general.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // permutation matrix + numeric
@@ -2034,6 +2054,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // permutation matrix + rest of matrices
                 },
                 .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // permutation matrix + array
+                .expression => Expression, // permutation matrix + expression
             },
             .numeric => unreachable,
         },
@@ -2043,12 +2064,14 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .vector => @compileError("Cannot coerce array and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense + vector
                 .matrix => @compileError("Cannot coerce array and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense + matrix
                 .array => return array.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense + array
+                .expression => Expression, // dense + expression
             },
             .strided => switch (comptime domainType(Y)) {
                 .numeric => return array.Dense(Coerce(Numeric(X), Y), orderOf(X)), // strided + numeric
                 .vector => @compileError("Cannot coerce array and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // strided + vector
                 .matrix => @compileError("Cannot coerce array and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // strided + matrix
                 .array => return array.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // strided + array
+                .expression => Expression, // strided + expression
             },
             .sparse => switch (comptime domainType(Y)) {
                 .numeric => return array.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // sparse + numeric
@@ -2058,9 +2081,11 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     .sparse => return array.Sparse(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse + sparse
                     else => return array.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse + rest of arrays
                 },
+                .expression => Expression, // sparse + expression
             },
             .numeric => unreachable,
         },
+        .expression => Expression, // expression + anything
     }
 
     // Else two numeric types
@@ -2252,18 +2277,6 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 const y: Y = .empty;
                 return Complex(Coerce(@TypeOf(@field(x, "re")), @TypeOf(@field(y, "re"))));
             },
-            .expression => return Y,
-        },
-        .expression => switch (ynumeric) {
-            .bool => return X,
-            .int => return X,
-            .float => return X,
-            .cfloat => return X,
-            .integer => return X,
-            .rational => return X,
-            .real => return X,
-            .complex => return X,
-            .expression => return X,
         },
     }
 }
@@ -2296,6 +2309,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 .vector => Coerce(Numeric(X), Numeric(Y)), // dense vector * vector
                 .matrix => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense vector * matrix
                 .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense vector * array
+                .expression => Expression, // dense vector * expression
             },
             .sparse => switch (comptime domainType(Y)) {
                 .numeric => {}, // Same as Coerce
@@ -2305,6 +2319,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                     else => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // sparse vector * rest of matrices
                 },
                 .array => @compileError("Cannot coerce vector and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse vector * array
+                .expression => Expression, // sparse vector * expression
             },
             .numeric => unreachable,
         },
@@ -2315,18 +2330,21 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                     .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense general matrix * vector
                     .matrix => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense general matrix * matrix
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense general matrix * array
+                    .expression => Expression, // dense general matrix * expression
                 },
                 .dense_symmetric => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
                     .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense symmetric matrix * vector
                     .matrix => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense symmetric matrix * matrix
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense symmetric matrix * array
+                    .expression => Expression, // dense symmetric matrix * expression
                 },
                 .dense_hermitian => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
                     .vector => return vector.Dense(Coerce(Numeric(X), Numeric(Y))), // dense hermitian matrix * vector
                     .matrix => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // dense hermitian matrix * matrix
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense hermitian matrix * array
+                    .expression => Expression, // dense hermitian matrix * expression
                 },
                 .dense_triangular => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2360,6 +2378,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // dense triangular matrix * array
+                    .expression => Expression, // dense triangular matrix * expression
                 },
                 .sparse_general => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2378,6 +2397,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse general matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse general matrix * array
+                    .expression => Expression, // sparse general matrix * expression
                 },
                 .sparse_symmetric => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2396,6 +2416,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse symmetric matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse symmetric matrix * array
+                    .expression => Expression, // sparse symmetric matrix * expression
                 },
                 .sparse_hermitian => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2414,6 +2435,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse hermitian matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse hermitian matrix * array
+                    .expression => Expression, // sparse hermitian matrix * expression
                 },
                 .sparse_triangular => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2454,6 +2476,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // triangular * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse triangular matrix * array
+                    .expression => Expression, // sparse triangular matrix * expression
                 },
                 .block_general => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2470,6 +2493,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block general matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block general matrix * array
+                    .expression => Expression, // sparse block general matrix * expression
                 },
                 .block_symmetric => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2486,6 +2510,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block symmetric matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block symmetric matrix * array
+                    .expression => Expression, // sparse block symmetric matrix * expression
                 },
                 .block_hermitian => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2502,6 +2527,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // sparse block hermitian matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // sparse block hermitian matrix * array
+                    .expression => Expression, // sparse block hermitian matrix * expression
                 },
                 .diagonal => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2526,6 +2552,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // diagonal matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // diagonal matrix * array
+                    .expression => Expression, // diagonal matrix * expression
                 },
                 .banded => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2539,6 +2566,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // banded matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // banded matrix * array
+                    .expression => Expression, // banded matrix * expression
                 },
                 .tridiagonal => switch (comptime domainType(Y)) {
                     .numeric => {}, // Same as Coerce
@@ -2558,6 +2586,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(Y)), // tridiagonal matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // tridiagonal matrix * array
+                    .expression => Expression, // tridiagonal matrix * array
                 },
                 .permutation => switch (comptime domainType(Y)) {
                     .numeric => return matrix.general.Sparse(Coerce(Numeric(X), Y), orderOf(X)), // permutation matrix * numeric
@@ -2576,6 +2605,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                         else => return matrix.general.Dense(Coerce(Numeric(X), Numeric(Y)), orderOf(X)), // permutation matrix * rest of matrices
                     },
                     .array => @compileError("Cannot coerce matrix and array types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // permutation matrix * array
+                    .expression => Expression, // permutation matrix * expression
                 },
                 .numeric => unreachable,
             }
@@ -2586,8 +2616,10 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
                 .vector => @compileError("Cannot coerce array and vector types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // array * vector
                 .matrix => @compileError("Cannot coerce array and matrix types: " ++ @typeName(X) ++ " and " ++ @typeName(Y)), // array * matrix
                 .array => return Coerce(X, Y), // array * array
+                .expression => Expression,
             }
         },
+        .expression => Expression,
     }
 
     return Coerce(X, Y);
@@ -2789,19 +2821,6 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
                     T3 = Complex(Coerce(@TypeOf(@field(t1, "re")), @TypeOf(@field(t2, "re"))));
                 }
             },
-            .expression => T3 = T2,
-            else => unreachable,
-        },
-        .expression => switch (t2numeric) {
-            .bool => T3 = T1,
-            .int => T3 = T1,
-            .float => T3 = T1,
-            .cfloat => T3 = T1,
-            .integer => T3 = T1,
-            .rational => T3 = T1,
-            .real => T3 = T1,
-            .complex => T3 = T1,
-            .expression => T3 = T1,
             else => unreachable,
         },
     }
@@ -2826,7 +2845,9 @@ pub fn canCoerce(comptime K: type, comptime V: type) bool {
 /// -------
 /// `type`: The coerced type.
 pub fn EnsureDomain(comptime X: type, comptime Y: type) type {
-    if (isArray(X)) {
+    if (isExpression(X)) {
+        return Expression;
+    } else if (isArray(X)) {
         switch (arrayType(X)) {
             .dense => return array.Dense(Y, orderOf(X)),
             .strided => return array.Dense(Y, orderOf(X)),
@@ -2982,7 +3003,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
         },
         .int => switch (ynumeric) {
             .bool => return true,
@@ -3015,7 +3035,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
         },
         .float => switch (ynumeric) {
             .bool => return true,
@@ -3034,7 +3053,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
         },
         .cfloat => switch (ynumeric) {
             .bool => return true,
@@ -3053,7 +3071,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
         },
         .integer => switch (ynumeric) {
             .bool => return true,
@@ -3072,7 +3089,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
         },
         .rational => switch (ynumeric) {
             .bool => return true,
@@ -3091,7 +3107,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
         },
         .real => switch (ynumeric) {
             .bool => return true,
@@ -3110,7 +3125,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
         },
         .complex => switch (ynumeric) {
             .bool => return true,
@@ -3129,26 +3143,6 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
             .rational => return true,
             .real => return true,
             .complex => return true,
-            .expression => return true,
-        },
-        .expression => switch (ynumeric) {
-            .bool => return true,
-            .int => {
-                const rinfo = @typeInfo(Y);
-
-                if (rinfo.int.signedness == .unsigned) {
-                    return false; // Casting expression to unsigned int is not safe
-                }
-
-                return true;
-            },
-            .float => return true,
-            .cfloat => return true,
-            .integer => return true,
-            .rational => return true,
-            .real => return true,
-            .complex => return true,
-            .expression => return true,
         },
     }
 }
@@ -3156,7 +3150,9 @@ pub fn canCastSafely(comptime X: type, comptime Y: type) bool {
 /// Coerces the input type to a floating point type if it is not already a
 /// higher range type.
 pub fn EnsureFloat(comptime T: type) type {
-    if (isArray(T)) {
+    if (isExpression(T)) {
+        return Expression;
+    } else if (isArray(T)) {
         switch (arrayType(T)) {
             .dense => return array.Dense(EnsureFloat(Numeric(T)), orderOf(T)),
             .strided => return array.Strided(EnsureFloat(Numeric(T)), orderOf(T)),
@@ -3183,7 +3179,11 @@ pub fn EnsureFloat(comptime T: type) type {
             .numeric => unreachable,
         }
     } else if (isVector(T)) {
-        return vector.Vector(EnsureFloat(Numeric(T)));
+        switch (vectorType(T)) {
+            .dense => return vector.Dense(EnsureFloat(Numeric(T))),
+            .sparse => return vector.Sparse(EnsureFloat(Numeric(T))),
+            .numeric => unreachable,
+        }
     }
 
     switch (numericType(T)) {
@@ -3195,7 +3195,6 @@ pub fn EnsureFloat(comptime T: type) type {
         .rational => return T,
         .real => return T,
         .complex => return T,
-        else => unreachable,
     }
 }
 
@@ -3220,9 +3219,7 @@ pub fn Scalar(comptime T: type) type {
         return Numeric(T);
     }
 
-    const numeric = numericType(T);
-
-    switch (comptime numeric) {
+    switch (comptime numericType(T)) {
         .bool => return T,
         .int => return T,
         .float => return T,
@@ -3232,7 +3229,7 @@ pub fn Scalar(comptime T: type) type {
             cf64 => return f64,
             cf80 => return f80,
             cf128 => return f128,
-            comptime_complex => return comptime_float,
+            comptime_cfloat => return comptime_float,
             std.math.Complex(f16) => return f16,
             std.math.Complex(f32) => return f32,
             std.math.Complex(f64) => return f64,
@@ -3249,8 +3246,6 @@ pub fn Scalar(comptime T: type) type {
             Complex(Real) => return Real,
             else => unreachable,
         },
-        //.expression => return Expression,
-        else => unreachable,
     }
 }
 
@@ -3271,6 +3266,9 @@ pub fn Scalar(comptime T: type) type {
 /// -------
 /// `type`: The underlying numeric type of the input type.
 pub fn Numeric(comptime T: type) type {
+    if (isExpression(T))
+        return Expression;
+
     if (isArray(T) or isMatrix(T) or isVector(T)) {
         if (isPermutationMatrix(T)) {
             return T.tp();
@@ -3442,7 +3440,7 @@ pub fn diagOf(comptime T: type) Diag {
 /// type.
 ///
 /// value (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): The value to cast.
+/// `complex`): The value to cast.
 ///
 /// Returns
 /// -------
@@ -3538,7 +3536,6 @@ pub inline fn scast(
             .cfloat => return value.toCFloat(O),
             else => unreachable,
         },
-        .expression => @compileError("Not implemented yet."),
     }
 }
 
@@ -3549,7 +3546,7 @@ pub inline fn scast(
 /// comptime `T` (`type`): The type to cast to. Must be a supported numeric type.
 ///
 /// `value` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`):The value to cast.
+/// `complex`):The value to cast.
 ///
 /// `ctx` (`struct`): The context for the cast operation.
 ///
@@ -3582,70 +3579,56 @@ pub inline fn cast(
                 return value;
             },
             .integer => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime validateContext(@TypeOf(ctx), spec);
+
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return value.copy(allocator);
                 } else {
                     return value;
                 }
             },
             .rational => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime validateContext(@TypeOf(ctx), spec);
+
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return value.copy(allocator);
                 } else {
                     return value;
                 }
             },
             .real => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime validateContext(@TypeOf(ctx), spec);
+
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return value.copy(allocator);
                 } else {
                     return value;
                 }
             },
             .complex => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
-                    return value.copy(allocator);
-                } else {
-                    return value;
-                }
-            },
-            .expression => {
-                comptime validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                comptime validateContext(@TypeOf(ctx), spec);
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return value.copy(allocator);
                 } else {
                     return value;
@@ -3677,14 +3660,14 @@ pub inline fn cast(
                 };
             },
             .integer => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime validateContext(@TypeOf(ctx), spec);
+
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return if (value)
                         constants.one(Integer, .{ .allocator = allocator })
                     else
@@ -3697,14 +3680,14 @@ pub inline fn cast(
                 }
             },
             .rational => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime validateContext(@TypeOf(ctx), spec);
+
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return if (value)
                         constants.one(Rational, .{ .allocator = allocator })
                     else
@@ -3717,14 +3700,14 @@ pub inline fn cast(
                 }
             },
             .real => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime validateContext(@TypeOf(ctx), spec);
+
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return if (value)
                         constants.one(Real, .{ .allocator = allocator })
                     else
@@ -3737,14 +3720,14 @@ pub inline fn cast(
                 }
             },
             .complex => {
-                comptime validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime validateContext(@TypeOf(ctx), spec);
+
+                if (getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return if (value)
                         constants.one(O, .{ .allocator = allocator })
                     else
@@ -3756,7 +3739,6 @@ pub inline fn cast(
                         constants.zero(O, .{}) catch unreachable;
                 }
             },
-            .expression => @compileError("Not implemented yet: casting from bool to expression"),
         },
         .int => switch (comptime numericType(O)) {
             .bool => {
@@ -3786,7 +3768,6 @@ pub inline fn cast(
             .rational => @compileError("Not implemented yet: casting from int to rational"),
             .real => @compileError("Not implemented yet: casting from int to real"),
             .complex => @compileError("Not implemented yet: casting from int to complex"),
-            .expression => @compileError("Not implemented yet: casting from int to expression"),
         },
         .float => switch (comptime numericType(O)) {
             .bool => {
@@ -3819,7 +3800,6 @@ pub inline fn cast(
             .rational => @compileError("Not implemented yet: casting from float to rational"),
             .real => @compileError("Not implemented yet: casting from float to real"),
             .complex => @compileError("Not implemented yet: casting from float to complex"),
-            .expression => @compileError("Not implemented yet: casting from float to expression"),
         },
         .cfloat => switch (comptime numericType(O)) {
             .bool => {
@@ -3852,7 +3832,6 @@ pub inline fn cast(
             .rational => @compileError("Not implemented yet: casting from cfloat to rational"),
             .real => @compileError("Not implemented yet: casting from cfloat to real"),
             .complex => @compileError("Not implemented yet: casting from cfloat to complex"),
-            .expression => @compileError("Not implemented yet: casting from cfloat to expression"),
         },
         .integer => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from integer to bool"),
@@ -3863,7 +3842,6 @@ pub inline fn cast(
             .rational => @compileError("Not implemented yet: casting from integer to rational"),
             .real => @compileError("Not implemented yet: casting from integer to real"),
             .complex => @compileError("Not implemented yet: casting from integer to complex"),
-            .expression => @compileError("Not implemented yet: casting from integer to expression"),
         },
         .rational => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from rational to bool"),
@@ -3874,7 +3852,6 @@ pub inline fn cast(
             .rational => unreachable,
             .real => @compileError("Not implemented yet: casting from rational to real"),
             .complex => @compileError("Not implemented yet: casting from rational to complex"),
-            .expression => @compileError("Not implemented yet: casting from rational to expression"),
         },
         .real => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from real to bool"),
@@ -3885,7 +3862,6 @@ pub inline fn cast(
             .rational => @compileError("Not implemented yet: casting from real to rational"),
             .real => unreachable,
             .complex => @compileError("Not implemented yet: casting from real to complex"),
-            .expression => @compileError("Not implemented yet: casting from real to expression"),
         },
         .complex => switch (comptime numericType(O)) {
             .bool => @compileError("Not implemented yet: casting from complex to bool"),
@@ -3896,18 +3872,6 @@ pub inline fn cast(
             .rational => @compileError("Not implemented yet: casting from complex to rational"),
             .real => @compileError("Not implemented yet: casting from complex to real"),
             .complex => @compileError("Not implemented yet: casting from complex to complex"),
-            .expression => @compileError("Not implemented yet: casting from complex to expression"),
-        },
-        .expression => switch (comptime numericType(O)) {
-            .bool => @compileError("Not implemented yet: casting from expression to bool"),
-            .int => @compileError("Not implemented yet: casting from expression to int"),
-            .float => @compileError("Not implemented yet: casting from expression to float"),
-            .cfloat => @compileError("Not implemented yet: casting from expression to cfloat"),
-            .integer => @compileError("Not implemented yet: casting from expression to integer"),
-            .rational => @compileError("Not implemented yet: casting from expression to rational"),
-            .real => @compileError("Not implemented yet: casting from expression to real"),
-            .complex => @compileError("Not implemented yet: casting from expression to complex"),
-            .expression => unreachable,
         },
     }
 }
@@ -4027,7 +3991,8 @@ pub fn ReturnType2(comptime op: anytype, comptime X: type, comptime Y: type) typ
 /// ```
 /// where `field_name` is the name of the field, `type` is the expected type of
 /// the field, and `required` is a boolean indicating whether the field is
-/// required or not.
+/// required or not. If `required` is `false`, then another field named
+/// `default` must be present, specifying the default value for the field.
 ///
 /// Returns
 /// -------
@@ -4120,7 +4085,13 @@ fn formatSpecCtxMismatch(
             spec_str = spec_str ++ std.fmt.comptimePrint(
                 "    ({s})\n",
                 .{
-                    if (required) "required" else "optional",
+                    if (required)
+                        "required"
+                    else
+                        std.fmt.comptimePrint(
+                            "optional, default = {}",
+                            .{@field(@field(spec, field.name), "default")},
+                        ),
                 },
             );
         }
@@ -4300,8 +4271,9 @@ pub fn ctxHasField(
     return false;
 }
 
-pub fn getFieldOrDefault(ctx: anytype, comptime field_name: []const u8, comptime FieldType: type, default_value: FieldType) FieldType {
+pub fn getFieldOrDefault(ctx: anytype, comptime spec: anytype, comptime field_name: []const u8) @field(spec, field_name).type {
     const T = @TypeOf(ctx);
+    const FieldType = @field(spec, field_name).type;
 
     if (@hasField(T, field_name)) {
         const actual_type = @FieldType(T, field_name);
@@ -4320,7 +4292,7 @@ pub fn getFieldOrDefault(ctx: anytype, comptime field_name: []const u8, comptime
         return @field(ctx, field_name);
     }
 
-    return default_value;
+    return @field(spec, field_name).default;
 }
 
 pub fn MixStructs(comptime S1: type, comptime S2: type) type {

@@ -12,6 +12,7 @@ const complex = @import("../complex.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `div` routine for inputs of types `X` and `Y`.
 pub fn Div(X: type, Y: type) type {
@@ -31,6 +32,7 @@ pub fn Div(X: type, Y: type) type {
 /// - **Matrix / Numeric**: element-wise division of a matrix by a scalar.
 /// - **Numeric / Array**, **Array / Numeric**, and **Array / Array**:
 ///   broadcasted element-wise division.
+/// - **Expression / Any** and **Any / Expression**: symbolic division.
 ///
 /// Signature
 /// ---------
@@ -87,16 +89,12 @@ pub inline fn div(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isMatrix(X) and !types.isMatrix(Y) and
-        !types.isVector(X) and !types.isVector(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array, .numeric => { // array/array, array/numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -108,7 +106,7 @@ pub inline fn div(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -129,6 +127,7 @@ pub inline fn div(
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .matrix => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .numeric => { // matrix/numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -140,7 +139,7 @@ pub inline fn div(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -161,6 +160,7 @@ pub inline fn div(
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .vector => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .numeric => { // vector/numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -172,7 +172,7 @@ pub inline fn div(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -193,6 +193,7 @@ pub inline fn div(
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array => { // numeric/array
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -204,7 +205,7 @@ pub inline fn div(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -271,7 +272,6 @@ pub inline fn div(
 
                         return complex.div(ctx.allocator, x, y);
                     },
-                    .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }
             },
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),

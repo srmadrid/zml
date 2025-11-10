@@ -8,10 +8,12 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `conj` routine for an input of type `X`.
 pub fn Conj(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Conj(types.Numeric(X))),
         .matrix => @compileError("zml.Conj not implemented for matrices yet"),
         .vector => @compileError("zml.Conj not implemented for vectors yet"),
@@ -29,6 +31,7 @@ pub fn Conj(X: type) type {
 /// - **Vector**: element-wise complex conjugate.
 /// - **Matrix**: element-wise complex conjugate.
 /// - **Array**: element-wise complex conjugate.
+/// - **Expression**: symbolic complex conjugate.
 ///
 /// Signature
 /// ---------
@@ -70,11 +73,8 @@ pub inline fn conj(
 ) !Conj(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isMatrix(X) and
-        !types.isVector(X) and !types.isNumeric(X))
-        @compileError("zml.conj not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.conj not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {
@@ -90,7 +90,7 @@ pub inline fn conj(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                         },
                     );
                 },
@@ -121,14 +121,14 @@ pub inline fn conj(
                 return x.conj();
             },
             .integer => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return x.copy(allocator);
                 } else {
                     var r: integer.Integer = x;
@@ -137,14 +137,14 @@ pub inline fn conj(
                 }
             },
             .rational => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return x.copy(allocator);
                 } else {
                     var r: rational.Rational = x;
@@ -154,16 +154,15 @@ pub inline fn conj(
             },
             .real => @compileError("zml.conj not implemented for " ++ @typeName(X) ++ " yet"),
             .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                return try x.conj(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null));
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return try x.conj(types.getFieldOrDefault(ctx, spec, "allocator"));
             },
-            .expression => @compileError("zml.conj not implemented for " ++ @typeName(X) ++ " yet"),
         },
         else => unreachable,
     }

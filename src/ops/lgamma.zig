@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `lgamma` routine for an input of type `X`.
 pub fn Lgamma(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Lgamma(types.Numeric(X))),
         .matrix => @compileError("zml.Lgamma not implemented for matrices yet"),
         .vector => @compileError("zml.Lgamma not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Lgamma(X: type) type {
 /// - **Numeric**: scalar log-gamma function.
 /// - **Matrix**: matrix log-gamma function (not implemented yet).
 /// - **Array**: element-wise log-gamma function.
+/// - **Expression**: symbolic log-gamma function.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn lgamma(
 ) !Lgamma(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.lgamma not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.lgamma not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

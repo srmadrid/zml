@@ -12,6 +12,7 @@ const complex = @import("../complex.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `mul` routine for inputs of types `X` and `Y`.
 pub fn Mul(X: type, Y: type) type {
@@ -37,6 +38,7 @@ pub fn Mul(X: type, Y: type) type {
 /// - **Matrix * Matrix**: matrix-matrix multiplication.
 /// - **Numeric * Array**, **Array * Numeric**, and **Array * Array**:
 ///   broadcasted element-wise multiplication.
+/// - **Expression * Any** and **Any * Expression**: symbolic multiplication,
 ///
 /// Signature
 /// ---------
@@ -86,16 +88,12 @@ pub inline fn mul(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isMatrix(X) and !types.isMatrix(Y) and
-        !types.isVector(X) and !types.isVector(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.MulCoerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array, .numeric => { // array * array, array * numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -104,7 +102,7 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -116,7 +114,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -137,6 +135,7 @@ pub inline fn mul(
             else => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .matrix => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .matrix => { // matrix * matrix
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -145,8 +144,8 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .add_mode = .{ .type = int.Mode, .required = false },
-                                .mul_mode = .{ .type = int.Mode, .required = false },
+                                .add_mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -158,7 +157,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -184,8 +183,8 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .add_mode = .{ .type = int.Mode, .required = false },
-                                .mul_mode = .{ .type = int.Mode, .required = false },
+                                .add_mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -197,7 +196,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -223,7 +222,7 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -235,7 +234,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -256,6 +255,7 @@ pub inline fn mul(
             else => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .vector => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .matrix => { // vector * matrix
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -264,8 +264,8 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .add_mode = .{ .type = int.Mode, .required = false },
-                                .mul_mode = .{ .type = int.Mode, .required = false },
+                                .add_mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -277,7 +277,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -302,14 +302,14 @@ pub inline fn mul(
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
-                                .add_mode = .{ .type = int.Mode, .required = false },
+                                .add_mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
                     .float, .cfloat => {
                         types.validateContext(@TypeOf(ctx), .{});
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -329,6 +329,7 @@ pub inline fn mul(
             else => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array => { // numeric * array
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -337,7 +338,7 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -349,7 +350,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -375,7 +376,7 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -387,7 +388,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -413,7 +414,7 @@ pub inline fn mul(
                             @TypeOf(ctx),
                             .{
                                 .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -425,7 +426,7 @@ pub inline fn mul(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -447,14 +448,14 @@ pub inline fn mul(
                 switch (comptime types.numericType(C)) {
                     .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                     .int => {
-                        comptime types.validateContext(
-                            @TypeOf(ctx),
+                        const spec =
                             .{
-                                .mode = .{ .type = int.Mode, .required = false },
-                            },
-                        );
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                            };
 
-                        return int.mul(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
+                        comptime types.validateContext(@TypeOf(ctx), spec);
+
+                        return int.mul(x, y, types.getFieldOrDefault(ctx, spec, "mode"));
                     },
                     .float => {
                         comptime types.validateContext(@TypeOf(ctx), .{});
@@ -497,7 +498,6 @@ pub inline fn mul(
 
                         return complex.mul(ctx.allocator, x, y);
                     },
-                    .expression => @compileError("zml.mul between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }
             },
         },

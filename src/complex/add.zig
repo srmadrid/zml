@@ -8,8 +8,6 @@ const Rational = rational.Rational;
 const complex = @import("../complex.zig");
 const Complex = complex.Complex;
 
-const check_aliasing = @import("check_aliasing.zig").check_aliasing;
-
 /// Performs addition between two operands of any numeric type in `Complex`
 /// precision.
 ///

@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `log` routine for an input of type `X`.
 pub fn Log(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Log(types.Numeric(X))),
         .matrix => @compileError("zml.Log not implemented for matrices yet"),
         .vector => @compileError("zml.Log not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Log(X: type) type {
 /// - **Numeric**: scalar natural logarithm.
 /// - **Matrix**: matrix natural logarithm (not implemented yet).
 /// - **Array**: element-wise natural logarithm.
+/// - **Expression**: symbolic natural logarithm.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn log(
 ) !Log(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.log not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.log not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

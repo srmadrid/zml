@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `sqrt` routine for an input of type `X`.
 pub fn Sqrt(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Sqrt(types.Numeric(X))),
         .matrix => @compileError("zml.Sqrt not implemented for matrices yet"),
         .vector => @compileError("zml.Sqrt not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Sqrt(X: type) type {
 /// - **Numeric**: scalar square root.
 /// - **Matrix**: matrix square root (not implemented yet).
 /// - **Array**: element-wise square root.
+/// - **Expression**: symbolic square root.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn sqrt(
 ) !Sqrt(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.sqrt not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.sqrt not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `exp10` routine for an input of type `X`.
 pub fn Exp10(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Exp10(types.Numeric(X))),
         .matrix => @compileError("zml.Exp10 not implemented for matrices yet"),
         .vector => @compileError("zml.Exp10 not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Exp10(X: type) type {
 /// - **Numeric**: scalar base-10 exponential.
 /// - **Matrix**: matrix base-10 exponential (not implemented yet).
 /// - **Array**: element-wise base-10 exponential.
+/// - **Expression**: symbolic base-10 exponential.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn exp10(
 ) !Exp10(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.exp10 not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.exp10 not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

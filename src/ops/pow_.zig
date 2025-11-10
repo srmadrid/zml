@@ -51,7 +51,7 @@ pub inline fn pow_(
                                     @TypeOf(ctx),
                                     .{
                                         .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             } else {
@@ -76,7 +76,7 @@ pub inline fn pow_(
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
-                                        .mode = .{ .type = int.Mode, .required = false },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             } else {
@@ -107,14 +107,14 @@ pub inline fn pow_(
                                     @TypeOf(ctx),
                                     .{
                                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             } else {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
-                                        .mode = .{ .type = int.Mode, .required = false },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             };
@@ -124,7 +124,7 @@ pub inline fn pow_(
                                 int.pow(
                                     x,
                                     y,
-                                    types.getFieldOrDefault(ctx, "mode", int.Mode, .default),
+                                    types.getFieldOrDefault(ctx, .{}, "mode"),
                                 ),
                                 types.stripStruct(ctx, &.{"mode"}),
                             );

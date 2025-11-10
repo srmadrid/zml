@@ -44,9 +44,7 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
         @compileError("integer.gcd requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
 
     switch (comptime types.numericType(X)) {
-        .expression => @compileError("integer. gcd not implemented for Expression yet"),
         .complex => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer. gcd not implemented for Complex + Expression yet"),
             .complex => return gcd(allocator, x.re, y.re),
             .real => @compileError("integer. gcd not implemented for Complex + Real yet"),
             .rational => return gcd(allocator, x.re, y),
@@ -58,7 +56,6 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
         },
         .real => @compileError("integer. gcd not implemented for Real yet"),
         .rational => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer. gcd not implemented for Rational + Expression yet"),
             .complex => return gcd(allocator, x, y.re),
             .real => @compileError("integer. gcd not implemented for Rational + Real yet"),
             .rational => {
@@ -95,7 +92,6 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             },
         },
         .integer => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer. gcd not implemented for Integer + Expression yet"),
             .complex => return gcd(allocator, x, y.re),
             .real => @compileError("integer. gcd not implemented for Integer + Real yet"),
             .rational => {
@@ -185,7 +181,6 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             },
         },
         .cfloat => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer. gcd not implemented for CFloat + Expression yet"),
             .complex => return gcd(allocator, x.re, y.re),
             .real => @compileError("integer. gcd not implemented for CFloat + Real yet"),
             .rational => return gcd(allocator, x.re, y),
@@ -196,7 +191,6 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             .bool => return gcd(allocator, x.re, y),
         },
         .float => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer. gcd not implemented for Float + Expression yet"),
             .complex => return gcd(allocator, x, y.re),
             .real => @compileError("integer. gcd not implemented for Float + Real yet"),
             .rational => {
@@ -233,7 +227,6 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             },
         },
         .int => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer. gcd not implemented for Int + Expression yet"),
             .complex => return gcd(allocator, x, y.re),
             .real => @compileError("integer. gcd not implemented for Int + Real yet"),
             .rational => {
@@ -270,7 +263,6 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
             },
         },
         .bool => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer. gcd not implemented for Bool + Expression yet"),
             .complex => return gcd(allocator, x, y.re),
             .real => @compileError("integer. gcd not implemented for Bool + Real yet"),
             .rational => {

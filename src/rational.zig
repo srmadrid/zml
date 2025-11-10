@@ -310,7 +310,6 @@ pub const Rational = struct {
                     },
                     .real => @compileError("Real type not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
-                    .expression => @compileError("Expression type not supported yet"),
                 },
                 .int => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -371,7 +370,6 @@ pub const Rational = struct {
                     },
                     .real => @compileError("Real type not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
-                    .expression => @compileError("Expression type not supported yet"),
                 },
                 .float => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -435,7 +433,6 @@ pub const Rational = struct {
                     },
                     .real => @compileError("Real type not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
-                    .expression => @compileError("Expression type not supported yet"),
                 },
                 .cfloat => switch (comptime types.numericType(D)) {
                     .bool => return self.set(allocator, numerator.re, denominator),
@@ -446,7 +443,6 @@ pub const Rational = struct {
                     .rational => return self.set(allocator, numerator.re, denominator),
                     .real => @compileError("Real type not supported yet"),
                     .complex => return self.set(allocator, numerator.re, denominator.re),
-                    .expression => @compileError("Expression type not supported yet"),
                 },
                 .integer => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -489,7 +485,6 @@ pub const Rational = struct {
                     },
                     .real => @compileError("Real type not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
-                    .expression => @compileError("Expression type not supported yet"),
                 },
                 .rational => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -533,7 +528,6 @@ pub const Rational = struct {
                     },
                     .real => @compileError("Real type not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
-                    .expression => @compileError("Expression type not supported yet"),
                 },
                 .real => @compileError("Real type not supported yet"),
                 .complex => switch (comptime types.numericType(D)) {
@@ -545,9 +539,7 @@ pub const Rational = struct {
                     .rational => return self.set(allocator, numerator.re, denominator),
                     .real => @compileError("Real type not supported yet"),
                     .complex => return self.set(allocator, numerator.re, denominator.re),
-                    .expression => @compileError("Expression type not supported yet"),
                 },
-                .expression => @compileError("Expression type not supported yet"),
             }
         } else if (comptime N == []const u8 or N == []u8) {
             @compileError("String type not supported yet");

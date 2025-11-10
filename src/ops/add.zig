@@ -12,6 +12,7 @@ const complex = @import("../complex.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `add` routine for inputs of types `X` and `Y`.
 pub fn Add(X: type, Y: type) type {
@@ -33,6 +34,7 @@ pub fn Add(X: type, Y: type) type {
 ///   shape.
 /// - **Numeric + Array**, **Array + Numeric**, and **Array + Array**:
 ///   broadcasted element-wise addition.
+/// - **Expression + Any** and **Any + Expression**: symbolic addition.
 ///
 /// Signature
 /// ---------
@@ -85,16 +87,12 @@ pub inline fn add(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isMatrix(X) and !types.isMatrix(Y) and
-        !types.isVector(X) and !types.isVector(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array, .numeric => { // array + array, array + numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -103,7 +101,7 @@ pub inline fn add(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -115,7 +113,7 @@ pub inline fn add(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -136,6 +134,7 @@ pub inline fn add(
             else => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .matrix => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .matrix => { // matrix + matrix
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -144,7 +143,7 @@ pub inline fn add(
                             @TypeOf(ctx),
                             .{
                                 .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -156,7 +155,7 @@ pub inline fn add(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -177,6 +176,7 @@ pub inline fn add(
             else => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .vector => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .vector => { // vector + vector
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -185,7 +185,7 @@ pub inline fn add(
                             @TypeOf(ctx),
                             .{
                                 .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -197,7 +197,7 @@ pub inline fn add(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -218,6 +218,7 @@ pub inline fn add(
             else => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array => { // numeric + array
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -226,7 +227,7 @@ pub inline fn add(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false },
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -238,7 +239,7 @@ pub inline fn add(
                             },
                         );
                     },
-                    .integer, .rational, .real, .complex, .expression => {
+                    .integer, .rational, .real, .complex => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -260,14 +261,14 @@ pub inline fn add(
                 switch (comptime types.numericType(C)) {
                     .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                     .int => {
-                        comptime types.validateContext(
-                            @TypeOf(ctx),
+                        const spec =
                             .{
-                                .mode = .{ .type = int.Mode, .required = false },
-                            },
-                        );
+                                .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                            };
 
-                        return int.add(x, y, types.getFieldOrDefault(ctx, "mode", int.Mode, .default));
+                        comptime types.validateContext(@TypeOf(ctx), spec);
+
+                        return int.add(x, y, types.getFieldOrDefault(ctx, spec, "mode"));
                     },
                     .float => {
                         comptime types.validateContext(@TypeOf(ctx), .{});
@@ -310,7 +311,6 @@ pub inline fn add(
 
                         return complex.add(ctx.allocator, x, y);
                     },
-                    .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
                 }
             },
             else => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),

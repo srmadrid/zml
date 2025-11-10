@@ -420,6 +420,5 @@ pub inline fn deinit(
 
             x.deinit(ctx.allocator);
         },
-        .expression => @compileError("zml.deinit not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }

@@ -9,17 +9,26 @@ const integer = @import("../integer.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `pow` routine for inputs of types `X` and `Y`.
 pub fn Pow(X: type, Y: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => switch (comptime types.domainType(Y)) {
+            .array => expression.Expression,
+            .matrix => @compileError("zml.Pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
+            .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .numeric => types.EnsureArray(Y, Pow(types.Numeric(X), Y)),
+        },
         .array => switch (comptime types.domainType(Y)) {
+            .expression => expression.Expression,
             .array => types.EnsureArray(Y, Pow(types.Numeric(X), types.Numeric(Y))),
             .matrix => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .numeric => types.EnsureArray(Y, Pow(types.Numeric(X), Y)),
         },
         .matrix => switch (comptime types.domainType(Y)) {
+            .expression => expression.Expression,
             .array => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .matrix => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -27,6 +36,7 @@ pub fn Pow(X: type, Y: type) type {
         },
         .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => expression.Expression,
             .array => types.EnsureArray(Y, Pow(X, types.Numeric(Y))),
             .matrix => @compileError("zml.Pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
             .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -47,6 +57,9 @@ pub fn Pow(X: type, Y: type) type {
 /// - **Numeric ^ Matrix** and **Matrix ^ Numeric**: matrix exponentiation.
 /// - **Numeric * Array**, **Array ^ Numeric**, and **Array ^ Array**:
 ///   broadcasted element-wise exponentiation.
+/// - **Numeric ^ Expression**, **Matrix ^ Expression**, **Array ^ Expression**,
+///   **Expression ^ Numeric**, **Expression ^ Matrix**, **Expression ^ Array**,
+///   and **Expression ^ Expression**: symbolic exponentiation.
 ///
 /// Signature
 /// ---------
@@ -94,14 +107,11 @@ pub inline fn pow(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
             .array, .numeric => { // array^array, array^numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -110,7 +120,7 @@ pub inline fn pow(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mul_mode = .{ .type = int.Mode, .required = false },
+                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -143,6 +153,7 @@ pub inline fn pow(
             else => @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
             .array => { // numeric^array
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -151,7 +162,7 @@ pub inline fn pow(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mul_mode = .{ .type = int.Mode, .required = false },
+                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
                             },
                         );
                     },
@@ -185,17 +196,17 @@ pub inline fn pow(
                 switch (comptime types.numericType(C)) {
                     .bool => @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                     .int => {
-                        comptime types.validateContext(
-                            @TypeOf(ctx),
+                        const spec =
                             .{
-                                .mul_mode = .{ .type = int.Mode, .required = false },
-                            },
-                        );
+                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
+                            };
+
+                        comptime types.validateContext(@TypeOf(ctx), spec);
 
                         return int.pow(
                             x,
                             y,
-                            types.getFieldOrDefault(ctx, "mul_mode", int.Mode, .default),
+                            types.getFieldOrDefault(ctx, spec, "mul_mode"),
                         );
                     },
                     .float => {

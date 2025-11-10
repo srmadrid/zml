@@ -9,10 +9,12 @@ const integer = @import("../integer.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `eq` routine for inputs of types `X` and `Y`.
 pub fn Eq(X: type, Y: type) type {
     return switch (comptime types.domainType(types.Coerce(X, Y))) {
+        .expression => bool,
         .array => types.EnsureArray(types.Coerce(X, Y), bool),
         .matrix => bool,
         .vector => bool,
@@ -36,7 +38,9 @@ pub inline fn eq(
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.eq not implemented yet for expression types"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.eq not implemented yet for expression types"),
             .array, .numeric => { // array == array, array == numeric
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -54,6 +58,7 @@ pub inline fn eq(
             else => @compileError("zml.eq not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.eq not implemented yet for expression types"),
             .array => { // numeric == array
                 comptime types.validateContext(
                     @TypeOf(ctx),

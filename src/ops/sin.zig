@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `sin` routine for an input of type `X`.
 pub fn Sin(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Sin(types.Numeric(X))),
         .matrix => @compileError("zml.Sin not implemented for matrices yet"),
         .vector => @compileError("zml.sin not defined for " ++ @typeName(X)),
@@ -28,6 +30,7 @@ pub fn Sin(X: type) type {
 /// - **Numeric**: scalar sine.
 /// - **Matrix**: matrix sine (not implemented yet).
 /// - **Array**: element-wise sine.
+/// - **Expression**: symbolic sine.
 ///
 /// Signature
 /// ---------
@@ -63,10 +66,8 @@ pub inline fn sin(
 ) !Sin(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.sin not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.sin not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

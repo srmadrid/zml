@@ -35,7 +35,7 @@ pub inline fn copysign(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                         },
                     );
                 } else {

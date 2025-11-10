@@ -9,10 +9,12 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `re` routine for an input of type `X`.
 pub fn Re(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Re(types.Numeric(X))),
         .matrix => @compileError("zml.Re not implemented for matrices yet"),
         .vector => @compileError("zml.Re not implemented for vectors yet"),
@@ -29,6 +31,7 @@ pub fn Re(X: type) type {
 /// - **Vector**: element-wise real part.
 /// - **Matrix**: element-wise real part.
 /// - **Array**: element-wise real part.
+/// - **Expression**: symbolic real part.
 ///
 /// Signature
 /// ---------
@@ -70,11 +73,8 @@ pub inline fn re(
 ) !Re(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isMatrix(X) and
-        !types.isVector(X) and !types.isNumeric(X))
-        @compileError("zml.re not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.re for expression types not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {
@@ -90,7 +90,7 @@ pub inline fn re(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                         },
                     );
                 },
@@ -123,14 +123,14 @@ pub inline fn re(
                 return x.re;
             },
             .integer => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return x.copy(allocator);
                 } else {
                     var r: integer.Integer = x;
@@ -139,14 +139,14 @@ pub inline fn re(
                 }
             },
             .rational => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return x.copy(allocator);
                 } else {
                     var r: rational.Rational = x;
@@ -156,14 +156,14 @@ pub inline fn re(
             },
             .real => @compileError("zml.re for real numbers not implemented yet"),
             .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                     return x.re.copy(allocator);
                 } else {
                     var r: types.Scalar(X) = x.re;
@@ -171,7 +171,6 @@ pub inline fn re(
                     return r;
                 }
             },
-            .expression => @compileError("zml.re for expression types not implemented yet"),
         },
     }
 }

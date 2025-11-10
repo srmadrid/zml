@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `gamma` routine for an input of type `X`.
 pub fn Gamma(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Gamma(types.Numeric(X))),
         .matrix => @compileError("zml.Gamma not implemented for matrices yet"),
         .vector => @compileError("zml.Gamma not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Gamma(X: type) type {
 /// - **Numeric**: scalar gamma function.
 /// - **Matrix**: matrix gamma function (not implemented yet).
 /// - **Array**: element-wise gamma function.
+/// - **Expression**: symbolic gamma function.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn gamma(
 ) !Gamma(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.gamma not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.gamma not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

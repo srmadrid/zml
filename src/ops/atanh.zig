@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `atanh` routine for an input of type `X`.
 pub fn Atanh(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Atanh(types.Numeric(X))),
         .matrix => @compileError("zml.Atanh not implemented for matrices yet"),
         .vector => @compileError("zml.Atanh not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Atanh(X: type) type {
 /// - **Numeric**: scalar hyperbolic arctangent.
 /// - **Matrix**: matrix hyperbolic arctangent (not implemented yet).
 /// - **Array**: element-wise hyperbolic arctangent.
+/// - **Expression**: symbolic hyperbolic arctangent.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn atanh(
 ) !Atanh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.atanh not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.atanh not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

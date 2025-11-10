@@ -8,8 +8,6 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 const complex = @import("../complex.zig");
 
-const check_aliasing = @import("check_aliasing.zig").check_aliasing;
-
 /// Performs in-place subtraction between two operands of any numeric type in
 /// `Complex` precision.
 ///

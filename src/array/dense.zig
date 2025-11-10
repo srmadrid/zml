@@ -1178,22 +1178,6 @@ pub fn apply1_(
 ) !void {
     const X: type = Numeric(@TypeOf(x));
 
-    if (comptime !types.isDenseArray(@TypeOf(x))) {
-        // Only run the function once if x is a scalar
-        const opinfo = @typeInfo(@TypeOf(op_));
-        if (comptime opinfo.@"fn".params.len == 2) {
-            op_(&o.data[0], x);
-        } else if (comptime opinfo.@"fn".params.len == 3) {
-            try op_(&o.data[0], x, ctx);
-        }
-
-        for (1..o.size) |i| {
-            try ops.set(&o.data[i], x, ctx);
-        }
-
-        return;
-    }
-
     var xx: Dense(X) = undefined;
     if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
         if (std.mem.eql(u32, o.strides[0..o.ndim], x.strides[0..x.ndim])) {
@@ -1573,20 +1557,7 @@ pub fn apply2_(
     const X: type = Numeric(@TypeOf(x));
     const Y: type = Numeric(@TypeOf(y));
 
-    if (comptime !types.isDenseArray(@TypeOf(x)) and !types.isDenseArray(@TypeOf(y))) {
-        const opinfo = @typeInfo(@TypeOf(op_));
-        if (comptime opinfo.@"fn".params.len == 3) {
-            op_(&o.data[0], x, y);
-        } else if (comptime opinfo.@"fn".params.len == 4) {
-            try op_(&o.data[0], x, y, ctx);
-        }
-
-        for (1..o.size) |i| {
-            try ops.set(&o.data[i], o.data[0], ctx);
-        }
-
-        return;
-    } else if (comptime !types.isDenseArray(@TypeOf(x))) {
+    if (comptime !types.isDenseArray(@TypeOf(x))) {
         if (std.mem.eql(u32, o.shape[0..o.ndim], y.shape[0..y.ndim]) and
             std.mem.eql(u32, o.strides[0..o.ndim], y.strides[0..y.ndim]))
         {

@@ -59,9 +59,7 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
         return rational.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
-        .expression => @compileError("rational.mul_ not implemented for Expression yet"),
         .complex => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("rational.mul_ not implemented for Complex + Expression yet"),
             .complex => return mul_(allocator, o, x.re, y.re),
             .real => @compileError("rational.mul_ not implemented for Complex + Real yet"),
             .rational => return mul_(allocator, o, x.re, y),
@@ -73,7 +71,6 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
         },
         .real => @compileError("rational.mul_ not implemented for Real yet"),
         .rational => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("rational.mul_ not implemented for Rational + Expression yet"),
             .complex => return mul_(allocator, o, x, y.re),
             .real => @compileError("rational.mul_ not implemented for Rational + Real yet"),
             .rational => {
@@ -208,7 +205,6 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             .bool => return mul_(allocator, o, x, types.cast(Rational, y, .{}) catch unreachable),
         },
         .integer => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("rational.mul_ not implemented for Integer + Expression yet"),
             .complex => return mul_(allocator, o, x, y.re),
             .real => @compileError("rational.mul_ not implemented for Integer + Real yet"),
             .rational => return mul_(allocator, o, x.asRational(), y),
@@ -230,7 +226,6 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             },
         },
         .cfloat => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("rational.mul_ not implemented for CFloat + Expression yet"),
             .complex => return mul_(allocator, o, x.re, y.re),
             .real => @compileError("rational.mul_ not implemented for CFloat + Real yet"),
             .rational => return mul_(allocator, o, x.re, y),
@@ -241,7 +236,6 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             .bool => return mul_(allocator, o, x.re, y),
         },
         .float => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("rational.mul_ not implemented for Float + Expression yet"),
             .complex => return mul_(allocator, o, x, y.re),
             .real => @compileError("rational.mul_ not implemented for Float + Real yet"),
             .rational => {
@@ -282,7 +276,6 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             },
         },
         .int => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("rational.mul_ not implemented for Int + Expression yet"),
             .complex => return mul_(allocator, o, x, y.re),
             .real => @compileError("rational.mul_ not implemented for Int + Real yet"),
             .rational => {
@@ -318,7 +311,6 @@ pub fn mul_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             },
         },
         .bool => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("rational.mul_ not implemented for Bool + Expression yet"),
             .complex => return mul_(allocator, o, x, y.re),
             .real => @compileError("rational.mul_ not implemented for Bool + Real yet"),
             .rational => return mul_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, y),

@@ -9,10 +9,12 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `im` routine for an input of type `X`.
 pub fn Im(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Im(types.Numeric(X))),
         .matrix => @compileError("zml.Im not implemented for matrices yet"),
         .vector => @compileError("zml.Im not implemented for vectors yet"),
@@ -30,6 +32,7 @@ pub fn Im(X: type) type {
 /// - **Vector**: element-wise imaginary part.
 /// - **Matrix**: element-wise imaginary part.
 /// - **Array**: element-wise imaginary part.
+/// - **Expression**: ssymbolic imaginary part.
 ///
 /// Signature
 /// ---------
@@ -71,11 +74,8 @@ pub inline fn im(
 ) !Im(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isMatrix(X) and
-        !types.isVector(X) and !types.isNumeric(X))
-        @compileError("zml.im not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.im for expression types not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {
@@ -91,7 +91,7 @@ pub inline fn im(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                         },
                     );
                 },
@@ -127,7 +127,7 @@ pub inline fn im(
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                     },
                 );
 
@@ -137,7 +137,7 @@ pub inline fn im(
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                     },
                 );
 
@@ -148,7 +148,7 @@ pub inline fn im(
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                     },
                 );
 

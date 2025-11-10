@@ -9,6 +9,7 @@ const integer = @import("../integer.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `min` routine for inputs of types `X` and `Y`.
 pub fn Min(X: type, Y: type) type {
@@ -24,14 +25,12 @@ pub inline fn min(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.min not implemented for expression types yet"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.min not implemented for expression types yet"),
             .array, .numeric => { // min(array, array), min(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
                     if (types.numericType(C) == .rational and (types.numericType(X) == .float or types.numericType(Y) == .float)) {
@@ -39,7 +38,7 @@ pub inline fn min(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                                .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                             },
                         );
                     } else {
@@ -70,6 +69,7 @@ pub inline fn min(
             else => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.min not implemented for expression types yet"),
             .array => { // min(numeric, array)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
                     if (types.numericType(C) == .rational and (types.numericType(X) == .float or types.numericType(Y) == .float)) {
@@ -77,7 +77,7 @@ pub inline fn min(
                             @TypeOf(ctx),
                             .{
                                 .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                                .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                             },
                         );
                     } else {
@@ -132,23 +132,12 @@ pub inline fn min(
                         //return integer.min(ctx.allocator, x, y);
                     },
                     .rational => {
-                        comptime if (types.numericType(X) == .float or types.numericType(Y) == .float) {
-                            // Cannot create a Rational as a view of a float, if that is the minimum. So always allocate
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
-                        } else {
-                            // Can create a Rational as a view of an int or Integer
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                                },
-                            );
-                        };
+                        comptime types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            },
+                        );
 
                         @compileError("Not yet implemented"); // Just to show how the context might be
                         //return integer.min(ctx.allocator, x, y);

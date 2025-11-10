@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `acosh` routine for an input of type `X`.
 pub fn Acosh(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Acosh(types.Numeric(X))),
         .matrix => @compileError("zml.Acosh not implemented for matrices yet"),
         .vector => @compileError("zml.Acosh not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Acosh(X: type) type {
 /// - **Numeric**: scalar hyperbolic arccosine.
 /// - **Matrix**: matrix hyperbolic arccosine (not implemented yet).
 /// - **Array**: element-wise hyperbolic arccosine.
+/// - **Expression**: symbolic hyperbolic arccosine.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn acosh(
 ) !Acosh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.acosh not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.acosh for " ++ @typeName(X) ++ " not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

@@ -8,10 +8,12 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `abs2` routine for an input of type `X`.
 pub fn Abs2(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Abs2(types.Numeric(X))),
         .matrix => @compileError("zml.Abs2 not implemented for matrices yet"),
         .vector => types.Scalar(types.Numeric(X)),
@@ -21,14 +23,15 @@ pub fn Abs2(X: type) type {
 
 /// Returns the squared absolute value of `x`.
 ///
-/// The `abs2` routine computes the absolute value of its input `x`, validating
-/// the provided context. It supports both fixed-precision and
+/// The `abs2` routine computes the squared absolute value of its input `x`,
+/// validating the provided context. It supports both fixed-precision and
 /// arbitrary-precision arithmetic, as well as structured data domains. The
 /// supported domains are:
 /// - **Numeric**: squared scalar absolute value.
 /// - **Vector**: not defined yet, eventually |x₁|² + |x₂|² + ... + |xₙ|².
 /// - **Matrix**: not defined yet, eventually AᴴA.
 /// - **Array**: element-wise squared absolute value.
+/// - **Expression**: symbolic squared absolute value.
 ///
 /// Signature
 /// ---------
@@ -70,14 +73,11 @@ pub inline fn abs2(
 ) !Abs2(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isMatrix(X) and
-        !types.isVector(X) and !types.isNumeric(X))
-        @compileError("zml.abs2 not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.abs2 for " ++ @typeName(X) ++ " not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
-                .bool, .int, .float, .cfloat => {
+                .bool, .float, .cfloat => {
                     types.validateContext(
                         @TypeOf(ctx),
                         .{
@@ -85,16 +85,16 @@ pub inline fn abs2(
                         },
                     );
                 },
-                .integer, .rational => {
+                .int => {
                     types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
                         },
                     );
                 },
-                .complex => {
+                .integer, .rational, .compplex => {
                     types.validateContext(
                         @TypeOf(ctx),
                         .{
@@ -117,9 +117,18 @@ pub inline fn abs2(
         .numeric => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.abs2 not defined for " ++ @typeName(X)),
             .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                const spec =
+                    .{
+                        .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
+                    };
 
-                return int.mul(x, x, .default);
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return int.mul(
+                    x,
+                    x,
+                    types.getFieldOrDefault(ctx, spec, "mul_mode"),
+                );
             },
             .float => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
@@ -153,7 +162,6 @@ pub inline fn abs2(
             },
             .real => @compileError("zml.abs2 for " ++ @typeName(X) ++ " not implemented yet"),
             .complex => @compileError("zml.abs2 for " ++ @typeName(X) ++ " not implemented yet"),
-            .expression => @compileError("zml.abs2 for " ++ @typeName(X) ++ " not implemented yet"),
         },
     }
 }

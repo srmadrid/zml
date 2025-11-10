@@ -8,10 +8,12 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `abs` routine for an input of type `X`.
 pub fn Abs(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Abs(types.Numeric(X))),
         .matrix => @compileError("zml.Abs not implemented for matrices yet"),
         .vector => types.Scalar(types.Numeric(X)),
@@ -29,6 +31,7 @@ pub fn Abs(X: type) type {
 /// - **Vector**: not defined yet, eventually √(|x₁|² + |x₂|² + ... + |xₙ|²).
 /// - **Matrix**: not defined yet, eventually √AᴴA.
 /// - **Array**: element-wise absolute value.
+/// - **Expression**: symbolic absolute value.
 ///
 /// Signature
 /// ---------
@@ -70,11 +73,8 @@ pub inline fn abs(
 ) !Abs(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isMatrix(X) and
-        !types.isVector(X) and !types.isNumeric(X))
-        @compileError("zml.abs not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.abs for " ++ @typeName(X) ++ " not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {
@@ -90,7 +90,7 @@ pub inline fn abs(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                         },
                     );
                 },
@@ -132,28 +132,27 @@ pub inline fn abs(
                 return cfloat.abs(x);
             },
             .integer => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                return integer.abs(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return integer.abs(types.getFieldOrDefault(ctx, spec, "allocator"), x);
             },
             .rational => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                return rational.abs(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return rational.abs(types.getFieldOrDefault(ctx, spec, "allocator"), x);
             },
             .real => @compileError("zml.abs for " ++ @typeName(X) ++ " not implemented yet"),
             .complex => @compileError("zml.abs for " ++ @typeName(X) ++ " not implemented yet"),
-            .expression => @compileError("zml.abs for " ++ @typeName(X) ++ " not implemented yet"),
         },
     }
 }

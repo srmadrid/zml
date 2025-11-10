@@ -147,19 +147,16 @@ pub const Broadcast = struct {
 pub fn broadcastShapes(
     shapes: []const []const u32,
 ) !Broadcast {
-    if (shapes.len == 0) {
+    if (shapes.len == 0)
         return Error.ZeroDimension;
-    }
 
     var ndim: u32 = 0;
     for (shapes) |shape| {
-        if (shape.len == 0) {
+        if (shape.len == 0)
             return Error.ZeroDimension;
-        }
 
-        if (shape.len > max_dimensions) {
+        if (shape.len > max_dimensions)
             return Error.TooManyDimensions;
-        }
 
         if (shape.len > ndim) {
             ndim = types.scast(u32, shape.len);

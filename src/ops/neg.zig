@@ -9,10 +9,12 @@ const rational = @import("../rational.zig");
 const complex = @import("../complex.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `neg` routine for an input of type `X`.
 pub fn Neg(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, types.Numeric(X)),
         .matrix => X,
         .vector => X,
@@ -29,6 +31,7 @@ pub fn Neg(X: type) type {
 /// - **Vector**: element-wise negation.
 /// - **Matrix**: element-wise negation.
 /// - **Array**: element-wise negation.
+/// - **Expression**: symbolic negation.
 ///
 /// Signature
 /// ---------
@@ -70,11 +73,8 @@ pub inline fn neg(
 ) !Neg(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isMatrix(X) and
-        !types.isVector(X) and !types.isNumeric(X))
-        @compileError("zml.neg not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.neg for " ++ @typeName(X) ++ " not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {
@@ -90,7 +90,7 @@ pub inline fn neg(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false },
+                            .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                         },
                     );
                 },
@@ -123,37 +123,36 @@ pub inline fn neg(
                 return cfloat.neg(x);
             },
             .integer => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                return integer.neg(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return integer.neg(types.getFieldOrDefault(ctx, spec, "allocator"), x);
             },
             .rational => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                return rational.neg(types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null), x);
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return rational.neg(types.getFieldOrDefault(ctx, spec, "allocator"), x);
             },
             .real => @compileError("zml.neg for " ++ @typeName(X) ++ " not implemented yet"),
             .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
+                const spec =
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                    },
-                );
+                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                    };
 
-                return complex.neg(ctx.allocator, x);
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return complex.neg(types.getFieldOrDefault(ctx, spec, "allocator"), x);
             },
-            .expression => @compileError("zml.neg for " ++ @typeName(X) ++ " not implemented yet"),
         },
     }
 }

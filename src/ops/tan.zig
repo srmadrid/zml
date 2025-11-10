@@ -1,18 +1,17 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureArray = types.EnsureArray;
-const EnsureFloat = types.EnsureFloat;
-const Numeric = types.Numeric;
 const int = @import("../int.zig");
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `tan` routine for an input of type `X`.
 pub fn Tan(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Tan(types.Numeric(X))),
         .matrix => @compileError("zml.Tan not implemented for matrices yet"),
         .vector => @compileError("zml.Tan not defined for " ++ @typeName(X)),
@@ -28,6 +27,7 @@ pub fn Tan(X: type) type {
 /// - **Numeric**: scalar tangent.
 /// - **Matrix**: matrix tangent (not implemented yet).
 /// - **Array**: element-wise tangent.
+/// - **Expression**: symbolic tangent.
 ///
 /// Signature
 /// ---------
@@ -63,10 +63,8 @@ pub inline fn tan(
 ) !Tan(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.tan not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.tan not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

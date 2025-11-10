@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `erfc` routine for an input of type `X`.
 pub fn Erfc(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Erfc(types.Numeric(X))),
         .matrix => @compileError("zml.Erfc not implemented for matrices yet"),
         .vector => @compileError("zml.Erfc not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Erfc(X: type) type {
 /// - **Numeric**: scalar complementary error function.
 /// - **Matrix**: matrix complementary error function (not implemented yet).
 /// - **Array**: element-wise complementary error function.
+/// - **Expression**: symbolic complementary error function.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn erfc(
 ) !Erfc(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.erfc not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.erfc not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

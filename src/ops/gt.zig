@@ -9,10 +9,12 @@ const integer = @import("../integer.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `gt` routine for inputs of types `X` and `Y`.
 pub fn Gt(X: type, Y: type) type {
     return switch (comptime types.domainType(types.Coerce(X, Y))) {
+        .expression => bool,
         .array => types.EnsureArray(types.Coerce(X, Y), bool),
         .matrix => bool,
         .vector => bool,
@@ -29,14 +31,12 @@ pub inline fn gt(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.gt not implemented for expressions yet"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.gt not implemented for expressions yet"),
             .array, .numeric => { // array > array, array > numeric
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -54,6 +54,7 @@ pub inline fn gt(
             else => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.gt not implemented for expressions yet"),
             .array => { // numeric > array
                 comptime types.validateContext(
                     @TypeOf(ctx),

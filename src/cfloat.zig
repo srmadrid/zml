@@ -10,7 +10,7 @@ pub const cf32 = Cfloat(f32);
 pub const cf64 = Cfloat(f64);
 pub const cf80 = Cfloat(f80);
 pub const cf128 = Cfloat(f128);
-pub const comptime_complex = Cfloat(comptime_float);
+pub const comptime_cfloat = Cfloat(comptime_float);
 
 pub fn Cfloat(comptime T: type) type {
     if (types.numericType(T) != .float)

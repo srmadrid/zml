@@ -1420,14 +1420,6 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     std.debug.print("\n-----------------------------------------------\n", .{});
     try printBigint(a, ic.den);
     std.debug.print("\n\n", .{});
-
-    std.debug.print("ia: ", .{});
-    try printRational(a, ia, 75);
-    std.debug.print("\n", .{});
-    std.debug.print("ib: ", .{});
-    try printRational(a, ib, 75);
-    std.debug.print("\n", .{});
-    std.debug.print("cmp(ia, ib) = {}\n", .{zml.rational.cmp(ia, ib)});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

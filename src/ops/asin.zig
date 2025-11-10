@@ -9,10 +9,12 @@ const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
 
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `asin` routine for an input of type `X`.
 pub fn Asin(X: type) type {
     return switch (comptime types.domainType(X)) {
+        .expression => expression.Expression,
         .array => types.EnsureArray(X, Asin(types.Numeric(X))),
         .matrix => @compileError("zml.Asin not implemented for matrices yet"),
         .vector => @compileError("zml.Asin not defined for " ++ @typeName(X)),
@@ -29,6 +31,7 @@ pub fn Asin(X: type) type {
 /// - **Numeric**: scalar arcsine.
 /// - **Matrix**: matrix arcsine (not implemented yet).
 /// - **Array**: element-wise arcsine.
+/// - **Expression**: symbolic arcsine.
 ///
 /// Signature
 /// ---------
@@ -64,10 +67,8 @@ pub inline fn asin(
 ) !Asin(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    comptime if (!types.isArray(X) and !types.isNumeric(X))
-        @compileError("zml.asin not defined for " ++ @typeName(X));
-
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.asin not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
                 .bool, .int, .float, .cfloat => {

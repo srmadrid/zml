@@ -14,23 +14,21 @@ const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
 
-/// Performs in-place element-wise addition between two operands of compatible
-/// types.
+/// Performs in-place addition between two operands of compatible types.
 ///
 /// The `add_` routine computes the sum `x + y` and stores the result directly
 /// into `o`, automatically validating the provided context. The operation is
-/// performed in the coerced precision of the operands and the output, and the
-/// result is then cast to the output type. It supports both fixed-precision and
+/// performed in the coerced precision of the operands, and the result is then
+/// cast to the output type. It supports both fixed-precision and
 /// arbitrary-precision arithmetic, as well as structured data domains. The
 /// supported type combinations are:
 /// - **Numeric = Numeric + Numeric**: scalar addition.
-/// - **Vector = Vector + Vector**: element-wise addition between vectors of
-///   equal length.
-/// - **Matrix = Matrix + Matrix**: element-wise addition between matrices of
-///   equal shape.
-/// - **Array = Numeric + Numeric**, **Array = Numeric + Array**, **Array =
-///   Array + Numeric**, and **Array = Array + Array**: broadcasted element-wise
-///   addition.
+/// - **Vector = Vector + Vector**: element-wise addition.
+/// - **Matrix = Matrix + Matrix**: element-wise addition.
+/// - **Array = Numeric + Array**, **Array = Array + Numeric**, and **Array =
+///   Array + Array**: broadcasted element-wise addition.
+/// - **Expression = Any + Expression**, **Expression = Expression + Any**, and
+///   **Expression = Expression + Expression**: symbolic addition.
 ///
 /// Signature
 /// ---------
@@ -59,8 +57,24 @@ const array = @import("../array.zig");
 ///
 /// Returns
 /// -------
-/// `void`:
-/// The result is written in place to `o`.
+/// `void`
+///
+/// Errors
+/// ------
+/// ``:
+///
+/// Notes
+/// -----
+/// When the output and either of the input types are the same, aliasing is
+/// allowed.
+///
+/// When the coerced type of the operands is of arbitrary precision, the context
+/// may provide an optional pre-allocated buffer to store intermediate results,
+/// avoiding repeated allocations in scenarios where `add_` is called multiple
+/// times. If no buffer is provided, the operation will allocate a temporary
+/// buffer internally, using the allocator specified in the context. Aliasing
+/// between `o` and the buffer is not checked, and will lead to extra
+/// allocations.
 pub inline fn add_(
     o: anytype,
     x: anytype,
@@ -76,64 +90,74 @@ pub inline fn add_(
 
     O = types.Child(O);
 
-    comptime if (!types.isArray(O) and !types.isArray(X) and !types.isArray(Y) and
+    comptime if (!types.isExpression(O) and !types.isExpression(X) and !types.isExpression(Y) and
+        !types.isArray(O) and !types.isArray(X) and !types.isArray(Y) and
         !types.isMatrix(O) and !types.isMatrix(X) and !types.isMatrix(Y) and
         !types.isVector(O) and !types.isVector(X) and !types.isVector(Y) and
         !types.isNumeric(O) and !types.isNumeric(X) and !types.isNumeric(Y))
         @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
 
-    const C: type = types.Coerce(O, types.Coerce(X, Y));
+    const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(O)) {
+        .expression => @compileError("zml.add_ not implemented yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         .array => switch (comptime types.domainType(X)) {
             .array, .numeric => switch (comptime types.domainType(Y)) {
-                .array, .numeric => { // array = array + array, array = numeric + array, array = array + numeric, array = numeric + numeric
-                    comptime if (types.isArbitraryPrecision(types.Numeric(O))) {
-                        if (types.isArbitraryPrecision(types.Numeric(C))) {
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
-                        } else {
-                            if (types.numericType(types.Numeric(C)) == .int) {
+                .array, .numeric => { // array = array + array, array = numeric + array, array = array + numeric
+                    comptime if (types.isNumeric(X) and types.isNumeric(Y))
+                        @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
+
+                    comptime switch (types.numericType(types.Numeric(O))) {
+                        .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
+                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .int => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
-                            } else {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            }
-                        }
-                    } else {
-                        if (types.isArbitraryPrecision(types.Numeric(C))) {
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
-                        } else {
-                            if (types.numericType(types.Numeric(C)) == .int) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            } else {
+                            },
+                            .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
-                            }
-                        }
+                            },
+                            .integer, .rational, .real, .complex => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+                            },
+                        },
+                        .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
+                            .bool, .float, .cfloat => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+                            },
+                            .int => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                    },
+                                );
+                            },
+                            .integer, .rational, .real, .complex => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    },
+                                );
+                            },
+                        },
                     };
 
                     return array.add_(
@@ -150,52 +174,57 @@ pub inline fn add_(
         .matrix => switch (comptime types.domainType(X)) {
             .matrix => switch (comptime types.domainType(Y)) {
                 .matrix => { // matrix = matrix + matrix
-                    comptime if (types.isArbitraryPrecision(types.Numeric(O))) {
-                        if (types.isArbitraryPrecision(types.Numeric(C))) {
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
-                        } else {
-                            if (types.numericType(types.Numeric(C)) == .int) {
+                    comptime switch (types.numericType(types.Numeric(O))) {
+                        .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
+                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .int => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
-                            } else {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            }
-                        }
-                    } else {
-                        if (types.isArbitraryPrecision(types.Numeric(C))) {
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
-                        } else {
-                            if (types.numericType(types.Numeric(C)) == .int) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            } else {
+                            },
+                            .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
-                            }
-                        }
+                            },
+                            .integer, .rational, .real, .complex => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+                            },
+                        },
+                        .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
+                            .bool, .float, .cfloat => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+                            },
+                            .int => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                    },
+                                );
+                            },
+                            .integer, .rational, .real, .complex => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    },
+                                );
+                            },
+                        },
                     };
 
                     @compileError("matrix.add_ not implemented yet");
@@ -213,52 +242,57 @@ pub inline fn add_(
         .vector => switch (comptime types.domainType(X)) {
             .vector => switch (comptime types.domainType(Y)) {
                 .vector => { // vector = vector + vector
-                    comptime if (types.isArbitraryPrecision(types.Numeric(O))) {
-                        if (types.isArbitraryPrecision(types.Numeric(C))) {
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
-                        } else {
-                            if (types.numericType(types.Numeric(C)) == .int) {
+                    comptime switch (types.numericType(types.Numeric(O))) {
+                        .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
+                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .int => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
-                            } else {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            }
-                        }
-                    } else {
-                        if (types.isArbitraryPrecision(types.Numeric(C))) {
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                },
-                            );
-                        } else {
-                            if (types.numericType(types.Numeric(C)) == .int) {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false },
-                                    },
-                                );
-                            } else {
+                            },
+                            .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
-                            }
-                        }
+                            },
+                            .integer, .rational, .real, .complex => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+                            },
+                        },
+                        .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
+                            .bool, .float, .cfloat => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+                            },
+                            .int => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                    },
+                                );
+                            },
+                            .integer, .rational, .real, .complex => {
+                                types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    },
+                                );
+                            },
+                        },
                     };
 
                     @compileError("vector.add_ not implemented yet");
@@ -276,114 +310,180 @@ pub inline fn add_(
         .numeric => switch (comptime types.domainType(X)) {
             .numeric => switch (comptime types.domainType(Y)) {
                 .numeric => { // numeric = numeric + numeric
-                    switch (comptime types.numericType(C)) {
-                        .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
-                        .int => {
-                            comptime types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .mode = .{ .type = int.Mode, .required = false },
-                                },
-                            );
-
-                            try ops.set(
-                                o,
-                                int.add(
-                                    x,
-                                    y,
-                                    types.getFieldOrDefault(ctx, "mode", int.Mode, .default),
-                                ),
-                                types.stripStruct(ctx, &.{"mode"}),
-                            );
-                        },
-                        .float => {
-                            comptime types.validateContext(@TypeOf(ctx), .{});
-
-                            try ops.set(
-                                o,
-                                float.add(x, y),
-                                ctx,
-                            );
-                        },
-                        .cfloat => {
-                            comptime types.validateContext(@TypeOf(ctx), .{});
-
-                            try ops.set(
-                                o,
-                                cfloat.add(x, y),
-                                ctx,
-                            );
-                        },
-                        .integer => {
-                            if (comptime types.isArbitraryPrecision(O)) {
-                                comptime types.validateContext(
-                                    @TypeOf(ctx),
+                    switch (comptime types.numericType(O)) {
+                        .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
+                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .int => {
+                                const spec =
                                     .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                    };
 
-                                try integer.add_(ctx.allocator, o, x, y);
-                            } else {
-                                comptime types.validateContext(
-                                    @TypeOf(ctx),
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                ops.set(
+                                    o,
+                                    int.add(
+                                        x,
+                                        y,
+                                        types.getFieldOrDefault(ctx, spec, "mode"),
+                                    ),
+                                    .{},
+                                ) catch unreachable;
+                            },
+                            .float => {
+                                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                                ops.set(
+                                    o,
+                                    float.add(x, y),
+                                    .{},
+                                ) catch unreachable;
+                            },
+                            .cfloat => {
+                                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                                ops.set(
+                                    o,
+                                    cfloat.add(x, y),
+                                    .{},
+                                ) catch unreachable;
+                            },
+                            .integer => {
+                                const spec =
                                     .{
-                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
+                                        .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer = .{ .type = ?*integer.Integer, .required = false, .default = null },
+                                    };
 
-                                var result: integer.Integer = try integer.add(
-                                    ctx.internal_allocator,
-                                    x,
-                                    y,
-                                );
-                                defer result.deinit(ctx.internal_allocator);
+                                comptime types.validateContext(@TypeOf(ctx), spec);
 
-                                ops.set(o, result, .{}) catch unreachable;
-                            }
-                        },
-                        .rational => {
-                            if (comptime types.isArbitraryPrecision(O)) {
-                                comptime types.validateContext(
-                                    @TypeOf(ctx),
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try integer.add_(
+                                        ctx.buffer_allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{},
+                                    ) catch unreachable;
+                                } else {
+                                    var result: integer.Integer = try integer.add(
+                                        ctx.buffer_allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(ctx.buffer_allocator);
+
+                                    ops.set(
+                                        o,
+                                        result,
+                                        .{},
+                                    ) catch unreachable;
+                                }
+                            },
+                            .rational => {
+                                const spec =
                                     .{
-                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
+                                        .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer = .{ .type = ?*rational.Rational, .required = false, .default = null },
+                                    };
 
-                                if (comptime O == rational.Rational) {
-                                    try rational.add_(ctx.allocator, o, x, y);
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try rational.add_(
+                                        ctx.buffer_allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{},
+                                    ) catch unreachable;
                                 } else {
                                     var result: rational.Rational = try rational.add(
-                                        ctx.allocator,
+                                        ctx.buffer_allocator,
                                         x,
                                         y,
                                     );
-                                    defer result.deinit(ctx.allocator);
+                                    defer result.deinit(ctx.buffer_allocator);
 
-                                    try ops.set(o, result, .{ .allocator = ctx.allocator });
+                                    ops.set(
+                                        o,
+                                        result,
+                                        .{},
+                                    ) catch unreachable;
                                 }
-                            } else {
-                                comptime types.validateContext(
-                                    @TypeOf(ctx),
+                            },
+                            .real => @compileError("zml.add_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .complex => {
+                                const spec =
                                     .{
-                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
+                                        .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer = .{ .type = ?*types.Coerce(X, Y), .required = false, .default = null },
+                                    };
 
-                                var result: rational.Rational = try rational.add(
-                                    ctx.internal_allocator,
-                                    x,
-                                    y,
-                                );
-                                defer result.deinit(ctx.internal_allocator);
+                                comptime types.validateContext(@TypeOf(ctx), spec);
 
-                                ops.set(o, result, .{}) catch unreachable;
-                            }
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try complex.add_(
+                                        ctx.buffer_allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{},
+                                    ) catch unreachable;
+                                } else {
+                                    var result: types.Coerce(X, Y) = try complex.add(
+                                        ctx.buffer_allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(ctx.buffer_allocator);
+
+                                    ops.set(
+                                        o,
+                                        result,
+                                        .{},
+                                    ) catch unreachable;
+                                }
+                            },
                         },
-                        .real => @compileError("zml.add_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
-                        .complex => {
-                            if (comptime types.isArbitraryPrecision(O)) {
+                        .integer => switch (comptime types.numericType(C)) {
+                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .int => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                try ops.set(
+                                    o,
+                                    int.add(
+                                        x,
+                                        y,
+                                        types.getFieldOrDefault(ctx, spec, "mode"),
+                                    ),
+                                    types.stripStruct(ctx, &.{"mode"}),
+                                );
+                            },
+                            .float => {
                                 comptime types.validateContext(
                                     @TypeOf(ctx),
                                     .{
@@ -391,37 +491,694 @@ pub inline fn add_(
                                     },
                                 );
 
-                                if (comptime O == complex.Complex(rational.Rational) or O == complex.Complex(real.Real)) {
-                                    try complex.add_(ctx.allocator, o, x, y);
-                                } else {
-                                    var result: types.Coerce(X, Y) = try complex.add(
-                                        ctx.allocator,
-                                        x,
-                                        y,
-                                    );
-                                    defer result.deinit(ctx.allocator);
-
-                                    try ops.set(o, result, .{ .allocator = ctx.allocator });
-                                }
-                            } else {
+                                try ops.set(
+                                    o,
+                                    float.add(x, y),
+                                    ctx,
+                                );
+                            },
+                            .cfloat => {
                                 comptime types.validateContext(
                                     @TypeOf(ctx),
                                     .{
-                                        .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
                                     },
                                 );
 
-                                var result: types.Coerce(X, Y) = try complex.add(
-                                    ctx.internal_allocator,
-                                    x,
-                                    y,
+                                try ops.set(
+                                    o,
+                                    cfloat.add(x, y),
+                                    ctx,
                                 );
-                                defer result.deinit(ctx.internal_allocator);
+                            },
+                            .integer => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*integer.Integer, .required = false, .default = null },
+                                    };
 
-                                ops.set(o, result, .{}) catch unreachable;
-                            }
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (@import("../integer/check_aliasing.zig").check_aliasing(o, x) or
+                                    @import("../integer/check_aliasing.zig").check_aliasing(o, y))
+                                {
+                                    // Aliasing -> use buffer if provided
+                                    if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                        try integer.add_(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            buffer,
+                                            x,
+                                            y,
+                                        );
+
+                                        try ops.set(
+                                            o,
+                                            buffer.*,
+                                            .{ .allocator = ctx.allocator },
+                                        );
+                                    } else {
+                                        var tx = try @import("../integer/check_aliasing_alloc.zig").check_aliasing_alloc(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            o,
+                                            x,
+                                        );
+                                        defer ops.deinit(
+                                            &tx,
+                                            if (comptime types.isArbitraryPrecision(X))
+                                                .{
+                                                    .allocator = if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                        buffer_allocator
+                                                    else
+                                                        ctx.allocator,
+                                                }
+                                            else
+                                                .{},
+                                        );
+                                        var ty = try @import("../integer/check_aliasing_alloc.zig").check_aliasing_alloc(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            o,
+                                            y,
+                                        );
+                                        defer ops.deinit(
+                                            &ty,
+                                            if (comptime types.isArbitraryPrecision(Y))
+                                                .{
+                                                    .allocator = if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                        buffer_allocator
+                                                    else
+                                                        ctx.allocator,
+                                                }
+                                            else
+                                                .{},
+                                        );
+
+                                        try integer.add_(
+                                            ctx.allocator,
+                                            o,
+                                            tx,
+                                            ty,
+                                        );
+                                    }
+                                } else {
+                                    // No aliasing -> no need for buffer
+                                    try integer.add_(
+                                        ctx.allocator,
+                                        o,
+                                        x,
+                                        y,
+                                    );
+                                }
+                            },
+                            .rational => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*rational.Rational, .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try rational.add_(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                } else {
+                                    var result: rational.Rational = try rational.add(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        result,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                }
+                            },
+                            .real => @compileError("zml.add_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .complex => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*types.Coerce(X, Y), .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try complex.add_(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                } else {
+                                    var result: types.Coerce(X, Y) = try complex.add(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        result,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                }
+                            },
                         },
-                        .expression => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                        .rational => switch (comptime types.numericType(C)) {
+                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .int => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                try ops.set(
+                                    o,
+                                    int.add(
+                                        x,
+                                        y,
+                                        types.getFieldOrDefault(ctx, spec, "mode"),
+                                    ),
+                                    types.stripStruct(ctx, &.{"mode"}),
+                                );
+                            },
+                            .float => {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                try ops.set(
+                                    o,
+                                    float.add(x, y),
+                                    ctx,
+                                );
+                            },
+                            .cfloat => {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                try ops.set(
+                                    o,
+                                    cfloat.add(x, y),
+                                    ctx,
+                                );
+                            },
+                            .integer => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*integer.Integer, .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try integer.add_(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                } else {
+                                    var result: integer.Integer = try integer.add(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        result,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                }
+                            },
+                            .rational => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*rational.Rational, .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (@import("../rational/check_aliasing.zig").check_aliasing(o, x) or
+                                    @import("../rational/check_aliasing.zig").check_aliasing(o, y))
+                                {
+                                    // Aliasing -> use buffer if provided
+                                    if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                        try rational.add_(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            buffer,
+                                            x,
+                                            y,
+                                        );
+
+                                        try ops.set(
+                                            o,
+                                            buffer.*,
+                                            .{ .allocator = ctx.allocator },
+                                        );
+                                    } else {
+                                        var tx = try @import("../rational/check_aliasing_alloc.zig").check_aliasing_alloc(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            o,
+                                            x,
+                                        );
+                                        defer ops.deinit(
+                                            &tx,
+                                            if (comptime types.isArbitraryPrecision(X))
+                                                .{
+                                                    .allocator = if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                        buffer_allocator
+                                                    else
+                                                        ctx.allocator,
+                                                }
+                                            else
+                                                .{},
+                                        );
+                                        var ty = try @import("../rational/check_aliasing_alloc.zig").check_aliasing_alloc(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            o,
+                                            y,
+                                        );
+                                        defer ops.deinit(
+                                            &ty,
+                                            if (comptime types.isArbitraryPrecision(Y))
+                                                .{
+                                                    .allocator = if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                        buffer_allocator
+                                                    else
+                                                        ctx.allocator,
+                                                }
+                                            else
+                                                .{},
+                                        );
+
+                                        try rational.add_(
+                                            ctx.allocator,
+                                            o,
+                                            tx,
+                                            ty,
+                                        );
+                                    }
+                                } else {
+                                    // No aliasing -> no need for buffer
+                                    try rational.add_(
+                                        ctx.allocator,
+                                        o,
+                                        x,
+                                        y,
+                                    );
+                                }
+                            },
+                            .real => @compileError("zml.add_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .complex => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*types.Coerce(X, Y), .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try complex.add_(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                } else {
+                                    var result: types.Coerce(X, Y) = try complex.add(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        result,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                }
+                            },
+                        },
+                        .real => @compileError("zml.add_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                        .complex => switch (comptime types.numericType(C)) {
+                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .int => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                try ops.set(
+                                    o,
+                                    int.add(
+                                        x,
+                                        y,
+                                        types.getFieldOrDefault(ctx, "mode", int.Mode, .default),
+                                    ),
+                                    types.stripStruct(ctx, &.{"mode"}),
+                                );
+                            },
+                            .float => {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                try ops.set(
+                                    o,
+                                    float.add(x, y),
+                                    ctx,
+                                );
+                            },
+                            .cfloat => {
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    },
+                                );
+
+                                try ops.set(
+                                    o,
+                                    cfloat.add(x, y),
+                                    ctx,
+                                );
+                            },
+                            .integer => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*integer.Integer, .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try integer.add_(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                } else {
+                                    var result: integer.Integer = try integer.add(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        result,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                }
+                            },
+                            .rational => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*rational.Rational, .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                    try rational.add_(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        buffer,
+                                        x,
+                                        y,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        buffer.*,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                } else {
+                                    var result: rational.Rational = try rational.add(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                        x,
+                                        y,
+                                    );
+                                    defer result.deinit(
+                                        if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                            buffer_allocator
+                                        else
+                                            ctx.allocator,
+                                    );
+
+                                    try ops.set(
+                                        o,
+                                        result,
+                                        .{ .allocator = ctx.allocator },
+                                    );
+                                }
+                            },
+                            .real => @compileError("zml.add_ not implemeneted yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
+                            .complex => {
+                                const spec =
+                                    .{
+                                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                        .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                        .buffer = .{ .type = ?*types.Coerce(X, Y), .required = false, .default = null },
+                                    };
+
+                                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                                if (@import("../complex/check_aliasing.zig").check_aliasing(o, x) or
+                                    @import("../complex/check_aliasing.zig").check_aliasing(o, y))
+                                {
+                                    // Aliasing -> use buffer if provided
+                                    if (types.getFieldOrDefault(ctx, spec, "buffer")) |buffer| {
+                                        try complex.add_(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            buffer,
+                                            x,
+                                            y,
+                                        );
+
+                                        try ops.set(
+                                            o,
+                                            buffer.*,
+                                            .{ .allocator = ctx.allocator },
+                                        );
+                                    } else {
+                                        var tx = try @import("../complex/check_aliasing_alloc.zig").check_aliasing_alloc(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            o,
+                                            x,
+                                        );
+                                        defer ops.deinit(
+                                            &tx,
+                                            if (comptime X == integer.Integer or X == rational.Rational or X == real.Real or
+                                                X == complex.Complex(rational.Rational) or X == complex.Complex(real.Real))
+                                                .{
+                                                    .allocator = if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                        buffer_allocator
+                                                    else
+                                                        ctx.allocator,
+                                                }
+                                            else
+                                                .{},
+                                        );
+                                        var ty = try @import("../complex/check_aliasing_alloc.zig").check_aliasing_alloc(
+                                            if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                buffer_allocator
+                                            else
+                                                ctx.allocator,
+                                            o,
+                                            y,
+                                        );
+                                        defer ops.deinit(
+                                            &ty,
+                                            if (comptime Y == integer.Integer or Y == rational.Rational or Y == real.Real or
+                                                Y == complex.Complex(rational.Rational) or Y == complex.Complex(real.Real))
+                                                .{
+                                                    .allocator = if (types.getFieldOrDefault(ctx, spec, "buffer_allocator")) |buffer_allocator|
+                                                        buffer_allocator
+                                                    else
+                                                        ctx.allocator,
+                                                }
+                                            else
+                                                .{},
+                                        );
+
+                                        try complex.add_(
+                                            ctx.allocator,
+                                            o,
+                                            x,
+                                            y,
+                                        );
+                                    }
+                                } else {
+                                    // No aliasing -> no need for buffer
+                                    try complex.add_(
+                                        ctx.allocator,
+                                        o,
+                                        x,
+                                        y,
+                                    );
+                                }
+                            },
+                        },
                     }
                 },
                 else => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

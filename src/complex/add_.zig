@@ -8,7 +8,7 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 const complex = @import("../complex.zig");
 
-const check_aliasing = @import("check_aliasing.zig").check_aliasing;
+const check_aliasing_alloc = @import("check_aliasing_alloc.zig").check_aliasing_alloc;
 
 /// Performs in-place addition between two operands of any numeric type in
 /// `Complex` precision.
@@ -88,9 +88,9 @@ pub fn add_(allocator: std.mem.Allocator, o: anytype, x: anytype, y: anytype) !v
                 }
 
                 // Aliasing checks
-                var tx: X = try check_aliasing(allocator, o, x);
+                var tx: X = try check_aliasing_alloc(allocator, o, x);
                 defer tx.deinit(allocator);
-                var ty: Y = try check_aliasing(allocator, o, y);
+                var ty: Y = try check_aliasing_alloc(allocator, o, y);
                 defer ty.deinit(allocator);
 
                 // (a + bi) + (c + di) = (a + c) + (b + d)i

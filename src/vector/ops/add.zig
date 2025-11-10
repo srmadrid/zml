@@ -30,7 +30,9 @@ pub inline fn add(
         if (types.numericType(C) == .int) {
             types.validateContext(
                 @TypeOf(ctx),
-                .{ .mode = .{ .type = int.Mode, .required = false } },
+                .{
+                    .mode = .{ .type = int.Mode, .required = false, .default = .default },
+                },
             );
         } else {
             types.validateContext(@TypeOf(ctx), .{});

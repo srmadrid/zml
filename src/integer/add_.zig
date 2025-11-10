@@ -56,9 +56,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
         return integer.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
-        .expression => @compileError("integer.add_ not implemented for Expression yet"),
         .complex => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.add_ not implemented for Complex + Expression yet"),
             .complex => return add_(allocator, o, x.re, y.re),
             .real => @compileError("integer.add_ not implemented for Complex + Real yet"),
             .rational => return add_(allocator, o, x.re, y),
@@ -70,7 +68,6 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
         },
         .real => @compileError("integer.add_ not implemented for Real yet"),
         .rational => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.add_ not implemented for Rational + Expression yet"),
             .complex => return add_(allocator, o, x, y.re),
             .real => @compileError("integer.add_ not implemented for Rational + Real yet"),
             .rational => {
@@ -107,7 +104,6 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             },
         },
         .integer => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.add_ not implemented for Integer + Expression yet"),
             .complex => return add_(allocator, o, x, y.re),
             .real => @compileError("integer.add_ not implemented for Integer + Real yet"),
             .rational => {
@@ -187,7 +183,6 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             },
         },
         .cfloat => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.add_ not implemented for CFloat + Expression yet"),
             .complex => return add_(allocator, o, x.re, y.re),
             .real => @compileError("integer.add_ not implemented for CFloat + Real yet"),
             .rational => return add_(allocator, o, x.re, y),
@@ -198,7 +193,6 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             .bool => return add_(allocator, o, x.re, y),
         },
         .float => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.add_ not implemented for Float + Expression yet"),
             .complex => return add_(allocator, o, x, y.re),
             .real => @compileError("integer.add_ not implemented for Float + Real yet"),
             .rational => {
@@ -235,7 +229,6 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             },
         },
         .int => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.add_ not implemented for Int + Expression yet"),
             .complex => return add_(allocator, o, x, y.re),
             .real => @compileError("integer.add_ not implemented for Int + Real yet"),
             .rational => {
@@ -272,7 +265,6 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
             },
         },
         .bool => switch (comptime types.numericType(Y)) {
-            .expression => @compileError("integer.add_ not implemented for Bool + Expression yet"),
             .complex => return add_(allocator, o, x, y.re),
             .real => @compileError("integer.add_ not implemented for Bool + Real yet"),
             .rational => {

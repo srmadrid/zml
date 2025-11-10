@@ -304,7 +304,6 @@ pub const Integer = struct {
                 .complex => {
                     return self.set(allocator, value.re);
                 },
-                .expression => @compileError("Expression type not supported yet"),
             }
         } else if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
     }

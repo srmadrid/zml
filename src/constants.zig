@@ -42,14 +42,14 @@ pub inline fn zero(
             return .{ .re = 0.0, .im = 0.0 };
         },
         .integer => {
-            comptime validateContext(
-                @TypeOf(ctx),
+            const spec =
                 .{
-                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                },
-            );
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                };
 
-            if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+            comptime validateContext(@TypeOf(ctx), spec);
+
+            if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 return .init(allocator, 2);
             } else {
                 return .{
@@ -62,14 +62,14 @@ pub inline fn zero(
             }
         },
         .rational => {
-            comptime validateContext(
-                @TypeOf(ctx),
+            const spec =
                 .{
-                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                },
-            );
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                };
 
-            if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+            comptime validateContext(@TypeOf(ctx), spec);
+
+            if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var num: integer.Integer = try .init(allocator, 2);
                 errdefer num.deinit(allocator);
 
@@ -120,14 +120,14 @@ pub inline fn one(
             return .{ .re = 1.0, .im = 0.0 };
         },
         .integer => {
-            comptime validateContext(
-                @TypeOf(ctx),
+            const spec =
                 .{
-                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                },
-            );
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                };
 
-            if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+            comptime validateContext(@TypeOf(ctx), spec);
+
+            if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var result: integer.Integer = try .init(allocator, 2);
                 result.limbs[0] = 1;
                 result.size = 1;
@@ -143,14 +143,14 @@ pub inline fn one(
             }
         },
         .rational => {
-            comptime validateContext(
-                @TypeOf(ctx),
+            const spec =
                 .{
-                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                },
-            );
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                };
 
-            if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+            comptime validateContext(@TypeOf(ctx), spec);
+
+            if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var num: integer.Integer = try .init(allocator, 2);
                 errdefer num.deinit(allocator);
                 num.limbs[0] = 1;
@@ -203,14 +203,14 @@ pub inline fn two(
             return .{ .re = 2.0, .im = 0.0 };
         },
         .integer => {
-            comptime validateContext(
-                @TypeOf(ctx),
+            const spec =
                 .{
-                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                },
-            );
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                };
 
-            if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+            comptime validateContext(@TypeOf(ctx), spec);
+
+            if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var result: integer.Integer = try .init(allocator, 2);
                 result.limbs[0] = 2;
                 result.size = 1;
@@ -226,14 +226,14 @@ pub inline fn two(
             }
         },
         .rational => {
-            comptime validateContext(
-                @TypeOf(ctx),
+            const spec =
                 .{
-                    .allocator = .{ .type = ?std.mem.Allocator, .required = false },
-                },
-            );
+                    .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                };
 
-            if (types.getFieldOrDefault(ctx, "allocator", ?std.mem.Allocator, null)) |allocator| {
+            comptime validateContext(@TypeOf(ctx), spec);
+
+            if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var num: integer.Integer = try .init(allocator, 2);
                 errdefer num.deinit(allocator);
                 num.limbs[0] = 2;

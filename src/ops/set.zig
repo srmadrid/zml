@@ -59,12 +59,12 @@ pub inline fn set(
             .integer => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = integer.ne(x, 0);
+                o.* = x.size != 0;
             },
             .rational => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = rational.ne(x, 0);
+                o.* = x.num.size != 0;
             },
             .real => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
             .complex => {
@@ -72,7 +72,6 @@ pub inline fn set(
 
                 o.* = complex.ne(x, 0);
             },
-            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
         .int => switch (comptime types.numericType(X)) {
             .bool => {
@@ -111,7 +110,6 @@ pub inline fn set(
 
                 o.* = x.re.toInt(O);
             },
-            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
         .float => switch (comptime types.numericType(X)) {
             .bool => {
@@ -150,7 +148,6 @@ pub inline fn set(
 
                 o.* = x.re.toFloat(O);
             },
-            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
         .cfloat => switch (comptime types.numericType(X)) {
             .bool => {
@@ -210,7 +207,6 @@ pub inline fn set(
                     .im = x.im.toFloat(types.Scalar(O)),
                 };
             },
-            .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
         },
         .integer => {
             comptime types.validateContext(
@@ -254,6 +250,5 @@ pub inline fn set(
                 try o.set(ctx.allocator, x, 0);
             }
         },
-        .expression => @compileError("zml.set not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " yet"),
     }
 }

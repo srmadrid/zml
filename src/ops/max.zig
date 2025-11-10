@@ -9,6 +9,7 @@ const integer = @import("../integer.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
+const expression = @import("../expression.zig");
 
 /// The return type of the `max` routine for inputs of types `X` and `Y`.
 pub fn Max(X: type, Y: type) type {
@@ -24,14 +25,12 @@ pub inline fn max(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isArray(X) and !types.isArray(Y) and
-        !types.isNumeric(X) and !types.isNumeric(Y))
-        @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y));
-
     const C: type = types.Coerce(X, Y);
 
     switch (comptime types.domainType(X)) {
+        .expression => @compileError("zml.max not implemented for expression types yet"),
         .array => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.max not implemented for expression types yet"),
             .array, .numeric => { // max(array, array), max(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
                     if (types.numericType(C) == .rational and (types.numericType(X) == .float or types.numericType(Y) == .float)) {
@@ -70,6 +69,7 @@ pub inline fn max(
             else => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {
+            .expression => @compileError("zml.max not implemented for expression types yet"),
             .array => { // max(numeric, array)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
                     if (types.numericType(C) == .rational and (types.numericType(X) == .float or types.numericType(Y) == .float)) {

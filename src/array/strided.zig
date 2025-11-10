@@ -381,52 +381,6 @@ pub fn apply1(
     return result;
 }
 
-fn set_loop(
-    result: anytype,
-    x: anytype,
-    depth: u32,
-    comptime order: types.IterationOrder,
-    ir: i32,
-    first: *bool,
-    ctx: anytype,
-) !void {
-    if (depth == 0) {
-        const idx: u32 = if (comptime order == .left_to_right) 0 else result.ndim - 1;
-
-        var jr: i32 = ir + if (first.*) result.strides[idx] else 0; // Skip the first element if first is true.
-        var j: u32 = if (first.*) 1 else 0;
-        while (j < result.shape[idx]) : (j += 1) {
-            try ops.set(
-                &result.data[types.scast(u32, jr)],
-                x,
-                ctx,
-            );
-
-            jr += result.strides[idx];
-        }
-
-        first.* = false; // Set first to false after the first iteration.
-    } else {
-        const idx: u32 = if (comptime order == .left_to_right) depth else result.ndim - depth - 1;
-
-        var jr: i32 = ir;
-        var j: u32 = 0;
-        while (j < result.shape[idx]) : (j += 1) {
-            try set_loop(
-                result,
-                x,
-                depth - 1,
-                order,
-                jr,
-                first,
-                ctx,
-            );
-
-            jr += result.strides[idx];
-        }
-    }
-}
-
 pub fn apply1_(
     o: anytype,
     x: anytype,
@@ -434,43 +388,6 @@ pub fn apply1_(
     ctx: anytype,
 ) !void {
     const X: type = Numeric(@TypeOf(x));
-
-    if (comptime !types.isStridedArray(@TypeOf(x))) {
-        const opinfo = @typeInfo(@TypeOf(op_));
-        if (comptime opinfo.@"fn".params.len == 2) {
-            if (comptime types.isStridedArray(@TypeOf(o))) {
-                op_(&o.data[o.offset], x);
-            } else {
-                op_(&o.data[0], x);
-            }
-        } else if (comptime opinfo.@"fn".params.len == 3) {
-            if (comptime types.isStridedArray(@TypeOf(o))) {
-                try op_(&o.data[o.offset], x, ctx);
-            } else {
-                try op_(&o.data[0], x, ctx);
-            }
-        }
-
-        if (comptime types.isStridedArray(@TypeOf(o))) {
-            var first: bool = true;
-            try set_loop(
-                o,
-                o.data[o.offset],
-                o.ndim - 1,
-                comptime orderOf(@TypeOf(o)).toIterationOrder(),
-                types.scast(i32, o.offset),
-                &first,
-                ctx,
-            );
-        } else {
-            var i: u32 = 1;
-            while (i < o.size) : (i += 1) {
-                try ops.set(&o.data[i], o.data[0], ctx);
-            }
-        }
-
-        return;
-    }
 
     var xx: Strided(X) = undefined;
     if (std.mem.eql(u32, o.shape[0..o.ndim], x.shape[0..x.ndim])) {
@@ -785,42 +702,7 @@ pub fn apply2_(
     const X: type = Numeric(@TypeOf(x));
     const Y: type = Numeric(@TypeOf(y));
 
-    if (comptime !types.isStridedArray(@TypeOf(x)) and !types.isStridedArray(@TypeOf(y))) {
-        const opinfo = @typeInfo(@TypeOf(op_));
-        if (comptime opinfo.@"fn".params.len == 3) {
-            if (comptime types.isStridedArray(@TypeOf(o))) {
-                op_(&o.data[o.offset], x, y);
-            } else {
-                op_(&o.data[0], x, y);
-            }
-        } else if (comptime opinfo.@"fn".params.len == 4) {
-            if (comptime types.isStridedArray(@TypeOf(o))) {
-                try op_(&o.data[o.offset], x, y, ctx);
-            } else {
-                try op_(&o.data[0], x, y, ctx);
-            }
-        }
-
-        if (comptime types.isStridedArray(@TypeOf(o))) {
-            var first: bool = true;
-            try set_loop(
-                o,
-                o.data[o.offset],
-                o.ndim - 1,
-                comptime orderOf(@TypeOf(o)).toIterationOrder(),
-                types.scast(i32, o.offset),
-                &first,
-                ctx,
-            );
-        } else {
-            var i: u32 = 1;
-            while (i < o.size) : (i += 1) {
-                try ops.set(&o.data[i], o.data[0], ctx);
-            }
-        }
-
-        return;
-    } else if (comptime !types.isStridedArray(@TypeOf(x))) {
+    if (comptime !types.isStridedArray(@TypeOf(x))) {
         var yy: Strided(Y) = undefined;
         if (std.mem.eql(u32, o.shape[0..o.ndim], y.shape[0..y.ndim])) {
             yy = y;
