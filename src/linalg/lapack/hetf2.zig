@@ -148,11 +148,14 @@ pub fn hetf2(
                         );
 
                         if (kstep == 2) {
-                            try ops.re_(
-                                &a[utils.index(order, k, k, lda)],
-                                a[utils.index(order, k, k, lda)],
-                                ctx,
-                            );
+                            if (comptime types.isComplex(A)) {
+                                try ops.set(
+                                    &a[utils.index(order, k, k, lda)].im,
+                                    0,
+                                    ctx,
+                                );
+                            }
+
                             const t: A = a[utils.index(order, k - 1, k, lda)];
                             try ops.set(
                                 &a[utils.index(order, k - 1, k, lda)],
@@ -166,18 +169,22 @@ pub fn hetf2(
                             );
                         }
                     } else {
-                        try ops.re_(
-                            &a[utils.index(order, k, k, lda)],
-                            a[utils.index(order, k, k, lda)],
-                            ctx,
-                        );
-
-                        if (kstep == 2) {
-                            try ops.re_(
-                                &a[utils.index(order, k - 1, k - 1, lda)],
-                                a[utils.index(order, k - 1, k - 1, lda)],
+                        if (comptime types.isComplex(A)) {
+                            try ops.set(
+                                &a[utils.index(order, k, k, lda)].im,
+                                0,
                                 ctx,
                             );
+                        }
+
+                        if (kstep == 2) {
+                            if (comptime types.isComplex(A)) {
+                                try ops.set(
+                                    &a[utils.index(order, k + 1, k + 1, lda)].im,
+                                    0,
+                                    ctx,
+                                );
+                            }
                         }
                     }
 
@@ -463,11 +470,14 @@ pub fn hetf2(
                         );
 
                         if (kstep == 2) {
-                            try ops.re_(
-                                &a[utils.index(order, k, k, lda)],
-                                a[utils.index(order, k, k, lda)],
-                                ctx,
-                            );
+                            if (comptime types.isComplex(A)) {
+                                try ops.set(
+                                    &a[utils.index(order, k, k, lda)].im,
+                                    0,
+                                    ctx,
+                                );
+                            }
+
                             const t: A = a[utils.index(order, k + 1, k, lda)];
                             try ops.set(
                                 &a[utils.index(order, k + 1, k, lda)],
@@ -481,18 +491,22 @@ pub fn hetf2(
                             );
                         }
                     } else {
-                        try ops.re_(
-                            &a[utils.index(order, k, k, lda)],
-                            a[utils.index(order, k, k, lda)],
-                            ctx,
-                        );
-
-                        if (kstep == 2) {
-                            try ops.re_(
-                                &a[utils.index(order, k + 1, k + 1, lda)],
-                                a[utils.index(order, k + 1, k + 1, lda)],
+                        if (comptime types.isComplex(A)) {
+                            try ops.set(
+                                &a[utils.index(order, k, k, lda)].im,
+                                0,
                                 ctx,
                             );
+                        }
+
+                        if (kstep == 2) {
+                            if (comptime types.isComplex(A)) {
+                                try ops.set(
+                                    &a[utils.index(order, k + 1, k + 1, lda)].im,
+                                    0,
+                                    ctx,
+                                );
+                            }
                         }
                     }
 

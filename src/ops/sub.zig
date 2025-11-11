@@ -100,16 +100,7 @@ pub inline fn sub(
             .array, .numeric => { // array - array, array - numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                    .int => {
-                        types.validateContext(
-                            @TypeOf(ctx),
-                            .{
-                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false, .defualt = null },
-                            },
-                        );
-                    },
-                    .float, .cfloat => {
+                    .int, .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -142,16 +133,7 @@ pub inline fn sub(
             .matrix => { // matrix - matrix
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                    .int => {
-                        types.validateContext(
-                            @TypeOf(ctx),
-                            .{
-                                .matrix_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false, .default = null },
-                            },
-                        );
-                    },
-                    .float, .cfloat => {
+                    .int, .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -184,16 +166,7 @@ pub inline fn sub(
             .vector => { // vector - vector
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                    .int => {
-                        types.validateContext(
-                            @TypeOf(ctx),
-                            .{
-                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false, .default = null },
-                            },
-                        );
-                    },
-                    .float, .cfloat => {
+                    .int, .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -226,16 +199,7 @@ pub inline fn sub(
             .array => { // numeric - array
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                    .int => {
-                        types.validateContext(
-                            @TypeOf(ctx),
-                            .{
-                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mode = .{ .type = int.Mode, .required = false, .default = null },
-                            },
-                        );
-                    },
-                    .float, .cfloat => {
+                    .int, .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -265,14 +229,9 @@ pub inline fn sub(
                 switch (comptime types.numericType(C)) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                     .int => {
-                        const spec =
-                            .{
-                                .mode = .{ .type = int.Mode, .required = false, .default = null },
-                            };
+                        comptime types.validateContext(@TypeOf(ctx), ctx);
 
-                        comptime types.validateContext(@TypeOf(ctx), spec);
-
-                        return int.sub(x, y, types.getFieldOrDefault(ctx, spec, "mode"));
+                        return int.sub(x, y);
                     },
                     .float => {
                         comptime types.validateContext(@TypeOf(ctx), .{});

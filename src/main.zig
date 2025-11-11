@@ -1420,6 +1420,17 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     std.debug.print("\n-----------------------------------------------\n", .{});
     try printBigint(a, ic.den);
     std.debug.print("\n\n", .{});
+
+    var gpa2: std.heap.DebugAllocator(.{}) = .init;
+    defer _ = gpa2.deinit();
+    const a2 = gpa2.allocator();
+
+    var buf: zml.Rational = try .init(a2, 1, 1);
+    defer buf.deinit(a2);
+    try zml.abs2_(&ic, ic, .{ .allocator = a });
+    std.debug.print("||ic||^2: ", .{});
+    try printRational(a, ic, 50);
+    std.debug.print("\n", .{});
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

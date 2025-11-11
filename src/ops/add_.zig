@@ -73,7 +73,7 @@ const array = @import("../array.zig");
 /// avoiding repeated allocations in scenarios where `add_` is called multiple
 /// times. If no buffer is provided, the operation will allocate a temporary
 /// buffer internally, using the allocator specified in the context. Aliasing
-/// between `o` and the buffer is not checked, and will lead to extra
+/// between `o` and the buffer is not checked, and might lead to extra
 /// allocations.
 pub inline fn add_(
     o: anytype,
@@ -110,15 +110,7 @@ pub inline fn add_(
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
                             .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    },
-                                );
-                            },
-                            .float, .cfloat => {
+                            .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
                             .integer, .rational, .real, .complex => {
@@ -131,20 +123,11 @@ pub inline fn add_(
                             },
                         },
                         .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
-                            .bool, .float, .cfloat => {
+                            .bool, .int, .float, .cfloat => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
                                         .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            },
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             },
@@ -177,15 +160,7 @@ pub inline fn add_(
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
                             .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    },
-                                );
-                            },
-                            .float, .cfloat => {
+                            .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
                             .integer, .rational, .real, .complex => {
@@ -198,20 +173,11 @@ pub inline fn add_(
                             },
                         },
                         .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
-                            .bool, .float, .cfloat => {
+                            .bool, .int, .float, .cfloat => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
                                         .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            },
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             },
@@ -245,15 +211,7 @@ pub inline fn add_(
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
                             .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    },
-                                );
-                            },
-                            .float, .cfloat => {
+                            .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
                             .integer, .rational, .real, .complex => {
@@ -266,20 +224,11 @@ pub inline fn add_(
                             },
                         },
                         .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
-                            .bool, .float, .cfloat => {
+                            .bool, .int, .float, .cfloat => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
                                         .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            },
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             },
@@ -314,20 +263,11 @@ pub inline fn add_(
                         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                comptime types.validateContext(@TypeOf(ctx), .{});
 
                                 ops.set(
                                     o,
-                                    int.add(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, spec, "mode"),
-                                    ),
+                                    int.add(x, y),
                                     .{},
                                 ) catch unreachable;
                             },
@@ -465,22 +405,17 @@ pub inline fn add_(
                         .integer => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
                                     .{
                                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                    },
+                                );
 
                                 try ops.set(
                                     o,
-                                    int.add(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, spec, "mode"),
-                                    ),
-                                    types.stripStruct(ctx, &.{"mode"}),
+                                    int.add(x, y),
+                                    ctx,
                                 );
                             },
                             .float => {
@@ -703,22 +638,17 @@ pub inline fn add_(
                         .rational => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
                                     .{
                                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                    },
+                                );
 
                                 try ops.set(
                                     o,
-                                    int.add(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, spec, "mode"),
-                                    ),
-                                    types.stripStruct(ctx, &.{"mode"}),
+                                    int.add(x, y),
+                                    ctx,
                                 );
                             },
                             .float => {
@@ -942,22 +872,17 @@ pub inline fn add_(
                         .complex => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
                                     .{
                                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                    },
+                                );
 
                                 try ops.set(
                                     o,
-                                    int.add(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, "mode", int.Mode, .default),
-                                    ),
-                                    types.stripStruct(ctx, &.{"mode"}),
+                                    int.add(x, y),
+                                    ctx,
                                 );
                             },
                             .float => {

@@ -67,6 +67,14 @@ const array = @import("../array.zig");
 /// -----
 /// When the output and either of the input types are the same, aliasing is
 /// allowed.
+///
+/// When the coerced type of the operands is of arbitrary precision, the context
+/// may provide an optional pre-allocated buffer to store intermediate results,
+/// avoiding repeated allocations in scenarios where `div_` is called multiple
+/// times. If no buffer is provided, the operation will allocate a temporary
+/// buffer internally, using the allocator specified in the context. Aliasing
+/// between `o` and the buffer is not checked, and might lead to extra
+/// allocations.
 pub inline fn div_(
     o: anytype,
     x: anytype,
@@ -100,7 +108,7 @@ pub inline fn div_(
 
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
-                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .bool => @compileError("zml.div_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                             .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
@@ -150,7 +158,7 @@ pub inline fn div_(
                 .numeric => { // matrix = matrix/numeric
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
-                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .bool => @compileError("zml.div_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                             .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
@@ -201,7 +209,7 @@ pub inline fn div_(
                 .numeric => { // vector = vector/numeric
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
-                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .bool => @compileError("zml.div_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                             .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },

@@ -1,13 +1,11 @@
+const options = @import("options");
+
 const types = @import("types.zig");
 const scast = types.scast;
 const Coerce = types.Coerce;
 const Cmp = types.Cmp;
 
-pub inline fn add(
-    x: anytype,
-    y: anytype,
-    comptime mode: Mode,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+pub inline fn add(x: anytype, y: anytype) Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
@@ -18,18 +16,14 @@ pub inline fn add(
         @compileError("int.add requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (comptime mode) {
+    switch (comptime options.int_mode) {
         .default => return scast(C, x) + scast(C, y),
         .wrap => return scast(C, x) +% scast(C, y),
         .saturate => return scast(C, x) +| scast(C, y),
     }
 }
 
-pub inline fn sub(
-    x: anytype,
-    y: anytype,
-    comptime mode: Mode,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+pub inline fn sub(x: anytype, y: anytype) Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
@@ -40,18 +34,14 @@ pub inline fn sub(
         @compileError("int.sub requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (comptime mode) {
+    switch (comptime options.int_mode) {
         .default => return scast(C, x) - scast(C, y),
         .wrap => return scast(C, x) -% scast(C, y),
         .saturate => return scast(C, x) -| scast(C, y),
     }
 }
 
-pub inline fn mul(
-    x: anytype,
-    y: anytype,
-    comptime mode: Mode,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+pub inline fn mul(x: anytype, y: anytype) Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
@@ -62,17 +52,14 @@ pub inline fn mul(
         @compileError("int.mul requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    switch (comptime mode) {
+    switch (comptime options.int_mode) {
         .default => return scast(C, x) * scast(C, y),
         .wrap => return scast(C, x) *% scast(C, y),
         .saturate => return scast(C, x) *| scast(C, y),
     }
 }
 
-pub inline fn div(
-    x: anytype,
-    y: anytype,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+pub inline fn div(x: anytype, y: anytype) Coerce(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
     const C: type = Coerce(X, Y);
@@ -226,9 +213,3 @@ pub inline fn minVal(comptime T: type) T {
 }
 
 pub const abs = @import("int/abs.zig").abs;
-
-pub const Mode = enum {
-    default,
-    wrap,
-    saturate,
-};

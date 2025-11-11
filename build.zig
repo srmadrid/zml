@@ -1,11 +1,19 @@
 const std = @import("std");
 
+const IntMode = enum {
+    default,
+    wrap,
+    saturate,
+};
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
     const options = b.addOptions();
 
+    const opt_int_mode = b.option(IntMode, "int_mode", "Integer operation mode") orelse IntMode.wrap;
+    options.addOption(IntMode, "int_mode", opt_int_mode);
     const opt_max_dimensions = b.option(u32, "max_dimensions", "Maximum number of dimensions for `Array`s") orelse 8;
     options.addOption(u32, "max_dimensions", opt_max_dimensions);
 

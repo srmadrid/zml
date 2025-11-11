@@ -77,20 +77,11 @@ pub inline fn abs2(
         .expression => @compileError("zml.abs2 for " ++ @typeName(X) ++ " not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {
-                .bool, .float, .cfloat => {
+                .bool, .int, .float, .cfloat => {
                     types.validateContext(
                         @TypeOf(ctx),
                         .{
                             .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                        },
-                    );
-                },
-                .int => {
-                    types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                            .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
                         },
                     );
                 },
@@ -117,18 +108,9 @@ pub inline fn abs2(
         .numeric => switch (comptime types.numericType(X)) {
             .bool => @compileError("zml.abs2 not defined for " ++ @typeName(X)),
             .int => {
-                const spec =
-                    .{
-                        .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
-                    };
+                comptime types.validateContext(@TypeOf(ctx), .{});
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                return int.mul(
-                    x,
-                    x,
-                    types.getFieldOrDefault(ctx, spec, "mul_mode"),
-                );
+                return int.mul(x, x);
             },
             .float => {
                 comptime types.validateContext(@TypeOf(ctx), .{});

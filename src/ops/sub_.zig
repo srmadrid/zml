@@ -67,6 +67,14 @@ const array = @import("../array.zig");
 /// -----
 /// When the output and either of the input types are the same, aliasing is
 /// allowed.
+///
+/// When the coerced type of the operands is of arbitrary precision, the context
+/// may provide an optional pre-allocated buffer to store intermediate results,
+/// avoiding repeated allocations in scenarios where `sub_` is called multiple
+/// times. If no buffer is provided, the operation will allocate a temporary
+/// buffer internally, using the allocator specified in the context. Aliasing
+/// between `o` and the buffer is not checked, and might lead to extra
+/// allocations.
 pub inline fn sub_(
     o: anytype,
     x: anytype,
@@ -100,16 +108,8 @@ pub inline fn sub_(
 
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
-                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    },
-                                );
-                            },
-                            .float, .cfloat => {
+                            .bool => @compileError("zml.sub_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
                             .integer, .rational, .real, .complex => {
@@ -122,20 +122,11 @@ pub inline fn sub_(
                             },
                         },
                         .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
-                            .bool, .float, .cfloat => {
+                            .bool, .int, .float, .cfloat => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
                                         .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            },
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             },
@@ -167,16 +158,8 @@ pub inline fn sub_(
                 .matrix => { // matrix = matrix - matrix
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
-                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    },
-                                );
-                            },
-                            .float, .cfloat => {
+                            .bool => @compileError("zml.sub_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
                             .integer, .rational, .real, .complex => {
@@ -189,20 +172,11 @@ pub inline fn sub_(
                             },
                         },
                         .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
-                            .bool, .float, .cfloat => {
+                            .bool, .int, .float, .cfloat => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
                                         .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            },
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             },
@@ -235,16 +209,8 @@ pub inline fn sub_(
                 .vector => { // vector = vector - vector
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
-                            .bool => @compileError("zml.add_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    },
-                                );
-                            },
-                            .float, .cfloat => {
+                            .bool => @compileError("zml.sub_ not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                            .int, .float, .cfloat => {
                                 types.validateContext(@TypeOf(ctx), .{});
                             },
                             .integer, .rational, .real, .complex => {
@@ -257,20 +223,11 @@ pub inline fn sub_(
                             },
                         },
                         .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(C))) {
-                            .bool, .float, .cfloat => {
+                            .bool, .int, .float, .cfloat => {
                                 types.validateContext(
                                     @TypeOf(ctx),
                                     .{
                                         .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    },
-                                );
-                            },
-                            .int => {
-                                types.validateContext(
-                                    @TypeOf(ctx),
-                                    .{
-                                        .element_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
                                     },
                                 );
                             },
@@ -305,20 +262,11 @@ pub inline fn sub_(
                         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
-                                    .{
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                comptime types.validateContext(@TypeOf(ctx), .{});
 
                                 ops.set(
                                     o,
-                                    int.sub(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, spec, "mode"),
-                                    ),
+                                    int.sub(x, y),
                                     .{},
                                 ) catch unreachable;
                             },
@@ -456,22 +404,17 @@ pub inline fn sub_(
                         .integer => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
                                     .{
                                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                    },
+                                );
 
                                 try ops.set(
                                     o,
-                                    int.sub(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, spec, "mode"),
-                                    ),
-                                    types.stripStruct(ctx, &.{"mode"}),
+                                    int.sub(x, y),
+                                    ctx,
                                 );
                             },
                             .float => {
@@ -694,22 +637,17 @@ pub inline fn sub_(
                         .rational => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
                                     .{
                                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                    },
+                                );
 
                                 try ops.set(
                                     o,
-                                    int.sub(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, spec, "mode"),
-                                    ),
-                                    types.stripStruct(ctx, &.{"mode"}),
+                                    int.sub(x, y),
+                                    ctx,
                                 );
                             },
                             .float => {
@@ -933,22 +871,17 @@ pub inline fn sub_(
                         .complex => switch (comptime types.numericType(C)) {
                             .bool => @compileError("zml.sub_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
                             .int => {
-                                const spec =
+                                comptime types.validateContext(
+                                    @TypeOf(ctx),
                                     .{
                                         .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                        .mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                    };
-
-                                comptime types.validateContext(@TypeOf(ctx), spec);
+                                    },
+                                );
 
                                 try ops.set(
                                     o,
-                                    int.sub(
-                                        x,
-                                        y,
-                                        types.getFieldOrDefault(ctx, "mode", int.Mode, .default),
-                                    ),
-                                    types.stripStruct(ctx, &.{"mode"}),
+                                    int.sub(x, y),
+                                    ctx,
                                 );
                             },
                             .float => {

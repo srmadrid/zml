@@ -197,6 +197,7 @@ pub const div_ = @import("complex/div_.zig").div_;
 // Basic operations
 // pub const abs = @import("complex/abs.zig").abs;
 pub const neg = @import("complex/neg.zig").neg;
+pub const conj = @import("complex/conj.zig").conj;
 
 pub const Error = error{
     ZeroDivision,

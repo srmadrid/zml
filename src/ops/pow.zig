@@ -115,16 +115,7 @@ pub inline fn pow(
             .array, .numeric => { // array^array, array^numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                    .int => {
-                        types.validateContext(
-                            @TypeOf(ctx),
-                            .{
-                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
-                            },
-                        );
-                    },
-                    .float, .cfloat => {
+                    .int, .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -157,16 +148,7 @@ pub inline fn pow(
             .array => { // numeric^array
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-                    .int => {
-                        types.validateContext(
-                            @TypeOf(ctx),
-                            .{
-                                .array_allocator = .{ .type = std.mem.Allocator, .required = true },
-                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
-                            },
-                        );
-                    },
-                    .float, .cfloat => {
+                    .int, .float, .cfloat => {
                         types.validateContext(
                             @TypeOf(ctx),
                             .{
@@ -196,18 +178,9 @@ pub inline fn pow(
                 switch (comptime types.numericType(C)) {
                     .bool => @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                     .int => {
-                        const spec =
-                            .{
-                                .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
-                            };
+                        comptime types.validateContext(@TypeOf(ctx), .{});
 
-                        comptime types.validateContext(@TypeOf(ctx), spec);
-
-                        return int.pow(
-                            x,
-                            y,
-                            types.getFieldOrDefault(ctx, spec, "mul_mode"),
-                        );
+                        return int.pow(x, y);
                     },
                     .float => {
                         comptime types.validateContext(@TypeOf(ctx), .{});

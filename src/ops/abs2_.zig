@@ -81,22 +81,20 @@ pub inline fn abs2_(
                 comptime switch (types.numericType(types.Numeric(O))) {
                     .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(X))) {
                         .bool => @compileError("zml.abs2_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-                        else => {
+                        .int, .float, .cfloat => {
                             types.validateContext(@TypeOf(ctx), .{});
                         },
-                        .real, .complex => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-                    },
-                    .integer => switch (types.numericType(types.Numeric(X))) {
-                        .bool => @compileError("zml.abs2_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-                        .integer => {
+                        .integer, .rational, .real, .complex => {
                             types.validateContext(
                                 @TypeOf(ctx),
                                 .{
-                                    .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
                                 },
                             );
                         },
-                        else => {
+                    },
+                    .integer, .rational, .real, .complex => switch (types.numericType(types.Numeric(X))) {
+                        .bool, .int, .float, .cfloat => {
                             types.validateContext(
                                 @TypeOf(ctx),
                                 .{
@@ -104,29 +102,16 @@ pub inline fn abs2_(
                                 },
                             );
                         },
-                        .real, .complex => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-                    },
-                    .rational => switch (types.numericType(types.Numeric(X))) {
-                        .bool => @compileError("zml.abs2_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
-                        .rational => {
-                            types.validateContext(
-                                @TypeOf(ctx),
-                                .{
-                                    .element_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                                },
-                            );
-                        },
-                        else => {
+                        .integer, .rational, .real, .complex => {
                             types.validateContext(
                                 @TypeOf(ctx),
                                 .{
                                     .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                                 },
                             );
                         },
-                        .real, .complex => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
                     },
-                    .real, .complex => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
                 };
 
                 return array.abs2_(
@@ -144,20 +129,11 @@ pub inline fn abs2_(
                     .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {
                         .bool => @compileError("zml.abs2_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
                         .int => {
-                            const spec =
-                                .{
-                                    .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                };
-
-                            comptime types.validateContext(@TypeOf(ctx), spec);
+                            comptime types.validateContext(@TypeOf(ctx), .{});
 
                             ops.set(
                                 o,
-                                int.mul(
-                                    x,
-                                    x,
-                                    types.getFieldOrDefault(ctx, spec, "mul_mode"),
-                                ),
+                                int.mul(x, x),
                                 .{},
                             ) catch unreachable;
                         },
@@ -183,43 +159,33 @@ pub inline fn abs2_(
                             comptime types.validateContext(
                                 @TypeOf(ctx),
                                 .{
-                                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer = .{ .type = ?*integer.Integer, .required = false, .default = null },
                                 },
                             );
 
-                            var result: integer.Integer = try integer.add(
-                                ctx.internal_allocator,
-                                x,
-                                x,
-                            );
-                            defer result.deinit(ctx.internal_allocator);
-
-                            ops.set(
+                            try ops.mul_(
                                 o,
-                                result,
-                                .{},
-                            ) catch unreachable;
+                                x,
+                                x,
+                                ctx,
+                            );
                         },
                         .rational => {
                             comptime types.validateContext(
                                 @TypeOf(ctx),
                                 .{
-                                    .internal_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer = .{ .type = ?*rational.Rational, .required = false, .default = null },
                                 },
                             );
 
-                            var result: rational.Rational = try rational.add(
-                                ctx.internal_allocator,
-                                x,
-                                x,
-                            );
-                            defer result.deinit(ctx.internal_allocator);
-
-                            ops.set(
+                            try ops.mul_(
                                 o,
-                                result,
-                                .{},
-                            ) catch unreachable;
+                                x,
+                                x,
+                                ctx,
+                            );
                         },
                         .real => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
                         .complex => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
@@ -227,22 +193,17 @@ pub inline fn abs2_(
                     .integer => switch (comptime types.numericType(X)) {
                         .bool => @compileError("zml.abs2_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
                         .int => {
-                            const spec =
+                            comptime types.validateContext(
+                                @TypeOf(ctx),
                                 .{
                                     .allocator = .{ .type = std.mem.Allocator, .required = true },
-                                    .mul_mode = .{ .type = int.Mode, .required = false, .default = .default },
-                                };
-
-                            comptime types.validateContext(@TypeOf(ctx), spec);
+                                },
+                            );
 
                             try ops.set(
                                 o,
-                                int.mul(
-                                    x,
-                                    x,
-                                    types.getFieldOrDefault(ctx, spec, "mul_mode"),
-                                ),
-                                ctx,
+                                int.mul(x, x),
+                                .{ .allocator = ctx.allocator },
                             );
                         },
                         .float => {
@@ -278,14 +239,16 @@ pub inline fn abs2_(
                                 @TypeOf(ctx),
                                 .{
                                     .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    .buffer = .{ .type = ?*integer.Integer, .required = false, .default = null },
                                 },
                             );
 
-                            try integer.mul_(
-                                ctx.allocator,
+                            try ops.mul_(
                                 o,
                                 x,
                                 x,
+                                ctx,
                             );
                         },
                         .rational => {
@@ -293,19 +256,15 @@ pub inline fn abs2_(
                                 @TypeOf(ctx),
                                 .{
                                     .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    .buffer = .{ .type = ?*rational.Rational, .required = false, .default = null },
                                 },
                             );
 
-                            var result: rational.Rational = try rational.mul(
-                                ctx.allocator,
-                                x,
-                                x,
-                            );
-                            defer result.deinit(ctx.allocator);
-
-                            try ops.set(
+                            try ops.mul_(
                                 o,
-                                result,
+                                x,
+                                x,
                                 ctx,
                             );
                         },
@@ -324,8 +283,8 @@ pub inline fn abs2_(
 
                             try ops.set(
                                 o,
-                                int.abs(x),
-                                ctx,
+                                int.mul(x, x),
+                                .{ .allocator = ctx.allocator },
                             );
                         },
                         .float => {
@@ -338,7 +297,7 @@ pub inline fn abs2_(
 
                             try ops.set(
                                 o,
-                                float.abs(x),
+                                float.mul(x, x),
                                 ctx,
                             );
                         },
@@ -352,7 +311,7 @@ pub inline fn abs2_(
 
                             try ops.set(
                                 o,
-                                cfloat.abs(x),
+                                cfloat.abs2(x),
                                 ctx,
                             );
                         },
@@ -361,38 +320,34 @@ pub inline fn abs2_(
                                 @TypeOf(ctx),
                                 .{
                                     .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    .buffer = .{ .type = ?*integer.Integer, .required = false, .default = null },
                                 },
                             );
 
-                            try ops.set(
+                            try ops.mul_(
                                 o,
-                                integer.abs(null, x) catch unreachable,
+                                x,
+                                x,
                                 ctx,
                             );
                         },
                         .rational => {
-                            const spec =
+                            comptime types.validateContext(
+                                @TypeOf(ctx),
                                 .{
-                                    .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                                };
+                                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                                    .buffer_allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
+                                    .buffer = .{ .type = ?*rational.Rational, .required = false, .default = null },
+                                },
+                            );
 
-                            comptime types.validateContext(@TypeOf(ctx), spec);
-
-                            if (o.num.limbs == x.num.limbs and
-                                o.den.limbs == x.den.limbs)
-                            {
-                                o.num.positive = true;
-                            } else {
-                                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
-                                    try ops.set(
-                                        o,
-                                        rational.abs(null, x) catch unreachable,
-                                        .{ .allocator = allocator },
-                                    );
-                                } else {
-                                    return error.AllocatorRequired;
-                                }
-                            }
+                            try ops.mul_(
+                                o,
+                                x,
+                                x,
+                                ctx,
+                            );
                         },
                         .real => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
                         .complex => @compileError("zml.abs2_ not implemented yet for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
