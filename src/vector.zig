@@ -22,6 +22,8 @@ pub const Error = error{
     PositionOutOfBounds,
     DimensionMismatch,
     NonContiguousData,
+    ZeroDimension,
+    DataNotOwned,
 };
 
 pub const Flags = packed struct {

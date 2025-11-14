@@ -3,13 +3,14 @@ const std = @import("std");
 const types = @import("../types.zig");
 const ReturnType2 = types.ReturnType2;
 const Numeric = types.Numeric;
-const int = @import("../int.zig");
 const ops = @import("../ops.zig");
-const linalg = @import("../linalg.zig");
+const int = @import("../int.zig");
 
 const vector = @import("../vector.zig");
 const Flags = vector.Flags;
+const matrix = @import("../matrix.zig");
 
+/// A dense vector type.
 pub fn Dense(T: type) type {
     if (!types.isNumeric(T))
         @compileError("vector.Dense requires a numeric type, got " ++ @typeName(T));
@@ -27,6 +28,28 @@ pub fn Dense(T: type) type {
             .flags = .{ .owns_data = false },
         };
 
+        /// Initializes a new `vector.Dense(T)` with the specified length.
+        ///
+        /// Parameters
+        /// ----------
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory allocations.
+        ///
+        /// `len` (`u32`):
+        /// The length of the vector.
+        ///
+        /// Returns
+        /// -------
+        /// `vector.Dense(T)`:
+        /// The newly initialized `vector.Dense(T)`.
+        ///
+        /// Errors
+        /// ------
+        /// `std.mem.Allocator.Error.OutOfMemory`:
+        /// If memory allocation fails.
+        ///
+        /// `vector.Error.ZeroLength`:
+        /// If `len` is zero.
         pub fn init(allocator: std.mem.Allocator, len: u32) !Dense(T) {
             if (len == 0)
                 return vector.Error.ZeroLength;
@@ -39,31 +62,100 @@ pub fn Dense(T: type) type {
             };
         }
 
+        /// Initializes a new `vector.Dense(T)` with the specified length,
+        /// filled with the specified value.
+        ///
+        /// Parameters
+        /// ----------
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory allocations.
+        ///
+        /// `len` (`u32`):
+        /// The length of the vector.
+        ///
+        /// `value` (`anytype`):
+        /// The value to fill the vector with.
+        ///
+        /// `ctx` (`anytype`):
+        /// A context struct providing necessary resources and configuration for
+        /// the operation. The required fields depend on the type `T` and the
+        /// type of `value`. If  the context is missing required fields or
+        /// contains unnecessary or wrongly typed fields, the compiler will emit
+        /// a detailed error message describing the expected structure.
+        ///
+        /// Returns
+        /// -------
+        /// `vector.Dense(T)`:
+        /// The newly initialized `vector.Dense(T)`.
+        ///
+        /// Errors
+        /// ------
+        /// `std.mem.Allocator.Error.OutOfMemory`:
+        /// If memory allocation fails.
+        ///
+        /// `vector.Error.ZeroLength`:
+        /// If `len` is zero.
+        ///
+        /// Notes
+        /// -----
+        /// The vector does not take ownership of `value` if it is an arbitrary
+        /// precision type.
         pub fn full(
             allocator: std.mem.Allocator,
             len: u32,
             value: anytype,
             ctx: anytype,
         ) !Dense(T) {
+            comptime switch (types.numericType(T)) {
+                .bool, .int, .float, .cfloat => {
+                    types.validateContext(@TypeOf(ctx), .{});
+                },
+                .integer, .rational, .real, .complex => {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                },
+            };
+
             var vec: Dense(T) = try .init(allocator, len);
             errdefer vec.deinit(allocator);
 
-            if (comptime !types.isArbitraryPrecision(T)) {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+            const value_casted: T = types.scast(T, value);
 
-                const value_casted: T = types.scast(T, value);
+            var i: u32 = 0;
 
-                var i: u32 = 0;
-                while (i < len) : (i += 1) {
-                    vec.data[i] = value_casted;
-                }
-            } else {
-                @compileError("Arbitrary precision types not implemented yet");
+            errdefer vec._cleanup(i, ctx);
+
+            while (i < len) : (i += 1) {
+                vec.data[i] = value_casted;
             }
 
             return vec;
         }
 
+        /// Deinitializes the vector, freeing any allocated memory and
+        /// invalidating it.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*vector.Dense(T)`):
+        /// A pointer to the vector to deinitialize.
+        ///
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory deallocation. Must be the same
+        /// allocator used to initialize `self`.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Notes
+        /// -----
+        /// If the elements are of arbitrary precision type, `cleanup` must be
+        /// called before `deinit` to properly deinitialize the elements.
         pub fn deinit(self: *Dense(T), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.free(self.data[0..self.len]);
@@ -72,6 +164,25 @@ pub fn Dense(T: type) type {
             self.* = undefined;
         }
 
+        /// Gets the element at the specified index.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const vector.Dense(T)`):
+        /// A pointer to the vector to get the element from.
+        ///
+        /// `index` (`u32`):
+        /// The index of the element to get.
+        ///
+        /// Returns
+        /// -------
+        /// `T`:
+        /// The element at the specified index.
+        ///
+        /// Errors
+        /// ------
+        /// `vector.Error.PositionOutOfBounds`:
+        /// If `index` is out of bounds.
         pub fn get(self: *const Dense(T), index: u32) !T {
             if (index >= self.len)
                 return vector.Error.PositionOutOfBounds;
@@ -82,14 +193,55 @@ pub fn Dense(T: type) type {
                 self.data[types.scast(u32, (-types.scast(i32, self.len) + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
         }
 
+        /// Gets the element at the specified index without bounds checking.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const vector.Dense(T)`):
+        /// A pointer to the vector to get the element from.
+        ///
+        /// `index` (`u32`):
+        /// The index of the element to get. Assumed to be valid.
+        ///
+        /// Returns
+        /// -------
+        /// `T`:
+        /// The element at the specified index.
         pub inline fn at(self: *const Dense(T), index: u32) T {
-            // Unchecked version of get. Assumes index is valid.
             return if (self.inc > 0)
                 self.data[index * types.scast(u32, self.inc)]
             else
                 self.data[types.scast(u32, (-types.scast(i32, self.len) + 1) * self.inc) - index * types.scast(u32, int.abs(self.inc))];
         }
 
+        /// Sets the element at the specified index.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*vector.Dense(T)`):
+        /// A pointer to the vector to set the element in.
+        ///
+        /// `index` (`u32`):
+        /// The index of the element to set.
+        ///
+        /// `value` (`T`):
+        /// The value to set the element to.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Errors
+        /// ------
+        /// `vector.Error.PositionOutOfBounds`:
+        /// If `index` is out of bounds.
+        ///
+        /// Notes
+        /// -----
+        /// If the elements are of arbitrary precision type, the existing
+        /// element at `index` is not deinitialized. The user must ensure that
+        /// no memory leaks occur. Additionally, the vector takes ownership of
+        /// `value`.
         pub fn set(self: *Dense(T), index: u32, value: T) !void {
             if (index >= self.len)
                 return vector.Error.PositionOutOfBounds;
@@ -101,8 +253,30 @@ pub fn Dense(T: type) type {
             }
         }
 
+        /// Sets the element at the specified index without bounds checking.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*vector.Dense(T)`):
+        /// A pointer to the vector to set the element in.
+        ///
+        /// `index` (`u32`):
+        /// The index of the element to set. Assumed to be valid.
+        ///
+        /// `value` (`T`):
+        /// The value to set the element to.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Notes
+        /// -----
+        /// If the elements are of arbitrary precision type, the existing
+        /// element at `index` is not deinitialized. The user must ensure that
+        /// no memory leaks occur. Additionally, the vector takes ownership of
+        /// `value`.
         pub inline fn put(self: *Dense(T), index: u32, value: T) void {
-            // Unchecked version of set. Assumes index is valid.
             if (self.inc > 0) {
                 self.data[index * types.scast(u32, self.inc)] = value;
             } else {
@@ -110,10 +284,40 @@ pub fn Dense(T: type) type {
             }
         }
 
-        pub fn asDiagonal(self: *const Dense(T), rows: u32, cols: u32) !Dense(T) {
-            if (rows == 0 or cols == 0 or
-                (rows > self.len and cols > self.len))
+        /// Views the vector as a diagonal matrix.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const vector.Dense(T)`):
+        /// A pointer to the vector to view as a diagonal matrix.
+        ///
+        /// `rows` (`u32`):
+        /// The number of rows of the resulting matrix.
+        ///
+        /// `cols` (`u32`):
+        /// The number of columns of the resulting matrix.
+        ///
+        /// Returns
+        /// -------
+        /// `matrix.Diagonal(T)`:
+        /// The diagonal matrix view of the vector.
+        ///
+        /// Errors
+        /// ------
+        /// `vector.Error.ZeroDimension`:
+        /// If `rows` or `cols` is zero.
+        ///
+        /// `vector.Error.DimensionMismatch`:
+        /// If both `rows` and `cols` are greater than the length of the vector.
+        ///
+        /// `vector.Error.NonContiguousData`:
+        /// If the vector data is not contiguous (inc != 1).
+        pub fn asDiagonal(self: *const Dense(T), rows: u32, cols: u32) !matrix.Diagonal(T) {
+            if (rows == 0 or cols == 0)
                 return vector.Error.ZeroDimension;
+
+            if (rows > self.len and cols > self.len)
+                return vector.Error.DimensionMismatch;
 
             if (self.inc != 1)
                 return vector.Error.NonContiguousData;
@@ -126,35 +330,69 @@ pub fn Dense(T: type) type {
             };
         }
 
+        /// Cleans up the elements of the vector, deinitializing them if
+        /// necessary.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*vector.Dense(T)`):
+        /// A pointer to the vector to clean up.
+        ///
+        /// `ctx` (`anytype`):
+        /// A context struct providing necessary resources and configuration for
+        /// the operation. The required fields depend on the type `T`. If the
+        /// context is missing required fields or contains unnecessary or
+        /// wrongly typed fields, the compiler will emit a detailed error
+        /// message describing the expected structure.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Notes
+        /// -----
+        /// This function must be called before `deinit` if the elements are of
+        /// arbitrary precision type to properly deinitialize them.
         pub fn cleanup(self: *Dense(T), ctx: anytype) void {
             return _cleanup(self, self.len, ctx);
         }
 
         pub fn _cleanup(self: *Dense(T), num_elems: u32, ctx: anytype) void {
-            if (comptime types.isArbitraryPrecision(T)) {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+            switch (comptime types.numericType(T)) {
+                .bool, .int, .float, .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (self.inc == 1) {
-                    var i: u32 = 0;
-                    while (i < num_elems) : (i += 1) {
-                        ops.deinit(self.data[i], ctx);
-                    }
-                } else {
-                    var is: i32 = if (self.inc < 0) (-types.scast(i32, self.len) + 1) * self.inc else 0;
-                    var i: u32 = 0;
-                    while (i < num_elems) : (i += 1) {
-                        ops.deinit(self.data[types.scast(u32, is)], ctx);
+                    // No cleanup needed for fixed precision types.
+                },
+                .integer, .rational, .real, .complex => {
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
 
-                        is += self.inc;
+                    if (self.inc == 1) {
+                        var i: u32 = 0;
+                        while (i < num_elems) : (i += 1) {
+                            ops.deinit(
+                                &self.data[i],
+                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                            );
+                        }
+                    } else {
+                        var is: i32 = if (self.inc < 0) (-types.scast(i32, self.len) + 1) * self.inc else 0;
+                        var i: u32 = 0;
+                        while (i < num_elems) : (i += 1) {
+                            ops.deinit(
+                                &self.data[types.scast(u32, is)],
+                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                            );
+
+                            is += self.inc;
+                        }
                     }
-                }
-            } else {
-                comptime types.validateContext(@TypeOf(ctx), .{});
+                },
             }
         }
     };
@@ -177,7 +415,16 @@ pub fn apply2(
 
         var i: u32 = 0;
 
-        errdefer result._cleanup(i, ctx);
+        errdefer result._cleanup(
+            i,
+            types.renameStructFields(
+                types.keepStructFields(
+                    ctx,
+                    &.{"allocator"},
+                ),
+                .{ .allocator = "element_allocator" },
+            ),
+        );
 
         const opinfo = @typeInfo(@TypeOf(op));
         if (y.inc == 1) {
@@ -208,7 +455,16 @@ pub fn apply2(
 
         var i: u32 = 0;
 
-        errdefer result._cleanup(i, ctx);
+        errdefer result._cleanup(
+            i,
+            types.renameStructFields(
+                types.keepStructFields(
+                    ctx,
+                    &.{"allocator"},
+                ),
+                .{ .allocator = "element_allocator" },
+            ),
+        );
 
         const opinfo = @typeInfo(@TypeOf(op));
         if (x.inc == 1) {
@@ -243,7 +499,16 @@ pub fn apply2(
 
     var i: u32 = 0;
 
-    errdefer result._cleanup(i, ctx);
+    errdefer result._cleanup(
+        i,
+        types.renameStructFields(
+            types.keepStructFields(
+                ctx,
+                &.{"allocator"},
+            ),
+            .{ .allocator = "element_allocator" },
+        ),
+    );
 
     const opinfo = @typeInfo(@TypeOf(op));
     if (x.inc == 1 and y.inc == 1) {

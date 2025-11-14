@@ -594,9 +594,11 @@ pub fn main() !void {
 
     // try decompPerfTesting(a);
 
+    try vectorTesting(a);
+
     // try matrixTesting(a);
 
-    try bigintTesting(a);
+    // try bigintTesting(a);
 }
 
 fn ask_user(default: u32) !u32 {
@@ -1430,7 +1432,158 @@ fn bigintTesting(a: std.mem.Allocator) !void {
     try zml.abs2_(&ic, ic, .{ .allocator = a });
     std.debug.print("||ic||^2: ", .{});
     try printRational(a, ic, 50);
+    std.debug.print("\n\n", .{});
+
+    std.debug.print("2^16: {}\n", .{try zml.int.pow(@as(u128, 2), @as(u128, 32))});
+}
+
+fn random_vector_t(
+    comptime T: type,
+    allocator: std.mem.Allocator,
+    rand: std.Random,
+    len: u32,
+) !T {
+    switch (comptime zml.types.vectorType(T)) {
+        .dense => {
+            var result: T = try .init(allocator, len);
+
+            var i: u32 = 0;
+            while (i < len) : (i += 1) {
+                if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        result.set(i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    } else {
+                        result.set(i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    }
+                } else {
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        re.num.positive = rand.boolean();
+                        var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        im.num.positive = rand.boolean();
+                        const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                            .re = re,
+                            .im = im,
+                            .flags = .{ .owns_data = true, .writable = true },
+                        };
+                        result.set(i, complex) catch unreachable;
+                    } else {
+                        var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        rational.num.positive = rand.float(f64) < 0.5;
+                        result.set(i, rational) catch unreachable;
+                    }
+                }
+            }
+
+            return result;
+        },
+        .sparse => {
+            const nnz: u32 = zml.int.max(1, rand.intRangeAtMost(u32, len / 10, len / 2));
+
+            var result: zml.vector.Sparse(zml.types.Numeric(T)) = try .init(allocator, len, nnz);
+            errdefer result.deinit(allocator);
+
+            // generate random indices
+            var used: std.AutoHashMap(u32, void) = .init(allocator);
+            defer used.deinit();
+            var count: u32 = 0;
+            while (count < nnz) : (count += 1) {
+                const i = rand.intRangeAtMost(u32, 0, len - 1);
+                if (!used.contains(i)) {
+                    try used.put(i, {});
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            try result.set(allocator, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64)));
+                        } else {
+                            try result.set(allocator, i, rand.float(zml.types.Numeric(T)));
+                        }
+                    } else {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            try result.set(allocator, i, complex);
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            try result.set(allocator, i, rational);
+                        }
+                    }
+                } else {
+                    count -= 1; // try again
+                }
+            }
+
+            return result;
+        },
+        else => unreachable,
+    }
+}
+
+fn print_vector(a: std.mem.Allocator, desc: []const u8, v: anytype) !void {
+    std.debug.print("\nVector {s}:\n", .{desc});
+
+    var i: u32 = 0;
+    while (i < v.len) : (i += 1) {
+        if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(@TypeOf(v)))) {
+            if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(v)))) {
+                std.debug.print("{d:7.4} + {d:7.4}i\n", .{ (v.get(i) catch unreachable).re, (v.get(i) catch unreachable).im });
+            } else {
+                std.debug.print("{d:5.4}\n", .{v.get(i) catch unreachable});
+            }
+        } else {
+            if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(v)))) {
+                std.debug.print("(", .{});
+                try printRational(a, (v.get(i) catch unreachable).re, 20);
+                std.debug.print(") + i * (", .{});
+                try printRational(a, (v.get(i) catch unreachable).im, 20);
+                std.debug.print(")\n", .{});
+            } else {
+                try printRational(a, v.get(i) catch unreachable, 20);
+                std.debug.print("\n", .{});
+            }
+        }
+    }
     std.debug.print("\n", .{});
+}
+
+fn vectorTesting(a: std.mem.Allocator) !void {
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
+
+    var v = try random_vector_t(
+        zml.vector.Dense(zml.Rational),
+        a,
+        rand,
+        10,
+    );
+    defer v.deinit(a);
+    defer v.cleanup(.{ .element_allocator = a });
+
+    try print_vector(a, "v", v);
+
+    // var u = try random_vector_t(
+    //     zml.vector.Dense(f64),
+    //     a,
+    //     rand,
+    //     10,
+    // );
+    // defer u.deinit(a);
+    // defer u.cleanup(.{ .element_allocator = a });
+
+    // try print_vector(a, "u", u);
+
+    var w = try zml.mul(-2, v, .{ .vector_allocator = a, .element_allocator = a });
+    defer w.deinit(a);
+    defer w.cleanup(.{ .element_allocator = a });
+
+    try print_vector(a, "w = v + u", w);
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

@@ -213,3 +213,8 @@ pub inline fn minVal(comptime T: type) T {
 }
 
 pub const abs = @import("int/abs.zig").abs;
+pub const pow = @import("int/pow.zig").pow;
+
+pub const Error = error{
+    NegativeExponent,
+};

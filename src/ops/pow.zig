@@ -99,6 +99,9 @@ pub fn Pow(X: type, Y: type) type {
 ///
 /// `matrix.Error....`:
 /// Tbd.
+///
+/// `int.Error.NegativeExponent`:
+/// If both operands are integers and the exponent is negative.
 pub inline fn pow(
     x: anytype,
     y: anytype,

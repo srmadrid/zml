@@ -93,7 +93,7 @@ pub fn Block(T: type, border: Order, order: Order) type {
         }
 
         pub fn reserve(self: *Block(T, border, order), allocator: std.mem.Allocator, new_nnzb: u32) !void {
-            if (self.flags.owns_data == false)
+            if (!self.flags.owns_data)
                 return;
 
             if (new_nnzb <= self._dlen / (self.bsize * self.bsize) and new_nnzb <= self._rlen and new_nnzb <= self._clen)

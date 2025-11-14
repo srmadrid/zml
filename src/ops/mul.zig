@@ -270,6 +270,35 @@ pub inline fn mul(
                     ctx,
                 );
             },
+            .numeric => { // vector * numeric
+                comptime switch (types.numericType(types.Numeric(C))) {
+                    .bool => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+                    .int, .float, .cfloat => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                    .integer, .rational, .real, .complex => {
+                        types.validateContext(
+                            @TypeOf(ctx),
+                            .{
+                                .vector_allocator = .{ .type = std.mem.Allocator, .required = true },
+                                .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                            },
+                        );
+                    },
+                };
+
+                return vector.mul(
+                    ctx.vector_allocator,
+                    x,
+                    y,
+                    types.stripStruct(ctx, &.{"vector_allocator"}),
+                );
+            },
             else => @compileError("zml.mul not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .numeric => switch (comptime types.domainType(Y)) {

@@ -2226,7 +2226,6 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 .rational => return Complex(Rational),
                 .real => return Complex(Real),
                 .complex => return Y,
-                else => return Y,
             }
         },
         .integer => switch (ynumeric) {
@@ -4413,14 +4412,8 @@ pub fn RenameStructFields(comptime S: type, comptime fields_to_rename: anytype) 
     if (finfo != .@"struct")
         @compileError("fields_to_rename must be a struct");
 
-    if (finfo.@"struct".fields.len > info.@"struct".fields.len)
-        @compileError("More fields to rename than fields in the struct");
-
-    // Check that all old names exist and new names do not exist in the original struct
+    // Check that all new names do not exist in the original struct
     inline for (finfo.@"struct".fields) |field| {
-        if (!@hasField(S, field.name))
-            @compileError("Field '" ++ field.name ++ "' does not exist in the struct");
-
         if (@hasField(S, @field(fields_to_rename, field.name)))
             @compileError("Field '" ++ @field(fields_to_rename, field.name) ++ "' already exists in the struct");
     }
@@ -4459,6 +4452,10 @@ pub fn RenameStructFields(comptime S: type, comptime fields_to_rename: anytype) 
 }
 
 /// Renames fields of a struct according to a mapping provided in another struct.
+///
+/// If a field specified in `fields_to_rename` does not exist in `s`, it is
+/// ignored. Fields in `s` that are not specified in `fields_to_rename` retain
+/// their original names.
 ///
 /// Parameters
 /// ----------
@@ -4503,6 +4500,70 @@ pub fn renameStructFields(s: anytype, comptime fields_to_rename: anytype) Rename
         if (!renamed) {
             @field(result, field.name) = @field(s, field.name);
         }
+    }
+
+    return result;
+}
+
+pub fn KeepStructFields(comptime S: type, comptime fields_to_keep: []const []const u8) type {
+    const info = @typeInfo(S);
+    if (info != .@"struct")
+        @compileError("Type must be a struct");
+
+    // Create new fields array
+    comptime var temp_new_fields: [fields_to_keep.len]std.builtin.Type.StructField = undefined;
+    comptime var real_num_fields: comptime_int = 0;
+    inline for (fields_to_keep) |field_to_keep| {
+        comptime var field_info: std.builtin.Type.StructField = undefined;
+        inline for (info.@"struct".fields) |field| {
+            if (comptime std.mem.eql(u8, field.name, field_to_keep)) {
+                field_info = field;
+                temp_new_fields[real_num_fields] = field_info;
+                real_num_fields += 1;
+                break;
+            }
+        }
+    }
+
+    comptime var new_fields: [real_num_fields]std.builtin.Type.StructField = undefined;
+    inline for (0..real_num_fields) |i| {
+        new_fields[i] = temp_new_fields[i];
+    }
+
+    return @Type(.{ .@"struct" = .{
+        .layout = .auto,
+        .fields = &new_fields,
+        .decls = &.{},
+        .is_tuple = false,
+    } });
+}
+
+/// Creates a new struct type by keeping only the specified fields from the
+/// original struct type.
+///
+/// The fields specified in `fields_to_keep` need not exist in the original
+/// struct; any non-existing fields will simply be ignored.
+///
+/// Parameters
+/// ----------
+/// `s` (`anytype`): The struct instance from which to keep fields. Must be a
+/// struct type.
+///
+/// `fields_to_keep` (`[]const []const u8`): An array of field names to keep
+/// in the new struct type.
+///
+/// Returns
+/// -------
+/// The new struct instance containing only the specified fields.
+pub fn keepStructFields(s: anytype, comptime fields_to_keep: []const []const u8) KeepStructFields(@TypeOf(s), fields_to_keep) {
+    const S = @TypeOf(s);
+    const info = @typeInfo(S);
+    if (info != .@"struct")
+        @compileError("Type must be a struct");
+
+    var result: KeepStructFields(S, fields_to_keep) = undefined;
+    inline for (@typeInfo(@TypeOf(result)).@"struct".fields) |field| {
+        @field(result, field.name) = @field(s, field.name);
     }
 
     return result;

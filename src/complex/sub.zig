@@ -37,10 +37,10 @@ const Complex = complex.Complex;
 /// ------
 /// `std.mem.Allocator.Error.OutOfMemory`:
 /// If memory allocation fails.
-pub fn sub(allocator: std.mem.Allocator, x: anytype, y: anytype) !Complex(Scalar(Coerce(Rational, Coerce(x, y)))) {
+pub fn sub(allocator: std.mem.Allocator, x: anytype, y: anytype) !Complex(Scalar(Coerce(Rational, Coerce(@TypeOf(x), @TypeOf(y))))) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const C: type = Complex(Scalar(Coerce(Rational, Coerce(x, y))));
+    const C: type = Complex(Scalar(Coerce(Rational, Coerce(X, Y))));
 
     comptime if (types.numericType(X) != .complex and types.numericType(X) != .real and types.numericType(X) != .rational and types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
         types.numericType(Y) != .complex and types.numericType(X) != .real and types.numericType(Y) != .rational and types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)

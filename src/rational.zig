@@ -10,6 +10,9 @@ const Integer = integer.Integer;
 const complex = @import("complex.zig");
 const Complex = complex.Complex;
 
+pub var default_accuracy: u32 = 50;
+pub var default_internal_accuracy: u32 = 60;
+
 /// A rational number represented as a fraction of two arbitrary-precision
 /// integers.
 pub const Rational = struct {

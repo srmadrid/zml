@@ -33,7 +33,16 @@ pub fn apply2(
 
     var i: u32 = 0;
 
-    errdefer result._cleanup(i, ctx);
+    errdefer result._cleanup(
+        i,
+        types.renameStructFields(
+            types.keepStructFields(
+                ctx,
+                &.{"allocator"},
+            ),
+            .{ .allocator = "element_allocator" },
+        ),
+    );
 
     const opinfo = @typeInfo(@TypeOf(op));
     if (x.inc == 1) {
@@ -49,9 +58,9 @@ pub fn apply2(
                 iy += 1;
             } else {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[i] = op(x.data[i], constants.zero(Y, .{}) catch unreachable);
+                    result.data[i] = op(x.data[i], constants.zero(types.Numeric(Y), .{}) catch unreachable);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[i] = try op(x.data[i], constants.zero(Y, .{}) catch unreachable, ctx);
+                    result.data[i] = try op(x.data[i], constants.zero(types.Numeric(Y), .{}) catch unreachable, ctx);
                 }
             }
         }
@@ -69,9 +78,9 @@ pub fn apply2(
                 iy += 1;
             } else {
                 if (comptime opinfo.@"fn".params.len == 2) {
-                    result.data[i] = op(x.data[types.scast(u32, ix)], constants.zero(Y, .{}) catch unreachable);
+                    result.data[i] = op(x.data[types.scast(u32, ix)], constants.zero(types.Numeric(Y), .{}) catch unreachable);
                 } else if (comptime opinfo.@"fn".params.len == 3) {
-                    result.data[i] = try op(x.data[types.scast(u32, ix)], constants.zero(Y, .{}) catch unreachable, ctx);
+                    result.data[i] = try op(x.data[types.scast(u32, ix)], constants.zero(types.Numeric(Y), .{}) catch unreachable, ctx);
                 }
             }
 

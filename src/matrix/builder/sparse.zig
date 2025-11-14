@@ -91,7 +91,7 @@ pub fn Sparse(T: type, order: Order) type {
         }
 
         pub fn reserve(self: *Sparse(T, order), allocator: std.mem.Allocator, new_nnz: u32) !void {
-            if (self.flags.owns_data == false)
+            if (!self.flags.owns_data)
                 return;
 
             if (new_nnz <= self._dlen and new_nnz <= self._rlen and new_nnz <= self._clen)
