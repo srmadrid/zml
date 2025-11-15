@@ -26,10 +26,6 @@ pub const Real = real.Real;
 pub const complex = @import("complex.zig");
 pub const Complex = complex.Complex;
 
-pub const vector = @import("vector.zig");
-pub const matrix = @import("matrix.zig");
-pub const array = @import("array.zig");
-
 const constants = @import("constants.zig");
 pub const zero = constants.zero;
 pub const one = constants.one;
@@ -188,6 +184,10 @@ pub const ceil = ops.ceil;
 pub const ceil_ = ops.ceil_;
 
 pub const set = ops.set;
+
+pub const vector = @import("vector.zig");
+pub const matrix = @import("matrix.zig");
+pub const array = @import("array.zig");
 
 pub const linalg = @import("linalg.zig");
 

@@ -93,7 +93,7 @@ pub inline fn add(
         .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
         .array => switch (comptime types.domainType(Y)) {
             .expression => @compileError("zml.add between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
-            .array, .numeric => { // array + array, array + numeric
+            .array, .numeric => { // array + array, numeric + array, array + numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
                     .bool => @compileError("zml.add not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
                     .int, .float, .cfloat => {

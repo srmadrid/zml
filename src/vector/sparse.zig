@@ -10,7 +10,8 @@ const int = @import("../int.zig");
 const vector = @import("../vector.zig");
 const Flags = vector.Flags;
 
-/// A sparse vector type.
+/// Sparse vector type, represented as a contiguous array of non-zero elements
+/// of type `T` along with their corresponding indices, in ascending order.
 pub fn Sparse(T: type) type {
     if (!types.isNumeric(T))
         @compileError("vector.Sparse requires a numeric type, got " ++ @typeName(T));
@@ -51,7 +52,7 @@ pub fn Sparse(T: type) type {
         /// Returns
         /// -------
         /// `vector.Sparse(T)`:
-        /// The newly initialized `vector.Sparse(T)`.
+        /// The newly initialized vector.
         ///
         /// Errors
         /// ------

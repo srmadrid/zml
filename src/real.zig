@@ -1,3 +1,5 @@
+//! Namespace for real operations.
+
 const std = @import("std");
 const Rational = @import("rational.zig").Rational;
 

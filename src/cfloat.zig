@@ -1,3 +1,5 @@
+//! Namespace for cfloat operations.
+
 const std = @import("std");
 const types = @import("types.zig");
 const float = @import("float.zig");
@@ -5,11 +7,17 @@ const Coerce = types.Coerce;
 const Scalar = types.Scalar;
 const scast = types.scast;
 
+/// Fixed precision complex type, represented as two 16-bit floats.
 pub const cf16 = Cfloat(f16);
+/// Fixed precision complex type, represented as two 32-bit floats.
 pub const cf32 = Cfloat(f32);
+/// Fixed precision complex type, represented as two 64-bit floats.
 pub const cf64 = Cfloat(f64);
+/// Fixed precision complex type, represented as two 80-bit floats.
 pub const cf80 = Cfloat(f80);
+/// Fixed precision complex type, represented as two 128-bit floats.
 pub const cf128 = Cfloat(f128);
+/// Compile-time complex type, represented as two compile-time floats.
 pub const comptime_cfloat = Cfloat(comptime_float);
 
 pub fn Cfloat(comptime T: type) type {

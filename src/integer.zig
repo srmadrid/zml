@@ -1,3 +1,5 @@
+//! Namespace for integer operations.
+
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -10,7 +12,9 @@ const Rational = rational.Rational;
 const complex = @import("complex.zig");
 const Complex = complex.Complex;
 
-/// Arbitrary-precision integer type.
+/// Arbitrary-precision integer type, represented as an array of 32-bit limbs.
+/// Each limb stores a portion of the integer's value, with the least
+/// significant limb at index 0.
 pub const Integer = struct {
     limbs: [*]u32,
     size: u32,

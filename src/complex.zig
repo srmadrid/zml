@@ -1,3 +1,5 @@
+//! Namespace for complex operations.
+
 const std = @import("std");
 
 const types = @import("types.zig");
@@ -5,7 +7,8 @@ const ops = @import("ops.zig");
 const rational = @import("rational.zig");
 const _real = @import("real.zig");
 
-/// A complex number type represented as two `Rational` or `Real` numbers.
+/// Arbitrary-precision complex type, represented as two arbitrary-precision
+/// rational (`Rational`) or real (`Real`) numbers.
 pub fn Complex(comptime T: type) type {
     if (T != rational.Rational and T != _real.Real)
         @compileError("Unsupported type for Complex: " ++ @typeName(T));

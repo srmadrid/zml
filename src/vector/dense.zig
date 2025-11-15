@@ -10,7 +10,8 @@ const vector = @import("../vector.zig");
 const Flags = vector.Flags;
 const matrix = @import("../matrix.zig");
 
-/// A dense vector type.
+/// Dense vector type, represented as a contiguous array of elements of type
+/// `T`.
 pub fn Dense(T: type) type {
     if (!types.isNumeric(T))
         @compileError("vector.Dense requires a numeric type, got " ++ @typeName(T));
@@ -41,7 +42,7 @@ pub fn Dense(T: type) type {
         /// Returns
         /// -------
         /// `vector.Dense(T)`:
-        /// The newly initialized `vector.Dense(T)`.
+        /// The newly initialized vector.
         ///
         /// Errors
         /// ------
@@ -86,7 +87,7 @@ pub fn Dense(T: type) type {
         /// Returns
         /// -------
         /// `vector.Dense(T)`:
-        /// The newly initialized `vector.Dense(T)`.
+        /// The newly initialized vector.
         ///
         /// Errors
         /// ------
@@ -123,14 +124,21 @@ pub fn Dense(T: type) type {
             var vec: Dense(T) = try .init(allocator, len);
             errdefer vec.deinit(allocator);
 
-            const value_casted: T = types.scast(T, value);
-
             var i: u32 = 0;
 
             errdefer vec._cleanup(i, ctx);
 
             while (i < len) : (i += 1) {
-                vec.data[i] = value_casted;
+                vec.data[i] = try ops.init(
+                    T,
+                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                );
+
+                try ops.set(
+                    &vec.data[i],
+                    value,
+                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                );
             }
 
             return vec;

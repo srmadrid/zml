@@ -859,17 +859,29 @@ fn random_matrix_t(
             while (i < rows) : (i += 1) {
                 var j: u32 = 0;
                 while (j < cols) : (j += 1) {
-                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                        if (zml.types.isHermitianDenseMatrix(T) and i == j) {
-                            // diagonal of Hermitian matrix must be real
-                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), 0)) catch unreachable;
-
-                            continue;
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
                         }
-
-                        result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
                     } else {
-                        result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            result.set(i, j, complex) catch unreachable;
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            result.set(i, j, rational) catch unreachable;
+                        }
                     }
                 }
             }
@@ -884,10 +896,44 @@ fn random_matrix_t(
                 while (i < rows) : (i += 1) {
                     var j: u32 = i;
                     while (j < rows) : (j += 1) {
-                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                if ((comptime zml.types.isHermitianDenseMatrix(T)) and i == j) {
+                                    result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), 0)) catch unreachable;
+                                } else {
+                                    result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                                }
+                            } else {
+                                result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
                         } else {
-                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                if ((comptime zml.types.isHermitianDenseMatrix(T)) and i == j) {
+                                    var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                    re.num.positive = rand.boolean();
+                                    const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                        .re = re,
+                                        .im = zml.zero(zml.Rational, .{}) catch unreachable,
+                                        .flags = .{ .owns_data = true, .writable = true },
+                                    };
+                                    result.set(i, j, complex) catch unreachable;
+                                } else {
+                                    var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                    re.num.positive = rand.boolean();
+                                    var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                    im.num.positive = rand.boolean();
+                                    const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                        .re = re,
+                                        .im = im,
+                                        .flags = .{ .owns_data = true, .writable = true },
+                                    };
+                                    result.set(i, j, complex) catch unreachable;
+                                }
+                            } else {
+                                var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                rational.num.positive = rand.float(f64) < 0.5;
+                                result.set(i, j, rational) catch unreachable;
+                            }
                         }
                     }
                 }
@@ -896,10 +942,44 @@ fn random_matrix_t(
                 while (i < rows) : (i += 1) {
                     var j: u32 = 0;
                     while (j < rows) : (j += 1) {
-                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                if ((comptime zml.types.isHermitianDenseMatrix(T)) and i == j) {
+                                    result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), 0)) catch unreachable;
+                                } else {
+                                    result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                                }
+                            } else {
+                                result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
                         } else {
-                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                if ((comptime zml.types.isHermitianDenseMatrix(T)) and i == j) {
+                                    var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                    re.num.positive = rand.boolean();
+                                    const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                        .re = re,
+                                        .im = zml.zero(zml.Rational, .{}) catch unreachable,
+                                        .flags = .{ .owns_data = true, .writable = true },
+                                    };
+                                    result.set(i, j, complex) catch unreachable;
+                                } else {
+                                    var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                    re.num.positive = rand.boolean();
+                                    var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                    im.num.positive = rand.boolean();
+                                    const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                        .re = re,
+                                        .im = im,
+                                        .flags = .{ .owns_data = true, .writable = true },
+                                    };
+                                    result.set(i, j, complex) catch unreachable;
+                                }
+                            } else {
+                                var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                rational.num.positive = rand.float(f64) < 0.5;
+                                result.set(i, j, rational) catch unreachable;
+                            }
                         }
                     }
                 }
@@ -914,19 +994,57 @@ fn random_matrix_t(
                 var i: u32 = 0;
                 while (i < rows) : (i += 1) {
                     if (comptime zml.types.diagOf(T) == .non_unit) {
-                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                            result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
                         } else {
-                            result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                re.num.positive = rand.boolean();
+                                var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                im.num.positive = rand.boolean();
+                                const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                    .re = re,
+                                    .im = im,
+                                    .flags = .{ .owns_data = true, .writable = true },
+                                };
+                                result.set(i, i, complex) catch unreachable;
+                            } else {
+                                var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                rational.num.positive = rand.float(f64) < 0.5;
+                                result.set(i, i, rational) catch unreachable;
+                            }
                         }
                     }
 
                     var j: u32 = i + 1;
                     while (j < cols) : (j += 1) {
-                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
                         } else {
-                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                re.num.positive = rand.boolean();
+                                var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                im.num.positive = rand.boolean();
+                                const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                    .re = re,
+                                    .im = im,
+                                    .flags = .{ .owns_data = true, .writable = true },
+                                };
+                                result.set(i, j, complex) catch unreachable;
+                            } else {
+                                var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                rational.num.positive = rand.float(f64) < 0.5;
+                                result.set(i, j, rational) catch unreachable;
+                            }
                         }
                     }
                 }
@@ -935,18 +1053,56 @@ fn random_matrix_t(
                 while (i < rows) : (i += 1) {
                     var j: u32 = 0;
                     while (j < i and j < cols) : (j += 1) {
-                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
                         } else {
-                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                re.num.positive = rand.boolean();
+                                var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                im.num.positive = rand.boolean();
+                                const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                    .re = re,
+                                    .im = im,
+                                    .flags = .{ .owns_data = true, .writable = true },
+                                };
+                                result.set(i, j, complex) catch unreachable;
+                            } else {
+                                var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                rational.num.positive = rand.float(f64) < 0.5;
+                                result.set(i, j, rational) catch unreachable;
+                            }
                         }
                     }
 
                     if ((comptime zml.types.diagOf(T) == .non_unit) and i < cols) {
-                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                            result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                            } else {
+                                result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            }
                         } else {
-                            result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                            if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                                var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                re.num.positive = rand.boolean();
+                                var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                im.num.positive = rand.boolean();
+                                const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                    .re = re,
+                                    .im = im,
+                                    .flags = .{ .owns_data = true, .writable = true },
+                                };
+                                result.set(i, i, complex) catch unreachable;
+                            } else {
+                                var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                                rational.num.positive = rand.float(f64) < 0.5;
+                                result.set(i, i, rational) catch unreachable;
+                            }
                         }
                     }
                 }
@@ -966,10 +1122,29 @@ fn random_matrix_t(
                 const j_end = zml.int.min(cols, i + upper + 1);
                 var j: u32 = j_start;
                 while (j < j_end) : (j += 1) {
-                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                        result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            result.set(i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
                     } else {
-                        result.set(i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            result.set(i, j, complex) catch unreachable;
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            result.set(i, j, rational) catch unreachable;
+                        }
                     }
                 }
             }
@@ -982,10 +1157,29 @@ fn random_matrix_t(
 
             var i: u32 = 0;
             while (i < zml.int.min(rows, cols)) : (i += 1) {
-                if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                    result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    } else {
+                        result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    }
                 } else {
-                    result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        re.num.positive = rand.boolean();
+                        var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        im.num.positive = rand.boolean();
+                        const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                            .re = re,
+                            .im = im,
+                            .flags = .{ .owns_data = true, .writable = true },
+                        };
+                        result.set(i, i, complex) catch unreachable;
+                    } else {
+                        var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        rational.num.positive = rand.float(f64) < 0.5;
+                        result.set(i, i, rational) catch unreachable;
+                    }
                 }
             }
 
@@ -998,24 +1192,81 @@ fn random_matrix_t(
             var i: u32 = 0;
             while (i < rows) : (i += 1) {
                 if (i > 0) {
-                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                        result.set(i, i - 1, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            result.set(i, i - 1, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, i - 1, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
                     } else {
-                        result.set(i, i - 1, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            result.set(i, i - 1, complex) catch unreachable;
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            result.set(i, i - 1, rational) catch unreachable;
+                        }
                     }
                 }
 
-                if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                    result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        result.set(i, i, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    } else {
+                        result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    }
                 } else {
-                    result.set(i, i, rand.float(zml.types.Numeric(T))) catch unreachable;
+                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                        var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        re.num.positive = rand.boolean();
+                        var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        im.num.positive = rand.boolean();
+                        const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                            .re = re,
+                            .im = im,
+                            .flags = .{ .owns_data = true, .writable = true },
+                        };
+                        result.set(i, i, complex) catch unreachable;
+                    } else {
+                        var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                        rational.num.positive = rand.float(f64) < 0.5;
+                        result.set(i, i, rational) catch unreachable;
+                    }
                 }
 
                 if (i + 1 < cols) {
-                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                        result.set(i, i + 1, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            result.set(i, i + 1, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            result.set(i, i + 1, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
                     } else {
-                        result.set(i, i + 1, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            result.set(i, i + 1, complex) catch unreachable;
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            result.set(i, i + 1, rational) catch unreachable;
+                        }
                     }
                 }
             }
@@ -1159,7 +1410,7 @@ fn random_matrix_t(
     }
 }
 
-fn print_matrix(desc: []const u8, A: anytype) void {
+fn print_matrix(a: std.mem.Allocator, desc: []const u8, A: anytype) !void {
     std.debug.print("\nMatrix {s}:\n\n", .{desc});
 
     const rows = if (comptime zml.types.isSquareMatrix(@TypeOf(A)))
@@ -1180,10 +1431,24 @@ fn print_matrix(desc: []const u8, A: anytype) void {
             if ((comptime zml.types.isGeneralBlockMatrix(@TypeOf(A))) and j % A.bsize == 0 and j != 0) {
                 std.debug.print("    ", .{});
             }
-            if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(A)))) {
-                std.debug.print("{d:7.4} + {d:7.4}i  ", .{ (A.get(i, j) catch unreachable).re, (A.get(i, j) catch unreachable).im });
+
+            if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(@TypeOf(A)))) {
+                if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(A)))) {
+                    std.debug.print("{d:7.4} + {d:7.4}i,  ", .{ (A.get(i, j) catch unreachable).re, (A.get(i, j) catch unreachable).im });
+                } else {
+                    std.debug.print("{d:5.4},  ", .{A.get(i, j) catch unreachable});
+                }
             } else {
-                std.debug.print("{d:5.4}  ", .{A.get(i, j) catch unreachable});
+                if (comptime zml.types.isComplex(zml.types.Numeric(@TypeOf(A)))) {
+                    std.debug.print("(", .{});
+                    try printRational(a, (A.get(i, j) catch unreachable).re, 20);
+                    std.debug.print(") + i * (", .{});
+                    try printRational(a, (A.get(i, j) catch unreachable).im, 20);
+                    std.debug.print("),  ", .{});
+                } else {
+                    try printRational(a, A.get(i, j) catch unreachable, 20);
+                    std.debug.print(",  ", .{});
+                }
             }
         }
         std.debug.print("\n", .{});
@@ -1554,36 +1819,41 @@ fn print_vector(a: std.mem.Allocator, desc: []const u8, v: anytype) !void {
 }
 
 fn vectorTesting(a: std.mem.Allocator) !void {
-    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-    const rand = prng.random();
+    // var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    // const rand = prng.random();
 
-    var v = try random_vector_t(
-        zml.vector.Dense(zml.Rational),
-        a,
-        rand,
-        10,
-    );
-    defer v.deinit(a);
-    defer v.cleanup(.{ .element_allocator = a });
+    // var A: zml.matrix.general.Dense(zml.cf64, .col_major) = try random_matrix_t(
+    //     zml.matrix.general.Dense(zml.cf64, .col_major),
+    //     a,
+    //     rand,
+    //     4,
+    //     5,
+    // );
+    var A: zml.matrix.general.Dense(zml.cf64, .col_major) = try .eye(a, 5, .{});
+    defer A.deinit(a);
+    //defer A.cleanup(.{ .element_allocator = a });
 
-    try print_vector(a, "v", v);
+    try print_matrix(a, "A", A);
+
+    const A1 = try A.col(2);
+    try print_vector(a, "A col 2", A1);
 
     // var u = try random_vector_t(
-    //     zml.vector.Dense(f64),
+    //     zml.vector.Sparse(f64),
     //     a,
     //     rand,
     //     10,
     // );
     // defer u.deinit(a);
-    // defer u.cleanup(.{ .element_allocator = a });
+    // //defer u.cleanup(.{ .element_allocator = a });
 
     // try print_vector(a, "u", u);
 
-    var w = try zml.mul(-2, v, .{ .vector_allocator = a, .element_allocator = a });
-    defer w.deinit(a);
-    defer w.cleanup(.{ .element_allocator = a });
+    // var w = try zml.add(v, u, .{ .vector_allocator = a, .element_allocator = a });
+    // defer w.deinit(a);
+    // defer w.cleanup(.{ .element_allocator = a });
 
-    try print_vector(a, "w = v + u", w);
+    // try print_vector(a, "w = v + u", w);
 }
 
 fn symbolicTesting(a: std.mem.Allocator) !void {

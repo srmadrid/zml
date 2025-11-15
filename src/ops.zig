@@ -338,7 +338,28 @@ pub inline fn init(
 
             return .{ .re = 0, .im = 0 };
         },
-        else => @compileError("zml.init not implemented for " ++ @typeName(T) ++ " yet"),
+        .integer => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            return try integer.Integer.init(ctx.allocator, 0);
+        },
+        .rational => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            return try rational.Rational.init(ctx.allocator, 0, 0);
+        },
+        .real => @compileError("zml.init not implemented for " ++ @typeName(T) ++ " yet"),
+        .complex => @compileError("zml.init not implemented for " ++ @typeName(T) ++ " yet"),
     }
 }
 
@@ -362,7 +383,28 @@ pub inline fn copy(
 
             return x;
         },
-        else => @compileError("zml.copy not implemented for " ++ @typeName(X) ++ " yet"),
+        .integer => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            return try x.copy(ctx.allocator);
+        },
+        .rational => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                },
+            );
+
+            return try x.copy(ctx.allocator);
+        },
+        .real => @compileError("zml.copy not implemented for " ++ @typeName(X) ++ " yet"),
+        .complex => @compileError("zml.copy not implemented for " ++ @typeName(X) ++ " yet"),
     }
 }
 

@@ -1,3 +1,5 @@
+//! Namespace for int operations.
+
 const options = @import("options");
 
 const types = @import("types.zig");

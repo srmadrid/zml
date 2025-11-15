@@ -1,3 +1,5 @@
+//! Namespace for float operations.
+
 const types = @import("types.zig");
 const scast = types.scast;
 const Coerce = types.Coerce;

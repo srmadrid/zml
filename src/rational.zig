@@ -1,3 +1,5 @@
+//! Namespace for rational operations.
+
 const std = @import("std");
 
 const types = @import("types.zig");
@@ -13,8 +15,8 @@ const Complex = complex.Complex;
 pub var default_accuracy: u32 = 50;
 pub var default_internal_accuracy: u32 = 60;
 
-/// A rational number represented as a fraction of two arbitrary-precision
-/// integers.
+/// Arbotrary-precision rational type, represented as a fraction of two
+/// arbitrary-precision integers (`Integer`).
 pub const Rational = struct {
     num: Integer,
     den: Integer,

@@ -1,3 +1,5 @@
+//! Namespace for matrix types and operations.
+
 pub const general = @import("matrix/general.zig");
 pub const symmetric = @import("matrix/symmetric.zig");
 pub const hermitian = @import("matrix/hermitian.zig");

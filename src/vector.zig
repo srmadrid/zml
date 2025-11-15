@@ -1,3 +1,5 @@
+//! Namespace for vector types and operations.
+
 const std = @import("std");
 
 const types = @import("types.zig");

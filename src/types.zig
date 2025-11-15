@@ -1,9 +1,11 @@
+//! Namespace for type definitions and utilities.
+
 const std = @import("std");
 
 const constants = @import("constants.zig");
 
-pub const default_uint = usize;
-pub const default_int = isize;
+pub const default_uint = u32;
+pub const default_int = i32;
 pub const default_float = f64;
 
 const cfloat = @import("cfloat.zig");
