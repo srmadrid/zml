@@ -209,7 +209,7 @@ pub fn Dense(T: type) type {
         /// A pointer to the vector to get the element from.
         ///
         /// `index` (`u32`):
-        /// The index of the element to get. Assumed to be valid.
+        /// The index of the element to get. Assumed to be within bounds.
         ///
         /// Returns
         /// -------
@@ -269,7 +269,7 @@ pub fn Dense(T: type) type {
         /// A pointer to the vector to set the element in.
         ///
         /// `index` (`u32`):
-        /// The index of the element to set. Assumed to be valid.
+        /// The index of the element to set. Assumed to be within bounds.
         ///
         /// `value` (`T`):
         /// The value to set the element to.

@@ -992,7 +992,7 @@ fn random_matrix_t(
 
             if (comptime zml.types.uploOf(T) == .upper) {
                 var i: u32 = 0;
-                while (i < rows) : (i += 1) {
+                while (i < zml.int.min(rows, cols)) : (i += 1) {
                     if (comptime zml.types.diagOf(T) == .non_unit) {
                         if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
                             if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
@@ -1822,21 +1822,20 @@ fn vectorTesting(a: std.mem.Allocator) !void {
     // var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
     // const rand = prng.random();
 
-    // var A: zml.matrix.general.Dense(zml.cf64, .col_major) = try random_matrix_t(
-    //     zml.matrix.general.Dense(zml.cf64, .col_major),
+    // var A = try random_matrix_t(
+    //     zml.matrix.triangular.Dense(f64, .lower, .unit, .col_major),
     //     a,
     //     rand,
-    //     4,
+    //     7,
     //     5,
     // );
-    var A: zml.matrix.general.Dense(zml.cf64, .col_major) = try .eye(a, 5, .{});
+    var A: zml.matrix.triangular.Dense(zml.Rational, .lower, .unit, .col_major) =
+        try .eye(a, 7, .{ .element_allocator = a });
     defer A.deinit(a);
-    //defer A.cleanup(.{ .element_allocator = a });
+    defer A.cleanup(.{ .element_allocator = a });
 
     try print_matrix(a, "A", A);
-
-    const A1 = try A.col(2);
-    try print_vector(a, "A col 2", A1);
+    try print_matrix(a, "A^T", A.transpose());
 
     // var u = try random_vector_t(
     //     zml.vector.Sparse(f64),

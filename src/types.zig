@@ -368,6 +368,8 @@ pub inline fn numericType(comptime T: type) NumericType {
 }
 
 pub fn isNumeric(comptime T: type) bool {
+    @setEvalBranchQuota(10000000);
+
     switch (@typeInfo(T)) {
         .bool => return true,
         .int, .comptime_int => {

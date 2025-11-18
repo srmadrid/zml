@@ -16,6 +16,10 @@ const rational = @import("rational.zig");
 const real = @import("real.zig");
 const complex = @import("complex.zig");
 
+const _zero: u32 = 0;
+const _one: u32 = 1;
+const _two: u32 = 2;
+
 pub inline fn zero(
     comptime T: type,
     ctx: anytype,
@@ -53,7 +57,7 @@ pub inline fn zero(
                 return .init(allocator, 2);
             } else {
                 return .{
-                    .limbs = &.{},
+                    .limbs = @ptrCast(@constCast(&_zero)),
                     .size = 0,
                     ._llen = 0,
                     .positive = true,
@@ -134,7 +138,7 @@ pub inline fn one(
                 return result;
             } else {
                 return .{
-                    .limbs = @constCast((&[_]u32{1}).ptr),
+                    .limbs = @ptrCast(@constCast(&_one)),
                     .size = 1,
                     ._llen = 0,
                     .positive = true,
@@ -217,7 +221,7 @@ pub inline fn two(
                 return result;
             } else {
                 return .{
-                    .limbs = @constCast((&[_]u32{2}).ptr),
+                    .limbs = @ptrCast(@constCast(&_two)),
                     .size = 1,
                     ._llen = 0,
                     .positive = true,

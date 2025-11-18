@@ -1,11 +1,6 @@
 const std = @import("std");
 
 const types = @import("../../types.zig");
-const ReturnType1 = types.ReturnType1;
-const ReturnType2 = types.ReturnType2;
-const EnsureMatrix = types.EnsureMatrix;
-const Coerce = types.Coerce;
-const Numeric = types.Numeric;
 const Order = types.Order;
 const Uplo = types.Uplo;
 const Diag = types.Diag;
@@ -20,13 +15,12 @@ const Flags = matrix.Flags;
 
 const array = @import("../../array.zig");
 
-const linalg = @import("../../linalg.zig");
-
-/// Dense general matrix type, represented as a contiguous array of elements of
-/// type `T`, stored in either column-major or row-major order.
+/// Dense general matrix type, represented as a contiguous array of
+/// `rows × cols` elements of type `T`, stored in either column-major or
+/// row-major order with a specified leading dimension.
 pub fn Dense(T: type, order: Order) type {
     if (!types.isNumeric(T))
-        @compileError("Dense requires a numeric type, got " ++ @typeName(T));
+        @compileError("matrix.general.Dense requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]T,
@@ -43,8 +37,7 @@ pub fn Dense(T: type, order: Order) type {
             .flags = .{ .owns_data = false },
         };
 
-        /// Initializes a new `matrix.general.Dense(T, order)` with the
-        /// specified rows and columns.
+        /// Initializes a new matrix with the specified rows and columns.
         ///
         /// Parameters
         /// ----------
@@ -69,6 +62,10 @@ pub fn Dense(T: type, order: Order) type {
         ///
         /// `matrix.Error.ZeroDimension`:
         /// If either `rows` or `cols` is zero.
+        ///
+        /// Notes
+        /// -----
+        /// The elements are not initialized.
         pub fn init(
             allocator: std.mem.Allocator,
             rows: u32,
@@ -86,8 +83,8 @@ pub fn Dense(T: type, order: Order) type {
             };
         }
 
-        /// Initializes a new `matrix.general.Dense(T, order)` with the
-        /// specified rows and columns, filled with the specified value.
+        /// Initializes a new matrix with the specified rows and columns, filled
+        /// with the specified value.
         ///
         /// Parameters
         /// ----------
@@ -154,7 +151,7 @@ pub fn Dense(T: type, order: Order) type {
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(mat._index(i, j), order, ctx);
+            errdefer mat._cleanup(i, j, order, ctx);
 
             if (comptime order == .col_major) {
                 while (j < cols) : (j += 1) {
@@ -193,8 +190,7 @@ pub fn Dense(T: type, order: Order) type {
             return mat;
         }
 
-        /// Initializes a new identity `matrix.general.Dense(T, order)` of the
-        /// specified size.
+        /// Initializes a new identity matrix of the specified size.
         ///
         /// Parameters
         /// ----------
@@ -251,7 +247,7 @@ pub fn Dense(T: type, order: Order) type {
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(mat._index(i, j), order, ctx);
+            errdefer mat._cleanup(i, j, order, ctx);
 
             if (comptime order == .col_major) {
                 while (j < size) : (j += 1) {
@@ -371,10 +367,10 @@ pub fn Dense(T: type, order: Order) type {
         /// A pointer to the matrix to get the element from.
         ///
         /// `r` (`u32`):
-        /// The row index of the element to get. Assumed to be valid.
+        /// The row index of the element to get. Assumed to be within bounds.
         ///
         /// `c` (`u32`):
-        /// The column index of the element to get. Assumed to be valid.
+        /// The column index of the element to get. Assumed to be within bounds.
         ///
         /// Returns
         /// -------
@@ -430,10 +426,10 @@ pub fn Dense(T: type, order: Order) type {
         /// A pointer to the matrix to set the element in.
         ///
         /// `r` (`u32`):
-        /// The row index of the element to set. Assumed to be valid.
+        /// The row index of the element to set. Assumed to be within bounds.
         ///
         /// `c` (`u32`):
-        /// The column index of the element to set. Assumed to be valid.
+        /// The column index of the element to set. Assumed to be within bounds.
         ///
         /// `value` (`T`):
         /// The value to set the element to.
@@ -504,7 +500,7 @@ pub fn Dense(T: type, order: Order) type {
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(mat._index(i, j), order, ctx);
+            errdefer mat._cleanup(i, j, order, ctx);
 
             if (comptime order == .col_major) {
                 while (j < mat.cols) : (j += 1) {
@@ -852,10 +848,15 @@ pub fn Dense(T: type, order: Order) type {
         /// This function must be called before `deinit` if the elements are of
         /// arbitrary precision type to properly deinitialize them.
         pub fn cleanup(self: *Dense(T, order), ctx: anytype) void {
-            return _cleanup(self, self.rows * self.cols, order, ctx);
+            return self._cleanup(self.rows, self.cols, order, ctx);
         }
 
-        pub fn _cleanup(self: *Dense(T, order), num_elems: u32, iter_order: Order, ctx: anytype) void {
+        /// Cleans up the elements of the matrix, deinitializing them if
+        /// necessary, in the specified order up to position (i, j), exclusive.
+        /// In other words, if iter_order is column-major, all elements from
+        /// (0, 0) to (i - 1, j) are cleaned up, and if iter_order is row-major,
+        /// all elements from (0, 0) to (i, j - 1) are cleaned up.
+        pub fn _cleanup(self: *Dense(T, order), i: u32, j: u32, iter_order: Order, ctx: anytype) void {
             switch (comptime types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     comptime types.validateContext(@TypeOf(ctx), .{});
@@ -870,31 +871,44 @@ pub fn Dense(T: type, order: Order) type {
                         },
                     );
 
-                    var n: u32 = 0;
                     if (iter_order == .col_major) {
-                        var j: u32 = 0;
-                        while (j < self.cols and n < num_elems) : (j += 1) {
-                            var i: u32 = 0;
-                            while (i < self.rows and n < num_elems) : (i += 1) {
-                                ops.deinit(
-                                    &self.data[self._index(i, j)],
-                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
-                                );
-
-                                n += 1;
+                        var _j: u32 = 0;
+                        while (_j <= int.min(j, self.cols - 1)) : (_j += 1) {
+                            var _i: u32 = 0;
+                            if (_j == j) {
+                                while (_i < int.min(i, self.rows)) : (_i += 1) {
+                                    ops.deinit(
+                                        &self.data[self._index(_i, _j)],
+                                        types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                    );
+                                }
+                            } else {
+                                while (_i < self.rows) : (_i += 1) {
+                                    ops.deinit(
+                                        &self.data[self._index(_i, _j)],
+                                        types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                    );
+                                }
                             }
                         }
                     } else {
-                        var i: u32 = 0;
-                        while (i < self.rows and n < num_elems) : (i += 1) {
-                            var j: u32 = 0;
-                            while (j < self.cols and n < num_elems) : (j += 1) {
-                                ops.deinit(
-                                    &self.data[self._index(i, j)],
-                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
-                                );
-
-                                n += 1;
+                        var _i: u32 = 0;
+                        while (_i <= int.min(i, self.rows - 1)) : (_i += 1) {
+                            var _j: u32 = 0;
+                            if (_i == i) {
+                                while (_j < int.min(j, self.cols)) : (_j += 1) {
+                                    ops.deinit(
+                                        &self.data[self._index(_i, _j)],
+                                        types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                    );
+                                }
+                            } else {
+                                while (_j < self.cols) : (_j += 1) {
+                                    ops.deinit(
+                                        &self.data[self._index(_i, _j)],
+                                        types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                    );
+                                }
                             }
                         }
                     }
