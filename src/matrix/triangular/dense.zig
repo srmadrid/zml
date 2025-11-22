@@ -94,8 +94,8 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
             };
         }
 
-        /// Initializes a new matrix with the specified rows and columns, filled
-        /// with the specified value.
+        /// Initializes a new matrix with the specified rows and columns, with
+        /// the triangular part of the matrix filled with the specified value.
         ///
         /// Parameters
         /// ----------
@@ -772,11 +772,6 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                                 self.data[self._index(i, j)],
                                 types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
                             );
-
-                            mat.data[mat._index(j, i)] = try constants.zero(
-                                T,
-                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
-                            );
                         }
 
                         if (comptime diag == .unit) {
@@ -790,9 +785,25 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                                 types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
                             );
                         }
+
+                        i = j + 1;
+                        while (i < mat.rows) : (i += 1) {
+                            mat.data[mat._index(i, j)] = try constants.zero(
+                                T,
+                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                            );
+                        }
                     }
                 } else { // cl
                     while (j < mat.cols) : (j += 1) {
+                        i = 0;
+                        while (i < j) : (i += 1) {
+                            mat.data[mat._index(i, j)] = try constants.zero(
+                                T,
+                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                            );
+                        }
+
                         if (comptime diag == .unit) {
                             mat.data[mat._index(j, j)] = try constants.one(
                                 T,
@@ -811,17 +822,20 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                                 self.data[self._index(i, j)],
                                 types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
                             );
-
-                            mat.data[mat._index(j, i)] = try constants.zero(
-                                T,
-                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
-                            );
                         }
                     }
                 }
             } else {
                 if (comptime uplo == .upper) { // ru
                     while (i < mat.rows) : (i += 1) {
+                        j = 0;
+                        while (j < i) : (j += 1) {
+                            mat.data[mat._index(i, j)] = try constants.zero(
+                                T,
+                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                            );
+                        }
+
                         if (comptime diag == .unit) {
                             mat.data[mat._index(i, i)] = try constants.one(
                                 T,
@@ -840,11 +854,6 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                                 self.data[self._index(i, j)],
                                 types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
                             );
-
-                            mat.data[mat._index(j, i)] = try constants.zero(
-                                T,
-                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
-                            );
                         }
                     }
                 } else { // rl
@@ -853,11 +862,6 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                         while (j < i) : (j += 1) {
                             mat.data[mat._index(i, j)] = try ops.copy(
                                 self.data[self._index(i, j)],
-                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
-                            );
-
-                            mat.data[mat._index(j, i)] = try constants.zero(
-                                T,
                                 types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
                             );
                         }
@@ -870,6 +874,14 @@ pub fn Dense(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                         } else {
                             mat.data[mat._index(i, i)] = try ops.copy(
                                 self.data[self._index(i, i)],
+                                types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                            );
+                        }
+
+                        j = i + 1;
+                        while (j < mat.cols) : (j += 1) {
+                            mat.data[mat._index(i, j)] = try constants.zero(
+                                T,
                                 types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
                             );
                         }

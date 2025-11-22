@@ -1823,14 +1823,14 @@ fn vectorTesting(a: std.mem.Allocator) !void {
     // const rand = prng.random();
 
     // var A = try random_matrix_t(
-    //     zml.matrix.triangular.Dense(f64, .lower, .unit, .col_major),
+    //     zml.matrix.Banded(zml.Rational, .col_major),
     //     a,
     //     rand,
     //     7,
     //     5,
     // );
-    var A: zml.matrix.triangular.Dense(zml.Rational, .lower, .unit, .col_major) =
-        try .eye(a, 7, .{ .element_allocator = a });
+    var A: zml.matrix.Banded(zml.Rational, .col_major) =
+        try .eye(a, 6, 3, 2, .{ .element_allocator = a });
     defer A.deinit(a);
     defer A.cleanup(.{ .element_allocator = a });
 
