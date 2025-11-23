@@ -1819,18 +1819,18 @@ fn print_vector(a: std.mem.Allocator, desc: []const u8, v: anytype) !void {
 }
 
 fn vectorTesting(a: std.mem.Allocator) !void {
-    // var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-    // const rand = prng.random();
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
 
-    // var A = try random_matrix_t(
-    //     zml.matrix.Banded(zml.Rational, .col_major),
-    //     a,
-    //     rand,
-    //     7,
-    //     5,
-    // );
-    var A: zml.matrix.Banded(zml.Rational, .col_major) =
-        try .eye(a, 6, 3, 2, .{ .element_allocator = a });
+    var A = try random_matrix_t(
+        zml.matrix.Tridiagonal(zml.Rational),
+        a,
+        rand,
+        7,
+        7,
+    );
+    // var A: zml.matrix.Tridiagonal(zml.Rational) =
+    //     try .eye(a, 6, .{ .element_allocator = a });
     defer A.deinit(a);
     defer A.cleanup(.{ .element_allocator = a });
 

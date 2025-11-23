@@ -11,11 +11,11 @@ const Flags = matrix.Flags;
 
 const array = @import("../array.zig");
 
-/// Banded matrix type, represented as a contiguous `n × (lower + upper + 1)`
-/// array of elements of type `T`, stored in either column-major (`n = cols`) or
-/// row-major (`n = rows`) order. For column-major storage, each element
-/// `(i, j)` is stored at `(upper + i - j, j)`. For row-major storage, each
-/// element `(i, j)` is stored at `(i, lower + j - i)`.
+/// Banded matrix type, represented as a contiguous array of
+/// `n × (lower + upper + 1)` elements of type `T`, stored in either
+/// column-major (`n = cols`) or row-major (`n = rows`) order. For column-major
+/// storage, each element `(i, j)` is stored at `(upper + i - j, j)`. For
+/// row-major storage, each element `(i, j)` is stored at `(i, lower + j - i)`.
 pub fn Banded(T: type, order: Order) type {
     if (!types.isNumeric(T))
         @compileError("matrix.Banded requires a numeric type, got " ++ @typeName(T));
@@ -104,7 +104,8 @@ pub fn Banded(T: type, order: Order) type {
         }
 
         /// Initializes a new matrix with the specified rows, columns, and lower
-        /// and upper bandwidths, filled with the specified value.
+        /// and upper bandwidths, with the banded part of the matrix filled with
+        /// the specified value.
         ///
         /// Parameters
         /// ----------

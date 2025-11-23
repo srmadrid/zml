@@ -509,7 +509,7 @@ pub fn Diagonal(T: type) type {
                 },
             };
 
-            var mat: matrix.general.Dense(T, order) = try .init(allocator, self.size, self.size);
+            var mat: matrix.general.Dense(T, order) = try .init(allocator, self.rows, self.cols);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;

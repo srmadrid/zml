@@ -11,11 +11,9 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureMatrix = types.EnsureMatrix;
-const Coerce = types.Coerce;
-const Numeric = types.Numeric;
-const ReturnType2 = types.ReturnType2;
 const Order = types.Order;
+const Uplo = types.Uplo;
+const Diag = types.Diag;
 const ops = @import("../ops.zig");
 const constants = @import("../constants.zig");
 const int = @import("../int.zig");
@@ -30,9 +28,17 @@ pub const Direction = enum {
     backward,
 };
 
+/// Permutation matrix type, represented as a contiguous array of `size`
+/// elements of type `u32` holding a permutation of `0 .. size - 1`. If
+/// `direction` is forward, the element at index `i` indicates the column
+/// index of the 1 in row `i`, i.e., if `data[i] = j`, then the element at
+/// row `i` and column `j` is 1, and all other elements in row `i` are 0. If
+/// `direction` is backward, the same applies but for columns, i.e., if
+/// `data[j] = i`, then the element at row `i` and column `j` is 1, and all
+/// other elements in column `j` are 0.
 pub fn Permutation(T: type) type {
     if (!types.isNumeric(T))
-        @compileError("Permutation requires a numeric type, got " ++ @typeName(T));
+        @compileError("matrix.Permutation requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]u32,
@@ -51,6 +57,32 @@ pub fn Permutation(T: type) type {
             return T;
         }
 
+        /// Initializes a new matrix with the specified size.
+        ///
+        /// Parameters
+        /// ----------
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory allocations.
+        ///
+        /// `size` (`u32`):
+        /// The size of the (square) matrix.
+        ///
+        /// Returns
+        /// -------
+        /// `matrix.Permutation(T)`:
+        /// The newly initialized matrix.
+        ///
+        /// Errors
+        /// ------
+        /// `std.mem.Allocator.Error.OutOfMemory`:
+        /// If memory allocation fails.
+        ///
+        /// `matrix.Error.ZeroDimension`:
+        /// If `size` is zero.
+        ///
+        /// Notes
+        /// -----
+        /// The elements are not initialized.
         pub fn init(
             allocator: std.mem.Allocator,
             size: u32,
@@ -66,11 +98,33 @@ pub fn Permutation(T: type) type {
             };
         }
 
+        /// Initializes a new identity matrix of the specified size.
+        ///
+        /// Parameters
+        /// ----------
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory allocations.
+        ///
+        /// `size` (`u32`):
+        /// The size of the (square) matrix.
+        ///
+        /// Returns
+        /// -------
+        /// `matrix.Permutation(T)`:
+        /// The newly initialized identity matrix.
+        ///
+        /// Errors
+        /// ------
+        /// `std.mem.Allocator.Error.OutOfMemory`:
+        /// If memory allocation fails.
+        ///
+        /// `matrix.Error.ZeroDimension`:
+        /// If `size` is zero.
         pub fn eye(
             allocator: std.mem.Allocator,
             size: u32,
         ) !Permutation(T) {
-            const mat: Permutation(T) = try .init(allocator, size);
+            var mat: Permutation(T) = try .init(allocator, size);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;
@@ -81,26 +135,63 @@ pub fn Permutation(T: type) type {
             return mat;
         }
 
-        pub fn deinit(self: *Permutation(T), allocator: ?std.mem.Allocator) void {
+        /// Deinitializes the matrix, freeing any allocated memory and
+        /// invalidating it.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*matrix.Permutation(T)`):
+        /// A pointer to the matrix to deinitialize.
+        ///
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory deallocation. Must be the same
+        /// allocator used to initialize `self`.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        pub fn deinit(self: *Permutation(T), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.?.free(self.data[0..self.size]);
+                allocator.free(self.data[0..self.size]);
             }
 
             self.* = undefined;
         }
 
-        pub fn get(self: *const Permutation(T), row: u32, col: u32) !T {
-            if (row >= self.size or col >= self.size)
+        /// Gets the element at the specified position.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const matrix.Permutation(T)`):
+        /// A pointer to the matrix to get the element from.
+        ///
+        /// `r` (`u32`):
+        /// The row index of the element to get.
+        ///
+        /// `c` (`u32`):
+        /// The column index of the element to get.
+        ///
+        /// Returns
+        /// -------
+        /// `T`:
+        /// The element at the specified position.
+        ///
+        /// Errors
+        /// ------
+        /// `matrix.Error.PositionOutOfBounds`:
+        /// If `r` or `c` is out of bounds.
+        pub fn get(self: *const Permutation(T), r: u32, c: u32) !T {
+            if (r >= self.size or c >= self.size)
                 return matrix.Error.PositionOutOfBounds;
 
             if (self.direction == .forward) {
-                if (self.data[row] == col) {
+                if (self.data[r] == c) {
                     return constants.one(T, .{}) catch unreachable;
                 } else {
                     return constants.zero(T, .{}) catch unreachable;
                 }
             } else {
-                if (self.data[col] == row) {
+                if (self.data[c] == r) {
                     return constants.one(T, .{}) catch unreachable;
                 } else {
                     return constants.zero(T, .{}) catch unreachable;
@@ -108,9 +199,24 @@ pub fn Permutation(T: type) type {
             }
         }
 
+        /// Gets the element at the specified position without bounds checking.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const matrix.Permutation(T)`):
+        /// A pointer to the matrix to get the element from.
+        ///
+        /// `r` (`u32`):
+        /// The row index of the element to get. Assumed to be within bounds.
+        ///
+        /// `c` (`u32`):
+        /// The column index of the element to get. Assumed to be within bounds.
+        ///
+        /// Returns
+        /// -------
+        /// `T`:
+        /// The element at the specified position.
         pub inline fn at(self: *const Permutation(T), row: u32, col: u32) T {
-            // Unchecked version of get. Assumes row and col are valid and
-            // in banded range.
             if (self.direction == .forward) {
                 if (self.data[row] == col) {
                     return constants.one(T, .{}) catch unreachable;
@@ -142,66 +248,159 @@ pub fn Permutation(T: type) type {
         //     }
         // }
 
+        /// Returns a transposed view of the matrix.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const matrix.Permutation(T)`):
+        /// The matrix to transpose.
+        ///
+        /// Returns
+        /// -------
+        /// `matrix.Permutation(T)`:
+        /// The transposed matrix.
+        pub fn transpose(self: Permutation(T)) Permutation(T) {
+            return .{
+                .data = self.data,
+                .size = self.size,
+                .direction = if (self.direction == .forward) .backward else .forward,
+                .flags = self.flags,
+            };
+        }
+
+        /// Copies the permutation matrix to a general dense matrix.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const matrix.Permutation(T)`):
+        /// A pointer to the matrix to copy.
+        ///
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory allocations.
+        ///
+        /// `order` (`Order`):
+        /// The storage order of the resulting matrix.
+        ///
+        /// `ctx` (`anytype`):
+        /// A context struct providing necessary resources and configuration for
+        /// the operation. The required fields depend on the type `T`. If the
+        /// context is missing required fields or contains unnecessary or
+        /// wrongly typed fields, the compiler will emit a detailed error
+        /// message describing the expected structure.
+        ///
+        /// Returns
+        /// -------
+        /// `matrix.general.Dense(T, order)`:
+        /// The copied matrix.
+        ///
+        /// Errors
+        /// ------
+        /// `std.mem.Allocator.Error.OutOfMemory`:
+        /// If memory allocation fails.
+        ///
+        /// Notes
+        /// -----
+        /// If the elements are of arbitrary precision type, they are deep
+        /// copied.
         pub fn copyToGeneralDenseMatrix(
             self: Permutation(T),
             allocator: std.mem.Allocator,
             comptime order: Order,
             ctx: anytype,
         ) !matrix.general.Dense(T, order) {
-            var result: matrix.general.Dense(T, order) = try .init(allocator, self.size, self.size);
-            errdefer result.deinit(allocator);
+            comptime switch (types.numericType(T)) {
+                .bool, .int, .float, .cfloat => {
+                    types.validateContext(@TypeOf(ctx), .{});
+                },
+                .integer, .rational, .real, .complex => {
+                    types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+                },
+            };
+
+            var mat: matrix.general.Dense(T, order) = try .init(allocator, self.size, self.size);
+            errdefer mat.deinit(allocator);
+
+            var i: u32 = 0;
+            var j: u32 = 0;
+
+            errdefer mat._cleanup(i, j, order, ctx);
 
             if (comptime order == .col_major) {
                 if (self.direction == .forward) {
-                    var j: u32 = 0;
                     while (j < self.size) : (j += 1) {
-                        var i: u32 = 0;
+                        i = 0;
                         while (i < self.size) : (i += 1) {
-                            result.data[i + j * result.ld] = if (self.data[i] == j)
-                                constants.one(T, ctx) catch unreachable
+                            mat.data[mat._index(i, j)] = if (self.data[i] == j)
+                                try constants.one(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                )
                             else
-                                constants.zero(T, ctx) catch unreachable;
+                                try constants.zero(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                );
                         }
                     }
                 } else {
-                    var i: u32 = 0;
                     while (i < self.size) : (i += 1) {
-                        var j: u32 = 0;
+                        j = 0;
                         while (j < self.size) : (j += 1) {
-                            result.data[i + j * result.ld] = if (self.data[j] == i)
-                                constants.one(T, ctx) catch unreachable
+                            mat.data[mat._index(i, j)] = if (self.data[j] == i)
+                                try constants.one(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                )
                             else
-                                constants.zero(T, ctx) catch unreachable;
+                                try constants.zero(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                );
                         }
                     }
                 }
             } else {
                 if (self.direction == .forward) {
-                    var i: u32 = 0;
                     while (i < self.size) : (i += 1) {
-                        var j: u32 = 0;
+                        j = 0;
                         while (j < self.size) : (j += 1) {
-                            result.data[i * result.ld + j] = if (self.data[i] == j)
-                                constants.one(T, ctx) catch unreachable
+                            mat.data[mat._index(i, j)] = if (self.data[i] == j)
+                                try constants.one(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                )
                             else
-                                constants.zero(T, ctx) catch unreachable;
+                                try constants.zero(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                );
                         }
                     }
                 } else {
-                    var j: u32 = 0;
                     while (j < self.size) : (j += 1) {
-                        var i: u32 = 0;
+                        i = 0;
                         while (i < self.size) : (i += 1) {
-                            result.data[i * result.ld + j] = if (self.data[j] == i)
-                                constants.one(T, ctx) catch unreachable
+                            mat.data[mat._index(i, j)] = if (self.data[j] == i)
+                                try constants.one(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                )
                             else
-                                constants.zero(T, ctx) catch unreachable;
+                                try constants.zero(
+                                    T,
+                                    types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                                );
                         }
                     }
                 }
             }
 
-            return result;
+            return mat;
         }
 
         pub fn copyToDenseArray(
@@ -264,15 +463,6 @@ pub fn Permutation(T: type) type {
             }
 
             return result;
-        }
-
-        pub fn transpose(self: Permutation(T)) Permutation(T) {
-            return .{
-                .data = self.data,
-                .size = self.size,
-                .direction = if (self.direction == .forward) .backward else .forward,
-                .flags = self.flags,
-            };
         }
 
         // pub fn submatrix(
