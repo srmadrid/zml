@@ -31,6 +31,7 @@ pub const Error = error{
     DimensionMismatch,
     InvalidBandwidth,
     NotSquare,
+    DataNotOwned,
 };
 
 pub const Flags = packed struct {

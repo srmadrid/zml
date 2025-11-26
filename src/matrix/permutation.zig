@@ -1,13 +1,3 @@
-//! Storage scheme:
-//!
-//! A 1-d array of size `n` stores the permutation of 0..n-1. If `direction` is
-//! `.forward`, the element at index `i` indicates the column index of the 1 in
-//! row `i`, i.e., if `data[i] = j`, then the element at row `i` and column `j`
-//! is 1, and all other elements in row `i` are 0. If `direction` is
-//! `.backward`, the same applies but for columns, i.e., if `data[j] = i`,
-//! then the element at row `i` and column `j` is 1, and all other elements in
-//! column `j` are 0.
-
 const std = @import("std");
 
 const types = @import("../types.zig");

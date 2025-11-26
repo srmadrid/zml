@@ -627,7 +627,7 @@ pub fn Diagonal(T: type) type {
         ///
         /// Parameters
         /// ----------
-        /// `self` (`*matrix.Diagonal(T, order)`):
+        /// `self` (`*matrix.Diagonal(T)`):
         /// A pointer to the matrix to clean up.
         ///
         /// `ctx` (`anytype`):
