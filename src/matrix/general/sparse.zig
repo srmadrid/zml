@@ -1,28 +1,18 @@
-//! Storage scheme:
-//!
-//! If order is column major, CSC (Compressed Sparse Column), otherwise, i.e.,
-//! row major, CSR (Compressed Sparse Row).
-
 const std = @import("std");
 
 const types = @import("../../types.zig");
-const EnsureMatrix = types.EnsureMatrix;
-const Coerce = types.Coerce;
-const ReturnType2 = types.ReturnType2;
-const Numeric = types.Numeric;
 const Order = types.Order;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
 
 const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../../array.zig");
-
+/// Sparse general matrix type, represented in either CSC or CSR format,
+/// depending on if `order` is column-major or row-major, respectively.
 pub fn Sparse(T: type, order: Order) type {
     if (!types.isNumeric(T))
-        @compileError("T must be a numeric type");
+        @compileError("matrix.general.Sparse requires a numeric type, got " ++ @typeName(T));
 
     return struct {
         data: [*]T,
@@ -43,6 +33,26 @@ pub fn Sparse(T: type, order: Order) type {
             .flags = .{ .owns_data = false },
         };
 
+        /// Deinitializes the matrix, freeing any allocated memory and
+        /// invalidating it.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*matrix.general.Sparse(T, order)`):
+        /// A pointer to the matrix to deinitialize.
+        ///
+        /// `allocator` (`std.mem.Allocator`):
+        /// The allocator to use for memory deallocation. Must be the same
+        /// allocator used to compile `self`.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Notes
+        /// -----
+        /// If the elements are of arbitrary precision type, `cleanup` must be
+        /// called before `deinit` to properly deinitialize the elements.
         pub fn deinit(self: *Sparse(T, order), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.free(self.data[0..self.nnz]);
@@ -53,6 +63,28 @@ pub fn Sparse(T: type, order: Order) type {
             self.* = undefined;
         }
 
+        /// Gets the element at the specified position.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const matrix.general.Sparse(T, order)`):
+        /// A pointer to the matrix to get the element from.
+        ///
+        /// `r` (`u32`):
+        /// The row index of the element to get.
+        ///
+        /// `c` (`u32`):
+        /// The column index of the element to get.
+        ///
+        /// Returns
+        /// -------
+        /// `T`:
+        /// The element at the specified position.
+        ///
+        /// Errors
+        /// ------
+        /// `matrix.Error.PositionOutOfBounds`:
+        /// If `r` or `c` is out of bounds.
         pub fn get(self: *const Sparse(T, order), r: u32, c: u32) !T {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
@@ -84,8 +116,24 @@ pub fn Sparse(T: type, order: Order) type {
             return constants.zero(T, .{}) catch unreachable;
         }
 
+        /// Gets the element at the specified position without bounds checking.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*const matrix.general.Sparse(T, order)`):
+        /// A pointer to the matrix to get the element from.
+        ///
+        /// `r` (`u32`):
+        /// The row index of the element to get. Assumed to be within bounds.
+        ///
+        /// `c` (`u32`):
+        /// The column index of the element to get. Assumed to be within bounds.
+        ///
+        /// Returns
+        /// -------
+        /// `T`:
+        /// The element at the specified position.
         pub fn at(self: *Sparse(T, order), r: u32, c: u32) T {
-            // Unchecked version of get. Assumes r and c are valid.
             if (comptime order == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
@@ -113,12 +161,44 @@ pub fn Sparse(T: type, order: Order) type {
             return constants.zero(T, .{}) catch unreachable;
         }
 
+        /// Sets the element at the specified position.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*matrix.general.Sparse(T, order)`):
+        /// A pointer to the matrix to set the element in.
+        ///
+        /// `r` (`u32`):
+        /// The row index of the element to set.
+        ///
+        /// `c` (`u32`):
+        /// The column index of the element to set.
+        ///
+        /// `value` (`T`):
+        /// The value to set the element to.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Errors
+        /// ------
+        /// `matrix.Error.PositionOutOfBounds`:
+        /// If `r` or `c` is out of bounds.
+        ///
+        /// `matrix.Error.BreaksStructure`:
+        /// If no existing element is present at the specified position.
+        ///
+        /// Notes
+        /// -----
+        /// If the elements are of arbitrary precision type, the existing
+        /// element at the position is not deinitialized. The user must ensure
+        /// that no memory leaks occur. Additionally, the matrix takes ownership
+        /// of `value`.
         pub fn set(self: *Sparse(T, order), r: u32, c: u32, value: T) !void {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
-            // Find the position to update. If the position does not exist,
-            // we return an error.
             if (comptime order == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
@@ -150,9 +230,35 @@ pub fn Sparse(T: type, order: Order) type {
             return matrix.Error.BreaksStructure;
         }
 
+        /// Sets the element at the specified position without bounds checking.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*matrix.general.Sparse(T, order)`):
+        /// A pointer to the matrix to set the element in.
+        ///
+        /// `r` (`u32`):
+        /// The row index of the element to set. Assumed to be within bounds and
+        /// that an existing element is present at the position.
+        ///
+        /// `c` (`u32`):
+        /// The column index of the element to set. Assumed to be within bounds
+        /// and that an existing element is present at the position.
+        ///
+        /// `value` (`T`):
+        /// The value to set the element to.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Notes
+        /// -----
+        /// If the elements are of arbitrary precision type, the existing
+        /// element at the position is not deinitialized. The user must ensure
+        /// that no memory leaks occur. Additionally, the matrix takes ownership
+        /// of `value`.
         pub fn put(self: *Sparse(T, order), r: u32, c: u32, value: T) void {
-            // Unchecked version of set. Assumes r and c are valid (i.e., within
-            // bounds) and returns void if the position does not exist.
             if (comptime order == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
@@ -182,6 +288,55 @@ pub fn Sparse(T: type, order: Order) type {
             }
 
             return;
+        }
+
+        /// Cleans up the elements of the matrix, deinitializing them if
+        /// necessary.
+        ///
+        /// Parameters
+        /// ----------
+        /// `self` (`*matrix.general.Sparse(T, order)`):
+        /// A pointer to the matrix to clean up.
+        ///
+        /// `ctx` (`anytype`):
+        /// A context struct providing necessary resources and configuration for
+        /// the operation. The required fields depend on the type `T`. If the
+        /// context is missing required fields or contains unnecessary or
+        /// wrongly typed fields, the compiler will emit a detailed error
+        /// message describing the expected structure.
+        ///
+        /// Returns
+        /// -------
+        /// `void`
+        ///
+        /// Notes
+        /// -----
+        /// This function must be called before `deinit` if the elements are of
+        /// arbitrary precision type to properly deinitialize them.
+        pub fn cleanup(self: *Sparse(T, order), ctx: anytype) void {
+            switch (comptime types.numericType(T)) {
+                .bool, .int, .float, .cfloat => {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    // No cleanup needed for fixed precision types.
+                },
+                .integer, .rational, .real, .complex => {
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .element_allocator = .{ .type = std.mem.Allocator, .required = true },
+                        },
+                    );
+
+                    var i: u32 = 0;
+                    while (i < self.nnz) : (i += 1) {
+                        ops.deinit(
+                            &self.data[i],
+                            types.renameStructFields(ctx, .{ .element_allocator = "allocator" }),
+                        );
+                    }
+                },
+            }
         }
     };
 }

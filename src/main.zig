@@ -1282,7 +1282,7 @@ fn random_matrix_t(
             return result;
         },
         .sparse_general => {
-            const nnz: u32 = rand.intRangeAtMost(u32, rows + cols, rows * cols / 2);
+            const nnz: u32 = rand.intRangeAtMost(u32, zml.int.max(rows, cols), rows * cols / 2);
 
             var builder: zml.matrix.builder.Sparse(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, cols, nnz);
             errdefer builder.deinit(allocator);
@@ -1296,20 +1296,39 @@ fn random_matrix_t(
                 const j = rand.intRangeAtMost(u32, 0, cols - 1);
                 if (!used.contains(.{ i, j })) {
                     try used.put(.{ i, j }, {});
-                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                        try builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64)));
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            builder.set(allocator, i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
                     } else {
-                        try builder.set(allocator, i, j, rand.float(zml.types.Numeric(T)));
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            builder.set(allocator, i, j, complex) catch unreachable;
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            builder.set(allocator, i, j, rational) catch unreachable;
+                        }
                     }
                 } else {
-                    count -= 1; // try again
+                    count -|= 1; // try again
                 }
             }
 
             return try builder.compile(allocator);
         },
         .sparse_symmetric, .sparse_hermitian => {
-            const nnz: u32 = rand.intRangeAtMost(u32, (rows + rows) / 2, (rows * rows / 2) / 2);
+            const nnz: u32 = rand.intRangeAtMost(u32, zml.int.max(rows, rows) / 2, (rows * rows / 2) / 2);
 
             var builder: zml.matrix.builder.Sparse(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, rows, nnz);
             errdefer builder.deinit(allocator);
@@ -1327,23 +1346,42 @@ fn random_matrix_t(
                 );
                 if (!used.contains(.{ i, j })) {
                     try used.put(.{ i, j }, {});
-                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                        try builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64)));
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            builder.set(allocator, i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
                     } else {
-                        try builder.set(allocator, i, j, rand.float(zml.types.Numeric(T)));
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            builder.set(allocator, i, j, complex) catch unreachable;
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            builder.set(allocator, i, j, rational) catch unreachable;
+                        }
                     }
                 } else {
-                    count -= 1; // try again
+                    count -|= 1; // try again
                 }
             }
 
             return if (comptime zml.types.isSymmetricSparseMatrix(T))
-                try builder.compileSymmetric(allocator, zml.types.uploOf(T))
+                try builder.compileSymmetric(allocator, zml.types.uploOf(T), .{ .element_allocator = allocator })
             else
-                try builder.compileHermitian(allocator, zml.types.uploOf(T));
+                try builder.compileHermitian(allocator, zml.types.uploOf(T), .{ .element_allocator = allocator });
         },
         .sparse_triangular => {
-            const nnz: u32 = rand.intRangeAtMost(u32, (rows + cols) / 2, (rows * cols / 2) / 2);
+            const nnz: u32 = rand.intRangeAtMost(u32, zml.int.max(rows, cols) / 2, (rows * cols / 2) / 2);
             var builder: zml.matrix.builder.Sparse(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, cols, nnz);
             errdefer builder.deinit(allocator);
 
@@ -1356,21 +1394,46 @@ fn random_matrix_t(
                 const j = rand.intRangeAtMost(
                     u32,
                     if (comptime zml.types.uploOf(T) == .upper) i else 0,
-                    if (comptime zml.types.uploOf(T) == .upper) cols - 1 else i,
+                    if (comptime zml.types.uploOf(T) == .upper) cols - 1 else zml.int.min(i, cols - 1),
                 );
+
+                if ((comptime zml.types.diagOf(T) == .unit) and i == j) {
+                    count -|= 1; // skip diagonal elements for unit triangular
+                    continue;
+                }
+
                 if (!used.contains(.{ i, j })) {
                     try used.put(.{ i, j }, {});
-                    if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
-                        try builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64)));
+                    if (comptime !zml.types.isArbitraryPrecision(zml.types.Numeric(T))) {
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            builder.set(allocator, i, j, zml.types.Numeric(T).init(rand.float(f64), rand.float(f64))) catch unreachable;
+                        } else {
+                            builder.set(allocator, i, j, rand.float(zml.types.Numeric(T))) catch unreachable;
+                        }
                     } else {
-                        try builder.set(allocator, i, j, rand.float(zml.types.Numeric(T)));
+                        if (comptime zml.types.isComplex(zml.types.Numeric(T))) {
+                            var re: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            re.num.positive = rand.boolean();
+                            var im: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            im.num.positive = rand.boolean();
+                            const complex: zml.Complex(zml.Rational) = zml.Complex(zml.Rational){
+                                .re = re,
+                                .im = im,
+                                .flags = .{ .owns_data = true, .writable = true },
+                            };
+                            builder.set(allocator, i, j, complex) catch unreachable;
+                        } else {
+                            var rational: zml.Rational = try .initSet(allocator, rand.int(u128), rand.int(u128));
+                            rational.num.positive = rand.float(f64) < 0.5;
+                            builder.set(allocator, i, j, rational) catch unreachable;
+                        }
                     }
                 } else {
-                    count -= 1; // try again
+                    count -|= 1; // try again
                 }
             }
 
-            return try builder.compileTriangular(allocator, zml.types.uploOf(T), zml.types.diagOf(T));
+            return try builder.compileTriangular(allocator, zml.types.uploOf(T), zml.types.diagOf(T), .{ .element_allocator = allocator });
         },
         .block_general => {
             var bsize: u32 = if (rows < 4 or cols < 4) 1 else rand.intRangeAtMost(u32, 2, zml.int.min(rows, cols) / 2);
@@ -1823,11 +1886,11 @@ fn vectorTesting(a: std.mem.Allocator) !void {
     const rand = prng.random();
 
     var A = try random_matrix_t(
-        zml.matrix.Tridiagonal(zml.Rational),
+        zml.matrix.triangular.Sparse(zml.Rational, .lower, .non_unit, .col_major),
         a,
         rand,
-        7,
-        7,
+        12,
+        10,
     );
     // var A: zml.matrix.Tridiagonal(zml.Rational) =
     //     try .eye(a, 6, .{ .element_allocator = a });
@@ -1835,7 +1898,6 @@ fn vectorTesting(a: std.mem.Allocator) !void {
     defer A.cleanup(.{ .element_allocator = a });
 
     try print_matrix(a, "A", A);
-    try print_matrix(a, "A^T", A.transpose());
 
     // var u = try random_vector_t(
     //     zml.vector.Sparse(f64),

@@ -1,10 +1,3 @@
-//! Storage scheme:
-//!
-//! COO (Coordinate List) format. Order chooses ordering of (row, col, data)
-//! arrays:
-//! - row_major: (row, col, data) sorted by row, then by col -> compiles to CSR
-//! - col_major: (col, row, data) sorted by col, then by row -> compiles to CSC
-
 const std = @import("std");
 
 const types = @import("../../types.zig");
