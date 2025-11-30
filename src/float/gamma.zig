@@ -94,7 +94,7 @@ fn gamma_r32(x: f32, signgamp: *i32) f32 {
             return 1 / x;
 
         if (x < 0)
-            return (0 - 0) / (0 - 0);
+            return std.math.nan(f32);
 
         var t0: f64 = 1;
         var x0: f64 = 1;

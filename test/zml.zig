@@ -1,6 +1,6 @@
 test {
     const test_types = false;
-    const test_float = false;
+    const test_float = true;
     const test_cfloat = true;
     const test_linalg = false;
 

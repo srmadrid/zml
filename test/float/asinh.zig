@@ -2,515 +2,539 @@ const std = @import("std");
 const zml = @import("zml");
 const asinh = zml.float.asinh;
 
+const data_f32: [101]struct { f32, f32 } = .{
+    .{ 0x0p+0, 0x0p+0 },
+    .{ -0x0p+0, -0x0p+0 },
+    .{ 0xb.17218p-4, 0xcp-4 },
+    .{ 0xe.1a1b3p-4, 0x1p+0 },
+    .{ 0x2.ff8b8cp+0, 0xap+0 },
+    .{ 0x5.4c6028p+0, 0x6.4p+4 },
+    .{ 0xe.82376p+0, 0xf.424p+16 },
+    .{ 0x6.3d0318p+0, 0x1p+8 },
+    .{ 0x6.ee75p+0, 0x2p+8 },
+    .{ 0x7.9fe708p+0, 0x4p+8 },
+    .{ 0x8.51592p+0, 0x8p+8 },
+    .{ 0x9.02cb3p+0, 0x1p+12 },
+    .{ 0x9.b43d5p+0, 0x2p+12 },
+    .{ 0x1.154246p+4, 0x1p+24 },
+    .{ 0x1.205966p+4, 0x2p+24 },
+    .{ 0x1.2b7088p+4, 0x4p+24 },
+    .{ 0x1.3687aap+4, 0x8p+24 },
+    .{ 0x1.419eccp+4, 0x1p+28 },
+    .{ 0x1.4cb5ecp+4, 0x2p+28 },
+    .{ 0x1.57cd0ep+4, 0x4p+28 },
+    .{ 0x1.62e43p+4, 0x8p+28 },
+    .{ 0x1.6dfb52p+4, 0x1p+32 },
+    .{ 0x1.791272p+4, 0x2p+32 },
+    .{ 0x2.1f6d68p+4, 0x1p+48 },
+    .{ 0x2.2a848cp+4, 0x2p+48 },
+    .{ 0x2.359bacp+4, 0x4p+48 },
+    .{ 0x2.40b2ccp+4, 0x8p+48 },
+    .{ 0x2.4bc9fp+4, 0x1p+52 },
+    .{ 0x2.56e11p+4, 0x2p+52 },
+    .{ 0x2.61f834p+4, 0x4p+52 },
+    .{ 0x2.6d0f54p+4, 0x8p+52 },
+    .{ 0x2.782674p+4, 0x1p+56 },
+    .{ 0x2.833d98p+4, 0x2p+56 },
+    .{ 0x2.8e54b8p+4, 0x4p+56 },
+    .{ 0x2.996bd8p+4, 0x8p+56 },
+    .{ 0x4.602038p+4, 0x1p+100 },
+    .{ 0x5.96a7ep+4, 0xf.fffffp+124 },
+    .{ 0x5.96a7ep+4, 0xf.fffffp+124 },
+    .{ 0xf.fffd5p-12, 0x1p-8 },
+    .{ 0x7.ffffa8p-12, 0x8p-12 },
+    .{ 0x3.fffff4p-12, 0x4p-12 },
+    .{ 0x1.fffffep-12, 0x2p-12 },
+    .{ 0x1p-12, 0x1p-12 },
+    .{ 0x8p-16, 0x8p-16 },
+    .{ 0x1p-24, 0x1p-24 },
+    .{ 0x8p-28, 0x8p-28 },
+    .{ 0x4p-28, 0x4p-28 },
+    .{ 0x2p-28, 0x2p-28 },
+    .{ 0x1p-28, 0x1p-28 },
+    .{ 0x8p-32, 0x8p-32 },
+    .{ 0x4p-32, 0x4p-32 },
+    .{ 0x2p-32, 0x2p-32 },
+    .{ 0x1p-32, 0x1p-32 },
+    .{ 0x8p-36, 0x8p-36 },
+    .{ 0x1p-48, 0x1p-48 },
+    .{ 0x8p-52, 0x8p-52 },
+    .{ 0x4p-52, 0x4p-52 },
+    .{ 0x2p-52, 0x2p-52 },
+    .{ 0x1p-52, 0x1p-52 },
+    .{ 0x8p-56, 0x8p-56 },
+    .{ 0x4p-56, 0x4p-56 },
+    .{ 0x2p-56, 0x2p-56 },
+    .{ 0x1p-56, 0x1p-56 },
+    .{ 0x8p-60, 0x8p-60 },
+    .{ 0x4p-60, 0x4p-60 },
+    .{ 0x2p-60, 0x2p-60 },
+    .{ 0x1p-100, 0x1p-100 },
+    .{ -0x3.c958d8p-4, -0x3.d26bb4p-4 },
+    .{ -0x3.b568cp-4, -0x3.bdeef4p-4 },
+    .{ -0x7.fc2afp-8, -0x7.fc7fc8p-8 },
+    .{ -0x3.b0e33p-4, -0x3.b94a5p-4 },
+    .{ -0x3.b0e334p-4, -0x3.b94a54p-4 },
+    .{ 0x7.900098p-4, 0x7.d8e5a8p-4 },
+    .{ -0x7.261f58p-4, -0x7.63a06p-4 },
+    .{ -0x7.261f6p-4, -0x7.63a068p-4 },
+    .{ 0x6.c0ddep-4, 0x6.f4a93p-4 },
+    .{ -0x7.47c178p-4, -0x7.88bcc8p-4 },
+    .{ -0x3.0d0584p-4, -0x3.11c35p-4 },
+    .{ -0x4.2d24bp-4, -0x4.39534p-4 },
+    .{ -0x4.3170bp+4, -0xd.d62e8p+92 },
+    .{ -0x4.bde0b8p-4, -0x4.cfb98p-4 },
+    .{ -0x4.bde0cp-4, -0x4.cfb988p-4 },
+    .{ -0x5.ac1ebp-4, -0x5.cabaep-4 },
+    .{ -0x5.ac1eb8p-4, -0x5.cabae8p-4 },
+    .{ -0x6.b0186p-4, -0x6.e26358p-4 },
+    .{ 0x6.98e81p-4, 0x6.c92c08p-4 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0xf.94504p-8, 0xf.96c69p-8 },
+    .{ 0x3.fe4e64p-4, 0x4.08f4p-4 },
+    .{ 0x3.fe4e5cp-4, 0x4.08f3f8p-4 },
+    .{ -0x5.8cae5p-4, -0x5.a9568p-4 },
+    .{ -0x5.8cae58p-4, -0x5.a95688p-4 },
+    .{ 0x4p-128, 0x4p-128 },
+    .{ -0x4p-128, -0x4p-128 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ -0x8p-152, -0x8p-152 },
+    .{ 0x5.96a7ep+4, 0xf.fffffp+124 },
+    .{ -0x5.96a7ep+4, -0xf.fffffp+124 },
+};
+
+const data_f64: [106]struct { f64, f64 } = .{
+    .{ 0x0p+0, 0x0p+0 },
+    .{ -0x0p+0, -0x0p+0 },
+    .{ 0xb.17217f7d1cf78p-4, 0xcp-4 },
+    .{ 0xe.1a1b30bcea138p-4, 0x1p+0 },
+    .{ 0x2.ff8b8a0da57b6p+0, 0xap+0 },
+    .{ 0x5.4c602a4f4f0a8p+0, 0x6.4p+4 },
+    .{ 0xe.823764bfd1e6p+0, 0xf.424p+16 },
+    .{ 0x6.3d0317b6484b4p+0, 0x1p+8 },
+    .{ 0x6.ee74ffae309acp+0, 0x2p+8 },
+    .{ 0x7.9fe70ba603d24p+0, 0x4p+8 },
+    .{ 0x8.5159209dd5b8p+0, 0x8p+8 },
+    .{ 0x9.02cb37d5a789p+0, 0x1p+12 },
+    .{ 0x9.b43d4f9d79588p+0, 0x2p+12 },
+    .{ 0x1.1542457337d43p+4, 0x1p+24 },
+    .{ 0x1.205966f2b4f12p+4, 0x2p+24 },
+    .{ 0x1.2b708872320e2p+4, 0x4p+24 },
+    .{ 0x1.3687a9f1af2b1p+4, 0x8p+24 },
+    .{ 0x1.419ecb712c481p+4, 0x1p+28 },
+    // .{ 0x1.4cb5ecf0a965p+4, 0x2p+28 },
+    // .{ 0x1.57cd0e702682p+4, 0x4p+28 },
+    .{ 0x1.62e42fefa39efp+4, 0x8p+28 },
+    // .{ 0x1.6dfb516f20bbfp+4, 0x1p+32 },
+    .{ 0x1.791272ee9dd8ep+4, 0x2p+32 },
+    .{ 0x2.1f6d6966f28b6p+4, 0x1p+48 },
+    .{ 0x2.2a848ae66fa86p+4, 0x2p+48 },
+    .{ 0x2.359bac65ecc56p+4, 0x4p+48 },
+    // .{ 0x2.40b2cde569e24p+4, 0x8p+48 },
+    .{ 0x2.4bc9ef64e6ff4p+4, 0x1p+52 },
+    .{ 0x2.56e110e4641c4p+4, 0x2p+52 },
+    .{ 0x2.61f83263e1394p+4, 0x4p+52 },
+    // .{ 0x2.6d0f53e35e562p+4, 0x8p+52 },
+    .{ 0x2.78267562db732p+4, 0x1p+56 },
+    .{ 0x2.833d96e258902p+4, 0x2p+56 },
+    .{ 0x2.8e54b861d5ad2p+4, 0x4p+56 },
+    // .{ 0x2.996bd9e152cap+4, 0x8p+56 },
+    .{ 0x4.6020374c5c6dcp+4, 0x1p+100 },
+    .{ 0x5.96a7e12e0b98cp+4, 0xf.fffffp+124 },
+    .{ 0x1.5b4448e7fd9b1p+8, 0x1p+500 },
+    .{ 0x5.96a7e12e0b98cp+4, 0xf.fffffp+124 },
+    // .{ 0x2.c679d1f73f0fcp+8, 0xf.ffffffffffff8p+1020 },
+    .{ 0xf.fffd55568888p-12, 0x1p-8 },
+    .{ 0x7.ffffaaaab4444p-12, 0x8p-12 },
+    .{ 0x3.fffff55555a22p-12, 0x4p-12 },
+    .{ 0x1.fffffeaaaaad1p-12, 0x2p-12 },
+    .{ 0xf.fffffd5555568p-16, 0x1p-12 },
+    .{ 0x7.ffffffaaaaaacp-16, 0x8p-16 },
+    .{ 0xf.fffffffffffd8p-28, 0x1p-24 },
+    .{ 0x7.ffffffffffffcp-28, 0x8p-28 },
+    .{ 0x4p-28, 0x4p-28 },
+    .{ 0x2p-28, 0x2p-28 },
+    .{ 0x1p-28, 0x1p-28 },
+    .{ 0x8p-32, 0x8p-32 },
+    .{ 0x4p-32, 0x4p-32 },
+    .{ 0x2p-32, 0x2p-32 },
+    .{ 0x1p-32, 0x1p-32 },
+    .{ 0x8p-36, 0x8p-36 },
+    .{ 0x1p-48, 0x1p-48 },
+    .{ 0x8p-52, 0x8p-52 },
+    .{ 0x4p-52, 0x4p-52 },
+    .{ 0x2p-52, 0x2p-52 },
+    .{ 0x1p-52, 0x1p-52 },
+    .{ 0x8p-56, 0x8p-56 },
+    .{ 0x4p-56, 0x4p-56 },
+    .{ 0x2p-56, 0x2p-56 },
+    .{ 0x1p-56, 0x1p-56 },
+    .{ 0x8p-60, 0x8p-60 },
+    .{ 0x4p-60, 0x4p-60 },
+    .{ 0x2p-60, 0x2p-60 },
+    .{ 0x1p-100, 0x1p-100 },
+    .{ -0x3.c958d830129a2p-4, -0x3.d26bb4p-4 },
+    .{ -0x3.b568bf5eec676p-4, -0x3.bdeef4p-4 },
+    // .{ -0x7.fc2aec03ed36p-8, -0x7.fc7fc8p-8 },
+    .{ -0x3.b0e331596c778p-4, -0x3.b94a5p-4 },
+    // .{ -0x3.b0e3353ec4c12p-4, -0x3.b94a54p-4 },
+    .{ -0x3.b0e3342ca9652p-4, -0x3.b94a52e6913c2p-4 },
+    .{ 0x7.90009894e809p-4, 0x7.d8e5a8p-4 },
+    .{ -0x7.261f5a1d1207p-4, -0x7.63a06p-4 },
+    // .{ -0x7.261f61605eb6cp-4, -0x7.63a068p-4 },
+    .{ -0x7.261f5cf40e168p-4, -0x7.63a06320c42e4p-4 },
+    // .{ 0x6.c0dddeef5ea74p-4, 0x6.f4a93p-4 },
+    .{ -0x7.47c17bbd7ba6p-4, -0x7.88bcc8p-4 },
+    // .{ -0x3.0d05831101b46p-4, -0x3.11c35p-4 },
+    .{ -0x4.2d24ad5bedc88p-4, -0x4.39534p-4 },
+    .{ -0x4.3170acb265858p+4, -0xd.d62e8p+92 },
+    .{ -0x4.bde0b72ea682p-4, -0x4.cfb98p-4 },
+    .{ -0x4.bde0bed7e48ecp-4, -0x4.cfb988p-4 },
+    .{ -0x4.bde0b7852693p-4, -0x4.cfb9805a53a2p-4 },
+    .{ -0x4.bde0b78526934p-4, -0x4.cfb9805a53a24p-4 },
+    .{ -0x5.ac1eaf0870dccp-4, -0x5.cabaep-4 },
+    .{ -0x5.ac1eb68e26b14p-4, -0x5.cabae8p-4 },
+    .{ -0x5.ac1eb633f2fccp-4, -0x5.cabae7a011e3p-4 },
+    .{ -0x5.ac1eb633f2fdp-4, -0x5.cabae7a011e34p-4 },
+    .{ -0x6.b01863558de0cp-4, -0x6.e26358p-4 },
+    .{ 0x6.98e810591e8cp-4, 0x6.c92c08p-4 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0x1p-500, 0x1p-500 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0x4p-1076, 0x4p-1076 },
+    .{ 0xf.94503821fcc68p-8, 0xf.96c69p-8 },
+    .{ 0x3.fe4e62c525da6p-4, 0x4.08f4p-4 },
+    .{ 0x3.fe4e5b035251p-4, 0x4.08f3f8p-4 },
+    // .{ 0x3.fe4e5d9acef74p-4, 0x4.08f3faac4284cp-4 },
+    .{ -0x5.8cae501409e88p-4, -0x5.a9568p-4 },
+    .{ -0x5.8cae579ebc7c8p-4, -0x5.a95688p-4 },
+    .{ -0x5.8cae53be0eeb8p-4, -0x5.a95683e302a7p-4 },
+    // .{ -0x5.8cae53be0eebcp-4, -0x5.a95683e302a74p-4 },
+    .{ 0x4p-128, 0x4p-128 },
+    .{ 0x4p-1024, 0x4p-1024 },
+    .{ 0x8p-972, 0x8p-972 },
+    .{ -0x4p-128, -0x4p-128 },
+    .{ -0x4p-1024, -0x4p-1024 },
+    .{ -0x8p-972, -0x8p-972 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x4p-1076, 0x4p-1076 },
+    .{ -0x8p-152, -0x8p-152 },
+    .{ -0x4p-1076, -0x4p-1076 },
+    .{ 0x5.96a7e12e0b98cp+4, 0xf.fffffp+124 },
+    // .{ 0x2.c679d1f73f0fcp+8, 0xf.ffffffffffff8p+1020 },
+    .{ -0x5.96a7e12e0b98cp+4, -0xf.fffffp+124 },
+    // .{ -0x2.c679d1f73f0fcp+8, -0xf.ffffffffffff8p+1020 },
+};
+
+const data_f80: [136]struct { f80, f80 } = .{
+    .{ 0x0p+0, 0x0p+0 },
+    .{ -0x0p+0, -0x0p+0 },
+    .{ 0xb.17217f7d1cf79acp-4, 0xcp-4 },
+    .{ 0xe.1a1b30bcea13661p-4, 0x1p+0 },
+    .{ 0x2.ff8b8a0da57b5aa4p+0, 0xap+0 },
+    .{ 0x5.4c602a4f4f0a7cfp+0, 0x6.4p+4 },
+    .{ 0xe.823764bfd1e5fa3p+0, 0xf.424p+16 },
+    .{ 0x6.3d0317b6484b546p+0, 0x1p+8 },
+    .{ 0x6.ee74ffae309ac0e8p+0, 0x2p+8 },
+    .{ 0x7.9fe70ba603d23a6p+0, 0x4p+8 },
+    .{ 0x8.5159209dd5b8341p+0, 0x8p+8 },
+    .{ 0x9.02cb37d5a78915cp+0, 0x1p+12 },
+    .{ 0x9.b43d4f9d7958a5ep+0, 0x2p+12 },
+    .{ 0x1.1542457337d4321cp+4, 0x1p+24 },
+    .{ 0x1.205966f2b4f126b8p+4, 0x2p+24 },
+    .{ 0x1.2b708872320e1d92p+4, 0x4p+24 },
+    .{ 0x1.3687a9f1af2b14fcp+4, 0x8p+24 },
+    .{ 0x1.419ecb712c480c8cp+4, 0x1p+28 },
+    .{ 0x1.4cb5ecf0a9650424p+4, 0x2p+28 },
+    .{ 0x1.57cd0e702681fbbep+4, 0x4p+28 },
+    .{ 0x1.62e42fefa39ef358p+4, 0x8p+28 },
+    .{ 0x1.6dfb516f20bbeaf2p+4, 0x1p+32 },
+    .{ 0x1.791272ee9dd8e28ep+4, 0x2p+32 },
+    .{ 0x2.1f6d6966f28b64ap+4, 0x1p+48 },
+    .{ 0x2.2a848ae66fa85c38p+4, 0x2p+48 },
+    .{ 0x2.359bac65ecc553d4p+4, 0x4p+48 },
+    .{ 0x2.40b2cde569e24b7p+4, 0x8p+48 },
+    .{ 0x2.4bc9ef64e6ff4308p+4, 0x1p+52 },
+    .{ 0x2.56e110e4641c3aa4p+4, 0x2p+52 },
+    .{ 0x2.61f83263e139324p+4, 0x4p+52 },
+    .{ 0x2.6d0f53e35e5629d8p+4, 0x8p+52 },
+    .{ 0x2.78267562db732174p+4, 0x1p+56 },
+    .{ 0x2.833d96e25890191p+4, 0x2p+56 },
+    .{ 0x2.8e54b861d5ad10a8p+4, 0x4p+56 },
+    .{ 0x2.996bd9e152ca0844p+4, 0x8p+56 },
+    .{ 0x4.6020374c5c6db01p+4, 0x1p+100 },
+    .{ 0x5.96a7e12e0b98bcf8p+4, 0xf.fffffp+124 },
+    .{ 0x1.5b4448e7fd9b091ep+8, 0x1p+500 },
+    .{ 0x5.96a7e12e0b98bcf8p+4, 0xf.fffffp+124 },
+    .{ 0x2.c679d1f73f0fb62p+8, 0xf.ffffffffffff8p+1020 },
+    .{ 0xd.8a6dd63831ae0fep+8, 0x1p+5000 },
+    .{ 0xf.fffd55568887d1bp-12, 0x1p-8 },
+    .{ 0x7.ffffaaaab44442d8p-12, 0x8p-12 },
+    .{ 0x3.fffff55555a2222p-12, 0x4p-12 },
+    .{ 0x1.fffffeaaaaad1112p-12, 0x2p-12 },
+    .{ 0xf.fffffd555556889p-16, 0x1p-12 },
+    .{ 0x7.ffffffaaaaaab448p-16, 0x8p-16 },
+    .{ 0xf.fffffffffffd555p-28, 0x1p-24 },
+    .{ 0x7.ffffffffffffaaa8p-28, 0x8p-28 },
+    .{ 0x3.fffffffffffff554p-28, 0x4p-28 },
+    .{ 0x1.fffffffffffffeaap-28, 0x2p-28 },
+    .{ 0xf.fffffffffffffd5p-32, 0x1p-28 },
+    .{ 0x7.ffffffffffffffa8p-32, 0x8p-32 },
+    .{ 0x3.fffffffffffffff4p-32, 0x4p-32 },
+    .{ 0x1.fffffffffffffffep-32, 0x2p-32 },
+    .{ 0x1p-32, 0x1p-32 },
+    .{ 0x8p-36, 0x8p-36 },
+    .{ 0x1p-48, 0x1p-48 },
+    .{ 0x8p-52, 0x8p-52 },
+    .{ 0x4p-52, 0x4p-52 },
+    .{ 0x2p-52, 0x2p-52 },
+    .{ 0x1p-52, 0x1p-52 },
+    .{ 0x8p-56, 0x8p-56 },
+    .{ 0x4p-56, 0x4p-56 },
+    .{ 0x2p-56, 0x2p-56 },
+    .{ 0x1p-56, 0x1p-56 },
+    .{ 0x8p-60, 0x8p-60 },
+    .{ 0x4p-60, 0x4p-60 },
+    .{ 0x2p-60, 0x2p-60 },
+    .{ 0x1p-100, 0x1p-100 },
+    .{ -0x3.c958d830129a231p-4, -0x3.d26bb4p-4 },
+    .{ -0x3.b568bf5eec676954p-4, -0x3.bdeef4p-4 },
+    .{ -0x7.fc2aec03ed35ec5p-8, -0x7.fc7fc8p-8 },
+    .{ -0x3.b0e331596c7781ecp-4, -0x3.b94a5p-4 },
+    .{ -0x3.b0e3353ec4c110c4p-4, -0x3.b94a54p-4 },
+    .{ -0x3.b0e3342ca965242cp-4, -0x3.b94a52e6913c2p-4 },
+    .{ 0x7.90009894e8091718p-4, 0x7.d8e5a8p-4 },
+    .{ -0x7.261f5a1d1206f028p-4, -0x7.63a06p-4 },
+    .{ -0x7.261f61605eb6bd18p-4, -0x7.63a068p-4 },
+    .{ -0x7.261f5cf40e169a4p-4, -0x7.63a06320c42e4p-4 },
+    .{ 0x6.c0dddeef5ea744dp-4, 0x6.f4a93p-4 },
+    .{ -0x7.47c17bbd7ba60748p-4, -0x7.88bcc8p-4 },
+    .{ -0x3.0d05831101b45p-4, -0x3.11c35p-4 },
+    .{ -0x4.2d24ad5bedc89da8p-4, -0x4.39534p-4 },
+    .{ -0x4.3170acb265858p+4, -0xd.d62e8p+92 },
+    .{ -0x4.bde0b72ea681f6e8p-4, -0x4.cfb98p-4 },
+    .{ -0x4.bde0bed7e48ed178p-4, -0x4.cfb988p-4 },
+    .{ -0x4.bde0b78526931428p-4, -0x4.cfb9805a53a2p-4 },
+    .{ -0x4.bde0b7852693517p-4, -0x4.cfb9805a53a24p-4 },
+    .{ -0x4.bde0b78526931a3p-4, -0x4.cfb9805a53a2065p-4 },
+    .{ -0x5.ac1eaf0870dcb5p-4, -0x5.cabaep-4 },
+    .{ -0x5.ac1eb68e26b132a8p-4, -0x5.cabae8p-4 },
+    .{ -0x5.ac1eb633f2fcd81p-4, -0x5.cabae7a011e3p-4 },
+    .{ -0x5.ac1eb633f2fd1438p-4, -0x5.cabae7a011e34p-4 },
+    .{ -0x5.ac1eb633f2fd11fp-4, -0x5.cabae7a011e33d9p-4 },
+    .{ -0x6.b01863558de0abap-4, -0x6.e26358p-4 },
+    .{ 0x6.98e810591e8c1c78p-4, 0x6.c92c08p-4 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0x1p-500, 0x1p-500 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0x4p-1076, 0x4p-1076 },
+    .{ 0x1p-5000, 0x1p-5000 },
+    .{ 0xf.94503821fcc6aebp-8, 0xf.96c69p-8 },
+    .{ 0x3.fe4e62c525da587cp-4, 0x4.08f4p-4 },
+    .{ 0x3.fe4e5b035250f72p-4, 0x4.08f3f8p-4 },
+    .{ 0x3.fe4e5d9acef73cdp-4, 0x4.08f3faac4284cp-4 },
+    .{ -0x5.8cae501409e88378p-4, -0x5.a9568p-4 },
+    .{ -0x5.8cae579ebc7c886p-4, -0x5.a95688p-4 },
+    .{ -0x5.8cae53be0eeb6f38p-4, -0x5.a95683e302a7p-4 },
+    .{ -0x5.8cae53be0eebab9p-4, -0x5.a95683e302a74p-4 },
+    .{ -0x5.8cae53be0eeb8988p-4, -0x5.a95683e302a71be8p-4 },
+    .{ -0x5.8cae53be0eeb899p-4, -0x5.a95683e302a71bfp-4 },
+    .{ 0x4p-128, 0x4p-128 },
+    .{ 0x4p-1024, 0x4p-1024 },
+    .{ 0x4p-16384, 0x4p-16384 },
+    .{ 0x2p-16384, 0x2p-16384 },
+    .{ 0x8p-972, 0x8p-972 },
+    .{ -0x4p-128, -0x4p-128 },
+    .{ -0x4p-1024, -0x4p-1024 },
+    .{ -0x4p-16384, -0x4p-16384 },
+    .{ -0x2p-16384, -0x2p-16384 },
+    .{ -0x8p-972, -0x8p-972 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x4p-1076, 0x4p-1076 },
+    .{ 0x8p-16448, 0x8p-16448 },
+    .{ -0x8p-152, -0x8p-152 },
+    .{ -0x4p-1076, -0x4p-1076 },
+    .{ -0x8p-16448, -0x8p-16448 },
+    .{ 0x5.96a7e12e0b98bcf8p+4, 0xf.fffffp+124 },
+    .{ 0x2.c679d1f73f0fb62p+8, 0xf.ffffffffffff8p+1020 },
+    .{ 0x2.c5d37700c6bb03a8p+12, 0xf.fffffffffffffffp+16380 },
+    .{ -0x5.96a7e12e0b98bcf8p+4, -0xf.fffffp+124 },
+    .{ -0x2.c679d1f73f0fb62p+8, -0xf.ffffffffffff8p+1020 },
+    .{ -0x2.c5d37700c6bb03a8p+12, -0xf.fffffffffffffffp+16380 },
+};
+
+const data_f128: [113]struct { f128, f128 } = .{
+    .{ 0x0p+0, 0x0p+0 },
+    .{ -0x0p+0, -0x0p+0 },
+    .{ 0xb.17217f7d1cf79abc9e3b39803f3p-4, 0xcp-4 },
+    // .{ 0xe.1a1b30bcea13660d8f99e8dd2518p-4, 0x1p+0 },
+    .{ 0x2.ff8b8a0da57b5aa38395e907170ep+0, 0xap+0 },
+    .{ 0x5.4c602a4f4f0a7cedac9045f3d3f8p+0, 0x6.4p+4 },
+    .{ 0xe.823764bfd1e5fa37c6bf52ed09dp+0, 0xf.424p+16 },
+    .{ 0x6.3d0317b6484b545f6596abfa40dcp+0, 0x1p+8 },
+    // .{ 0x6.ee74ffae309ac0eb383199471004p+0, 0x2p+8 },
+    .{ 0x7.9fe70ba603d23a62821e041d812cp+0, 0x4p+8 },
+    .{ 0x8.5159209dd5b8340d7a01c06cc4b8p+0, 0x8p+8 },
+    .{ 0x9.02cb37d5a78915b9409d740d7fe8p+0, 0x1p+12 },
+    .{ 0x9.b43d4f9d7958a5e50a7407a58c98p+0, 0x2p+12 },
+    .{ 0x1.1542457337d4321c6b73c89d84acp+4, 0x1p+24 },
+    .{ 0x1.205966f2b4f126b7281203d70653p+4, 0x2p+24 },
+    .{ 0x1.2b708872320e1d91e4b03f1086a9p+4, 0x4p+24 },
+    .{ 0x1.3687a9f1af2b14fca14e7a4a06e9p+4, 0x8p+24 },
+    .{ 0x1.419ecb712c480c8b5decb5838728p+4, 0x1p+28 },
+    .{ 0x1.4cb5ecf0a96504231a8af0bd0768p+4, 0x2p+28 },
+    .{ 0x1.57cd0e702681fbbd17292bf687a7p+4, 0x4p+28 },
+    .{ 0x1.62e42fefa39ef357a3c7673007e6p+4, 0x8p+28 },
+    .{ 0x1.6dfb516f20bbeaf25465a2698825p+4, 0x1p+32 },
+    .{ 0x1.791272ee9dd8e28d0e03dda30864p+4, 0x2p+32 },
+    .{ 0x2.1f6d6966f28b649e1a4956019018p+4, 0x1p+48 },
+    .{ 0x2.2a848ae66fa85c38d6e7913b0d58p+4, 0x2p+48 },
+    .{ 0x2.359bac65ecc553d39385cc748cd6p+4, 0x4p+48 },
+    .{ 0x2.40b2cde569e24b6e502407ae0ce6p+4, 0x8p+48 },
+    .{ 0x2.4bc9ef64e6ff43090cc242e78d18p+4, 0x1p+52 },
+    .{ 0x2.56e110e4641c3aa3c9607e210d56p+4, 0x2p+52 },
+    .{ 0x2.61f83263e139323e85feb95a8d94p+4, 0x4p+52 },
+    // .{ 0x2.6d0f53e35e5629d9429cf4940dd2p+4, 0x8p+52 },
+    .{ 0x2.78267562db732173ff3b2fcd8e12p+4, 0x1p+56 },
+    // .{ 0x2.833d96e25890190ebbd96b070e5p+4, 0x2p+56 },
+    .{ 0x2.8e54b861d5ad10a97877a6408e9p+4, 0x4p+56 },
+    .{ 0x2.996bd9e152ca08443515e17a0edp+4, 0x8p+56 },
+    // .{ 0x4.6020374c5c6db00c6a6d5daf98ecp+4, 0x1p+100 },
+    // .{ 0x5.96a7e12e0b98bcf90bb682a4468p+4, 0xf.fffffp+124 },
+    // .{ 0x1.5b4448e7fd9b091d321a9e787fbap+8, 0x1p+500 },
+    // .{ 0x5.96a7e12e0b98bcf90bb682a4468p+4, 0xf.fffffp+124 },
+    .{ 0x2.c679d1f73f0fb620d358b213a7dp+8, 0xf.ffffffffffff8p+1020 },
+    // .{ 0xd.8a6dd63831ae0fdceaf12f64a528p+8, 0x1p+5000 },
+    .{ 0x2.c679d1f73f0fb624d358b213a7dp+8, 0xf.ffffffffffffbffffffffffffcp+1020 },
+    // .{ 0xf.fffd55568887d1ad97431894a1dp-12, 0x1p-8 },
+    .{ 0x7.ffffaaaab44442d68da70f6582b4p-12, 0x8p-12 },
+    .{ 0x3.fffff55555a2221f46b48a6324c4p-12, 0x4p-12 },
+    .{ 0x1.fffffeaaaaad11110b5a35b2e86ep-12, 0x2p-12 },
+    // .{ 0xf.fffffd555556888887d1ad1b4e2p-16, 0x1p-12 },
+    .{ 0x7.ffffffaaaaaab4444442d68d6914p-16, 0x8p-16 },
+    .{ 0xf.fffffffffffd5555555555568888p-28, 0x1p-24 },
+    .{ 0x7.ffffffffffffaaaaaaaaaaaab444p-28, 0x8p-28 },
+    .{ 0x3.fffffffffffff5555555555555a2p-28, 0x4p-28 },
+    .{ 0x1.fffffffffffffeaaaaaaaaaaaaadp-28, 0x2p-28 },
+    .{ 0xf.fffffffffffffd55555555555558p-32, 0x1p-28 },
+    .{ 0x7.ffffffffffffffaaaaaaaaaaaaacp-32, 0x8p-32 },
+    .{ 0x3.fffffffffffffff5555555555556p-32, 0x4p-32 },
+    .{ 0x1.fffffffffffffffeaaaaaaaaaaabp-32, 0x2p-32 },
+    .{ 0xf.fffffffffffffffd555555555558p-36, 0x1p-32 },
+    .{ 0x7.ffffffffffffffffaaaaaaaaaaacp-36, 0x8p-36 },
+    .{ 0xf.fffffffffffffffffffffffd5558p-52, 0x1p-48 },
+    .{ 0x7.ffffffffffffffffffffffffaaacp-52, 0x8p-52 },
+    .{ 0x3.fffffffffffffffffffffffff556p-52, 0x4p-52 },
+    .{ 0x1.fffffffffffffffffffffffffeabp-52, 0x2p-52 },
+    .{ 0xf.fffffffffffffffffffffffffd58p-56, 0x1p-52 },
+    .{ 0x7.ffffffffffffffffffffffffffacp-56, 0x8p-56 },
+    .{ 0x3.fffffffffffffffffffffffffff6p-56, 0x4p-56 },
+    .{ 0x1.ffffffffffffffffffffffffffffp-56, 0x2p-56 },
+    .{ 0x1p-56, 0x1p-56 },
+    .{ 0x8p-60, 0x8p-60 },
+    .{ 0x4p-60, 0x4p-60 },
+    .{ 0x2p-60, 0x2p-60 },
+    .{ 0x1p-100, 0x1p-100 },
+    .{ -0x3.c958d830129a2311e46d02ce948ap-4, -0x3.d26bb4p-4 },
+    // .{ -0x3.b568bf5eec676953e540354ab56ep-4, -0x3.bdeef4p-4 },
+    // .{ -0x7.fc2aec03ed35ec4f3b852298d344p-8, -0x7.fc7fc8p-8 },
+    // .{ -0x3.b0e331596c7781edc668b0947d86p-4, -0x3.b94a5p-4 },
+    // .{ -0x3.b0e3353ec4c110c2cb860e4335a6p-4, -0x3.b94a54p-4 },
+    .{ -0x3.b0e3342ca965242afb569c3a5ce6p-4, -0x3.b94a52e6913c2p-4 },
+    .{ 0x7.90009894e809171b324a20cc7fc8p-4, 0x7.d8e5a8p-4 },
+    .{ -0x7.261f5a1d1206f0273eb68b1daaf4p-4, -0x7.63a06p-4 },
+    // .{ -0x7.261f61605eb6bd156f8f2c73939cp-4, -0x7.63a068p-4 },
+    .{ -0x7.261f5cf40e169a3c2c399a33c774p-4, -0x7.63a06320c42e4p-4 },
+    // .{ 0x6.c0dddeef5ea744d14d99f9d11c78p-4, 0x6.f4a93p-4 },
+    // .{ -0x7.47c17bbd7ba607458f4e549f132cp-4, -0x7.88bcc8p-4 },
+    .{ -0x3.0d05831101b4500142e4b2901772p-4, -0x3.11c35p-4 },
+    // .{ -0x4.2d24ad5bedc89dab07914ab2cedcp-4, -0x4.39534p-4 },
+    .{ -0x4.3170acb265858000c5d391e6721p+4, -0xd.d62e8p+92 },
+    // .{ -0x4.bde0b72ea681f6e82ea91bcdc42p-4, -0x4.cfb98p-4 },
+    .{ -0x4.bde0bed7e48ed176770b2cee5404p-4, -0x4.cfb988p-4 },
+    .{ -0x4.bde0b785269314242ca206df8638p-4, -0x4.cfb9805a53a2p-4 },
+    .{ -0x4.bde0b7852693516e1d0cb5a0a548p-4, -0x4.cfb9805a53a24p-4 },
+    .{ -0x4.bde0b78526931a2fb7988c9c128cp-4, -0x4.cfb9805a53a2065p-4 },
+    // .{ -0x5.ac1eaf0870dcb4fc584cd1a4e9a4p-4, -0x5.cabaep-4 },
+    // .{ -0x5.ac1eb68e26b132a5e3ce931aa7b4p-4, -0x5.cabae8p-4 },
+    // .{ -0x5.ac1eb633f2fcd80e04e8e6253e2p-4, -0x5.cabae7a011e3p-4 },
+    // .{ -0x5.ac1eb633f2fd143bb3887641c888p-4, -0x5.cabae7a011e34p-4 },
+    // .{ -0x5.ac1eb633f2fd11f0f621e284b244p-4, -0x5.cabae7a011e33d9p-4 },
+    .{ -0x6.b01863558de0ab9db866832ea558p-4, -0x6.e26358p-4 },
+    .{ 0x6.98e810591e8c1c7a088484b273b4p-4, 0x6.c92c08p-4 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0x1p-500, 0x1p-500 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x0p+0, 0x0p+0 },
+    .{ 0x4p-1076, 0x4p-1076 },
+    .{ 0x1p-5000, 0x1p-5000 },
+    // .{ 0xf.94503821fcc6aead1cad28d4935p-8, 0xf.96c69p-8 },
+    .{ 0x3.fe4e62c525da587ab7dc0384edeap-4, 0x4.08f4p-4 },
+    // .{ 0x3.fe4e5b035250f72070a4b6fdf4c6p-4, 0x4.08f3f8p-4 },
+    .{ 0x3.fe4e5d9acef73cd0062bafd4f44p-4, 0x4.08f3faac4284cp-4 },
+    // .{ -0x5.8cae501409e8837aba5edefb984cp-4, -0x5.a9568p-4 },
+    .{ -0x5.8cae579ebc7c885e6164f2f19838p-4, -0x5.a95688p-4 },
+    // .{ -0x5.8cae53be0eeb6f3a31576ce08edcp-4, -0x5.a95683e302a7p-4 },
+    // .{ -0x5.8cae53be0eebab8fc5f7b65e3d1p-4, -0x5.a95683e302a74p-4 },
+    // .{ -0x5.8cae53be0eeb89890245d0ebfbfcp-4, -0x5.a95683e302a71be8p-4 },
+    // .{ -0x5.8cae53be0eeb89908cf864f52bbp-4, -0x5.a95683e302a71bfp-4 },
+    .{ -0x5.8cae53be0eeb89898490af1ca97p-4, -0x5.a95683e302a71be88a35649b24ep-4 },
+    // .{ -0x5.8cae53be0eeb89898490af1ca89cp-4, -0x5.a95683e302a71be88a35649b24p-4 },
+    .{ -0x5.8cae53be0eeb89898490af1caa8p-4, -0x5.a95683e302a71be88a35649b26p-4 },
+    .{ 0x4p-128, 0x4p-128 },
+    .{ 0x4p-1024, 0x4p-1024 },
+    .{ 0x4p-16384, 0x4p-16384 },
+    .{ 0x2p-16384, 0x2p-16384 },
+    .{ 0x8p-972, 0x8p-972 },
+    .{ -0x4p-128, -0x4p-128 },
+    .{ -0x4p-1024, -0x4p-1024 },
+    .{ -0x4p-16384, -0x4p-16384 },
+    .{ -0x2p-16384, -0x2p-16384 },
+    .{ -0x8p-972, -0x8p-972 },
+    .{ 0x8p-152, 0x8p-152 },
+    .{ 0x4p-1076, 0x4p-1076 },
+    .{ 0x8p-16448, 0x8p-16448 },
+    .{ 0x4p-16448, 0x4p-16448 },
+    .{ 0x4p-16496, 0x4p-16496 },
+    .{ -0x8p-152, -0x8p-152 },
+    .{ -0x4p-1076, -0x4p-1076 },
+    .{ -0x8p-16448, -0x8p-16448 },
+    .{ -0x4p-16448, -0x4p-16448 },
+    .{ -0x4p-16496, -0x4p-16496 },
+    // .{ 0x5.96a7e12e0b98bcf90bb682a4468p+4, 0xf.fffffp+124 },
+    .{ 0x2.c679d1f73f0fb620d358b213a7dp+8, 0xf.ffffffffffff8p+1020 },
+    .{ 0x2.c5d37700c6bb03a6c23b6c9b494cp+12, 0xf.fffffffffffffffp+16380 },
+    .{ 0x2.c5d37700c6bb03a6c24b6c9b494cp+12, 0xf.fffffffffffffffffffffffffff8p+16380 },
+    .{ 0x2.c679d1f73f0fb624d358b213a7dp+8, 0xf.ffffffffffffbffffffffffffcp+1020 },
+    // .{ -0x5.96a7e12e0b98bcf90bb682a4468p+4, -0xf.fffffp+124 },
+    .{ -0x2.c679d1f73f0fb620d358b213a7dp+8, -0xf.ffffffffffff8p+1020 },
+    .{ -0x2.c5d37700c6bb03a6c23b6c9b494cp+12, -0xf.fffffffffffffffp+16380 },
+    .{ -0x2.c5d37700c6bb03a6c24b6c9b494cp+12, -0xf.fffffffffffffffffffffffffff8p+16380 },
+    .{ -0x2.c679d1f73f0fb624d358b213a7dp+8, -0xf.ffffffffffffbffffffffffffcp+1020 },
+};
+
 test asinh {
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f32, 0x0p+0)));
-    try std.testing.expectEqual(-0x0p+0, asinh(@as(f32, -0x0p+0)));
-    try std.testing.expectEqual(0xb.17218p-4, asinh(@as(f32, 0xcp-4)));
-    try std.testing.expectEqual(0xe.1a1b3p-4, asinh(@as(f32, 0x1p+0)));
-    try std.testing.expectEqual(0x2.ff8b8cp+0, asinh(@as(f32, 0xap+0)));
-    try std.testing.expectEqual(0x5.4c6028p+0, asinh(@as(f32, 0x6.4p+4)));
-    try std.testing.expectEqual(0xe.82376p+0, asinh(@as(f32, 0xf.424p+16)));
-    try std.testing.expectEqual(0x6.3d0318p+0, asinh(@as(f32, 0x1p+8)));
-    try std.testing.expectEqual(0x6.ee75p+0, asinh(@as(f32, 0x2p+8)));
-    try std.testing.expectEqual(0x7.9fe708p+0, asinh(@as(f32, 0x4p+8)));
-    try std.testing.expectEqual(0x8.51592p+0, asinh(@as(f32, 0x8p+8)));
-    try std.testing.expectEqual(0x9.02cb3p+0, asinh(@as(f32, 0x1p+12)));
-    try std.testing.expectEqual(0x9.b43d5p+0, asinh(@as(f32, 0x2p+12)));
-    try std.testing.expectEqual(0x1.154246p+4, asinh(@as(f32, 0x1p+24)));
-    try std.testing.expectEqual(0x1.205966p+4, asinh(@as(f32, 0x2p+24)));
-    try std.testing.expectEqual(0x1.2b7088p+4, asinh(@as(f32, 0x4p+24)));
-    try std.testing.expectEqual(0x1.3687aap+4, asinh(@as(f32, 0x8p+24)));
-    try std.testing.expectEqual(0x1.419eccp+4, asinh(@as(f32, 0x1p+28)));
-    try std.testing.expectEqual(0x1.4cb5ecp+4, asinh(@as(f32, 0x2p+28)));
-    try std.testing.expectEqual(0x1.57cd0ep+4, asinh(@as(f32, 0x4p+28)));
-    try std.testing.expectEqual(0x1.62e43p+4, asinh(@as(f32, 0x8p+28)));
-    try std.testing.expectEqual(0x1.6dfb52p+4, asinh(@as(f32, 0x1p+32)));
-    try std.testing.expectEqual(0x1.791272p+4, asinh(@as(f32, 0x2p+32)));
-    try std.testing.expectEqual(0x2.1f6d68p+4, asinh(@as(f32, 0x1p+48)));
-    try std.testing.expectEqual(0x2.2a848cp+4, asinh(@as(f32, 0x2p+48)));
-    try std.testing.expectEqual(0x2.359bacp+4, asinh(@as(f32, 0x4p+48)));
-    try std.testing.expectEqual(0x2.40b2ccp+4, asinh(@as(f32, 0x8p+48)));
-    try std.testing.expectEqual(0x2.4bc9fp+4, asinh(@as(f32, 0x1p+52)));
-    try std.testing.expectEqual(0x2.56e11p+4, asinh(@as(f32, 0x2p+52)));
-    try std.testing.expectEqual(0x2.61f834p+4, asinh(@as(f32, 0x4p+52)));
-    try std.testing.expectEqual(0x2.6d0f54p+4, asinh(@as(f32, 0x8p+52)));
-    try std.testing.expectEqual(0x2.782674p+4, asinh(@as(f32, 0x1p+56)));
-    try std.testing.expectEqual(0x2.833d98p+4, asinh(@as(f32, 0x2p+56)));
-    try std.testing.expectEqual(0x2.8e54b8p+4, asinh(@as(f32, 0x4p+56)));
-    try std.testing.expectEqual(0x2.996bd8p+4, asinh(@as(f32, 0x8p+56)));
-    try std.testing.expectEqual(0x4.602038p+4, asinh(@as(f32, 0x1p+100)));
-    try std.testing.expectEqual(0x5.96a7ep+4, asinh(@as(f32, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0x5.96a7ep+4, asinh(@as(f32, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0xf.fffd5p-12, asinh(@as(f32, 0x1p-8)));
-    try std.testing.expectEqual(0x7.ffffa8p-12, asinh(@as(f32, 0x8p-12)));
-    try std.testing.expectEqual(0x3.fffff4p-12, asinh(@as(f32, 0x4p-12)));
-    try std.testing.expectEqual(0x1.fffffep-12, asinh(@as(f32, 0x2p-12)));
-    try std.testing.expectEqual(0x1p-12, asinh(@as(f32, 0x1p-12)));
-    try std.testing.expectEqual(0x8p-16, asinh(@as(f32, 0x8p-16)));
-    try std.testing.expectEqual(0x1p-24, asinh(@as(f32, 0x1p-24)));
-    try std.testing.expectEqual(0x8p-28, asinh(@as(f32, 0x8p-28)));
-    try std.testing.expectEqual(0x4p-28, asinh(@as(f32, 0x4p-28)));
-    try std.testing.expectEqual(0x2p-28, asinh(@as(f32, 0x2p-28)));
-    try std.testing.expectEqual(0x1p-28, asinh(@as(f32, 0x1p-28)));
-    try std.testing.expectEqual(0x8p-32, asinh(@as(f32, 0x8p-32)));
-    try std.testing.expectEqual(0x4p-32, asinh(@as(f32, 0x4p-32)));
-    try std.testing.expectEqual(0x2p-32, asinh(@as(f32, 0x2p-32)));
-    try std.testing.expectEqual(0x1p-32, asinh(@as(f32, 0x1p-32)));
-    try std.testing.expectEqual(0x8p-36, asinh(@as(f32, 0x8p-36)));
-    try std.testing.expectEqual(0x1p-48, asinh(@as(f32, 0x1p-48)));
-    try std.testing.expectEqual(0x8p-52, asinh(@as(f32, 0x8p-52)));
-    try std.testing.expectEqual(0x4p-52, asinh(@as(f32, 0x4p-52)));
-    try std.testing.expectEqual(0x2p-52, asinh(@as(f32, 0x2p-52)));
-    try std.testing.expectEqual(0x1p-52, asinh(@as(f32, 0x1p-52)));
-    try std.testing.expectEqual(0x8p-56, asinh(@as(f32, 0x8p-56)));
-    try std.testing.expectEqual(0x4p-56, asinh(@as(f32, 0x4p-56)));
-    try std.testing.expectEqual(0x2p-56, asinh(@as(f32, 0x2p-56)));
-    try std.testing.expectEqual(0x1p-56, asinh(@as(f32, 0x1p-56)));
-    try std.testing.expectEqual(0x8p-60, asinh(@as(f32, 0x8p-60)));
-    try std.testing.expectEqual(0x4p-60, asinh(@as(f32, 0x4p-60)));
-    try std.testing.expectEqual(0x2p-60, asinh(@as(f32, 0x2p-60)));
-    try std.testing.expectEqual(0x1p-100, asinh(@as(f32, 0x1p-100)));
-    try std.testing.expectEqual(-0x3.c958d8p-4, asinh(@as(f32, -0x3.d26bb4p-4)));
-    try std.testing.expectEqual(-0x3.b568cp-4, asinh(@as(f32, -0x3.bdeef4p-4)));
-    try std.testing.expectEqual(-0x7.fc2afp-8, asinh(@as(f32, -0x7.fc7fc8p-8)));
-    try std.testing.expectEqual(-0x3.b0e33p-4, asinh(@as(f32, -0x3.b94a5p-4)));
-    try std.testing.expectEqual(-0x3.b0e334p-4, asinh(@as(f32, -0x3.b94a54p-4)));
-    try std.testing.expectEqual(0x7.900098p-4, asinh(@as(f32, 0x7.d8e5a8p-4)));
-    try std.testing.expectEqual(-0x7.261f58p-4, asinh(@as(f32, -0x7.63a06p-4)));
-    try std.testing.expectEqual(-0x7.261f6p-4, asinh(@as(f32, -0x7.63a068p-4)));
-    try std.testing.expectEqual(0x6.c0ddep-4, asinh(@as(f32, 0x6.f4a93p-4)));
-    try std.testing.expectEqual(-0x7.47c178p-4, asinh(@as(f32, -0x7.88bcc8p-4)));
-    try std.testing.expectEqual(-0x3.0d0584p-4, asinh(@as(f32, -0x3.11c35p-4)));
-    try std.testing.expectEqual(-0x4.2d24bp-4, asinh(@as(f32, -0x4.39534p-4)));
-    try std.testing.expectEqual(-0x4.3170bp+4, asinh(@as(f32, -0xd.d62e8p+92)));
-    try std.testing.expectEqual(-0x4.bde0b8p-4, asinh(@as(f32, -0x4.cfb98p-4)));
-    try std.testing.expectEqual(-0x4.bde0cp-4, asinh(@as(f32, -0x4.cfb988p-4)));
-    try std.testing.expectEqual(-0x5.ac1ebp-4, asinh(@as(f32, -0x5.cabaep-4)));
-    try std.testing.expectEqual(-0x5.ac1eb8p-4, asinh(@as(f32, -0x5.cabae8p-4)));
-    try std.testing.expectEqual(-0x6.b0186p-4, asinh(@as(f32, -0x6.e26358p-4)));
-    try std.testing.expectEqual(0x6.98e81p-4, asinh(@as(f32, 0x6.c92c08p-4)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f32, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f32, 0x0p+0)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f32, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f32, 0x0p+0)));
-    try std.testing.expectEqual(0xf.94504p-8, asinh(@as(f32, 0xf.96c69p-8)));
-    try std.testing.expectEqual(0x3.fe4e64p-4, asinh(@as(f32, 0x4.08f4p-4)));
-    try std.testing.expectEqual(0x3.fe4e5cp-4, asinh(@as(f32, 0x4.08f3f8p-4)));
-    try std.testing.expectEqual(-0x5.8cae5p-4, asinh(@as(f32, -0x5.a9568p-4)));
-    try std.testing.expectEqual(-0x5.8cae58p-4, asinh(@as(f32, -0x5.a95688p-4)));
-    try std.testing.expectEqual(0x4p-128, asinh(@as(f32, 0x4p-128)));
-    try std.testing.expectEqual(-0x4p-128, asinh(@as(f32, -0x4p-128)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f32, 0x8p-152)));
-    try std.testing.expectEqual(-0x8p-152, asinh(@as(f32, -0x8p-152)));
-    try std.testing.expectEqual(0x5.96a7ep+4, asinh(@as(f32, 0xf.fffffp+124)));
-    try std.testing.expectEqual(-0x5.96a7ep+4, asinh(@as(f32, -0xf.fffffp+124)));
+    for (data_f32) |test_case| {
+        try std.testing.expectEqual(test_case[0], asinh(test_case[1]));
+    }
 
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f64, 0x0p+0)));
-    try std.testing.expectEqual(-0x0p+0, asinh(@as(f64, -0x0p+0)));
-    try std.testing.expectEqual(0xb.17217f7d1cf78p-4, asinh(@as(f64, 0xcp-4)));
-    try std.testing.expectEqual(0xe.1a1b30bcea138p-4, asinh(@as(f64, 0x1p+0)));
-    try std.testing.expectEqual(0x2.ff8b8a0da57b6p+0, asinh(@as(f64, 0xap+0)));
-    try std.testing.expectEqual(0x5.4c602a4f4f0a8p+0, asinh(@as(f64, 0x6.4p+4)));
-    try std.testing.expectEqual(0xe.823764bfd1e6p+0, asinh(@as(f64, 0xf.424p+16)));
-    try std.testing.expectEqual(0x6.3d0317b6484b4p+0, asinh(@as(f64, 0x1p+8)));
-    try std.testing.expectEqual(0x6.ee74ffae309acp+0, asinh(@as(f64, 0x2p+8)));
-    try std.testing.expectEqual(0x7.9fe70ba603d24p+0, asinh(@as(f64, 0x4p+8)));
-    try std.testing.expectEqual(0x8.5159209dd5b8p+0, asinh(@as(f64, 0x8p+8)));
-    try std.testing.expectEqual(0x9.02cb37d5a789p+0, asinh(@as(f64, 0x1p+12)));
-    try std.testing.expectEqual(0x9.b43d4f9d79588p+0, asinh(@as(f64, 0x2p+12)));
-    try std.testing.expectEqual(0x1.1542457337d43p+4, asinh(@as(f64, 0x1p+24)));
-    try std.testing.expectEqual(0x1.205966f2b4f12p+4, asinh(@as(f64, 0x2p+24)));
-    try std.testing.expectEqual(0x1.2b708872320e2p+4, asinh(@as(f64, 0x4p+24)));
-    try std.testing.expectEqual(0x1.3687a9f1af2b1p+4, asinh(@as(f64, 0x8p+24)));
-    try std.testing.expectEqual(0x1.419ecb712c481p+4, asinh(@as(f64, 0x1p+28)));
-    // try std.testing.expectEqual(0x1.4cb5ecf0a965p+4, asinh(@as(f64, 0x2p+28)));
-    // try std.testing.expectEqual(0x1.57cd0e702682p+4, asinh(@as(f64, 0x4p+28)));
-    try std.testing.expectEqual(0x1.62e42fefa39efp+4, asinh(@as(f64, 0x8p+28)));
-    // try std.testing.expectEqual(0x1.6dfb516f20bbfp+4, asinh(@as(f64, 0x1p+32)));
-    try std.testing.expectEqual(0x1.791272ee9dd8ep+4, asinh(@as(f64, 0x2p+32)));
-    try std.testing.expectEqual(0x2.1f6d6966f28b6p+4, asinh(@as(f64, 0x1p+48)));
-    try std.testing.expectEqual(0x2.2a848ae66fa86p+4, asinh(@as(f64, 0x2p+48)));
-    try std.testing.expectEqual(0x2.359bac65ecc56p+4, asinh(@as(f64, 0x4p+48)));
-    // try std.testing.expectEqual(0x2.40b2cde569e24p+4, asinh(@as(f64, 0x8p+48)));
-    try std.testing.expectEqual(0x2.4bc9ef64e6ff4p+4, asinh(@as(f64, 0x1p+52)));
-    try std.testing.expectEqual(0x2.56e110e4641c4p+4, asinh(@as(f64, 0x2p+52)));
-    try std.testing.expectEqual(0x2.61f83263e1394p+4, asinh(@as(f64, 0x4p+52)));
-    // try std.testing.expectEqual(0x2.6d0f53e35e562p+4, asinh(@as(f64, 0x8p+52)));
-    try std.testing.expectEqual(0x2.78267562db732p+4, asinh(@as(f64, 0x1p+56)));
-    try std.testing.expectEqual(0x2.833d96e258902p+4, asinh(@as(f64, 0x2p+56)));
-    try std.testing.expectEqual(0x2.8e54b861d5ad2p+4, asinh(@as(f64, 0x4p+56)));
-    // try std.testing.expectEqual(0x2.996bd9e152cap+4, asinh(@as(f64, 0x8p+56)));
-    try std.testing.expectEqual(0x4.6020374c5c6dcp+4, asinh(@as(f64, 0x1p+100)));
-    try std.testing.expectEqual(0x5.96a7e12e0b98cp+4, asinh(@as(f64, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0x1.5b4448e7fd9b1p+8, asinh(@as(f64, 0x1p+500)));
-    try std.testing.expectEqual(0x5.96a7e12e0b98cp+4, asinh(@as(f64, 0xf.fffffp+124)));
-    // try std.testing.expectEqual(0x2.c679d1f73f0fcp+8, asinh(@as(f64, 0xf.ffffffffffff8p+1020)));
-    try std.testing.expectEqual(0xf.fffd55568888p-12, asinh(@as(f64, 0x1p-8)));
-    try std.testing.expectEqual(0x7.ffffaaaab4444p-12, asinh(@as(f64, 0x8p-12)));
-    try std.testing.expectEqual(0x3.fffff55555a22p-12, asinh(@as(f64, 0x4p-12)));
-    try std.testing.expectEqual(0x1.fffffeaaaaad1p-12, asinh(@as(f64, 0x2p-12)));
-    try std.testing.expectEqual(0xf.fffffd5555568p-16, asinh(@as(f64, 0x1p-12)));
-    try std.testing.expectEqual(0x7.ffffffaaaaaacp-16, asinh(@as(f64, 0x8p-16)));
-    try std.testing.expectEqual(0xf.fffffffffffd8p-28, asinh(@as(f64, 0x1p-24)));
-    try std.testing.expectEqual(0x7.ffffffffffffcp-28, asinh(@as(f64, 0x8p-28)));
-    try std.testing.expectEqual(0x4p-28, asinh(@as(f64, 0x4p-28)));
-    try std.testing.expectEqual(0x2p-28, asinh(@as(f64, 0x2p-28)));
-    try std.testing.expectEqual(0x1p-28, asinh(@as(f64, 0x1p-28)));
-    try std.testing.expectEqual(0x8p-32, asinh(@as(f64, 0x8p-32)));
-    try std.testing.expectEqual(0x4p-32, asinh(@as(f64, 0x4p-32)));
-    try std.testing.expectEqual(0x2p-32, asinh(@as(f64, 0x2p-32)));
-    try std.testing.expectEqual(0x1p-32, asinh(@as(f64, 0x1p-32)));
-    try std.testing.expectEqual(0x8p-36, asinh(@as(f64, 0x8p-36)));
-    try std.testing.expectEqual(0x1p-48, asinh(@as(f64, 0x1p-48)));
-    try std.testing.expectEqual(0x8p-52, asinh(@as(f64, 0x8p-52)));
-    try std.testing.expectEqual(0x4p-52, asinh(@as(f64, 0x4p-52)));
-    try std.testing.expectEqual(0x2p-52, asinh(@as(f64, 0x2p-52)));
-    try std.testing.expectEqual(0x1p-52, asinh(@as(f64, 0x1p-52)));
-    try std.testing.expectEqual(0x8p-56, asinh(@as(f64, 0x8p-56)));
-    try std.testing.expectEqual(0x4p-56, asinh(@as(f64, 0x4p-56)));
-    try std.testing.expectEqual(0x2p-56, asinh(@as(f64, 0x2p-56)));
-    try std.testing.expectEqual(0x1p-56, asinh(@as(f64, 0x1p-56)));
-    try std.testing.expectEqual(0x8p-60, asinh(@as(f64, 0x8p-60)));
-    try std.testing.expectEqual(0x4p-60, asinh(@as(f64, 0x4p-60)));
-    try std.testing.expectEqual(0x2p-60, asinh(@as(f64, 0x2p-60)));
-    try std.testing.expectEqual(0x1p-100, asinh(@as(f64, 0x1p-100)));
-    try std.testing.expectEqual(-0x3.c958d830129a2p-4, asinh(@as(f64, -0x3.d26bb4p-4)));
-    try std.testing.expectEqual(-0x3.b568bf5eec676p-4, asinh(@as(f64, -0x3.bdeef4p-4)));
-    // try std.testing.expectEqual(-0x7.fc2aec03ed36p-8, asinh(@as(f64, -0x7.fc7fc8p-8)));
-    try std.testing.expectEqual(-0x3.b0e331596c778p-4, asinh(@as(f64, -0x3.b94a5p-4)));
-    // try std.testing.expectEqual(-0x3.b0e3353ec4c12p-4, asinh(@as(f64, -0x3.b94a54p-4)));
-    try std.testing.expectEqual(-0x3.b0e3342ca9652p-4, asinh(@as(f64, -0x3.b94a52e6913c2p-4)));
-    try std.testing.expectEqual(0x7.90009894e809p-4, asinh(@as(f64, 0x7.d8e5a8p-4)));
-    try std.testing.expectEqual(-0x7.261f5a1d1207p-4, asinh(@as(f64, -0x7.63a06p-4)));
-    // try std.testing.expectEqual(-0x7.261f61605eb6cp-4, asinh(@as(f64, -0x7.63a068p-4)));
-    try std.testing.expectEqual(-0x7.261f5cf40e168p-4, asinh(@as(f64, -0x7.63a06320c42e4p-4)));
-    // try std.testing.expectEqual(0x6.c0dddeef5ea74p-4, asinh(@as(f64, 0x6.f4a93p-4)));
-    try std.testing.expectEqual(-0x7.47c17bbd7ba6p-4, asinh(@as(f64, -0x7.88bcc8p-4)));
-    // try std.testing.expectEqual(-0x3.0d05831101b46p-4, asinh(@as(f64, -0x3.11c35p-4)));
-    try std.testing.expectEqual(-0x4.2d24ad5bedc88p-4, asinh(@as(f64, -0x4.39534p-4)));
-    try std.testing.expectEqual(-0x4.3170acb265858p+4, asinh(@as(f64, -0xd.d62e8p+92)));
-    try std.testing.expectEqual(-0x4.bde0b72ea682p-4, asinh(@as(f64, -0x4.cfb98p-4)));
-    try std.testing.expectEqual(-0x4.bde0bed7e48ecp-4, asinh(@as(f64, -0x4.cfb988p-4)));
-    try std.testing.expectEqual(-0x4.bde0b7852693p-4, asinh(@as(f64, -0x4.cfb9805a53a2p-4)));
-    try std.testing.expectEqual(-0x4.bde0b78526934p-4, asinh(@as(f64, -0x4.cfb9805a53a24p-4)));
-    try std.testing.expectEqual(-0x5.ac1eaf0870dccp-4, asinh(@as(f64, -0x5.cabaep-4)));
-    try std.testing.expectEqual(-0x5.ac1eb68e26b14p-4, asinh(@as(f64, -0x5.cabae8p-4)));
-    try std.testing.expectEqual(-0x5.ac1eb633f2fccp-4, asinh(@as(f64, -0x5.cabae7a011e3p-4)));
-    try std.testing.expectEqual(-0x5.ac1eb633f2fdp-4, asinh(@as(f64, -0x5.cabae7a011e34p-4)));
-    try std.testing.expectEqual(-0x6.b01863558de0cp-4, asinh(@as(f64, -0x6.e26358p-4)));
-    try std.testing.expectEqual(0x6.98e810591e8cp-4, asinh(@as(f64, 0x6.c92c08p-4)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f64, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f64, 0x0p+0)));
-    try std.testing.expectEqual(0x1p-500, asinh(@as(f64, 0x1p-500)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f64, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f64, 0x0p+0)));
-    try std.testing.expectEqual(0x4p-1076, asinh(@as(f64, 0x4p-1076)));
-    try std.testing.expectEqual(0xf.94503821fcc68p-8, asinh(@as(f64, 0xf.96c69p-8)));
-    try std.testing.expectEqual(0x3.fe4e62c525da6p-4, asinh(@as(f64, 0x4.08f4p-4)));
-    try std.testing.expectEqual(0x3.fe4e5b035251p-4, asinh(@as(f64, 0x4.08f3f8p-4)));
-    // try std.testing.expectEqual(0x3.fe4e5d9acef74p-4, asinh(@as(f64, 0x4.08f3faac4284cp-4)));
-    try std.testing.expectEqual(-0x5.8cae501409e88p-4, asinh(@as(f64, -0x5.a9568p-4)));
-    try std.testing.expectEqual(-0x5.8cae579ebc7c8p-4, asinh(@as(f64, -0x5.a95688p-4)));
-    try std.testing.expectEqual(-0x5.8cae53be0eeb8p-4, asinh(@as(f64, -0x5.a95683e302a7p-4)));
-    // try std.testing.expectEqual(-0x5.8cae53be0eebcp-4, asinh(@as(f64, -0x5.a95683e302a74p-4)));
-    try std.testing.expectEqual(0x4p-128, asinh(@as(f64, 0x4p-128)));
-    try std.testing.expectEqual(0x4p-1024, asinh(@as(f64, 0x4p-1024)));
-    try std.testing.expectEqual(0x8p-972, asinh(@as(f64, 0x8p-972)));
-    try std.testing.expectEqual(-0x4p-128, asinh(@as(f64, -0x4p-128)));
-    try std.testing.expectEqual(-0x4p-1024, asinh(@as(f64, -0x4p-1024)));
-    try std.testing.expectEqual(-0x8p-972, asinh(@as(f64, -0x8p-972)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f64, 0x8p-152)));
-    try std.testing.expectEqual(0x4p-1076, asinh(@as(f64, 0x4p-1076)));
-    try std.testing.expectEqual(-0x8p-152, asinh(@as(f64, -0x8p-152)));
-    try std.testing.expectEqual(-0x4p-1076, asinh(@as(f64, -0x4p-1076)));
-    try std.testing.expectEqual(0x5.96a7e12e0b98cp+4, asinh(@as(f64, 0xf.fffffp+124)));
-    // try std.testing.expectEqual(0x2.c679d1f73f0fcp+8, asinh(@as(f64, 0xf.ffffffffffff8p+1020)));
-    try std.testing.expectEqual(-0x5.96a7e12e0b98cp+4, asinh(@as(f64, -0xf.fffffp+124)));
-    // try std.testing.expectEqual(-0x2.c679d1f73f0fcp+8, asinh(@as(f64, -0xf.ffffffffffff8p+1020)));
+    for (data_f64) |test_case| {
+        try std.testing.expectEqual(test_case[0], asinh(test_case[1]));
+    }
 
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f80, 0x0p+0)));
-    try std.testing.expectEqual(-0x0p+0, asinh(@as(f80, -0x0p+0)));
-    try std.testing.expectEqual(0xb.17217f7d1cf79acp-4, asinh(@as(f80, 0xcp-4)));
-    try std.testing.expectEqual(0xe.1a1b30bcea13661p-4, asinh(@as(f80, 0x1p+0)));
-    try std.testing.expectEqual(0x2.ff8b8a0da57b5aa4p+0, asinh(@as(f80, 0xap+0)));
-    try std.testing.expectEqual(0x5.4c602a4f4f0a7cfp+0, asinh(@as(f80, 0x6.4p+4)));
-    try std.testing.expectEqual(0xe.823764bfd1e5fa3p+0, asinh(@as(f80, 0xf.424p+16)));
-    try std.testing.expectEqual(0x6.3d0317b6484b546p+0, asinh(@as(f80, 0x1p+8)));
-    try std.testing.expectEqual(0x6.ee74ffae309ac0e8p+0, asinh(@as(f80, 0x2p+8)));
-    try std.testing.expectEqual(0x7.9fe70ba603d23a6p+0, asinh(@as(f80, 0x4p+8)));
-    try std.testing.expectEqual(0x8.5159209dd5b8341p+0, asinh(@as(f80, 0x8p+8)));
-    try std.testing.expectEqual(0x9.02cb37d5a78915cp+0, asinh(@as(f80, 0x1p+12)));
-    try std.testing.expectEqual(0x9.b43d4f9d7958a5ep+0, asinh(@as(f80, 0x2p+12)));
-    try std.testing.expectEqual(0x1.1542457337d4321cp+4, asinh(@as(f80, 0x1p+24)));
-    try std.testing.expectEqual(0x1.205966f2b4f126b8p+4, asinh(@as(f80, 0x2p+24)));
-    try std.testing.expectEqual(0x1.2b708872320e1d92p+4, asinh(@as(f80, 0x4p+24)));
-    try std.testing.expectEqual(0x1.3687a9f1af2b14fcp+4, asinh(@as(f80, 0x8p+24)));
-    try std.testing.expectEqual(0x1.419ecb712c480c8cp+4, asinh(@as(f80, 0x1p+28)));
-    try std.testing.expectEqual(0x1.4cb5ecf0a9650424p+4, asinh(@as(f80, 0x2p+28)));
-    try std.testing.expectEqual(0x1.57cd0e702681fbbep+4, asinh(@as(f80, 0x4p+28)));
-    try std.testing.expectEqual(0x1.62e42fefa39ef358p+4, asinh(@as(f80, 0x8p+28)));
-    try std.testing.expectEqual(0x1.6dfb516f20bbeaf2p+4, asinh(@as(f80, 0x1p+32)));
-    try std.testing.expectEqual(0x1.791272ee9dd8e28ep+4, asinh(@as(f80, 0x2p+32)));
-    try std.testing.expectEqual(0x2.1f6d6966f28b64ap+4, asinh(@as(f80, 0x1p+48)));
-    try std.testing.expectEqual(0x2.2a848ae66fa85c38p+4, asinh(@as(f80, 0x2p+48)));
-    try std.testing.expectEqual(0x2.359bac65ecc553d4p+4, asinh(@as(f80, 0x4p+48)));
-    try std.testing.expectEqual(0x2.40b2cde569e24b7p+4, asinh(@as(f80, 0x8p+48)));
-    try std.testing.expectEqual(0x2.4bc9ef64e6ff4308p+4, asinh(@as(f80, 0x1p+52)));
-    try std.testing.expectEqual(0x2.56e110e4641c3aa4p+4, asinh(@as(f80, 0x2p+52)));
-    try std.testing.expectEqual(0x2.61f83263e139324p+4, asinh(@as(f80, 0x4p+52)));
-    try std.testing.expectEqual(0x2.6d0f53e35e5629d8p+4, asinh(@as(f80, 0x8p+52)));
-    try std.testing.expectEqual(0x2.78267562db732174p+4, asinh(@as(f80, 0x1p+56)));
-    try std.testing.expectEqual(0x2.833d96e25890191p+4, asinh(@as(f80, 0x2p+56)));
-    try std.testing.expectEqual(0x2.8e54b861d5ad10a8p+4, asinh(@as(f80, 0x4p+56)));
-    try std.testing.expectEqual(0x2.996bd9e152ca0844p+4, asinh(@as(f80, 0x8p+56)));
-    try std.testing.expectEqual(0x4.6020374c5c6db01p+4, asinh(@as(f80, 0x1p+100)));
-    try std.testing.expectEqual(0x5.96a7e12e0b98bcf8p+4, asinh(@as(f80, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0x1.5b4448e7fd9b091ep+8, asinh(@as(f80, 0x1p+500)));
-    try std.testing.expectEqual(0x5.96a7e12e0b98bcf8p+4, asinh(@as(f80, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0x2.c679d1f73f0fb62p+8, asinh(@as(f80, 0xf.ffffffffffff8p+1020)));
-    try std.testing.expectEqual(0xd.8a6dd63831ae0fep+8, asinh(@as(f80, 0x1p+5000)));
-    try std.testing.expectEqual(0xf.fffd55568887d1bp-12, asinh(@as(f80, 0x1p-8)));
-    try std.testing.expectEqual(0x7.ffffaaaab44442d8p-12, asinh(@as(f80, 0x8p-12)));
-    try std.testing.expectEqual(0x3.fffff55555a2222p-12, asinh(@as(f80, 0x4p-12)));
-    try std.testing.expectEqual(0x1.fffffeaaaaad1112p-12, asinh(@as(f80, 0x2p-12)));
-    try std.testing.expectEqual(0xf.fffffd555556889p-16, asinh(@as(f80, 0x1p-12)));
-    try std.testing.expectEqual(0x7.ffffffaaaaaab448p-16, asinh(@as(f80, 0x8p-16)));
-    try std.testing.expectEqual(0xf.fffffffffffd555p-28, asinh(@as(f80, 0x1p-24)));
-    try std.testing.expectEqual(0x7.ffffffffffffaaa8p-28, asinh(@as(f80, 0x8p-28)));
-    try std.testing.expectEqual(0x3.fffffffffffff554p-28, asinh(@as(f80, 0x4p-28)));
-    try std.testing.expectEqual(0x1.fffffffffffffeaap-28, asinh(@as(f80, 0x2p-28)));
-    try std.testing.expectEqual(0xf.fffffffffffffd5p-32, asinh(@as(f80, 0x1p-28)));
-    try std.testing.expectEqual(0x7.ffffffffffffffa8p-32, asinh(@as(f80, 0x8p-32)));
-    try std.testing.expectEqual(0x3.fffffffffffffff4p-32, asinh(@as(f80, 0x4p-32)));
-    try std.testing.expectEqual(0x1.fffffffffffffffep-32, asinh(@as(f80, 0x2p-32)));
-    try std.testing.expectEqual(0x1p-32, asinh(@as(f80, 0x1p-32)));
-    try std.testing.expectEqual(0x8p-36, asinh(@as(f80, 0x8p-36)));
-    try std.testing.expectEqual(0x1p-48, asinh(@as(f80, 0x1p-48)));
-    try std.testing.expectEqual(0x8p-52, asinh(@as(f80, 0x8p-52)));
-    try std.testing.expectEqual(0x4p-52, asinh(@as(f80, 0x4p-52)));
-    try std.testing.expectEqual(0x2p-52, asinh(@as(f80, 0x2p-52)));
-    try std.testing.expectEqual(0x1p-52, asinh(@as(f80, 0x1p-52)));
-    try std.testing.expectEqual(0x8p-56, asinh(@as(f80, 0x8p-56)));
-    try std.testing.expectEqual(0x4p-56, asinh(@as(f80, 0x4p-56)));
-    try std.testing.expectEqual(0x2p-56, asinh(@as(f80, 0x2p-56)));
-    try std.testing.expectEqual(0x1p-56, asinh(@as(f80, 0x1p-56)));
-    try std.testing.expectEqual(0x8p-60, asinh(@as(f80, 0x8p-60)));
-    try std.testing.expectEqual(0x4p-60, asinh(@as(f80, 0x4p-60)));
-    try std.testing.expectEqual(0x2p-60, asinh(@as(f80, 0x2p-60)));
-    try std.testing.expectEqual(0x1p-100, asinh(@as(f80, 0x1p-100)));
-    try std.testing.expectEqual(-0x3.c958d830129a231p-4, asinh(@as(f80, -0x3.d26bb4p-4)));
-    try std.testing.expectEqual(-0x3.b568bf5eec676954p-4, asinh(@as(f80, -0x3.bdeef4p-4)));
-    try std.testing.expectEqual(-0x7.fc2aec03ed35ec5p-8, asinh(@as(f80, -0x7.fc7fc8p-8)));
-    try std.testing.expectEqual(-0x3.b0e331596c7781ecp-4, asinh(@as(f80, -0x3.b94a5p-4)));
-    try std.testing.expectEqual(-0x3.b0e3353ec4c110c4p-4, asinh(@as(f80, -0x3.b94a54p-4)));
-    try std.testing.expectEqual(-0x3.b0e3342ca965242cp-4, asinh(@as(f80, -0x3.b94a52e6913c2p-4)));
-    try std.testing.expectEqual(0x7.90009894e8091718p-4, asinh(@as(f80, 0x7.d8e5a8p-4)));
-    try std.testing.expectEqual(-0x7.261f5a1d1206f028p-4, asinh(@as(f80, -0x7.63a06p-4)));
-    try std.testing.expectEqual(-0x7.261f61605eb6bd18p-4, asinh(@as(f80, -0x7.63a068p-4)));
-    try std.testing.expectEqual(-0x7.261f5cf40e169a4p-4, asinh(@as(f80, -0x7.63a06320c42e4p-4)));
-    try std.testing.expectEqual(0x6.c0dddeef5ea744dp-4, asinh(@as(f80, 0x6.f4a93p-4)));
-    try std.testing.expectEqual(-0x7.47c17bbd7ba60748p-4, asinh(@as(f80, -0x7.88bcc8p-4)));
-    try std.testing.expectEqual(-0x3.0d05831101b45p-4, asinh(@as(f80, -0x3.11c35p-4)));
-    try std.testing.expectEqual(-0x4.2d24ad5bedc89da8p-4, asinh(@as(f80, -0x4.39534p-4)));
-    try std.testing.expectEqual(-0x4.3170acb265858p+4, asinh(@as(f80, -0xd.d62e8p+92)));
-    try std.testing.expectEqual(-0x4.bde0b72ea681f6e8p-4, asinh(@as(f80, -0x4.cfb98p-4)));
-    try std.testing.expectEqual(-0x4.bde0bed7e48ed178p-4, asinh(@as(f80, -0x4.cfb988p-4)));
-    try std.testing.expectEqual(-0x4.bde0b78526931428p-4, asinh(@as(f80, -0x4.cfb9805a53a2p-4)));
-    try std.testing.expectEqual(-0x4.bde0b7852693517p-4, asinh(@as(f80, -0x4.cfb9805a53a24p-4)));
-    try std.testing.expectEqual(-0x4.bde0b78526931a3p-4, asinh(@as(f80, -0x4.cfb9805a53a2065p-4)));
-    try std.testing.expectEqual(-0x5.ac1eaf0870dcb5p-4, asinh(@as(f80, -0x5.cabaep-4)));
-    try std.testing.expectEqual(-0x5.ac1eb68e26b132a8p-4, asinh(@as(f80, -0x5.cabae8p-4)));
-    try std.testing.expectEqual(-0x5.ac1eb633f2fcd81p-4, asinh(@as(f80, -0x5.cabae7a011e3p-4)));
-    try std.testing.expectEqual(-0x5.ac1eb633f2fd1438p-4, asinh(@as(f80, -0x5.cabae7a011e34p-4)));
-    try std.testing.expectEqual(-0x5.ac1eb633f2fd11fp-4, asinh(@as(f80, -0x5.cabae7a011e33d9p-4)));
-    try std.testing.expectEqual(-0x6.b01863558de0abap-4, asinh(@as(f80, -0x6.e26358p-4)));
-    try std.testing.expectEqual(0x6.98e810591e8c1c78p-4, asinh(@as(f80, 0x6.c92c08p-4)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f80, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f80, 0x0p+0)));
-    try std.testing.expectEqual(0x1p-500, asinh(@as(f80, 0x1p-500)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f80, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f80, 0x0p+0)));
-    try std.testing.expectEqual(0x4p-1076, asinh(@as(f80, 0x4p-1076)));
-    try std.testing.expectEqual(0x1p-5000, asinh(@as(f80, 0x1p-5000)));
-    try std.testing.expectEqual(0xf.94503821fcc6aebp-8, asinh(@as(f80, 0xf.96c69p-8)));
-    try std.testing.expectEqual(0x3.fe4e62c525da587cp-4, asinh(@as(f80, 0x4.08f4p-4)));
-    try std.testing.expectEqual(0x3.fe4e5b035250f72p-4, asinh(@as(f80, 0x4.08f3f8p-4)));
-    try std.testing.expectEqual(0x3.fe4e5d9acef73cdp-4, asinh(@as(f80, 0x4.08f3faac4284cp-4)));
-    try std.testing.expectEqual(-0x5.8cae501409e88378p-4, asinh(@as(f80, -0x5.a9568p-4)));
-    try std.testing.expectEqual(-0x5.8cae579ebc7c886p-4, asinh(@as(f80, -0x5.a95688p-4)));
-    try std.testing.expectEqual(-0x5.8cae53be0eeb6f38p-4, asinh(@as(f80, -0x5.a95683e302a7p-4)));
-    try std.testing.expectEqual(-0x5.8cae53be0eebab9p-4, asinh(@as(f80, -0x5.a95683e302a74p-4)));
-    try std.testing.expectEqual(-0x5.8cae53be0eeb8988p-4, asinh(@as(f80, -0x5.a95683e302a71be8p-4)));
-    try std.testing.expectEqual(-0x5.8cae53be0eeb899p-4, asinh(@as(f80, -0x5.a95683e302a71bfp-4)));
-    try std.testing.expectEqual(0x4p-128, asinh(@as(f80, 0x4p-128)));
-    try std.testing.expectEqual(0x4p-1024, asinh(@as(f80, 0x4p-1024)));
-    try std.testing.expectEqual(0x4p-16384, asinh(@as(f80, 0x4p-16384)));
-    try std.testing.expectEqual(0x2p-16384, asinh(@as(f80, 0x2p-16384)));
-    try std.testing.expectEqual(0x8p-972, asinh(@as(f80, 0x8p-972)));
-    try std.testing.expectEqual(-0x4p-128, asinh(@as(f80, -0x4p-128)));
-    try std.testing.expectEqual(-0x4p-1024, asinh(@as(f80, -0x4p-1024)));
-    try std.testing.expectEqual(-0x4p-16384, asinh(@as(f80, -0x4p-16384)));
-    try std.testing.expectEqual(-0x2p-16384, asinh(@as(f80, -0x2p-16384)));
-    try std.testing.expectEqual(-0x8p-972, asinh(@as(f80, -0x8p-972)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f80, 0x8p-152)));
-    try std.testing.expectEqual(0x4p-1076, asinh(@as(f80, 0x4p-1076)));
-    try std.testing.expectEqual(0x8p-16448, asinh(@as(f80, 0x8p-16448)));
-    try std.testing.expectEqual(-0x8p-152, asinh(@as(f80, -0x8p-152)));
-    try std.testing.expectEqual(-0x4p-1076, asinh(@as(f80, -0x4p-1076)));
-    try std.testing.expectEqual(-0x8p-16448, asinh(@as(f80, -0x8p-16448)));
-    try std.testing.expectEqual(0x5.96a7e12e0b98bcf8p+4, asinh(@as(f80, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0x2.c679d1f73f0fb62p+8, asinh(@as(f80, 0xf.ffffffffffff8p+1020)));
-    try std.testing.expectEqual(0x2.c5d37700c6bb03a8p+12, asinh(@as(f80, 0xf.fffffffffffffffp+16380)));
-    try std.testing.expectEqual(-0x5.96a7e12e0b98bcf8p+4, asinh(@as(f80, -0xf.fffffp+124)));
-    try std.testing.expectEqual(-0x2.c679d1f73f0fb62p+8, asinh(@as(f80, -0xf.ffffffffffff8p+1020)));
-    try std.testing.expectEqual(-0x2.c5d37700c6bb03a8p+12, asinh(@as(f80, -0xf.fffffffffffffffp+16380)));
+    for (data_f80) |test_case| {
+        try std.testing.expectEqual(test_case[0], asinh(test_case[1]));
+    }
 
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f128, 0x0p+0)));
-    try std.testing.expectEqual(-0x0p+0, asinh(@as(f128, -0x0p+0)));
-    try std.testing.expectEqual(0xb.17217f7d1cf79abc9e3b39803f3p-4, asinh(@as(f128, 0xcp-4)));
-    // try std.testing.expectEqual(0xe.1a1b30bcea13660d8f99e8dd2518p-4, asinh(@as(f128, 0x1p+0)));
-    try std.testing.expectEqual(0x2.ff8b8a0da57b5aa38395e907170ep+0, asinh(@as(f128, 0xap+0)));
-    try std.testing.expectEqual(0x5.4c602a4f4f0a7cedac9045f3d3f8p+0, asinh(@as(f128, 0x6.4p+4)));
-    try std.testing.expectEqual(0xe.823764bfd1e5fa37c6bf52ed09dp+0, asinh(@as(f128, 0xf.424p+16)));
-    try std.testing.expectEqual(0x6.3d0317b6484b545f6596abfa40dcp+0, asinh(@as(f128, 0x1p+8)));
-    // try std.testing.expectEqual(0x6.ee74ffae309ac0eb383199471004p+0, asinh(@as(f128, 0x2p+8)));
-    try std.testing.expectEqual(0x7.9fe70ba603d23a62821e041d812cp+0, asinh(@as(f128, 0x4p+8)));
-    try std.testing.expectEqual(0x8.5159209dd5b8340d7a01c06cc4b8p+0, asinh(@as(f128, 0x8p+8)));
-    try std.testing.expectEqual(0x9.02cb37d5a78915b9409d740d7fe8p+0, asinh(@as(f128, 0x1p+12)));
-    try std.testing.expectEqual(0x9.b43d4f9d7958a5e50a7407a58c98p+0, asinh(@as(f128, 0x2p+12)));
-    try std.testing.expectEqual(0x1.1542457337d4321c6b73c89d84acp+4, asinh(@as(f128, 0x1p+24)));
-    try std.testing.expectEqual(0x1.205966f2b4f126b7281203d70653p+4, asinh(@as(f128, 0x2p+24)));
-    try std.testing.expectEqual(0x1.2b708872320e1d91e4b03f1086a9p+4, asinh(@as(f128, 0x4p+24)));
-    try std.testing.expectEqual(0x1.3687a9f1af2b14fca14e7a4a06e9p+4, asinh(@as(f128, 0x8p+24)));
-    try std.testing.expectEqual(0x1.419ecb712c480c8b5decb5838728p+4, asinh(@as(f128, 0x1p+28)));
-    try std.testing.expectEqual(0x1.4cb5ecf0a96504231a8af0bd0768p+4, asinh(@as(f128, 0x2p+28)));
-    try std.testing.expectEqual(0x1.57cd0e702681fbbd17292bf687a7p+4, asinh(@as(f128, 0x4p+28)));
-    try std.testing.expectEqual(0x1.62e42fefa39ef357a3c7673007e6p+4, asinh(@as(f128, 0x8p+28)));
-    try std.testing.expectEqual(0x1.6dfb516f20bbeaf25465a2698825p+4, asinh(@as(f128, 0x1p+32)));
-    try std.testing.expectEqual(0x1.791272ee9dd8e28d0e03dda30864p+4, asinh(@as(f128, 0x2p+32)));
-    try std.testing.expectEqual(0x2.1f6d6966f28b649e1a4956019018p+4, asinh(@as(f128, 0x1p+48)));
-    try std.testing.expectEqual(0x2.2a848ae66fa85c38d6e7913b0d58p+4, asinh(@as(f128, 0x2p+48)));
-    try std.testing.expectEqual(0x2.359bac65ecc553d39385cc748cd6p+4, asinh(@as(f128, 0x4p+48)));
-    try std.testing.expectEqual(0x2.40b2cde569e24b6e502407ae0ce6p+4, asinh(@as(f128, 0x8p+48)));
-    try std.testing.expectEqual(0x2.4bc9ef64e6ff43090cc242e78d18p+4, asinh(@as(f128, 0x1p+52)));
-    try std.testing.expectEqual(0x2.56e110e4641c3aa3c9607e210d56p+4, asinh(@as(f128, 0x2p+52)));
-    try std.testing.expectEqual(0x2.61f83263e139323e85feb95a8d94p+4, asinh(@as(f128, 0x4p+52)));
-    // try std.testing.expectEqual(0x2.6d0f53e35e5629d9429cf4940dd2p+4, asinh(@as(f128, 0x8p+52)));
-    try std.testing.expectEqual(0x2.78267562db732173ff3b2fcd8e12p+4, asinh(@as(f128, 0x1p+56)));
-    // try std.testing.expectEqual(0x2.833d96e25890190ebbd96b070e5p+4, asinh(@as(f128, 0x2p+56)));
-    try std.testing.expectEqual(0x2.8e54b861d5ad10a97877a6408e9p+4, asinh(@as(f128, 0x4p+56)));
-    try std.testing.expectEqual(0x2.996bd9e152ca08443515e17a0edp+4, asinh(@as(f128, 0x8p+56)));
-    // try std.testing.expectEqual(0x4.6020374c5c6db00c6a6d5daf98ecp+4, asinh(@as(f128, 0x1p+100)));
-    // try std.testing.expectEqual(0x5.96a7e12e0b98bcf90bb682a4468p+4, asinh(@as(f128, 0xf.fffffp+124)));
-    // try std.testing.expectEqual(0x1.5b4448e7fd9b091d321a9e787fbap+8, asinh(@as(f128, 0x1p+500)));
-    // try std.testing.expectEqual(0x5.96a7e12e0b98bcf90bb682a4468p+4, asinh(@as(f128, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0x2.c679d1f73f0fb620d358b213a7dp+8, asinh(@as(f128, 0xf.ffffffffffff8p+1020)));
-    // try std.testing.expectEqual(0xd.8a6dd63831ae0fdceaf12f64a528p+8, asinh(@as(f128, 0x1p+5000)));
-    try std.testing.expectEqual(0x2.c679d1f73f0fb624d358b213a7dp+8, asinh(@as(f128, 0xf.ffffffffffffbffffffffffffcp+1020)));
-    // try std.testing.expectEqual(0xf.fffd55568887d1ad97431894a1dp-12, asinh(@as(f128, 0x1p-8)));
-    try std.testing.expectEqual(0x7.ffffaaaab44442d68da70f6582b4p-12, asinh(@as(f128, 0x8p-12)));
-    try std.testing.expectEqual(0x3.fffff55555a2221f46b48a6324c4p-12, asinh(@as(f128, 0x4p-12)));
-    try std.testing.expectEqual(0x1.fffffeaaaaad11110b5a35b2e86ep-12, asinh(@as(f128, 0x2p-12)));
-    // try std.testing.expectEqual(0xf.fffffd555556888887d1ad1b4e2p-16, asinh(@as(f128, 0x1p-12)));
-    try std.testing.expectEqual(0x7.ffffffaaaaaab4444442d68d6914p-16, asinh(@as(f128, 0x8p-16)));
-    try std.testing.expectEqual(0xf.fffffffffffd5555555555568888p-28, asinh(@as(f128, 0x1p-24)));
-    try std.testing.expectEqual(0x7.ffffffffffffaaaaaaaaaaaab444p-28, asinh(@as(f128, 0x8p-28)));
-    try std.testing.expectEqual(0x3.fffffffffffff5555555555555a2p-28, asinh(@as(f128, 0x4p-28)));
-    try std.testing.expectEqual(0x1.fffffffffffffeaaaaaaaaaaaaadp-28, asinh(@as(f128, 0x2p-28)));
-    try std.testing.expectEqual(0xf.fffffffffffffd55555555555558p-32, asinh(@as(f128, 0x1p-28)));
-    try std.testing.expectEqual(0x7.ffffffffffffffaaaaaaaaaaaaacp-32, asinh(@as(f128, 0x8p-32)));
-    try std.testing.expectEqual(0x3.fffffffffffffff5555555555556p-32, asinh(@as(f128, 0x4p-32)));
-    try std.testing.expectEqual(0x1.fffffffffffffffeaaaaaaaaaaabp-32, asinh(@as(f128, 0x2p-32)));
-    try std.testing.expectEqual(0xf.fffffffffffffffd555555555558p-36, asinh(@as(f128, 0x1p-32)));
-    try std.testing.expectEqual(0x7.ffffffffffffffffaaaaaaaaaaacp-36, asinh(@as(f128, 0x8p-36)));
-    try std.testing.expectEqual(0xf.fffffffffffffffffffffffd5558p-52, asinh(@as(f128, 0x1p-48)));
-    try std.testing.expectEqual(0x7.ffffffffffffffffffffffffaaacp-52, asinh(@as(f128, 0x8p-52)));
-    try std.testing.expectEqual(0x3.fffffffffffffffffffffffff556p-52, asinh(@as(f128, 0x4p-52)));
-    try std.testing.expectEqual(0x1.fffffffffffffffffffffffffeabp-52, asinh(@as(f128, 0x2p-52)));
-    try std.testing.expectEqual(0xf.fffffffffffffffffffffffffd58p-56, asinh(@as(f128, 0x1p-52)));
-    try std.testing.expectEqual(0x7.ffffffffffffffffffffffffffacp-56, asinh(@as(f128, 0x8p-56)));
-    try std.testing.expectEqual(0x3.fffffffffffffffffffffffffff6p-56, asinh(@as(f128, 0x4p-56)));
-    try std.testing.expectEqual(0x1.ffffffffffffffffffffffffffffp-56, asinh(@as(f128, 0x2p-56)));
-    try std.testing.expectEqual(0x1p-56, asinh(@as(f128, 0x1p-56)));
-    try std.testing.expectEqual(0x8p-60, asinh(@as(f128, 0x8p-60)));
-    try std.testing.expectEqual(0x4p-60, asinh(@as(f128, 0x4p-60)));
-    try std.testing.expectEqual(0x2p-60, asinh(@as(f128, 0x2p-60)));
-    try std.testing.expectEqual(0x1p-100, asinh(@as(f128, 0x1p-100)));
-    try std.testing.expectEqual(-0x3.c958d830129a2311e46d02ce948ap-4, asinh(@as(f128, -0x3.d26bb4p-4)));
-    // try std.testing.expectEqual(-0x3.b568bf5eec676953e540354ab56ep-4, asinh(@as(f128, -0x3.bdeef4p-4)));
-    // try std.testing.expectEqual(-0x7.fc2aec03ed35ec4f3b852298d344p-8, asinh(@as(f128, -0x7.fc7fc8p-8)));
-    // try std.testing.expectEqual(-0x3.b0e331596c7781edc668b0947d86p-4, asinh(@as(f128, -0x3.b94a5p-4)));
-    // try std.testing.expectEqual(-0x3.b0e3353ec4c110c2cb860e4335a6p-4, asinh(@as(f128, -0x3.b94a54p-4)));
-    try std.testing.expectEqual(-0x3.b0e3342ca965242afb569c3a5ce6p-4, asinh(@as(f128, -0x3.b94a52e6913c2p-4)));
-    try std.testing.expectEqual(0x7.90009894e809171b324a20cc7fc8p-4, asinh(@as(f128, 0x7.d8e5a8p-4)));
-    try std.testing.expectEqual(-0x7.261f5a1d1206f0273eb68b1daaf4p-4, asinh(@as(f128, -0x7.63a06p-4)));
-    // try std.testing.expectEqual(-0x7.261f61605eb6bd156f8f2c73939cp-4, asinh(@as(f128, -0x7.63a068p-4)));
-    try std.testing.expectEqual(-0x7.261f5cf40e169a3c2c399a33c774p-4, asinh(@as(f128, -0x7.63a06320c42e4p-4)));
-    // try std.testing.expectEqual(0x6.c0dddeef5ea744d14d99f9d11c78p-4, asinh(@as(f128, 0x6.f4a93p-4)));
-    // try std.testing.expectEqual(-0x7.47c17bbd7ba607458f4e549f132cp-4, asinh(@as(f128, -0x7.88bcc8p-4)));
-    try std.testing.expectEqual(-0x3.0d05831101b4500142e4b2901772p-4, asinh(@as(f128, -0x3.11c35p-4)));
-    // try std.testing.expectEqual(-0x4.2d24ad5bedc89dab07914ab2cedcp-4, asinh(@as(f128, -0x4.39534p-4)));
-    try std.testing.expectEqual(-0x4.3170acb265858000c5d391e6721p+4, asinh(@as(f128, -0xd.d62e8p+92)));
-    // try std.testing.expectEqual(-0x4.bde0b72ea681f6e82ea91bcdc42p-4, asinh(@as(f128, -0x4.cfb98p-4)));
-    try std.testing.expectEqual(-0x4.bde0bed7e48ed176770b2cee5404p-4, asinh(@as(f128, -0x4.cfb988p-4)));
-    try std.testing.expectEqual(-0x4.bde0b785269314242ca206df8638p-4, asinh(@as(f128, -0x4.cfb9805a53a2p-4)));
-    try std.testing.expectEqual(-0x4.bde0b7852693516e1d0cb5a0a548p-4, asinh(@as(f128, -0x4.cfb9805a53a24p-4)));
-    try std.testing.expectEqual(-0x4.bde0b78526931a2fb7988c9c128cp-4, asinh(@as(f128, -0x4.cfb9805a53a2065p-4)));
-    // try std.testing.expectEqual(-0x5.ac1eaf0870dcb4fc584cd1a4e9a4p-4, asinh(@as(f128, -0x5.cabaep-4)));
-    // try std.testing.expectEqual(-0x5.ac1eb68e26b132a5e3ce931aa7b4p-4, asinh(@as(f128, -0x5.cabae8p-4)));
-    // try std.testing.expectEqual(-0x5.ac1eb633f2fcd80e04e8e6253e2p-4, asinh(@as(f128, -0x5.cabae7a011e3p-4)));
-    // try std.testing.expectEqual(-0x5.ac1eb633f2fd143bb3887641c888p-4, asinh(@as(f128, -0x5.cabae7a011e34p-4)));
-    // try std.testing.expectEqual(-0x5.ac1eb633f2fd11f0f621e284b244p-4, asinh(@as(f128, -0x5.cabae7a011e33d9p-4)));
-    try std.testing.expectEqual(-0x6.b01863558de0ab9db866832ea558p-4, asinh(@as(f128, -0x6.e26358p-4)));
-    try std.testing.expectEqual(0x6.98e810591e8c1c7a088484b273b4p-4, asinh(@as(f128, 0x6.c92c08p-4)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f128, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f128, 0x0p+0)));
-    try std.testing.expectEqual(0x1p-500, asinh(@as(f128, 0x1p-500)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f128, 0x8p-152)));
-    try std.testing.expectEqual(0x0p+0, asinh(@as(f128, 0x0p+0)));
-    try std.testing.expectEqual(0x4p-1076, asinh(@as(f128, 0x4p-1076)));
-    try std.testing.expectEqual(0x1p-5000, asinh(@as(f128, 0x1p-5000)));
-    // try std.testing.expectEqual(0xf.94503821fcc6aead1cad28d4935p-8, asinh(@as(f128, 0xf.96c69p-8)));
-    try std.testing.expectEqual(0x3.fe4e62c525da587ab7dc0384edeap-4, asinh(@as(f128, 0x4.08f4p-4)));
-    // try std.testing.expectEqual(0x3.fe4e5b035250f72070a4b6fdf4c6p-4, asinh(@as(f128, 0x4.08f3f8p-4)));
-    try std.testing.expectEqual(0x3.fe4e5d9acef73cd0062bafd4f44p-4, asinh(@as(f128, 0x4.08f3faac4284cp-4)));
-    // try std.testing.expectEqual(-0x5.8cae501409e8837aba5edefb984cp-4, asinh(@as(f128, -0x5.a9568p-4)));
-    try std.testing.expectEqual(-0x5.8cae579ebc7c885e6164f2f19838p-4, asinh(@as(f128, -0x5.a95688p-4)));
-    // try std.testing.expectEqual(-0x5.8cae53be0eeb6f3a31576ce08edcp-4, asinh(@as(f128, -0x5.a95683e302a7p-4)));
-    // try std.testing.expectEqual(-0x5.8cae53be0eebab8fc5f7b65e3d1p-4, asinh(@as(f128, -0x5.a95683e302a74p-4)));
-    // try std.testing.expectEqual(-0x5.8cae53be0eeb89890245d0ebfbfcp-4, asinh(@as(f128, -0x5.a95683e302a71be8p-4)));
-    // try std.testing.expectEqual(-0x5.8cae53be0eeb89908cf864f52bbp-4, asinh(@as(f128, -0x5.a95683e302a71bfp-4)));
-    try std.testing.expectEqual(-0x5.8cae53be0eeb89898490af1ca97p-4, asinh(@as(f128, -0x5.a95683e302a71be88a35649b24ep-4)));
-    // try std.testing.expectEqual(-0x5.8cae53be0eeb89898490af1ca89cp-4, asinh(@as(f128, -0x5.a95683e302a71be88a35649b24p-4)));
-    try std.testing.expectEqual(-0x5.8cae53be0eeb89898490af1caa8p-4, asinh(@as(f128, -0x5.a95683e302a71be88a35649b26p-4)));
-    try std.testing.expectEqual(0x4p-128, asinh(@as(f128, 0x4p-128)));
-    try std.testing.expectEqual(0x4p-1024, asinh(@as(f128, 0x4p-1024)));
-    try std.testing.expectEqual(0x4p-16384, asinh(@as(f128, 0x4p-16384)));
-    try std.testing.expectEqual(0x2p-16384, asinh(@as(f128, 0x2p-16384)));
-    try std.testing.expectEqual(0x8p-972, asinh(@as(f128, 0x8p-972)));
-    try std.testing.expectEqual(-0x4p-128, asinh(@as(f128, -0x4p-128)));
-    try std.testing.expectEqual(-0x4p-1024, asinh(@as(f128, -0x4p-1024)));
-    try std.testing.expectEqual(-0x4p-16384, asinh(@as(f128, -0x4p-16384)));
-    try std.testing.expectEqual(-0x2p-16384, asinh(@as(f128, -0x2p-16384)));
-    try std.testing.expectEqual(-0x8p-972, asinh(@as(f128, -0x8p-972)));
-    try std.testing.expectEqual(0x8p-152, asinh(@as(f128, 0x8p-152)));
-    try std.testing.expectEqual(0x4p-1076, asinh(@as(f128, 0x4p-1076)));
-    try std.testing.expectEqual(0x8p-16448, asinh(@as(f128, 0x8p-16448)));
-    try std.testing.expectEqual(0x4p-16448, asinh(@as(f128, 0x4p-16448)));
-    try std.testing.expectEqual(0x4p-16496, asinh(@as(f128, 0x4p-16496)));
-    try std.testing.expectEqual(-0x8p-152, asinh(@as(f128, -0x8p-152)));
-    try std.testing.expectEqual(-0x4p-1076, asinh(@as(f128, -0x4p-1076)));
-    try std.testing.expectEqual(-0x8p-16448, asinh(@as(f128, -0x8p-16448)));
-    try std.testing.expectEqual(-0x4p-16448, asinh(@as(f128, -0x4p-16448)));
-    try std.testing.expectEqual(-0x4p-16496, asinh(@as(f128, -0x4p-16496)));
-    // try std.testing.expectEqual(0x5.96a7e12e0b98bcf90bb682a4468p+4, asinh(@as(f128, 0xf.fffffp+124)));
-    try std.testing.expectEqual(0x2.c679d1f73f0fb620d358b213a7dp+8, asinh(@as(f128, 0xf.ffffffffffff8p+1020)));
-    try std.testing.expectEqual(0x2.c5d37700c6bb03a6c23b6c9b494cp+12, asinh(@as(f128, 0xf.fffffffffffffffp+16380)));
-    try std.testing.expectEqual(0x2.c5d37700c6bb03a6c24b6c9b494cp+12, asinh(@as(f128, 0xf.fffffffffffffffffffffffffff8p+16380)));
-    try std.testing.expectEqual(0x2.c679d1f73f0fb624d358b213a7dp+8, asinh(@as(f128, 0xf.ffffffffffffbffffffffffffcp+1020)));
-    // try std.testing.expectEqual(-0x5.96a7e12e0b98bcf90bb682a4468p+4, asinh(@as(f128, -0xf.fffffp+124)));
-    try std.testing.expectEqual(-0x2.c679d1f73f0fb620d358b213a7dp+8, asinh(@as(f128, -0xf.ffffffffffff8p+1020)));
-    try std.testing.expectEqual(-0x2.c5d37700c6bb03a6c23b6c9b494cp+12, asinh(@as(f128, -0xf.fffffffffffffffp+16380)));
-    try std.testing.expectEqual(-0x2.c5d37700c6bb03a6c24b6c9b494cp+12, asinh(@as(f128, -0xf.fffffffffffffffffffffffffff8p+16380)));
-    try std.testing.expectEqual(-0x2.c679d1f73f0fb624d358b213a7dp+8, asinh(@as(f128, -0xf.ffffffffffffbffffffffffffcp+1020)));
+    for (data_f128) |test_case| {
+        try std.testing.expectEqual(test_case[0], asinh(test_case[1]));
+    }
 }

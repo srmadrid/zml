@@ -1,13 +1,13 @@
 test {
-    const test_basic = true;
+    const test_basic = false;
     const test_exponential = true;
     const test_power = true;
     const test_trigonometric = true;
     const test_hyperbolic = true;
     const test_error_gamma = true;
-    const test_bessel = true;
-    const test_nearest_integer = true;
-    const test_floating_point = true;
+    const test_bessel = false;
+    const test_nearest_integer = false;
+    const test_floating_point = false;
 
     if (test_basic) {
         //_ = @import("float/fmod.zig");

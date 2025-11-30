@@ -27,7 +27,7 @@ test Coerce {
             .{ u8, zml.cf64, zml.cf64 },
             .{ u8, zml.cf80, zml.cf80 },
             .{ u8, zml.cf128, zml.cf128 },
-            .{ u8, zml.comptime_complex, zml.cf16 },
+            .{ u8, zml.comptime_cfloat, zml.cf16 },
             .{ u8, zml.Integer, zml.Integer },
             .{ u8, zml.Rational, zml.Rational },
             .{ u8, zml.Real, zml.Real },
@@ -56,7 +56,7 @@ test Coerce {
             .{ u16, zml.cf64, zml.cf64 },
             .{ u16, zml.cf80, zml.cf80 },
             .{ u16, zml.cf128, zml.cf128 },
-            .{ u16, zml.comptime_complex, zml.cf32 },
+            .{ u16, zml.comptime_cfloat, zml.cf32 },
             .{ u16, zml.Integer, zml.Integer },
             .{ u16, zml.Rational, zml.Rational },
             .{ u16, zml.Real, zml.Real },
@@ -85,7 +85,7 @@ test Coerce {
             .{ u32, zml.cf64, zml.cf64 },
             .{ u32, zml.cf80, zml.cf80 },
             .{ u32, zml.cf128, zml.cf128 },
-            .{ u32, zml.comptime_complex, zml.cf64 },
+            .{ u32, zml.comptime_cfloat, zml.cf64 },
             .{ u32, zml.Integer, zml.Integer },
             .{ u32, zml.Rational, zml.Rational },
             .{ u32, zml.Real, zml.Real },
@@ -114,7 +114,7 @@ test Coerce {
             .{ u64, zml.cf64, zml.cf128 },
             .{ u64, zml.cf80, zml.cf128 },
             .{ u64, zml.cf128, zml.cf128 },
-            .{ u64, zml.comptime_complex, zml.cf128 },
+            .{ u64, zml.comptime_cfloat, zml.cf128 },
             .{ u64, zml.Integer, zml.Integer },
             .{ u64, zml.Rational, zml.Rational },
             .{ u64, zml.Real, zml.Real },
@@ -137,7 +137,7 @@ test Coerce {
             //.{ u128, zml.cf64, zml.cf128 },
             //.{ u128, zml.cf80, zml.cf128 },
             //.{ u128, zml.cf128, zml.cf128 },
-            //.{ u128, zml.comptime_complex, zml.comptime_complex },
+            //.{ u128, zml.comptime_cfloat, zml.comptime_cfloat },
             .{ u128, zml.Integer, zml.Integer },
             .{ u128, zml.Rational, zml.Rational },
             .{ u128, zml.Real, zml.Real },
@@ -161,8 +161,14 @@ test Coerce {
             // FINISH
         };
 
+        var i: u32 = 0;
         for (data) |triple| {
-            try std.testing.expectEqual(triple[2], Coerce(triple[0], triple[1]));
+            i += 1;
+
+            std.testing.expectEqual(triple[2], Coerce(triple[0], triple[1])) catch |err| {
+                std.debug.print("Failed at test case {}/{}: Coerce({},{})\n", .{ i, data.len, @typeName(triple[0]), @typeName(triple[1]) });
+                return err;
+            };
         }
     }
 }

@@ -45,7 +45,7 @@ fn as_special(x: f32) f32 {
     if (ax > (0xff << 24))
         return x + x; // nan
 
-    return (0 - 0) / (0 - 0);
+    return std.math.nan(f32);
 }
 
 inline fn poly12(z: f64, c: *const [12]f64) f64 {
