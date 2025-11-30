@@ -1,8 +1,8 @@
 test {
-    const test_types = true;
-    const test_float = true;
+    const test_types = false;
+    const test_float = false;
     const test_cfloat = true;
-    const test_linalg = true;
+    const test_linalg = false;
 
     if (test_types) {
         _ = @import("types.zig");

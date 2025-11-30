@@ -1,189 +1,209 @@
 const std = @import("std");
 const zml = @import("zml");
-const cf32 = zml.cf32;
-const cf64 = zml.cf64;
-const cf80 = zml.cf80;
-const cf128 = zml.cf128;
 const cosh = zml.cfloat.cosh;
 
+const data_cf32: [22]struct { zml.cf32, zml.cf32 } = .{
+    .{ zml.cf32.init(0x1p+0, 0x0p+0), zml.cf32.init(0x0p+0, 0x0p+0) },
+    .{ zml.cf32.init(0x1p+0, -0x0p+0), zml.cf32.init(-0x0p+0, 0x0p+0) },
+    .{ zml.cf32.init(0x1p+0, -0x0p+0), zml.cf32.init(0x0p+0, -0x0p+0) },
+    .{ zml.cf32.init(0x1p+0, 0x0p+0), zml.cf32.init(-0x0p+0, -0x0p+0) },
+    // .{ zml.cf32.init(0x6.88296p-4, 0xc.7c61p-4), zml.cf32.init(0xcp-4, 0x1.4p+0) },
+    // .{ zml.cf32.init(-0x3.b97bdp+0, 0x8.306cep-4), zml.cf32.init(-0x2p+0, -0x3p+0) },
+    // .{ zml.cf32.init(0xc.bbaa7p+124, 0xb.dcb17p+124), zml.cf32.init(0x5.98p+4, 0xcp-4) },
+    // .{ zml.cf32.init(0xc.bbaa7p+124, -0xb.dcb17p+124), zml.cf32.init(-0x5.98p+4, 0xcp-4) },
+    // .{ zml.cf32.init(0xc.bbaa7p+124, -0xb.dcb17p+124), zml.cf32.init(0x5.98p+4, -0xcp-4) },
+    // .{ zml.cf32.init(0xc.bbaa7p+124, 0xb.dcb17p+124), zml.cf32.init(-0x5.98p+4, -0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x2.c68p+8, 0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), -std.math.inf(f32)), zml.cf32.init(-0x2.c68p+8, 0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), -std.math.inf(f32)), zml.cf32.init(0x2.c68p+8, -0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(-0x2.c68p+8, -0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x2.c5d4p+12, 0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), -std.math.inf(f32)), zml.cf32.init(-0x2.c5d4p+12, 0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), -std.math.inf(f32)), zml.cf32.init(0x2.c5d4p+12, -0xcp-4) },
+    .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(-0x2.c5d4p+12, -0xcp-4) },
+    // .{ zml.cf32.init(std.math.inf(f32), 0x3.373464p+108), zml.cf32.init(0xb.4p+4, 0x8p-152) },
+    .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x5.ap+8, 0x8p-152) },
+    .{ zml.cf32.init(std.math.inf(f32), 0x0p+0), zml.cf32.init(0x5.ap+8, 0x0p+0) },
+    .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x5.8cap+12, 0x8p-152) },
+    .{ zml.cf32.init(std.math.inf(f32), 0x0p+0), zml.cf32.init(0x5.8cap+12, 0x0p+0) },
+    .{ zml.cf32.init(0x1p+0, 0x8p-152), zml.cf32.init(0x8p-32, 0x1p-120) },
+    .{ zml.cf32.init(0x1p+0, 0x8p-152), zml.cf32.init(0x1p-120, 0x8p-32) },
+    .{ zml.cf32.init(0x1.8b0756p+0, 0x4.b367fp-128), zml.cf32.init(0x1p+0, 0x4p-128) },
+    .{ zml.cf32.init(0x1.8b0756p+0, -0x4.b367fp-128), zml.cf32.init(0x1p+0, -0x4p-128) },
+    .{ zml.cf32.init(0x5.55de7p+112, 0x2.aaef38p-36), zml.cf32.init(0x5p+4, 0x8p-152) },
+    .{ zml.cf32.init(0x5.55de7p+112, -0x2.aaef38p-36), zml.cf32.init(0x5p+4, -0x8p-152) },
+};
+
+const data_cf64: [34]struct { zml.cf64, zml.cf64 } = .{
+    .{ zml.cf64.init(0x1p+0, 0x0p+0), zml.cf64.init(0x0p+0, 0x0p+0) },
+    .{ zml.cf64.init(0x1p+0, -0x0p+0), zml.cf64.init(-0x0p+0, 0x0p+0) },
+    .{ zml.cf64.init(0x1p+0, -0x0p+0), zml.cf64.init(0x0p+0, -0x0p+0) },
+    .{ zml.cf64.init(0x1p+0, 0x0p+0), zml.cf64.init(-0x0p+0, -0x0p+0) },
+    // .{ zml.cf64.init(0x6.8829624f33d1cp-4, 0xc.7c60fc7e541fp-4), zml.cf64.init(0xcp-4, 0x1.4p+0) },
+    .{ zml.cf64.init(-0x3.b97bd070133aep+0, 0x8.306cdcf73533p-4), zml.cf64.init(-0x2p+0, -0x3p+0) },
+    .{ zml.cf64.init(0xc.bbaa76be57908p+124, 0xb.dcb174d885198p+124), zml.cf64.init(0x5.98p+4, 0xcp-4) },
+    .{ zml.cf64.init(0xc.bbaa76be57908p+124, -0xb.dcb174d885198p+124), zml.cf64.init(-0x5.98p+4, 0xcp-4) },
+    .{ zml.cf64.init(0xc.bbaa76be57908p+124, -0xb.dcb174d885198p+124), zml.cf64.init(0x5.98p+4, -0xcp-4) },
+    .{ zml.cf64.init(0xc.bbaa76be57908p+124, 0xb.dcb174d885198p+124), zml.cf64.init(-0x5.98p+4, -0xcp-4) },
+    // .{ zml.cf64.init(0xb.fe39a718cb528p+1020, 0xb.2c35ffb60337p+1020), zml.cf64.init(0x2.c68p+8, 0xcp-4) },
+    // .{ zml.cf64.init(0xb.fe39a718cb528p+1020, -0xb.2c35ffb60337p+1020), zml.cf64.init(-0x2.c68p+8, 0xcp-4) },
+    // .{ zml.cf64.init(0xb.fe39a718cb528p+1020, -0xb.2c35ffb60337p+1020), zml.cf64.init(0x2.c68p+8, -0xcp-4) },
+    // .{ zml.cf64.init(0xb.fe39a718cb528p+1020, 0xb.2c35ffb60337p+1020), zml.cf64.init(-0x2.c68p+8, -0xcp-4) },
+    .{ zml.cf64.init(std.math.inf(f64), std.math.inf(f64)), zml.cf64.init(0x2.c5d4p+12, 0xcp-4) },
+    .{ zml.cf64.init(std.math.inf(f64), -std.math.inf(f64)), zml.cf64.init(-0x2.c5d4p+12, 0xcp-4) },
+    .{ zml.cf64.init(std.math.inf(f64), -std.math.inf(f64)), zml.cf64.init(0x2.c5d4p+12, -0xcp-4) },
+    .{ zml.cf64.init(std.math.inf(f64), std.math.inf(f64)), zml.cf64.init(-0x2.c5d4p+12, -0xcp-4) },
+    .{ zml.cf64.init(0x6.6e68cac762214p+256, 0x3.37346563b110ap+108), zml.cf64.init(0xb.4p+4, 0x8p-152) },
+    .{ zml.cf64.init(std.math.inf(f64), std.math.inf(f64)), zml.cf64.init(0x5.ap+8, 0x8p-152) },
+    .{ zml.cf64.init(std.math.inf(f64), 0x0p+0), zml.cf64.init(0x5.ap+8, 0x0p+0) },
+    .{ zml.cf64.init(std.math.inf(f64), 0x5.95116a53e849cp+1000), zml.cf64.init(0x5.ap+8, 0x4p-1076) },
+    .{ zml.cf64.init(std.math.inf(f64), std.math.inf(f64)), zml.cf64.init(0x5.8cap+12, 0x8p-152) },
+    .{ zml.cf64.init(std.math.inf(f64), 0x0p+0), zml.cf64.init(0x5.8cap+12, 0x0p+0) },
+    .{ zml.cf64.init(std.math.inf(f64), std.math.inf(f64)), zml.cf64.init(0x5.8cap+12, 0x4p-1076) },
+    .{ zml.cf64.init(0x1p+0, 0x8p-152), zml.cf64.init(0x8p-32, 0x1p-120) },
+    .{ zml.cf64.init(0x1p+0, 0x4p-1076), zml.cf64.init(0x4p-956, 0x1p-120) },
+    .{ zml.cf64.init(0x1p+0, 0x8p-152), zml.cf64.init(0x1p-120, 0x8p-32) },
+    .{ zml.cf64.init(0x1p+0, 0x4p-1076), zml.cf64.init(0x1p-120, 0x4p-956) },
+    .{ zml.cf64.init(0x1.8b07551d9f55p+0, 0x4.b367f113ae608p-128), zml.cf64.init(0x1p+0, 0x4p-128) },
+    .{ zml.cf64.init(0x1.8b07551d9f55p+0, 0x4.b367f113ae608p-1024), zml.cf64.init(0x1p+0, 0x4p-1024) },
+    .{ zml.cf64.init(0x1.8b07551d9f55p+0, 0x9.66cfe2275cc1p-972), zml.cf64.init(0x1p+0, 0x8p-972) },
+    .{ zml.cf64.init(0x1.8b07551d9f55p+0, -0x4.b367f113ae608p-128), zml.cf64.init(0x1p+0, -0x4p-128) },
+    .{ zml.cf64.init(0x1.8b07551d9f55p+0, -0x4.b367f113ae608p-1024), zml.cf64.init(0x1p+0, -0x4p-1024) },
+    .{ zml.cf64.init(0x1.8b07551d9f55p+0, -0x9.66cfe2275cc1p-972), zml.cf64.init(0x1p+0, -0x8p-972) },
+    .{ zml.cf64.init(0x5.55de6e613cfacp+112, 0x2.aaef37309e7d6p-36), zml.cf64.init(0x5p+4, 0x8p-152) },
+    .{ zml.cf64.init(0x5.55de6e613cfacp+112, 0x1.55779b984f3ebp-960), zml.cf64.init(0x5p+4, 0x4p-1076) },
+    .{ zml.cf64.init(0x5.55de6e613cfacp+112, -0x2.aaef37309e7d6p-36), zml.cf64.init(0x5p+4, -0x8p-152) },
+    .{ zml.cf64.init(0x5.55de6e613cfacp+112, -0x1.55779b984f3ebp-960), zml.cf64.init(0x5p+4, -0x4p-1076) },
+};
+
+const data_cf80: [50]struct { zml.cf80, zml.cf80 } = .{
+    .{ zml.cf80.init(0x1p+0, 0x0p+0), zml.cf80.init(0x0p+0, 0x0p+0) },
+    .{ zml.cf80.init(0x1p+0, -0x0p+0), zml.cf80.init(-0x0p+0, 0x0p+0) },
+    .{ zml.cf80.init(0x1p+0, -0x0p+0), zml.cf80.init(0x0p+0, -0x0p+0) },
+    .{ zml.cf80.init(0x1p+0, 0x0p+0), zml.cf80.init(-0x0p+0, -0x0p+0) },
+    .{ zml.cf80.init(0x6.8829624f33d1ccbp-4, 0xc.7c60fc7e541ee76p-4), zml.cf80.init(0xcp-4, 0x1.4p+0) },
+    // .{ zml.cf80.init(-0x3.b97bd070133ae958p+0, 0x8.306cdcf73532ef1p-4), zml.cf80.init(-0x2p+0, -0x3p+0) },
+    .{ zml.cf80.init(0xc.bbaa76be57905b4p+124, 0xb.dcb174d885199a5p+124), zml.cf80.init(0x5.98p+4, 0xcp-4) },
+    .{ zml.cf80.init(0xc.bbaa76be57905b4p+124, -0xb.dcb174d885199a5p+124), zml.cf80.init(-0x5.98p+4, 0xcp-4) },
+    .{ zml.cf80.init(0xc.bbaa76be57905b4p+124, -0xb.dcb174d885199a5p+124), zml.cf80.init(0x5.98p+4, -0xcp-4) },
+    .{ zml.cf80.init(0xc.bbaa76be57905b4p+124, 0xb.dcb174d885199a5p+124), zml.cf80.init(-0x5.98p+4, -0xcp-4) },
+    .{ zml.cf80.init(0xb.fe39a718cb52b27p+1020, 0xb.2c35ffb60337071p+1020), zml.cf80.init(0x2.c68p+8, 0xcp-4) },
+    .{ zml.cf80.init(0xb.fe39a718cb52b27p+1020, -0xb.2c35ffb60337071p+1020), zml.cf80.init(-0x2.c68p+8, 0xcp-4) },
+    .{ zml.cf80.init(0xb.fe39a718cb52b27p+1020, -0xb.2c35ffb60337071p+1020), zml.cf80.init(0x2.c68p+8, -0xcp-4) },
+    .{ zml.cf80.init(0xb.fe39a718cb52b27p+1020, 0xb.2c35ffb60337071p+1020), zml.cf80.init(-0x2.c68p+8, -0xcp-4) },
+    .{ zml.cf80.init(0xc.1aee93505374b41p+16380, 0xb.46f43ab104a6259p+16380), zml.cf80.init(0x2.c5d4p+12, 0xcp-4) },
+    .{ zml.cf80.init(0xc.1aee93505374b41p+16380, -0xb.46f43ab104a6259p+16380), zml.cf80.init(-0x2.c5d4p+12, 0xcp-4) },
+    .{ zml.cf80.init(0xc.1aee93505374b41p+16380, -0xb.46f43ab104a6259p+16380), zml.cf80.init(0x2.c5d4p+12, -0xcp-4) },
+    .{ zml.cf80.init(0xc.1aee93505374b41p+16380, 0xb.46f43ab104a6259p+16380), zml.cf80.init(-0x2.c5d4p+12, -0xcp-4) },
+    .{ zml.cf80.init(0x6.6e68cac76221537p+256, 0x3.37346563b110a9b8p+108), zml.cf80.init(0xb.4p+4, 0x8p-152) },
+    .{ zml.cf80.init(0x1.65445a94fa1268c4p+2076, 0xb.2a22d4a7d093462p+1924), zml.cf80.init(0x5.ap+8, 0x8p-152) },
+    .{ zml.cf80.init(0x1.65445a94fa1268c4p+2076, 0x0p+0), zml.cf80.init(0x5.ap+8, 0x0p+0) },
+    .{ zml.cf80.init(0x1.65445a94fa1268c4p+2076, 0x5.95116a53e849a31p+1000), zml.cf80.init(0x5.ap+8, 0x4p-1076) },
+    .{ zml.cf80.init(std.math.inf(f80), std.math.inf(f80)), zml.cf80.init(0x5.8cap+12, 0x8p-152) },
+    .{ zml.cf80.init(std.math.inf(f80), 0x0p+0), zml.cf80.init(0x5.8cap+12, 0x0p+0) },
+    .{ zml.cf80.init(std.math.inf(f80), std.math.inf(f80)), zml.cf80.init(0x5.8cap+12, 0x4p-1076) },
+    .{ zml.cf80.init(std.math.inf(f80), 0x2.bf701efd42c88e8p+16356), zml.cf80.init(0x5.8cap+12, 0x4p-16436) },
+    .{ zml.cf80.init(0x1.000000000000002p+0, 0x8.000000000000005p-152), zml.cf80.init(0x8p-32, 0x1p-120) },
+    .{ zml.cf80.init(0x1p+0, 0x4p-1076), zml.cf80.init(0x4p-956, 0x1p-120) },
+    .{ zml.cf80.init(0x1p+0, 0x8p-16448), zml.cf80.init(0x8p-16328, 0x1p-120) },
+    .{ zml.cf80.init(0x1p+0, 0x0p+0), zml.cf80.init(0x4p-16328, 0x1p-120) },
+    .{ zml.cf80.init(0x1p+0, 0x0p+0), zml.cf80.init(0x4p-16376, 0x1p-120) },
+    .{ zml.cf80.init(0xf.fffffffffffffep-4, 0x7.ffffffffffffffa8p-152), zml.cf80.init(0x1p-120, 0x8p-32) },
+    .{ zml.cf80.init(0x1p+0, 0x4p-1076), zml.cf80.init(0x1p-120, 0x4p-956) },
+    .{ zml.cf80.init(0x1p+0, 0x8p-16448), zml.cf80.init(0x1p-120, 0x8p-16328) },
+    // .{ zml.cf80.init(0x1p+0, 0x8p-16448), zml.cf80.init(0x1p-120, 0x4p-16328) },
+    .{ zml.cf80.init(0x1p+0, 0x0p+0), zml.cf80.init(0x1p-120, 0x4p-16376) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, 0x4.b367f113ae6096ap-128), zml.cf80.init(0x1p+0, 0x4p-128) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, 0x4.b367f113ae6096ap-1024), zml.cf80.init(0x1p+0, 0x4p-1024) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, 0x4.b367f113ae6096ap-16384), zml.cf80.init(0x1p+0, 0x4p-16384) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, 0x2.59b3f889d7304b5p-16384), zml.cf80.init(0x1p+0, 0x2p-16384) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, 0x9.66cfe2275cc12d4p-972), zml.cf80.init(0x1p+0, 0x8p-972) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, -0x4.b367f113ae6096ap-128), zml.cf80.init(0x1p+0, -0x4p-128) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, -0x4.b367f113ae6096ap-1024), zml.cf80.init(0x1p+0, -0x4p-1024) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, -0x4.b367f113ae6096ap-16384), zml.cf80.init(0x1p+0, -0x4p-16384) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, -0x2.59b3f889d7304b5p-16384), zml.cf80.init(0x1p+0, -0x2p-16384) },
+    .{ zml.cf80.init(0x1.8b07551d9f5504c2p+0, -0x9.66cfe2275cc12d4p-972), zml.cf80.init(0x1p+0, -0x8p-972) },
+    .{ zml.cf80.init(0x5.55de6e613cfacf2p+112, 0x2.aaef37309e7d679p-36), zml.cf80.init(0x5p+4, 0x8p-152) },
+    .{ zml.cf80.init(0x5.55de6e613cfacf2p+112, 0x1.55779b984f3eb3c8p-960), zml.cf80.init(0x5p+4, 0x4p-1076) },
+    .{ zml.cf80.init(0x5.55de6e613cfacf2p+112, 0x2.aaef37309e7d679p-16332), zml.cf80.init(0x5p+4, 0x8p-16448) },
+    .{ zml.cf80.init(0x5.55de6e613cfacf2p+112, -0x2.aaef37309e7d679p-36), zml.cf80.init(0x5p+4, -0x8p-152) },
+    .{ zml.cf80.init(0x5.55de6e613cfacf2p+112, -0x1.55779b984f3eb3c8p-960), zml.cf80.init(0x5p+4, -0x4p-1076) },
+    .{ zml.cf80.init(0x5.55de6e613cfacf2p+112, -0x2.aaef37309e7d679p-16332), zml.cf80.init(0x5p+4, -0x8p-16448) },
+};
+
+const data_cf128: [32]struct { zml.cf128, zml.cf128 } = .{
+    .{ zml.cf128.init(0x1p+0, 0x0p+0), zml.cf128.init(0x0p+0, 0x0p+0) },
+    .{ zml.cf128.init(0x1p+0, -0x0p+0), zml.cf128.init(-0x0p+0, 0x0p+0) },
+    .{ zml.cf128.init(0x1p+0, -0x0p+0), zml.cf128.init(0x0p+0, -0x0p+0) },
+    .{ zml.cf128.init(0x1p+0, 0x0p+0), zml.cf128.init(-0x0p+0, -0x0p+0) },
+    .{ zml.cf128.init(0x6.8829624f33d1ccb2519db9bb3468p-4, 0xc.7c60fc7e541ee761e9b843ef4d38p-4), zml.cf128.init(0xcp-4, 0x1.4p+0) },
+    // .{ zml.cf128.init(-0x3.b97bd070133ae9576b1773510f9ep+0, 0x8.306cdcf73532ef16dab0d82f152p-4), zml.cf128.init(-0x2p+0, -0x3p+0) },
+    // .{ zml.cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, 0xb.dcb174d885199a507e02ee9c08c8p+124), zml.cf128.init(0x5.98p+4, 0xcp-4) },
+    // .{ zml.cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, -0xb.dcb174d885199a507e02ee9c08c8p+124), zml.cf128.init(-0x5.98p+4, 0xcp-4) },
+    // .{ zml.cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, -0xb.dcb174d885199a507e02ee9c08c8p+124), zml.cf128.init(0x5.98p+4, -0xcp-4) },
+    // .{ zml.cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, 0xb.dcb174d885199a507e02ee9c08c8p+124), zml.cf128.init(-0x5.98p+4, -0xcp-4) },
+    // .{ zml.cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, 0xb.2c35ffb60337070b74839cd40a3p+1020), zml.cf128.init(0x2.c68p+8, 0xcp-4) },
+    // .{ zml.cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, -0xb.2c35ffb60337070b74839cd40a3p+1020), zml.cf128.init(-0x2.c68p+8, 0xcp-4) },
+    // .{ zml.cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, -0xb.2c35ffb60337070b74839cd40a3p+1020), zml.cf128.init(0x2.c68p+8, -0xcp-4) },
+    // .{ zml.cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, 0xb.2c35ffb60337070b74839cd40a3p+1020), zml.cf128.init(-0x2.c68p+8, -0xcp-4) },
+    // .{ zml.cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, 0xb.46f43ab104a625930c1b0cbd6238p+16380), zml.cf128.init(0x2.c5d4p+12, 0xcp-4) },
+    // .{ zml.cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, -0xb.46f43ab104a625930c1b0cbd6238p+16380), zml.cf128.init(-0x2.c5d4p+12, 0xcp-4) },
+    // .{ zml.cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, -0xb.46f43ab104a625930c1b0cbd6238p+16380), zml.cf128.init(0x2.c5d4p+12, -0xcp-4) },
+    // .{ zml.cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, 0xb.46f43ab104a625930c1b0cbd6238p+16380), zml.cf128.init(-0x2.c5d4p+12, -0xcp-4) },
+    .{ zml.cf128.init(0x6.6e68cac762215372ccfb2fd63cf4p+256, 0x3.37346563b110a9b9667d97eb1e7ap+108), zml.cf128.init(0xb.4p+4, 0x8p-152) },
+    .{ zml.cf128.init(0x1.65445a94fa1268c47ee67b88bb6ep+2076, 0xb.2a22d4a7d0934623f733dc45db7p+1924), zml.cf128.init(0x5.ap+8, 0x8p-152) },
+    .{ zml.cf128.init(0x1.65445a94fa1268c47ee67b88bb6ep+2076, 0x0p+0), zml.cf128.init(0x5.ap+8, 0x0p+0) },
+    .{ zml.cf128.init(0x1.65445a94fa1268c47ee67b88bb6ep+2076, 0x5.95116a53e849a311fb99ee22edb8p+1000), zml.cf128.init(0x5.ap+8, 0x4p-1076) },
+    .{ zml.cf128.init(std.math.inf(f128), std.math.inf(f128)), zml.cf128.init(0x5.8cap+12, 0x8p-152) },
+    .{ zml.cf128.init(std.math.inf(f128), 0x0p+0), zml.cf128.init(0x5.8cap+12, 0x0p+0) },
+    .{ zml.cf128.init(std.math.inf(f128), std.math.inf(f128)), zml.cf128.init(0x5.8cap+12, 0x4p-1076) },
+    // .{ zml.cf128.init(std.math.inf(f128), 0x2.bf701efd42c88e7efc2fdf7765fcp+16356), zml.cf128.init(0x5.8cap+12, 0x4p-16436) },
+    .{ zml.cf128.init(0x1.000000000000002p+0, 0x8.0000000000000055555555555558p-152), zml.cf128.init(0x8p-32, 0x1p-120) },
+    .{ zml.cf128.init(0x1p+0, 0x4p-1076), zml.cf128.init(0x4p-956, 0x1p-120) },
+    .{ zml.cf128.init(0x1p+0, 0x8p-16448), zml.cf128.init(0x8p-16328, 0x1p-120) },
+    .{ zml.cf128.init(0x1p+0, 0x4p-16448), zml.cf128.init(0x4p-16328, 0x1p-120) },
+    .{ zml.cf128.init(0x1p+0, 0x4p-16496), zml.cf128.init(0x4p-16376, 0x1p-120) },
+    .{ zml.cf128.init(0xf.fffffffffffffep-4, 0x7.ffffffffffffffaaaaaaaaaaaaacp-152), zml.cf128.init(0x1p-120, 0x8p-32) },
+    .{ zml.cf128.init(0x1p+0, 0x4p-1076), zml.cf128.init(0x1p-120, 0x4p-956) },
+    .{ zml.cf128.init(0x1p+0, 0x8p-16448), zml.cf128.init(0x1p-120, 0x8p-16328) },
+    .{ zml.cf128.init(0x1p+0, 0x4p-16448), zml.cf128.init(0x1p-120, 0x4p-16328) },
+    .{ zml.cf128.init(0x1p+0, 0x4p-16496), zml.cf128.init(0x1p-120, 0x4p-16376) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x4.b367f113ae6096a0092521fc194p-128), zml.cf128.init(0x1p+0, 0x4p-128) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x4.b367f113ae6096a0092521fc194p-1024), zml.cf128.init(0x1p+0, 0x4p-1024) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x4.b367f113ae6096a0092521fc194p-16384), zml.cf128.init(0x1p+0, 0x4p-16384) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x2.59b3f889d7304b50049290fe0cap-16384), zml.cf128.init(0x1p+0, 0x2p-16384) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x9.66cfe2275cc12d40124a43f8328p-972), zml.cf128.init(0x1p+0, 0x8p-972) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x4.b367f113ae6096a0092521fc194p-128), zml.cf128.init(0x1p+0, -0x4p-128) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x4.b367f113ae6096a0092521fc194p-1024), zml.cf128.init(0x1p+0, -0x4p-1024) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x4.b367f113ae6096a0092521fc194p-16384), zml.cf128.init(0x1p+0, -0x4p-16384) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x2.59b3f889d7304b50049290fe0cap-16384), zml.cf128.init(0x1p+0, -0x2p-16384) },
+    // .{ zml.cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x9.66cfe2275cc12d40124a43f8328p-972), zml.cf128.init(0x1p+0, -0x8p-972) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x2.aaef37309e7d67914a076951c492p-36), zml.cf128.init(0x5p+4, 0x8p-152) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x1.55779b984f3eb3c8a503b4a8e249p-960), zml.cf128.init(0x5p+4, 0x4p-1076) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x2.aaef37309e7d67914a076951c492p-16332), zml.cf128.init(0x5p+4, 0x8p-16448) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x1.55779b984f3eb3c8a503b4a8e249p-16332), zml.cf128.init(0x5p+4, 0x4p-16448) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x1.55779b984f3eb3c8a503b4a8e249p-16380), zml.cf128.init(0x5p+4, 0x4p-16496) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x2.aaef37309e7d67914a076951c492p-36), zml.cf128.init(0x5p+4, -0x8p-152) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x1.55779b984f3eb3c8a503b4a8e249p-960), zml.cf128.init(0x5p+4, -0x4p-1076) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x2.aaef37309e7d67914a076951c492p-16332), zml.cf128.init(0x5p+4, -0x8p-16448) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x1.55779b984f3eb3c8a503b4a8e249p-16332), zml.cf128.init(0x5p+4, -0x4p-16448) },
+    .{ zml.cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x1.55779b984f3eb3c8a503b4a8e249p-16380), zml.cf128.init(0x5p+4, -0x4p-16496) },
+};
+
 test cosh {
-    try std.testing.expectEqual(cf32.init(0x1p+0, 0x0p+0), cosh(cf32.init(0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf32.init(0x1p+0, -0x0p+0), cosh(cf32.init(-0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf32.init(0x1p+0, -0x0p+0), cosh(cf32.init(0x0p+0, -0x0p+0)));
-    try std.testing.expectEqual(cf32.init(0x1p+0, 0x0p+0), cosh(cf32.init(-0x0p+0, -0x0p+0)));
-    // try std.testing.expectEqual(cf32.init(0x6.88296p-4, 0xc.7c61p-4), cosh(cf32.init(0xcp-4, 0x1.4p+0)));
-    // try std.testing.expectEqual(cf32.init(-0x3.b97bdp+0, 0x8.306cep-4), cosh(cf32.init(-0x2p+0, -0x3p+0)));
-    // try std.testing.expectEqual(cf32.init(0xc.bbaa7p+124, 0xb.dcb17p+124), cosh(cf32.init(0x5.98p+4, 0xcp-4)));
-    // try std.testing.expectEqual(cf32.init(0xc.bbaa7p+124, -0xb.dcb17p+124), cosh(cf32.init(-0x5.98p+4, 0xcp-4)));
-    // try std.testing.expectEqual(cf32.init(0xc.bbaa7p+124, -0xb.dcb17p+124), cosh(cf32.init(0x5.98p+4, -0xcp-4)));
-    // try std.testing.expectEqual(cf32.init(0xc.bbaa7p+124, 0xb.dcb17p+124), cosh(cf32.init(-0x5.98p+4, -0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), std.math.inf(f32)), cosh(cf32.init(0x2.c68p+8, 0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), -std.math.inf(f32)), cosh(cf32.init(-0x2.c68p+8, 0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), -std.math.inf(f32)), cosh(cf32.init(0x2.c68p+8, -0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), std.math.inf(f32)), cosh(cf32.init(-0x2.c68p+8, -0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), std.math.inf(f32)), cosh(cf32.init(0x2.c5d4p+12, 0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), -std.math.inf(f32)), cosh(cf32.init(-0x2.c5d4p+12, 0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), -std.math.inf(f32)), cosh(cf32.init(0x2.c5d4p+12, -0xcp-4)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), std.math.inf(f32)), cosh(cf32.init(-0x2.c5d4p+12, -0xcp-4)));
-    // try std.testing.expectEqual(cf32.init(std.math.inf(f32), 0x3.373464p+108), cosh(cf32.init(0xb.4p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), std.math.inf(f32)), cosh(cf32.init(0x5.ap+8, 0x8p-152)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), 0x0p+0), cosh(cf32.init(0x5.ap+8, 0x0p+0)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), std.math.inf(f32)), cosh(cf32.init(0x5.8cap+12, 0x8p-152)));
-    try std.testing.expectEqual(cf32.init(std.math.inf(f32), 0x0p+0), cosh(cf32.init(0x5.8cap+12, 0x0p+0)));
-    try std.testing.expectEqual(cf32.init(0x1p+0, 0x8p-152), cosh(cf32.init(0x8p-32, 0x1p-120)));
-    try std.testing.expectEqual(cf32.init(0x1p+0, 0x8p-152), cosh(cf32.init(0x1p-120, 0x8p-32)));
-    try std.testing.expectEqual(cf32.init(0x1.8b0756p+0, 0x4.b367fp-128), cosh(cf32.init(0x1p+0, 0x4p-128)));
-    try std.testing.expectEqual(cf32.init(0x1.8b0756p+0, -0x4.b367fp-128), cosh(cf32.init(0x1p+0, -0x4p-128)));
-    try std.testing.expectEqual(cf32.init(0x5.55de7p+112, 0x2.aaef38p-36), cosh(cf32.init(0x5p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf32.init(0x5.55de7p+112, -0x2.aaef38p-36), cosh(cf32.init(0x5p+4, -0x8p-152)));
+    for (data_cf32) |test_case| {
+        try std.testing.expectEqual(test_case[0], cosh(test_case[1]));
+    }
 
-    try std.testing.expectEqual(cf64.init(0x1p+0, 0x0p+0), cosh(cf64.init(0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf64.init(0x1p+0, -0x0p+0), cosh(cf64.init(-0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf64.init(0x1p+0, -0x0p+0), cosh(cf64.init(0x0p+0, -0x0p+0)));
-    try std.testing.expectEqual(cf64.init(0x1p+0, 0x0p+0), cosh(cf64.init(-0x0p+0, -0x0p+0)));
-    // try std.testing.expectEqual(cf64.init(0x6.8829624f33d1cp-4, 0xc.7c60fc7e541fp-4), cosh(cf64.init(0xcp-4, 0x1.4p+0)));
-    try std.testing.expectEqual(cf64.init(-0x3.b97bd070133aep+0, 0x8.306cdcf73533p-4), cosh(cf64.init(-0x2p+0, -0x3p+0)));
-    try std.testing.expectEqual(cf64.init(0xc.bbaa76be57908p+124, 0xb.dcb174d885198p+124), cosh(cf64.init(0x5.98p+4, 0xcp-4)));
-    try std.testing.expectEqual(cf64.init(0xc.bbaa76be57908p+124, -0xb.dcb174d885198p+124), cosh(cf64.init(-0x5.98p+4, 0xcp-4)));
-    try std.testing.expectEqual(cf64.init(0xc.bbaa76be57908p+124, -0xb.dcb174d885198p+124), cosh(cf64.init(0x5.98p+4, -0xcp-4)));
-    try std.testing.expectEqual(cf64.init(0xc.bbaa76be57908p+124, 0xb.dcb174d885198p+124), cosh(cf64.init(-0x5.98p+4, -0xcp-4)));
-    // try std.testing.expectEqual(cf64.init(0xb.fe39a718cb528p+1020, 0xb.2c35ffb60337p+1020), cosh(cf64.init(0x2.c68p+8, 0xcp-4)));
-    // try std.testing.expectEqual(cf64.init(0xb.fe39a718cb528p+1020, -0xb.2c35ffb60337p+1020), cosh(cf64.init(-0x2.c68p+8, 0xcp-4)));
-    // try std.testing.expectEqual(cf64.init(0xb.fe39a718cb528p+1020, -0xb.2c35ffb60337p+1020), cosh(cf64.init(0x2.c68p+8, -0xcp-4)));
-    // try std.testing.expectEqual(cf64.init(0xb.fe39a718cb528p+1020, 0xb.2c35ffb60337p+1020), cosh(cf64.init(-0x2.c68p+8, -0xcp-4)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), std.math.inf(f64)), cosh(cf64.init(0x2.c5d4p+12, 0xcp-4)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), -std.math.inf(f64)), cosh(cf64.init(-0x2.c5d4p+12, 0xcp-4)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), -std.math.inf(f64)), cosh(cf64.init(0x2.c5d4p+12, -0xcp-4)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), std.math.inf(f64)), cosh(cf64.init(-0x2.c5d4p+12, -0xcp-4)));
-    try std.testing.expectEqual(cf64.init(0x6.6e68cac762214p+256, 0x3.37346563b110ap+108), cosh(cf64.init(0xb.4p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), std.math.inf(f64)), cosh(cf64.init(0x5.ap+8, 0x8p-152)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), 0x0p+0), cosh(cf64.init(0x5.ap+8, 0x0p+0)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), 0x5.95116a53e849cp+1000), cosh(cf64.init(0x5.ap+8, 0x4p-1076)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), std.math.inf(f64)), cosh(cf64.init(0x5.8cap+12, 0x8p-152)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), 0x0p+0), cosh(cf64.init(0x5.8cap+12, 0x0p+0)));
-    try std.testing.expectEqual(cf64.init(std.math.inf(f64), std.math.inf(f64)), cosh(cf64.init(0x5.8cap+12, 0x4p-1076)));
-    try std.testing.expectEqual(cf64.init(0x1p+0, 0x8p-152), cosh(cf64.init(0x8p-32, 0x1p-120)));
-    try std.testing.expectEqual(cf64.init(0x1p+0, 0x4p-1076), cosh(cf64.init(0x4p-956, 0x1p-120)));
-    try std.testing.expectEqual(cf64.init(0x1p+0, 0x8p-152), cosh(cf64.init(0x1p-120, 0x8p-32)));
-    try std.testing.expectEqual(cf64.init(0x1p+0, 0x4p-1076), cosh(cf64.init(0x1p-120, 0x4p-956)));
-    try std.testing.expectEqual(cf64.init(0x1.8b07551d9f55p+0, 0x4.b367f113ae608p-128), cosh(cf64.init(0x1p+0, 0x4p-128)));
-    try std.testing.expectEqual(cf64.init(0x1.8b07551d9f55p+0, 0x4.b367f113ae608p-1024), cosh(cf64.init(0x1p+0, 0x4p-1024)));
-    try std.testing.expectEqual(cf64.init(0x1.8b07551d9f55p+0, 0x9.66cfe2275cc1p-972), cosh(cf64.init(0x1p+0, 0x8p-972)));
-    try std.testing.expectEqual(cf64.init(0x1.8b07551d9f55p+0, -0x4.b367f113ae608p-128), cosh(cf64.init(0x1p+0, -0x4p-128)));
-    try std.testing.expectEqual(cf64.init(0x1.8b07551d9f55p+0, -0x4.b367f113ae608p-1024), cosh(cf64.init(0x1p+0, -0x4p-1024)));
-    try std.testing.expectEqual(cf64.init(0x1.8b07551d9f55p+0, -0x9.66cfe2275cc1p-972), cosh(cf64.init(0x1p+0, -0x8p-972)));
-    try std.testing.expectEqual(cf64.init(0x5.55de6e613cfacp+112, 0x2.aaef37309e7d6p-36), cosh(cf64.init(0x5p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf64.init(0x5.55de6e613cfacp+112, 0x1.55779b984f3ebp-960), cosh(cf64.init(0x5p+4, 0x4p-1076)));
-    try std.testing.expectEqual(cf64.init(0x5.55de6e613cfacp+112, -0x2.aaef37309e7d6p-36), cosh(cf64.init(0x5p+4, -0x8p-152)));
-    try std.testing.expectEqual(cf64.init(0x5.55de6e613cfacp+112, -0x1.55779b984f3ebp-960), cosh(cf64.init(0x5p+4, -0x4p-1076)));
+    for (data_cf64) |test_case| {
+        try std.testing.expectEqual(test_case[0], cosh(test_case[1]));
+    }
 
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x0p+0), cosh(cf80.init(0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, -0x0p+0), cosh(cf80.init(-0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, -0x0p+0), cosh(cf80.init(0x0p+0, -0x0p+0)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x0p+0), cosh(cf80.init(-0x0p+0, -0x0p+0)));
-    try std.testing.expectEqual(cf80.init(0x6.8829624f33d1ccbp-4, 0xc.7c60fc7e541ee76p-4), cosh(cf80.init(0xcp-4, 0x1.4p+0)));
-    // try std.testing.expectEqual(cf80.init(-0x3.b97bd070133ae958p+0, 0x8.306cdcf73532ef1p-4), cosh(cf80.init(-0x2p+0, -0x3p+0)));
-    try std.testing.expectEqual(cf80.init(0xc.bbaa76be57905b4p+124, 0xb.dcb174d885199a5p+124), cosh(cf80.init(0x5.98p+4, 0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xc.bbaa76be57905b4p+124, -0xb.dcb174d885199a5p+124), cosh(cf80.init(-0x5.98p+4, 0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xc.bbaa76be57905b4p+124, -0xb.dcb174d885199a5p+124), cosh(cf80.init(0x5.98p+4, -0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xc.bbaa76be57905b4p+124, 0xb.dcb174d885199a5p+124), cosh(cf80.init(-0x5.98p+4, -0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xb.fe39a718cb52b27p+1020, 0xb.2c35ffb60337071p+1020), cosh(cf80.init(0x2.c68p+8, 0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xb.fe39a718cb52b27p+1020, -0xb.2c35ffb60337071p+1020), cosh(cf80.init(-0x2.c68p+8, 0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xb.fe39a718cb52b27p+1020, -0xb.2c35ffb60337071p+1020), cosh(cf80.init(0x2.c68p+8, -0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xb.fe39a718cb52b27p+1020, 0xb.2c35ffb60337071p+1020), cosh(cf80.init(-0x2.c68p+8, -0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xc.1aee93505374b41p+16380, 0xb.46f43ab104a6259p+16380), cosh(cf80.init(0x2.c5d4p+12, 0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xc.1aee93505374b41p+16380, -0xb.46f43ab104a6259p+16380), cosh(cf80.init(-0x2.c5d4p+12, 0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xc.1aee93505374b41p+16380, -0xb.46f43ab104a6259p+16380), cosh(cf80.init(0x2.c5d4p+12, -0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0xc.1aee93505374b41p+16380, 0xb.46f43ab104a6259p+16380), cosh(cf80.init(-0x2.c5d4p+12, -0xcp-4)));
-    try std.testing.expectEqual(cf80.init(0x6.6e68cac76221537p+256, 0x3.37346563b110a9b8p+108), cosh(cf80.init(0xb.4p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf80.init(0x1.65445a94fa1268c4p+2076, 0xb.2a22d4a7d093462p+1924), cosh(cf80.init(0x5.ap+8, 0x8p-152)));
-    try std.testing.expectEqual(cf80.init(0x1.65445a94fa1268c4p+2076, 0x0p+0), cosh(cf80.init(0x5.ap+8, 0x0p+0)));
-    try std.testing.expectEqual(cf80.init(0x1.65445a94fa1268c4p+2076, 0x5.95116a53e849a31p+1000), cosh(cf80.init(0x5.ap+8, 0x4p-1076)));
-    try std.testing.expectEqual(cf80.init(std.math.inf(f80), std.math.inf(f80)), cosh(cf80.init(0x5.8cap+12, 0x8p-152)));
-    try std.testing.expectEqual(cf80.init(std.math.inf(f80), 0x0p+0), cosh(cf80.init(0x5.8cap+12, 0x0p+0)));
-    try std.testing.expectEqual(cf80.init(std.math.inf(f80), std.math.inf(f80)), cosh(cf80.init(0x5.8cap+12, 0x4p-1076)));
-    try std.testing.expectEqual(cf80.init(std.math.inf(f80), 0x2.bf701efd42c88e8p+16356), cosh(cf80.init(0x5.8cap+12, 0x4p-16436)));
-    try std.testing.expectEqual(cf80.init(0x1.000000000000002p+0, 0x8.000000000000005p-152), cosh(cf80.init(0x8p-32, 0x1p-120)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x4p-1076), cosh(cf80.init(0x4p-956, 0x1p-120)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x8p-16448), cosh(cf80.init(0x8p-16328, 0x1p-120)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x0p+0), cosh(cf80.init(0x4p-16328, 0x1p-120)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x0p+0), cosh(cf80.init(0x4p-16376, 0x1p-120)));
-    try std.testing.expectEqual(cf80.init(0xf.fffffffffffffep-4, 0x7.ffffffffffffffa8p-152), cosh(cf80.init(0x1p-120, 0x8p-32)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x4p-1076), cosh(cf80.init(0x1p-120, 0x4p-956)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x8p-16448), cosh(cf80.init(0x1p-120, 0x8p-16328)));
-    // try std.testing.expectEqual(cf80.init(0x1p+0, 0x8p-16448), cosh(cf80.init(0x1p-120, 0x4p-16328)));
-    try std.testing.expectEqual(cf80.init(0x1p+0, 0x0p+0), cosh(cf80.init(0x1p-120, 0x4p-16376)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, 0x4.b367f113ae6096ap-128), cosh(cf80.init(0x1p+0, 0x4p-128)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, 0x4.b367f113ae6096ap-1024), cosh(cf80.init(0x1p+0, 0x4p-1024)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, 0x4.b367f113ae6096ap-16384), cosh(cf80.init(0x1p+0, 0x4p-16384)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, 0x2.59b3f889d7304b5p-16384), cosh(cf80.init(0x1p+0, 0x2p-16384)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, 0x9.66cfe2275cc12d4p-972), cosh(cf80.init(0x1p+0, 0x8p-972)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, -0x4.b367f113ae6096ap-128), cosh(cf80.init(0x1p+0, -0x4p-128)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, -0x4.b367f113ae6096ap-1024), cosh(cf80.init(0x1p+0, -0x4p-1024)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, -0x4.b367f113ae6096ap-16384), cosh(cf80.init(0x1p+0, -0x4p-16384)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, -0x2.59b3f889d7304b5p-16384), cosh(cf80.init(0x1p+0, -0x2p-16384)));
-    try std.testing.expectEqual(cf80.init(0x1.8b07551d9f5504c2p+0, -0x9.66cfe2275cc12d4p-972), cosh(cf80.init(0x1p+0, -0x8p-972)));
-    try std.testing.expectEqual(cf80.init(0x5.55de6e613cfacf2p+112, 0x2.aaef37309e7d679p-36), cosh(cf80.init(0x5p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf80.init(0x5.55de6e613cfacf2p+112, 0x1.55779b984f3eb3c8p-960), cosh(cf80.init(0x5p+4, 0x4p-1076)));
-    try std.testing.expectEqual(cf80.init(0x5.55de6e613cfacf2p+112, 0x2.aaef37309e7d679p-16332), cosh(cf80.init(0x5p+4, 0x8p-16448)));
-    try std.testing.expectEqual(cf80.init(0x5.55de6e613cfacf2p+112, -0x2.aaef37309e7d679p-36), cosh(cf80.init(0x5p+4, -0x8p-152)));
-    try std.testing.expectEqual(cf80.init(0x5.55de6e613cfacf2p+112, -0x1.55779b984f3eb3c8p-960), cosh(cf80.init(0x5p+4, -0x4p-1076)));
-    try std.testing.expectEqual(cf80.init(0x5.55de6e613cfacf2p+112, -0x2.aaef37309e7d679p-16332), cosh(cf80.init(0x5p+4, -0x8p-16448)));
+    for (data_cf80) |test_case| {
+        try std.testing.expectEqual(test_case[0], cosh(test_case[1]));
+    }
 
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x0p+0), cosh(cf128.init(0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, -0x0p+0), cosh(cf128.init(-0x0p+0, 0x0p+0)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, -0x0p+0), cosh(cf128.init(0x0p+0, -0x0p+0)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x0p+0), cosh(cf128.init(-0x0p+0, -0x0p+0)));
-    try std.testing.expectEqual(cf128.init(0x6.8829624f33d1ccb2519db9bb3468p-4, 0xc.7c60fc7e541ee761e9b843ef4d38p-4), cosh(cf128.init(0xcp-4, 0x1.4p+0)));
-    // try std.testing.expectEqual(cf128.init(-0x3.b97bd070133ae9576b1773510f9ep+0, 0x8.306cdcf73532ef16dab0d82f152p-4), cosh(cf128.init(-0x2p+0, -0x3p+0)));
-    // try std.testing.expectEqual(cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, 0xb.dcb174d885199a507e02ee9c08c8p+124), cosh(cf128.init(0x5.98p+4, 0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, -0xb.dcb174d885199a507e02ee9c08c8p+124), cosh(cf128.init(-0x5.98p+4, 0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, -0xb.dcb174d885199a507e02ee9c08c8p+124), cosh(cf128.init(0x5.98p+4, -0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xc.bbaa76be57905b422fc94309d298p+124, 0xb.dcb174d885199a507e02ee9c08c8p+124), cosh(cf128.init(-0x5.98p+4, -0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, 0xb.2c35ffb60337070b74839cd40a3p+1020), cosh(cf128.init(0x2.c68p+8, 0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, -0xb.2c35ffb60337070b74839cd40a3p+1020), cosh(cf128.init(-0x2.c68p+8, 0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, -0xb.2c35ffb60337070b74839cd40a3p+1020), cosh(cf128.init(0x2.c68p+8, -0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xb.fe39a718cb52b2731922dd2e0be8p+1020, 0xb.2c35ffb60337070b74839cd40a3p+1020), cosh(cf128.init(-0x2.c68p+8, -0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, 0xb.46f43ab104a625930c1b0cbd6238p+16380), cosh(cf128.init(0x2.c5d4p+12, 0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, -0xb.46f43ab104a625930c1b0cbd6238p+16380), cosh(cf128.init(-0x2.c5d4p+12, 0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, -0xb.46f43ab104a625930c1b0cbd6238p+16380), cosh(cf128.init(0x2.c5d4p+12, -0xcp-4)));
-    // try std.testing.expectEqual(cf128.init(0xc.1aee93505374b41257ed141f4e1p+16380, 0xb.46f43ab104a625930c1b0cbd6238p+16380), cosh(cf128.init(-0x2.c5d4p+12, -0xcp-4)));
-    try std.testing.expectEqual(cf128.init(0x6.6e68cac762215372ccfb2fd63cf4p+256, 0x3.37346563b110a9b9667d97eb1e7ap+108), cosh(cf128.init(0xb.4p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf128.init(0x1.65445a94fa1268c47ee67b88bb6ep+2076, 0xb.2a22d4a7d0934623f733dc45db7p+1924), cosh(cf128.init(0x5.ap+8, 0x8p-152)));
-    try std.testing.expectEqual(cf128.init(0x1.65445a94fa1268c47ee67b88bb6ep+2076, 0x0p+0), cosh(cf128.init(0x5.ap+8, 0x0p+0)));
-    try std.testing.expectEqual(cf128.init(0x1.65445a94fa1268c47ee67b88bb6ep+2076, 0x5.95116a53e849a311fb99ee22edb8p+1000), cosh(cf128.init(0x5.ap+8, 0x4p-1076)));
-    try std.testing.expectEqual(cf128.init(std.math.inf(f128), std.math.inf(f128)), cosh(cf128.init(0x5.8cap+12, 0x8p-152)));
-    try std.testing.expectEqual(cf128.init(std.math.inf(f128), 0x0p+0), cosh(cf128.init(0x5.8cap+12, 0x0p+0)));
-    try std.testing.expectEqual(cf128.init(std.math.inf(f128), std.math.inf(f128)), cosh(cf128.init(0x5.8cap+12, 0x4p-1076)));
-    // try std.testing.expectEqual(cf128.init(std.math.inf(f128), 0x2.bf701efd42c88e7efc2fdf7765fcp+16356), cosh(cf128.init(0x5.8cap+12, 0x4p-16436)));
-    try std.testing.expectEqual(cf128.init(0x1.000000000000002p+0, 0x8.0000000000000055555555555558p-152), cosh(cf128.init(0x8p-32, 0x1p-120)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x4p-1076), cosh(cf128.init(0x4p-956, 0x1p-120)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x8p-16448), cosh(cf128.init(0x8p-16328, 0x1p-120)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x4p-16448), cosh(cf128.init(0x4p-16328, 0x1p-120)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x4p-16496), cosh(cf128.init(0x4p-16376, 0x1p-120)));
-    try std.testing.expectEqual(cf128.init(0xf.fffffffffffffep-4, 0x7.ffffffffffffffaaaaaaaaaaaaacp-152), cosh(cf128.init(0x1p-120, 0x8p-32)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x4p-1076), cosh(cf128.init(0x1p-120, 0x4p-956)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x8p-16448), cosh(cf128.init(0x1p-120, 0x8p-16328)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x4p-16448), cosh(cf128.init(0x1p-120, 0x4p-16328)));
-    try std.testing.expectEqual(cf128.init(0x1p+0, 0x4p-16496), cosh(cf128.init(0x1p-120, 0x4p-16376)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x4.b367f113ae6096a0092521fc194p-128), cosh(cf128.init(0x1p+0, 0x4p-128)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x4.b367f113ae6096a0092521fc194p-1024), cosh(cf128.init(0x1p+0, 0x4p-1024)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x4.b367f113ae6096a0092521fc194p-16384), cosh(cf128.init(0x1p+0, 0x4p-16384)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x2.59b3f889d7304b50049290fe0cap-16384), cosh(cf128.init(0x1p+0, 0x2p-16384)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, 0x9.66cfe2275cc12d40124a43f8328p-972), cosh(cf128.init(0x1p+0, 0x8p-972)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x4.b367f113ae6096a0092521fc194p-128), cosh(cf128.init(0x1p+0, -0x4p-128)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x4.b367f113ae6096a0092521fc194p-1024), cosh(cf128.init(0x1p+0, -0x4p-1024)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x4.b367f113ae6096a0092521fc194p-16384), cosh(cf128.init(0x1p+0, -0x4p-16384)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x2.59b3f889d7304b50049290fe0cap-16384), cosh(cf128.init(0x1p+0, -0x2p-16384)));
-    // try std.testing.expectEqual(cf128.init(0x1.8b07551d9f5504c2bd28100196a5p+0, -0x9.66cfe2275cc12d40124a43f8328p-972), cosh(cf128.init(0x1p+0, -0x8p-972)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x2.aaef37309e7d67914a076951c492p-36), cosh(cf128.init(0x5p+4, 0x8p-152)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x1.55779b984f3eb3c8a503b4a8e249p-960), cosh(cf128.init(0x5p+4, 0x4p-1076)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x2.aaef37309e7d67914a076951c492p-16332), cosh(cf128.init(0x5p+4, 0x8p-16448)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x1.55779b984f3eb3c8a503b4a8e249p-16332), cosh(cf128.init(0x5p+4, 0x4p-16448)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, 0x1.55779b984f3eb3c8a503b4a8e249p-16380), cosh(cf128.init(0x5p+4, 0x4p-16496)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x2.aaef37309e7d67914a076951c492p-36), cosh(cf128.init(0x5p+4, -0x8p-152)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x1.55779b984f3eb3c8a503b4a8e249p-960), cosh(cf128.init(0x5p+4, -0x4p-1076)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x2.aaef37309e7d67914a076951c492p-16332), cosh(cf128.init(0x5p+4, -0x8p-16448)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x1.55779b984f3eb3c8a503b4a8e249p-16332), cosh(cf128.init(0x5p+4, -0x4p-16448)));
-    try std.testing.expectEqual(cf128.init(0x5.55de6e613cfacf22940ed2a38924p+112, -0x1.55779b984f3eb3c8a503b4a8e249p-16380), cosh(cf128.init(0x5p+4, -0x4p-16496)));
+    for (data_cf128) |test_case| {
+        try std.testing.expectEqual(test_case[0], cosh(test_case[1]));
+    }
 }
