@@ -1,55 +1,86 @@
-const ieee_f64_shape = packed struct {
-    lsw: u32,
-    msw: u32,
+pub const Shape = packed struct {
+    mantissa: u52,
+    exponent: u11,
+    sign: u1,
+
+    pub inline fn fromFloat(x: f64) Shape {
+        return @bitCast(x);
+    }
+
+    pub inline fn toFloat(self: Shape) f64 {
+        return @bitCast(self);
+    }
 };
 
-/// Get two 32 bit ints from a double.
-pub inline fn extractWords(ix0: anytype, ix1: anytype, d: f64) void {
-    const ew_u: ieee_f64_shape = @bitCast(d);
-    ix0.* = @bitCast(ew_u.msw);
-    ix1.* = @bitCast(ew_u.lsw);
+pub inline fn getMantissa(x: f64) u52 {
+    const tmp: Shape = @bitCast(x);
+    return tmp.mantissa;
 }
 
-/// Get the more significant 32 bit int from a double.
-pub inline fn getHighWord(i: anytype, d: f64) void {
-    const gh_u: ieee_f64_shape = @bitCast(d);
-    i.* = @bitCast(gh_u.msw);
+pub inline fn getExponent(x: f64) u11 {
+    const tmp: Shape = @bitCast(x);
+    return tmp.exponent;
 }
 
-/// Get the less significant 32 bit int from a double.
-pub inline fn getLowWord(i: anytype, d: f64) void {
-    const gl_u: ieee_f64_shape = @bitCast(d);
-    i.* = @bitCast(gl_u.lsw);
+pub inline fn getSign(x: f64) u1 {
+    const tmp: Shape = @bitCast(x);
+    return tmp.sign;
 }
 
-/// Get all in one, efficient on 64-bit machines.
-pub inline fn extractWords64(i: anytype, d: f64) void {
-    const gh_u: u64 = @bitCast(d);
-    i.* = @bitCast(gh_u);
+pub inline fn setMantissa(x: *f64, v: u52) void {
+    var tmp: Shape = @bitCast(x.*);
+    tmp.mantissa = v;
+    x.* = @bitCast(tmp);
 }
 
-/// Set a double from two 32 bit ints.
-pub inline fn insertWords(d: *f64, ix0: anytype, ix1: anytype) void {
-    const iw_u: ieee_f64_shape = .{ .msw = @bitCast(ix0), .lsw = @bitCast(ix1) };
-    d.* = @bitCast(iw_u);
+pub inline fn setExponent(x: *f64, v: u11) void {
+    var tmp: Shape = @bitCast(x.*);
+    tmp.exponent = v;
+    x.* = @bitCast(tmp);
 }
 
-/// Get all in one, efficient on 64-bit machines.
-pub inline fn insertWords64(d: *f64, i: anytype) void {
-    const iw_u: u64 = @bitCast(i);
-    d.* = @bitCast(iw_u);
+pub inline fn setSign(x: *f64, v: u1) void {
+    var tmp: Shape = @bitCast(x.*);
+    tmp.sign = v;
+    x.* = @bitCast(tmp);
 }
 
-/// Set the more significant 32 bits of a double from an int.
-pub inline fn setHighWord(d: *f64, v: anytype) void {
-    var sh_u: ieee_f64_shape = @bitCast(d.*);
-    sh_u.msw = @bitCast(v);
-    d.* = @bitCast(sh_u);
+pub const Parts = packed struct {
+    lsw: u32,
+    msw: u32,
+
+    pub inline fn fromFloat(x: f64) Parts {
+        return @bitCast(x);
+    }
+
+    pub inline fn toFloat(self: Parts) f64 {
+        return @bitCast(self);
+    }
+};
+
+pub inline fn getHighPart(x: f64) u32 {
+    const tmp: Parts = @bitCast(x);
+    return tmp.msw;
 }
 
-/// Set the less significant 32 bits of a double from an int.
-pub inline fn setLowWord(d: *f64, v: anytype) void {
-    var sl_u: ieee_f64_shape = @bitCast(d.*);
-    sl_u.lsw = @bitCast(v);
-    d.* = @bitCast(sl_u);
+pub inline fn getLowPart(x: f64) u32 {
+    const tmp: Parts = @bitCast(x);
+    return tmp.lsw;
+}
+
+pub inline fn setHighPart(x: *f64, v: u32) void {
+    var tmp: Parts = @bitCast(x.*);
+    tmp.msw = v;
+    x.* = @bitCast(tmp);
+}
+
+pub inline fn setLowPart(x: *f64, v: u32) void {
+    var tmp: Parts = @bitCast(x.*);
+    tmp.lsw = v;
+    x.* = @bitCast(tmp);
+}
+
+pub inline fn setFromParts(x: *f64, msw: u32, lsw: u32) void {
+    const tmp: Parts = .{ .msw = msw, .lsw = lsw };
+    x.* = @bitCast(tmp);
 }

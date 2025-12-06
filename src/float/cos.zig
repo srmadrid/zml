@@ -1,213 +1,243 @@
 const std = @import("std");
+
 const types = @import("../types.zig");
-const float = @import("../float.zig");
-const sincos_data = @import("sincos_data.zig");
-const atnat = @import("atnat.zig");
-const usncs = @import("usncs.zig");
-const sin = @import("sin.zig");
-const branred = @import("branred.zig");
-const ldbl128 = @import("ldbl128.zig");
-const rem_pio2 = @import("rem_pio2.zig");
 const EnsureFloat = types.EnsureFloat;
-const scast = types.scast;
+const Coerce = types.Coerce;
+const float = @import("../float.zig");
+
+const sin = @import("sin.zig");
+const k_sin32 = sin.k_sin32;
+const k_sin64 = sin.k_sin64;
+const k_sin128 = sin.k_sin128;
+const rem_pio2 = @import("rem_pio2.zig");
+const rem_pio2_32 = rem_pio2.rem_pio2_32;
+const rem_pio2_64 = rem_pio2.rem_pio2_64;
+const rem_pio2_128 = rem_pio2.rem_pio2_128;
+
+const dbl64 = @import("dbl64.zig");
+const ldbl128 = @import("ldbl128.zig");
 
 pub inline fn cos(x: anytype) EnsureFloat(@TypeOf(x)) {
     comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
         @compileError("float.cos: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
     switch (EnsureFloat(@TypeOf(x))) {
-        f16 => return scast(f16, cos32(scast(f32, x))),
+        f16 => return types.scast(f16, cos32(types.scast(f32, x))),
         f32 => {
-            // glibc/sysdeps/ieee754/flt-32/s_cosf.c
-            return cos32(scast(f32, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_cosf.c
+            return cos32(types.scast(f32, x));
         },
         f64 => {
-            // glibc/sysdeps/ieee754/dbl-64/s_sin.c
-            return cos64(scast(f64, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_cos.c
+            return cos64(types.scast(f64, x));
         },
-        f80 => return scast(f80, cos128(scast(f128, x))),
+        f80 => {
+            //
+            // return cos80(types.scast(f80, x));
+            return types.scast(f80, cos128(types.scast(f128, x)));
+        },
         f128 => {
-            // glibc/sysdeps/ieee754/ldbl-128/s_cosl.c
-            return cos128(scast(f128, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_cosl.c
+            return cos128(types.scast(f128, x));
         },
         else => unreachable,
     }
 }
 
-// Fast cosf implementation.  Worst-case ULP is 0.5607, maximum relative
-// error is 0.5303 * 2^-23.  A single-step range reduction is used for
-// small values.  Large inputs have their range reduced using fast integer
-// arithmetic.
-fn cos32(y: f32) f32 {
-    var x: f64 = scast(f64, y);
-    var p: *const sincos_data.Sincos32 = &sincos_data.__sincos32_table[0];
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_cosf.c
+//
+// Original copyright notice:
+// s_cosf.c -- float version of s_cos.c.
+// Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+// Optimized by Bruce D. Evans.
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. bucosess.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+fn cos32(x: f32) f32 {
+    const hx: i32 = @bitCast(x);
+    const ix: i32 = hx & 0x7fffffff;
 
-    if (sincos_data.abstop12(y) < sincos_data.abstop12(sincos_data.pio4)) {
-        const x2: f64 = x * x;
+    if (ix <= 0x3f490fda) { // |x| ~<= pi/4
+        if (ix < 0x39800000) // |x| < 2**-12
+            if (types.scast(i32, x) == 0)
+                return 1.0; // 1 with inexact if x != 0
 
-        if (sincos_data.abstop12(y) < sincos_data.abstop12(0x1p-12)) {
-            @branchHint(.unlikely);
-            return 1.0;
-        }
-
-        return sincos_data.sin32_poly(x, x2, p, 1);
-    } else if (sincos_data.abstop12(y) < sincos_data.abstop12(120.0)) {
-        @branchHint(.likely);
-        var n: i32 = undefined;
-        x = sincos_data.reduce_fast(x, p, &n);
-
-        // Setup the signs for sin and cos.
-        const s: f64 = p.sign[@intCast(n & 3)];
-
-        if ((n & 2) != 0)
-            p = &sincos_data.__sincos32_table[1];
-
-        return sincos_data.sin32_poly(x * s, x * x, p, n ^ 1);
-    } else if (sincos_data.abstop12(y) < sincos_data.abstop12(std.math.inf(f32))) {
-        const xi: u32 = @bitCast(y);
-        const sign: i32 = @intCast(xi >> 31);
-
-        var n: i32 = undefined;
-        x = sincos_data.reduce_large(xi, &n);
-
-        // Setup signs for sin and cos - include original sign.
-        const s: f64 = p.sign[@intCast((n + sign) & 3)];
-
-        if (((n + sign) & 2) != 0)
-            p = &sincos_data.__sincos32_table[1];
-
-        return sincos_data.sin32_poly(x * s, x * x, p, n ^ 1);
-    } else return (y - y) / (y - y);
-}
-
-// Given a number partitioned into X and DX, this function computes the cosine
-// of the number by combining the sin and cos of X (as computed by a variation
-// of the Taylor series) with the values looked up from the sin/cos table to
-// get the result.
-pub inline fn do_cos64(x: f64, dx: f64) f64 {
-    var dxnew: f64 = dx;
-    if (x < 0)
-        dxnew = -dxnew;
-
-    const u: [2]i32 = @bitCast(usncs.big + float.abs(x));
-    const xnew: f64 = float.abs(x) - (@as(f64, @bitCast(u)) - usncs.big) + dxnew;
-
-    const xx: f64 = xnew * xnew;
-    const s: f64 = xnew + xnew * xx * (sincos_data.sn3 + xx * sincos_data.sn5);
-    const c: f64 = xx * (sincos_data.cs2 + xx * (sincos_data.cs4 + xx * sincos_data.cs6));
-    const k: i32 = u[atnat.LOW_HALF] << 2;
-    const sn: f64 = @bitCast(sincos_data.__sincostab[@intCast(k)]);
-    const ssn: f64 = @bitCast(sincos_data.__sincostab[@intCast(k + 1)]);
-    const cs: f64 = @bitCast(sincos_data.__sincostab[@intCast(k + 2)]);
-    const ccs: f64 = @bitCast(sincos_data.__sincostab[@intCast(k + 3)]);
-    const cor: f64 = (ccs - s * ssn - cs * c) - sn * s;
-    return cs + cor;
-}
-
-//******************************************************************/
-// An ultimate cos routine. Given an IEEE double machine number x
-// it computes the rounded value of cos(x).
-//******************************************************************/
-fn cos64(x: f64) f64 {
-    const u: [2]i32 = @bitCast(x);
-    const m: i32 = u[atnat.HIGH_HALF];
-    const k: i32 = 0x7fffffff & m;
-
-    // |x|<2^-27 => cos(x)=1
-    if (k < 0x3e400000) {
-        return 1.0;
-    } else if (k < 0x3feb6000) { // 2^-27 < |x| < 0.855469
-        // Max ULP is 0.51.
-        return do_cos64(x, 0);
-    } else if (k < 0x400368fd) { // 0.855469  <|x|<2.426265
-        const y: f64 = usncs.hp0 - float.abs(x);
-        const a: f64 = y + usncs.hp1;
-        const da: f64 = (y - a) + usncs.hp1;
-        // Max ULP is 0.501 if xx < 0.01588 or 0.518 otherwise.
-        // Range reduction uses 106 bits here which is sufficient.
-        return sin.do_sin64(a, da);
-    } else if (k < 0x419921fb) { // 2.426265<|x|< 105414350
-        var a: f64 = undefined;
-        var da: f64 = undefined;
-        const n: i32 = sincos_data.reduce_sincos64(x, &a, &da);
-        return sincos_data.do_sincos64(a, da, n + 1);
-    } else if (k < 0x7ff00000) { // 105414350 <|x| <2^1024
-        var a: f64 = undefined;
-        var da: f64 = undefined;
-        const n: i32 = branred.branred(x, &a, &da);
-        return sincos_data.do_sincos64(a, da, n + 1);
-    } else {
-        return x / x; // |x| > 2^1024
+        return k_cos32(types.scast(f64, x));
     }
-}
 
-pub fn kernel_cos128(x: f128, y: f128) f128 {
-    var ix: i64 = undefined;
-    ldbl128.getMsw(&ix, x);
-    var tix: u32 = @truncate(@as(u64, @bitCast(ix)) >> 32);
-    tix &= ~@as(u32, 0x80000000); // tix = |x|'s high 32 bits
-    if (tix < 0x3ffc3000) // |x| < 0.1484375
-    {
-        // Argument is small enough to approximate it by a Chebyshev
-        // polynomial of degree 16.
-        if (tix < 0x3fc60000) { // |x| < 2^-57
-            if (scast(i32, x) == 1)
-                return 1; // generate inexact
+    if (ix <= 0x407b53d1) { // |x| ~<= 5 * pi/4
+        if (ix <= 0x4016cbe3) { // |x| ~<= 3 * pi/4
+            if (hx > 0)
+                return k_sin32(1.57079632679489661923 - types.scast(f64, x))
+            else
+                return k_sin32(types.scast(f64, x) + 1.57079632679489661923);
+        } else {
+            return -k_cos32(types.scast(f64, x) + @as(f64, if (hx > 0) -2.0 else 2.0) * 1.57079632679489661923);
         }
-
-        const z: f128 = x * x;
-        return 1 + (z * (sincos_data.COS1 + z * (sincos_data.COS2 + z * (sincos_data.COS3 + z * (sincos_data.COS4 +
-            z * (sincos_data.COS5 + z * (sincos_data.COS6 + z * (sincos_data.COS7 + z * sincos_data.COS8))))))));
-    } else {
-        // So that we don't have to use too large polynomial,  we find
-        // l and h such that x = l + h,  where fabsl(l) <= 1.0/256 with 83
-        // possible values for h.  We look up cosl(h) and sinl(h) in
-        // pre-computed tables,  compute cosl(l) and sinl(l) using a
-        // Chebyshev polynomial of degree 10(11) and compute
-        // cosl(h+l) = cosl(h)cosl(l) - sinl(h)sinl(l).
-        var index: u32 = 0x3ffe - (tix >> 16);
-        const hix: u32 = (tix + (@as(u32, 0x200) << @as(u5, @intCast(index)))) & (@as(u32, 0xfffffc00) << @as(u5, @intCast(index)));
-        var xx: f128 = x;
-        var yy: f128 = y;
-        if (std.math.signbit(x)) {
-            xx = -x;
-            yy = -y;
-        }
-        switch (index) {
-            0 => index = ((45 << 10) + hix - 0x3ffe0000) >> 8,
-            1 => index = ((13 << 11) + hix - 0x3ffd0000) >> 9,
-            else => index = (hix - 0x3ffc3000) >> 10,
-        }
-
-        var h: f128 = undefined;
-        ldbl128.setWords(&h, scast(u64, hix) << 32, @as(u64, 0));
-        const l: f128 = yy - (h - xx);
-        const z: f128 = l * l;
-        const sin_l: f128 = l * (1 + z * (sincos_data.SSIN1 + z * (sincos_data.SSIN2 + z * (sincos_data.SSIN3 + z * (sincos_data.SSIN4 + z * sincos_data.SSIN5)))));
-        const cos_l_m1: f128 = z * (sincos_data.SCOS1 + z * (sincos_data.SCOS2 + z * (sincos_data.SCOS3 + z * (sincos_data.SCOS4 + z * sincos_data.SCOS5))));
-        return usncs.__sincos128_table[index + sincos_data.SINCOSL_COS_HI] + (usncs.__sincos128_table[index + sincos_data.SINCOSL_COS_LO] - (usncs.__sincos128_table[index + sincos_data.SINCOSL_SIN_HI] * sin_l - usncs.__sincos128_table[index + sincos_data.SINCOSL_COS_HI] * cos_l_m1));
     }
-}
 
-fn cos128(x: f128) f128 {
-    // High word of x.
-    var ix: i64 = undefined;
-    ldbl128.getMsw(&ix, x);
-
-    // |x| ~< pi/4
-    ix &= 0x7fffffffffffffff;
-    if (ix <= 0x3ffe921fb54442d1) {
-        return kernel_cos128(x, 0);
-    } else if (ix >= 0x7fff000000000000) { // cos(Inf or NaN) is NaN
+    if (ix <= 0x40e231d5) { // |x| ~<= 9 * pi/4
+        if (ix <= 0x40afeddf) { // |x| ~<= 7 * pi/4
+            if (hx > 0)
+                return k_sin32(types.scast(f64, x) - 3.0 * 1.57079632679489661923)
+            else
+                return k_sin32(-3.0 * 1.57079632679489661923 - types.scast(f64, x));
+        } else {
+            return k_cos32(types.scast(f64, x) + @as(f64, if (hx > 0) -4.0 else 4.0) * 1.57079632679489661923);
+        }
+    } else if (ix >= 0x7f800000) { // cos(Inf or NaN) is NaN
         return x - x;
-    } else { // argument reduction needed
-        var y: [2]f128 = undefined;
-        const n = rem_pio2.rem_pio2_128(x, &y);
-        switch (n & 3) {
-            0 => return kernel_cos128(y[0], y[1]),
-            1 => return -sin.kernel_sin128(y[0], y[1], 1),
-            2 => return -kernel_cos128(y[0], y[1]),
-            else => return sin.kernel_sin128(y[0], y[1], 1),
-        }
+    } else { // General argument reduction needed
+        var y: f64 = undefined;
+        const n: i32 = rem_pio2_32(x, &y);
+        return switch (n & 3) {
+            0 => k_cos32(y),
+            1 => k_sin32(-y),
+            2 => -k_cos32(y),
+            else => k_sin32(y),
+        };
     }
+}
+
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_cos.c
+//
+// Original copyright notice:
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+fn cos64(x: f64) f64 {
+    const ix: i32 = @bitCast(dbl64.getHighPart(x) & 0x7fffffff);
+
+    if (ix <= 0x3fe921fb) { // |x| ~< pi/4
+        if (ix < 0x3e46a09e) { // x < 2**-27 * sqrt(2)
+            if (types.scast(i32, x) == 0) // Generate inexact
+                return 1.0;
+        }
+
+        return k_cos64(x, 0.0);
+    } else if (ix >= 0x7ff00000) { // cos(Inf or NaN) is NaN
+        return x - x;
+    } else {
+        // Argument reduction needed
+        var y: [2]f64 = undefined;
+        const n: i32 = rem_pio2_64(x, &y);
+        return switch (n & 3) {
+            0 => k_cos64(y[0], y[1]),
+            1 => -k_sin64(y[0], y[1], 1),
+            2 => -k_cos64(y[0], y[1]),
+            else => k_sin64(y[0], y[1], 1),
+        };
+    }
+}
+
+fn cos80(x: f80) f80 {
+    _ = x;
+    return std.math.nan(f80);
+}
+
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_cosl.c
+//
+// Original copyright notice:
+// Copyright (c) 2007 Steven G. Kargl
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice unmodified, this list of conditions, and the following
+//    disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+fn cos128(x: f128) f128 {
+    var z: ldbl128.ShapeSplit = .fromFloat(x);
+    z.sign = 0;
+
+    if (z.exponent == 0) // If x = ±0 or x is a subnormal number, then cos(x) = 1
+        return 1.0;
+
+    if (z.exponent == 32767) // If x = NaN or Inf, then cos(x) = NaN
+        return ((x - x) / (x - x));
+
+    if (z.toFloat() < 0.7853981633974483096156608458198757) // Optimize the case where x is already within range
+        return k_cos128(z.toFloat(), 0.0);
+
+    var y: [2]f128 = undefined;
+    const e0: i64 = rem_pio2_128(x, &y);
+    var hi: f128 = y[0];
+    const lo: f128 = y[1];
+
+    switch (e0 & 3) {
+        0 => hi = k_cos128(hi, lo),
+        1 => hi = -k_sin128(hi, lo, 1),
+        2 => hi = -k_cos128(hi, lo),
+        3 => hi = k_sin128(hi, lo, 1),
+        else => unreachable,
+    }
+
+    return hi;
+}
+
+pub fn k_cos32(x: f64) f32 {
+    const z: f64 = x * x;
+    const w: f64 = z * z;
+    const r: f64 = -0x16c087e80f1e27.0p-62 + z * 0x199342e0ee5069.0p-68;
+    return types.scast(f32, ((1.0 + z * -0x1ffffffd0c5e81.0p-54) + w * 0x155553e1053a42.0p-57) + (w * z) * r);
+}
+
+pub fn k_cos64(x: f64, y: f64) f64 {
+    const z: f64 = x * x;
+    var w: f64 = z * z;
+    const r: f64 = z * (4.16666666666666019037e-2 + z *
+        (-1.38888888888741095749e-3 + z * 2.48015872894767294178e-5)) +
+        w * w * (-2.75573143513906633035e-7 +
+            z * (2.08757232129817482790e-9 + z * -1.13596475577881948265e-11));
+    const hz: f64 = 0.5 * z;
+    w = 1.0 - hz;
+    return w + (((1.0 - w) - hz) + (z * r - x * y));
+}
+
+pub fn k_cos128(x: f128, y: f128) f128 {
+    const z: f128 = x * x;
+    const r: f128 = z *
+        (0.04166666666666666666666666666666658424671 + z *
+            (-0.001388888888888888888888888888863490893732 + z *
+                (0.00002480158730158730158730158600795304914210 + z *
+                    (-0.2755731922398589065255474947078934284324e-6 + z *
+                        (0.2087675698786809897659225313136400793948e-8 + z *
+                            (-0.1147074559772972315817149986812031204775e-10 + z *
+                                (0.4779477332386808976875457937252120293400e-13 + z *
+                                    (-0.1561920696721507929516718307820958119868e-15 + z *
+                                        (0.4110317413744594971475941557607804508039e-18 + z *
+                                            (-0.8896592467191938803288521958313920156409e-21 + z *
+                                                0.1601061435794535138244346256065192782581e-23))))))))));
+    const hz: f128 = 0.5 * z;
+    const w: f128 = 1.0 - hz;
+    return w + (((1.0 - w) - hz) + (z * r - x * y));
 }

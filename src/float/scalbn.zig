@@ -92,8 +92,7 @@ fn scalbn64(x: f64, n: i32) f64 {
     const huge: f64 = 1.0e+300;
     const tiny: f64 = 1.0e-300;
 
-    var ix: i64 = undefined;
-    dbl64.extractWords64(&ix, x);
+    var ix: i64 = @bitCast(x);
     var k: i64 = (ix >> 52) & 0x7ff; // extract exponent
     var xx: f64 = x;
     if (k == 0) { // 0 or subnormal x
@@ -102,7 +101,7 @@ fn scalbn64(x: f64, n: i32) f64 {
             return xx; // +-0
 
         xx *= two54;
-        dbl64.extractWords64(&ix, xx);
+        ix = @bitCast(xx);
         k = ((ix >> 52) & 0x7ff) - 54;
     }
 
@@ -125,7 +124,7 @@ fn scalbn64(x: f64, n: i32) f64 {
     k = k + n;
     if (k > 0) { // normal result
         @branchHint(.likely);
-        dbl64.insertWords64(&xx, (@as(u64, @bitCast(ix)) & 0x800fffffffffffff) | (@as(u64, @bitCast(k)) << 52));
+        xx = @bitCast((@as(u64, @bitCast(ix)) & 0x800fffffffffffff) | (@as(u64, @bitCast(k)) << 52));
         return xx;
     }
 
@@ -133,7 +132,7 @@ fn scalbn64(x: f64, n: i32) f64 {
         return tiny * float.copysign(tiny, xx); // underflow
 
     k += 54; // subnormal result
-    dbl64.insertWords64(&xx, (@as(u64, @bitCast(ix)) & 0x800fffffffffffff) | (@as(u64, @bitCast(k)) << 52));
+    xx = @bitCast((@as(u64, @bitCast(ix)) & 0x800fffffffffffff) | (@as(u64, @bitCast(k)) << 52));
     return xx * twom54;
 }
 
@@ -191,45 +190,5 @@ fn scalbn80(x: f80, n: i32) f80 {
 }
 
 fn scalbn128(x: f128, n: i32) f128 {
-    const two114: f128 = 2.0769187434139310514121985316880384e+34; // 0x4071000000000000, 0
-    const twom114: f128 = 4.8148248609680896326399448564623183e-35; // 0x3F8D000000000000, 0
-    const huge: f128 = 1.0e+4900;
-    const tiny: f128 = 1.0e-4900;
-
-    var hx: i64 = undefined;
-    var lx: i64 = undefined;
-    ldbl128.getWords(&hx, &lx, x);
-    var k: i64 = (hx >> 48) & 0x7fff; // extract exponent
-    var xx: f128 = x;
-    if (k == 0) { // 0 or subnormal x
-        if (lx | (hx & 0x7fffffffffffffff) == 0)
-            return xx; // +-0
-
-        xx *= two114;
-        ldbl128.getMsw(&hx, xx);
-        k = ((hx >> 48) & 0x7fff) - 114;
-    }
-
-    if (k == 0x7fff)
-        return xx + xx; // NaN or Inf
-
-    if (n < -50000)
-        return tiny * float.copysign(tiny, xx); // underflow
-
-    if (n > 50000 or k + n > 0x7ffe)
-        return huge * float.copysign(huge, xx); // overflow
-
-    // Now k and n are bounded we know that k = k+n does not overflow.
-    k = k + n;
-    if (k > 0) { // normal result
-        ldbl128.setMsw(&xx, (@as(u64, @bitCast(hx)) & 0x8000ffffffffffff) | (@as(u64, @bitCast(k)) << 48));
-        return xx;
-    }
-
-    if (k <= -114)
-        return tiny * float.copysign(tiny, xx); // underflow
-
-    k += 114; // subnormal result
-    ldbl128.setMsw(&xx, (@as(u64, @bitCast(hx)) & 0x8000ffffffffffff) | (@as(u64, @bitCast(k)) << 48));
-    return xx * twom114;
+    return std.math.scalbn(x, n);
 }

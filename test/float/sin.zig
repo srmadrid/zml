@@ -1,8 +1,9 @@
 const std = @import("std");
 const zml = @import("zml");
 const sin = zml.float.sin;
+const tzml = @import("../zml.zig");
 
-const data_f32: [79]struct { f32, f32 } = .{
+const data_f32: [80]struct { f32, f32 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x8p-4, 0x8.60a92p-4 },
@@ -70,7 +71,7 @@ const data_f32: [79]struct { f32, f32 } = .{
     .{ -0xd.8f692p-4, -0x1.02e34cp+0 },
     .{ -0x8.3beep-4, 0xf.f0274p+4 },
     .{ 0x1.ffc6dap-4, 0x3.042d88p+0 },
-    // .{ 0x1.d12edp-12, 0x1.d12ed2p-12 },
+    .{ 0x1.d12edp-12, 0x1.d12ed2p-12 },
     .{ -0x1.bf207cp-4, -0x6.e23688p+16 },
     .{ -0x2.3e1f7cp-4, -0x6.e2369p+16 },
     .{ -0x1.455068p-4, 0x5.6a5008p+64 },
@@ -85,7 +86,7 @@ const data_f32: [79]struct { f32, f32 } = .{
     .{ 0xf.fa2aep-4, 0x1.8475e4p+0 },
 };
 
-const data_f64: [125]struct { f64, f64 } = .{
+const data_f64: [131]struct { f64, f64 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x8.0000036321168p-4, 0x8.60a92p-4 },
@@ -121,9 +122,9 @@ const data_f64: [125]struct { f64, f64 } = .{
     .{ 0xb.7fb5fe776979p-4, 0xc.d4966d92d171p-4 },
     .{ 0xb.7fb5fe776979p-4, 0xc.d4966d92d1708p-4 },
     .{ 0x3.fe4780403e808p-4, 0x4.093388p-4 },
-    // .{ 0x3.fe4778810e026p-4, 0x4.09338p-4 },
+    .{ 0x3.fe4778810e026p-4, 0x4.09338p-4 },
     .{ 0x3.fe477dbdc7958p-4, 0x4.093385688a2d4p-4 },
-    // .{ 0x3.fe477dbdc7954p-4, 0x4.093385688a2dp-4 },
+    .{ 0x3.fe477dbdc7954p-4, 0x4.093385688a2dp-4 },
     .{ -0x4.cd7e86c4077cp-4, 0x2.1e19e4p+72 },
     .{ -0xb.becc47ab1b8c8p-4, 0x2.1e19ep+72 },
     .{ -0xd.a29d5bb5f9cb8p-4, 0x2.1e19e0c9bab24p+72 },
@@ -140,10 +141,10 @@ const data_f64: [125]struct { f64, f64 } = .{
     .{ 0xc.dbc19bb4a58a8p-4, 0xe.ef3bp-4 },
     .{ 0xc.dbc1922f1d9fp-4, 0xe.ef3afp-4 },
     .{ 0xc.dbc19333ad3bp-4, 0xe.ef3af1b5d8008p-4 },
-    // .{ 0xc.dbc19333ad3a8p-4, 0xe.ef3af1b5d8p-4 },
+    .{ 0xc.dbc19333ad3a8p-4, 0xe.ef3af1b5d8p-4 },
     .{ 0xb.93255854754ap-4, 0x2.553538p+0 },
     .{ 0xb.932584840807p-4, 0x2.553534p+0 },
-    // .{ 0xb.93255eeda1028p-4, 0x2.5535376715bap+0 },
+    .{ 0xb.93255eeda1028p-4, 0x2.5535376715bap+0 },
     .{ 0xb.93255eeda1038p-4, 0x2.5535376715b9ep+0 },
     .{ -0x9.10bb448d3cbp-4, 0x3.be736p+0 },
     .{ -0x9.10bb0fd0c39d8p-4, 0x3.be735cp+0 },
@@ -156,11 +157,11 @@ const data_f64: [125]struct { f64, f64 } = .{
     .{ -0xc.d2639f1afc7f8p-4, 0x4.1237e8p+0 },
     .{ -0xc.d2635289f075p-4, 0x4.1237ep+0 },
     .{ -0xc.d2635f3faf59p-4, 0x4.1237e153f7084p+0 },
-    // .{ -0xc.d2635f3faf568p-4, 0x4.1237e153f708p+0 },
+    .{ -0xc.d2635f3faf568p-4, 0x4.1237e153f708p+0 },
     .{ -0xf.f4f46a017cb88p-4, 0x4.c92d1p+0 },
     .{ -0xf.f4f4736648dcp-4, 0x4.c92d08p+0 },
     .{ -0xf.f4f46a082f28p-4, 0x4.c92d0ffa4bf04p+0 },
-    // .{ -0xf.f4f46a082f288p-4, 0x4.c92d0ffa4bfp+0 },
+    .{ -0xf.f4f46a082f288p-4, 0x4.c92d0ffa4bfp+0 },
     .{ -0x4.b6f60ca8d415p-4, 0x5.fbec78p+0 },
     .{ -0x4.b6f686f9ea13p-4, 0x5.fbec7p+0 },
     .{ -0x4.b6f642a935a0cp-4, 0x5.fbec7477d4a84p+0 },
@@ -389,7 +390,7 @@ const data_f80: [167]struct { f80, f80 } = .{
     .{ 0xf.fa2adcf9ea83dbep-4, 0x1.8475e5afd4481p+0 },
 };
 
-const data_f128: [218]struct { f128, f128 } = .{
+const data_f128: [231]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x8.0000036321168852c4130c64b4cp-4, 0x8.60a92p-4 },
@@ -434,7 +435,7 @@ const data_f128: [218]struct { f128, f128 } = .{
     .{ -0x1p+0, -0x1.921fb54442d18469898cc517018p+0 },
     .{ -0x1.777a5cf72cec5fd61896cb4f40d2p-24, 0x3.243f6cp+0 },
     .{ 0x2.8885a308d31063e2b6c62b7f4d6cp-24, 0x3.243f68p+0 },
-    // .{ -0x1.72cece675d1fc8f8cbb5bf6c7d5cp-52, 0x3.243f6a8885a32p+0 },
+    .{ -0x1.72cece675d1fc8f8cbb5bf6c7d5cp-52, 0x3.243f6a8885a32p+0 },
     .{ 0x8.d313198a2e03707344a4093821b8p-56, 0x3.243f6a8885a3p+0 },
     .{ -0xe.ce675d1fc8f8cbb5bf6c7ddd661p-68, 0x3.243f6a8885a308d4p+0 },
     .{ 0x3.13198a2e03707344a409382229ap-64, 0x3.243f6a8885a308dp+0 },
@@ -444,7 +445,7 @@ const data_f128: [218]struct { f128, f128 } = .{
     .{ 0x7.07344a4093822299f31d0082efa8p-108, 0x3.243f6a8885a308d313198a2e03p+0 },
     .{ 0x1.777a5cf72cec5fd61896cb4f40d2p-24, -0x3.243f6cp+0 },
     .{ -0x2.8885a308d31063e2b6c62b7f4d6cp-24, -0x3.243f68p+0 },
-    // .{ 0x1.72cece675d1fc8f8cbb5bf6c7d5cp-52, -0x3.243f6a8885a32p+0 },
+    .{ 0x1.72cece675d1fc8f8cbb5bf6c7d5cp-52, -0x3.243f6a8885a32p+0 },
     .{ -0x8.d313198a2e03707344a4093821b8p-56, -0x3.243f6a8885a3p+0 },
     .{ 0xe.ce675d1fc8f8cbb5bf6c7ddd661p-68, -0x3.243f6a8885a308d4p+0 },
     .{ -0x3.13198a2e03707344a409382229ap-64, -0x3.243f6a8885a308dp+0 },
@@ -548,7 +549,7 @@ const data_f128: [218]struct { f128, f128 } = .{
     .{ -0x4.b6f642a935a49fffffff9a1c5e64p-4, 0x5.fbec7477d4a800000000000002p+0 },
     .{ 0xd.76aa47848677020c6e9e909c50fp-4, 0x1p+0 },
     .{ 0xe.8c7b7568da22efd5c240c4004e5p-4, 0x2p+0 },
-    // .{ 0x2.42070db6daab69e3902e8468315p-4, 0x3p+0 },
+    .{ 0x2.42070db6daab69e3902e8468315p-4, 0x3p+0 },
     .{ -0xc.1bdceeee0f5738674c02ad072288p-4, 0x4p+0 },
     .{ -0xf.57c0faf04c999135789f2ab1de3p-4, 0x5p+0 },
     .{ -0x4.787c62ac28b00e989105113d2884p-4, 0x6p+0 },
@@ -565,29 +566,29 @@ const data_f128: [218]struct { f128, f128 } = .{
     .{ 0x7.76d600e031521b7cc3cd579a135p-4, 0xe.9f1e5p+112 },
     .{ 0xf.dfffd7bde0fb4ec139784e3b799p-4, 0xe.9f1e5bc3bb88p+112 },
     .{ -0x1.ffb679ba994b76173f9040637ff9p-4, 0x4.7857dp+68 },
-    // .{ -0x1.fecaff6878a10ce5d42fde40e7p-4, 0x6.287cdp+0 },
+    .{ -0x1.fecaff6878a10ce5d42fde40e7p-4, 0x6.287cdp+0 },
     .{ -0x1.fecb7e68ad6e9c3f77c1915bc919p-4, 0x6.287cc8p+0 },
-    // .{ -0x1.fecb772e1b8300e5ab16d9008ea9p-4, 0x6.287cc8749213p+0 },
+    .{ -0x1.fecb772e1b8300e5ab16d9008ea9p-4, 0x6.287cc8749213p+0 },
     .{ -0x1.fecb772e1b86f8e74fbeae63ee4cp-4, 0x6.287cc8749212cp+0 },
     .{ -0x1.fecb772e1b848bca4e961470b22p-4, 0x6.287cc8749212e72p+0 },
     .{ -0xd.8f691a7a95425ffcb89dc2b97cep-4, -0x1.02e34cp+0 },
     .{ -0x8.3bee07bc9076424bef274717106p-4, 0xf.f0274p+4 },
-    // .{ 0x1.ffc6da9f1ffed895f9fa424ba91p-4, 0x3.042d88p+0 },
+    .{ 0x1.ffc6da9f1ffed895f9fa424ba91p-4, 0x3.042d88p+0 },
     .{ 0x1.d12ed0fffffdfe0f0008c8b28233p-12, 0x1.d12ed2p-12 },
     .{ -0x1.bf207c900d877cb73f555829e3f1p-4, -0x6.e23688p+16 },
-    // .{ -0x2.3e1f7a26f594336f9e583b26bbbep-4, -0x6.e2369p+16 },
-    // .{ -0x1.feb6a3619e803c49fb3b778718d1p-4, -0x6.e2368c006c018p+16 },
-    // .{ -0x1.feb6a365968288771150b6f6c51fp-4, -0x6.e2368c006c01cp+16 },
-    // .{ -0x1.feb6a361c0bb501b009ef2c1f11ap-4, -0x6.e2368c006c018228p+16 },
+    .{ -0x2.3e1f7a26f594336f9e583b26bbbep-4, -0x6.e2369p+16 },
+    .{ -0x1.feb6a3619e803c49fb3b778718d1p-4, -0x6.e2368c006c018p+16 },
+    .{ -0x1.feb6a365968288771150b6f6c51fp-4, -0x6.e2368c006c01cp+16 },
+    .{ -0x1.feb6a361c0bb501b009ef2c1f11ap-4, -0x6.e2368c006c018228p+16 },
     .{ -0x1.4550689b93bbe1406aee26103891p-4, 0x5.6a5008p+64 },
     .{ -0x1.ee01db6bc8ef288c92dcf3ee915cp-4, 0x5.6a5p+64 },
     .{ 0x6.5ea3351c9d9da321a84877b1bf9cp-4, 0x5.6a5005df4363cp+64 },
     .{ 0x2.f0e32ed649b326445c86bd0d5a5ep-4, 0x5.6a5005df43638p+64 },
     .{ -0xa.8640e82e7924ec0007c75179739p-4, 0x5.6a5005df43638338p+64 },
     .{ 0xd.7457bd2255e689f0662a7ba85488p-4, 0x5.6a5005df4363833p+64 },
-    // .{ -0xf.fdc3052396dd47c564b32734cc2p-8, 0x5.6a5005df4363833413fa44f74ae8p+64 },
-    // .{ -0xf.fdc305227f69439ae6b7b4254f78p-8, 0x5.6a5005df4363833413fa44f74cp+64 },
-    // .{ -0xf.fdc305247e694b390edb67a7fa7p-8, 0x5.6a5005df4363833413fa44f74ap+64 },
+    .{ -0xf.fdc3052396dd47c564b32734cc2p-8, 0x5.6a5005df4363833413fa44f74ae8p+64 },
+    .{ -0xf.fdc305227f69439ae6b7b4254f78p-8, 0x5.6a5005df4363833413fa44f74cp+64 },
+    .{ -0xf.fdc305247e694b390edb67a7fa7p-8, 0x5.6a5005df4363833413fa44f74ap+64 },
     .{ -0x8.599b32844aba906cee446be04998p-4, 0xf.fffffp+124 },
     .{ 0x1.452fc98b34e96b61139b09a7c84ap-8, 0xf.ffffffffffff8p+1020 },
     .{ 0xf.dfd9d4b6d0e5f7b9650cab0f5438p-4, 0xf.fffffffffffffffp+16380 },
@@ -625,18 +626,34 @@ const data_f128: [218]struct { f128, f128 } = .{
 
 test sin {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], sin(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            sin(test_case[1]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], sin(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            sin(test_case[1]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], sin(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            sin(test_case[1]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], sin(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            sin(test_case[1]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }

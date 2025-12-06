@@ -1886,7 +1886,7 @@ fn vectorTesting(a: std.mem.Allocator) !void {
     const rand = prng.random();
 
     var A = try random_matrix_t(
-        zml.matrix.triangular.Sparse(zml.Rational, .lower, .non_unit, .col_major),
+        zml.matrix.general.Dense(zml.Rational, .col_major),
         a,
         rand,
         12,

@@ -1,183 +1,269 @@
 const std = @import("std");
+
 const types = @import("../types.zig");
-const float = @import("../float.zig");
-const classify = @import("classify.zig");
 const EnsureFloat = types.EnsureFloat;
-const scast = types.scast;
+const float = @import("../float.zig");
+
+const dbl64 = @import("dbl64.zig");
+const ldbl128 = @import("ldbl128.zig");
 
 pub inline fn cbrt(x: anytype) EnsureFloat(@TypeOf(x)) {
     comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
         @compileError("float.cbrt: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
     switch (EnsureFloat(@TypeOf(x))) {
-        f16 => return scast(f16, cbrt32(scast(f32, x))),
+        f16 => return types.scast(f16, cbrt32(types.scast(f32, x))),
         f32 => {
-            // glibc/sysdeps/ieee754/flt-32/s_cbrtf.c
-            return cbrt32(scast(f32, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_cbrtf.c
+            return cbrt32(types.scast(f32, x));
         },
         f64 => {
-            // glibc/sysdeps/ieee754/dbl-64/s_cbrt.c
-            return cbrt64(scast(f64, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_cbrt.c
+            return cbrt64(types.scast(f64, x));
         },
-        f80 => return scast(f80, cbrt128(scast(f128, x))),
+        f80 => {
+            //
+            // return cbrt80(types.scast(f80, x));
+            return types.scast(f80, cbrt128(types.scast(f128, x)));
+        },
         f128 => {
-            // glibc/sysdeps/ieee754/ldbl-128/s_cbrtl.c
-            return cbrt128(scast(f128, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_cbrtl.c
+            return cbrt128(types.scast(f128, x));
         },
         else => unreachable,
     }
 }
 
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_cbrtf.c
+//
+// Original copyright notice:
+// s_cbrtf.c -- float version of s_cbrt.c.
+// Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+// Debugged and optimized by Bruce D. Evans.
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 fn cbrt32(x: f32) f32 {
-    const escale: [3]f64 = .{
-        1.0,
-        0x1.428a2f98d728bp+0, // 2^(1/3)
-        0x1.965fea53d6e3dp+0, // 2^(2/3)
-    };
+    var hx: i32 = @bitCast(x);
+    const sign: u32 = @as(u32, @bitCast(hx)) & 0x80000000;
+    hx &= 0x7fffffff;
 
-    const u: u32 = @bitCast(x);
-    var au: u32 = u << 1;
-    const sgn: u32 = u >> 31;
-    var e: u32 = au >> 24;
-    if (au < 1 << 24 or au >= 0xff << 24) {
-        @branchHint(.unlikely);
-        if (au >= 0xff << 24)
-            return x + x; // inf, nan
-
-        if (au == 0)
-            return x; // +-0
-
-        const nz: i32 = @clz(au) - 7; // subnormal
-        au <<= @as(u5, @intCast(nz));
-        e -%= scast(u32, nz -% 1);
-    }
-
-    const mant: u32 = au & 0xffffff;
-    e +%= 899;
-    const et: u32 = @divFloor(e, 3);
-    const it: u32 = e % 3;
-    var isc: u64 = @bitCast(escale[it]);
-    isc +%= scast(u64, (et -% 342)) << 52;
-    isc |= scast(u64, sgn) << 63;
-    const cvt2: f64 = @bitCast(isc);
-    const c: [8]f64 = .{
-        0x1.2319d352ea5d5p-1,  0x1.67ad8ee258d1ap-1,  -0x1.9342edf9cbad9p-2,
-        0x1.b6388fc510a75p-3,  -0x1.6002455599e2fp-4, 0x1.7b096936192c4p-6,
-        -0x1.e5577187e8bf8p-9, 0x1.169ef81d6c34ep-12,
-    };
-    const z: f64 = @bitCast(scast(u64, mant) << 28 | 0x3ff << 52);
-    const r0: f64 = -0x1.9931c6c2d19d1p-6 / z;
-    const z2: f64 = z * z;
-    const z4: f64 = z2 * z2;
-    var f: f64 = ((c[0] + z * c[1]) + z2 * (c[2] + z * c[3])) + z4 * ((c[4] + z * c[5]) + z2 * (c[6] + z * c[7])) + r0;
-    var r: f64 = f * cvt2;
-    var ub: f32 = scast(f32, r);
-    const lb: f32 = scast(f32, r - cvt2 * 1.4182e-9);
-    if (ub == lb) {
-        @branchHint(.likely);
-        return ub;
-    }
-
-    const U0: f64 = -0x1.ab16ec65d138fp+3;
-    const h: f64 = f * f * f - z;
-    f -= (f * r0 * U0) * h;
-    r = f * cvt2;
-    var cvt1: u64 = @bitCast(r);
-    ub = scast(f32, r);
-    const m0: i64 = @bitCast(cvt1 << 19);
-    const m1: i64 = m0 >> 63;
-    if ((m0 ^ m1) < (1 << 31)) {
-        @branchHint(.unlikely);
-        cvt1 = (cvt1 + (1 << 31)) & 0xffffffff00000000;
-        ub = scast(f32, @as(f64, @bitCast(cvt1)));
-    }
-    return ub;
-}
-
-fn cbrt64(x: f64) f64 {
-    const factor: [5]f64 = .{ 1.0 / 1.5874010519681994748, 1.0 / 1.2599210498948731648, 1.0, 1.2599210498948731648, 1.5874010519681994748 };
-
-    // Reduce X.  XM now is an range 1.0 to 0.5.
-    var xe: i32 = undefined;
-    const xm = float.frexp(float.abs(x), &xe);
-
-    // If X is not finite or is null return it (with raising exceptions
-    // if necessary.
-    if (xe == 0 and classify.classify(x) <= classify.ZERO)
+    if (hx >= 0x7f800000) // cbrt(NaN) is NaN, cbrt(Inf) is Inf
         return x + x;
 
-    const u: f64 = (0.354895765043919860 + ((1.50819193781584896 + ((-2.11499494167371287 + ((2.44693122563534430 + ((-1.83469277483613086 + (0.784932344976639262 - 0.145263899385486377 * xm) * xm) * xm)) * xm)) * xm)) * xm));
+    // Rough cbrt to 5 bits
+    var t: f32 = undefined;
+    if (hx < 0x00800000) { // zero or subnormal
+        if (hx == 0)
+            return (x); // cbrt(±0) is itself
 
-    const t2: f64 = u * u * u;
-
-    const ym: f64 = u * (t2 + 2.0 * xm) / (2.0 * t2 + xm) * factor[@intCast(2 + @mod(xe, 3))];
-
-    return float.ldexp(if (x > 0) ym else -ym, @divFloor(xe, 3));
-}
-
-fn cbrt128(x: f128) f128 {
-    const CBRT2: f128 = 1.259921049894873164767210607278228350570251;
-    const CBRT4: f128 = 1.587401051968199474751705639272308260391493;
-    const CBRT2I: f128 = 0.7937005259840997373758528196361541301957467;
-    const CBRT4I: f128 = 0.6299605249474365823836053036391141752851257;
-
-    if (!std.math.isFinite(x))
-        return x + x;
-
-    if (x == 0)
-        return x;
-
-    var sign: i32 = undefined;
-    var xx: f128 = x;
-    if (x > 0) {
-        sign = 1;
+        t = @bitCast(@as(u32, 0x4b800000)); // Set t = 2**24
+        t *= x;
+        const high: u32 = @bitCast(t);
+        t = @bitCast(sign | (@divTrunc(high & 0x7fffffff, 3) +% 642849266));
     } else {
-        sign = -1;
-        xx = -x;
+        t = @bitCast(@as(i32, @bitCast(sign)) | (@divTrunc(hx, 3) +% 709958130));
     }
 
-    const z: f128 = xx;
-    // extract power of 2, leaving mantissa between 0.5 and 1
-    var e: i32 = undefined;
-    xx = float.frexp(xx, &e);
+    // First step Newton iteration (solving t * t - x/t == 0) to 16 bits.  In
+    // double precision so that its terms can be arranged for efficiency
+    // without causing overflow or underflow.
+    var T: f64 = types.scast(f64, t);
+    var r: f64 = T * T * T;
+    T = T * (2.0 * types.scast(f64, x) + r) / (types.scast(f64, x) + r + r);
 
-    // Approximate cube root of number between .5 and 1,
-    // peak relative error = 1.2e-6
-    xx = ((((1.3584464340920900529734e-1 * xx - 6.3986917220457538402318e-1) * xx + 1.2875551670318751538055e0) * xx - 1.4897083391357284957891e0) * xx + 1.3304961236013647092521e0) * xx + 3.7568280825958912391243e-1;
+    // Second step Newton iteration to 47 bits.  In double precision for
+    // efficiency and accuracy.
+    r = T * T * T;
+    T = T * (2.0 * types.scast(f64, x) + r) / (types.scast(f64, x) + r + r);
 
-    // exponent divided by 3
-    if (e >= 0) {
-        var rem: i32 = e;
-        e = @divFloor(e, 3);
-        rem -= 3 * e;
-        if (rem == 1) {
-            xx *= CBRT2;
-        } else if (rem == 2) {
-            xx *= CBRT4;
-        }
-    } else { // argument less than 1
-        e = -e;
-        var rem: i32 = e;
-        e = @divFloor(e, 3);
-        rem -= 3 * e;
-        if (rem == 1) {
-            xx *= CBRT2I;
-        } else if (rem == 2) {
-            xx *= CBRT4I;
-        }
-        e = -e;
+    // Rounding to 24 bits is perfect in round-to-nearest mode
+    return types.scast(f32, T);
+}
+
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_cbrt.c
+//
+// Original copyright notice:
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+//
+// Optimized by Bruce D. Evans.
+fn cbrt64(x: f64) f64 {
+    var hx: i32 = @bitCast(dbl64.getHighPart(x));
+    const low: u32 = dbl64.getLowPart(x);
+    const sign: u32 = @as(u32, @bitCast(hx)) & 0x80000000;
+    hx &= 0x7fffffff;
+
+    if (hx >= 0x7ff00000) // cbrt(NaN) is NaN, cbrt(Inf) is Inf
+        return x + x;
+
+    // Rough cbrt to 5 bits:
+    //    cbrt(2**e * (1 + m) ~= 2**(e/3) * (1 + (e%3 + m)/3)
+    // where e is integral and >= 0, m is real and in [0, 1), and "/" and
+    // "%" are integer division and modulus with rounding towards minus
+    // infinity.  The RHS is always >= the LHS and has a maximum relative
+    // error of about 1 in 16.  Adding a bias of -0.03306235651 to the
+    // (e%3 + m)/3 term reduces the error to about 1 in 32. With the IEEE
+    // floating point representation, for finite positive normal values,
+    // ordinary integer divison of the value in bits magically gives
+    // almost exactly the RHS of the above provided we first subtract the
+    // exponent bias (1023 for doubles) and later add it back.  We do the
+    // subtraction virtually to keep e >= 0 so that ordinary integer
+    // division rounds towards minus infinity; this is also efficient.
+    var t: f64 = 0.0;
+    if (hx < 0x00100000) { // Zero or subnormal
+        if ((@as(u32, @bitCast(hx)) | low) == 0)
+            return x; // cbrt(±0) is itself
+
+        dbl64.setHighPart(&t, 0x43500000); // Set t = 2**54
+        t *= x;
+        const high: u32 = dbl64.getHighPart(t);
+        t = dbl64.Parts.toFloat(.{
+            .msw = @bitCast(sign | (@divTrunc(high & 0x7fffffff, 3) +% 696219795)),
+            .lsw = 0,
+        });
+    } else {
+        t = dbl64.Parts.toFloat(.{
+            .msw = @bitCast(@as(i32, @bitCast(sign)) | (@divTrunc(hx, 3) +% 715094163)),
+            .lsw = 0,
+        });
     }
 
-    // multiply by power of 2
-    xx = float.ldexp(xx, e);
+    // New cbrt to 23 bits:
+    //    cbrt(x) = t * cbrt(x/t**3) ~= t * P(t**3/x)
+    // where P(r) is a polynomial of degree 4 that approximates 1/cbrt(r)
+    // to within 2**-23.5 when |r - 1| < 1/10.  The rough approximation
+    // has produced t such than |t/cbrt(x) - 1| ~< 1/32, and cubing this
+    // gives us bounds for r = t**3/x.
+    var r: f64 = (t * t) * (t / x);
+    t = t * ((1.87595182427177009643 + r * (-1.88497979543377169875 + r * 1.621429720105354466140)) +
+        ((r * r) * r) * (-0.758397934778766047437 + r * 0.145996192886612446982));
 
-    // Newton iteration
-    xx -= (xx - (z / (xx * xx))) * 0.3333333333333333333333333333333333333333;
-    xx -= (xx - (z / (xx * xx))) * 0.3333333333333333333333333333333333333333;
-    xx -= (xx - (z / (xx * xx))) * 0.3333333333333333333333333333333333333333;
+    // Round t away from zero to 23 bits (sloppily except for ensuring that
+    // the result is larger in magnitude than cbrt(x) but not much more than
+    // 2 23-bit ulps larger).  With rounding towards zero, the error bound
+    // would be ~5/6 instead of ~4/6.  With a maximum error of 2 23-bit ulps
+    // in the rounded t, the infinite-precision error in the Newton
+    // approximation barely affects third digit in the final error
+    // 0.667; the error in the rounded t can be up to about 3 23-bit ulps
+    // before the final error is larger than 0.667 ulps.
+    var u: u64 = @bitCast(t);
+    u = (u +% 0x80000000) & 0xffffffffc0000000;
+    t = @bitCast(u);
 
-    if (sign < 0)
-        xx = -xx;
+    // One step Newton iteration to 53 bits with error < 0.667 ulps
+    const s: f64 = t * t; // t*t is exact
+    r = x / s; // error <= 0.5 ulps; |r| < |t|
+    const w: f64 = t + t; // t+t is exact
+    r = (r - t) / (w + r); // r-t is exact; w+r ~= 3*t
+    t = t + t * r; // error <= 0.5 + 0.5/3 + epsilon
 
-    return xx;
+    return t;
+}
+
+fn cbrt80(x: f80) f80 {
+    _ = x;
+    return std.math.nan(f80);
+}
+
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_cbrtl.c
+//
+// Original copyright notice:
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+// Copyright (c) 2009-2011, Bruce D. Evans, Steven G. Kargl, David Schultz.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
+//
+// The argument reduction and testing for exceptional cases was
+// written by Steven G. Kargl with input from Bruce D. Evans
+// and David A. Schultz.
+fn cbrt128(x: f128) f128 {
+    var u: ldbl128.ShapeSplit = .fromFloat(x);
+    var k: i32 = @bitCast(@as(u32, @intCast(u.exponent)));
+    const sign: u1 = u.sign;
+
+    // cbrt(NaN) is NaN, cbrt(Inf) is Inf
+    if (k == 0x7fff)
+        return x + x;
+
+    if (k == 0) {
+        if ((u.mantissa_high | u.mantissa_low) == 0)
+            return x; // cbrt(±0) is itself
+
+        // Adjust subnormal numbers
+        u = .fromFloat(u.toFloat() * 0x1.0p514);
+        k = @bitCast(@as(u32, @intCast(u.exponent)));
+        k -%= (16384 - 1) + 514;
+    } else {
+        k -%= 16384 - 1;
+    }
+
+    u.exponent = 0x3fff;
+    u.sign = 0;
+    var v: ldbl128.ShapeSplit = .fromFloat(1.0);
+    var xx: f128 = u.toFloat();
+    switch (@rem(k, 3)) {
+        1, -2 => {
+            xx *= 2.0;
+            k -%= 1;
+        },
+        2, -1 => {
+            xx *= 4.0;
+            k -%= 2;
+        },
+        else => {},
+    }
+
+    v.sign = sign;
+    v.exponent = @bitCast(0x3fff +% @as(i15, @intCast(@divTrunc(k, 3))));
+
+    // The following is the guts of cbrt32, with the handling of
+    // special values removed and extra care for accuracy not taken,
+    // but with most of the extra accuracy not discarded.
+
+    // Rough cbrt to 5 bits
+    const fx: f32 = types.scast(f32, xx);
+    const hx: u32 = @bitCast(fx);
+    const ft: f32 = @bitCast((hx & 0x7fffffff) / 3 +% 709958130);
+
+    // 16 bit estimate
+    const dx: f64 = types.scast(f64, xx);
+    var dt: f64 = types.scast(f64, ft);
+    var dr: f64 = dt * dt * dt;
+    dt = dt * (2.0 * dx + dr) / (dx + 2.0 * dr);
+
+    // 47 bit estimate
+    dr = dt * dt * dt;
+    dt = dt * (2.0 * dx + dr) / (dx + 2.0 * dr);
+
+    // Final step Newton iteration to 64 or 113 bits with
+    // error < 0.667 ulps
+    var t: f128 = types.scast(f128, dt);
+    const s: f128 = t * t; // t * t is exact
+    var r: f128 = xx / s; // error <= 0.5 ulps; |r| < |t|
+    const w: f128 = t + t; // t + t is exact
+    r = (r - t) / (w + r); // r - t is exact; w + r ~= 3 * t
+    t = t + t * r; // error <= 0.5 + 0.5/3 + epsilon
+
+    return v.toFloat() * t;
 }

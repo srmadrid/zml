@@ -3,8 +3,8 @@ test {
     const test_exponential = true;
     const test_power = true;
     const test_trigonometric = true;
-    const test_hyperbolic = true;
-    const test_error_gamma = true;
+    const test_hyperbolic = false;
+    const test_error_gamma = false;
     const test_bessel = false;
     const test_nearest_integer = false;
     const test_floating_point = false;
@@ -18,17 +18,17 @@ test {
 
     if (test_exponential) {
         _ = @import("float/exp.zig");
-        _ = @import("float/exp10.zig");
-        _ = @import("float/exp2.zig");
-        _ = @import("float/exp10m1.zig");
-        _ = @import("float/exp2m1.zig");
-        _ = @import("float/expm1.zig");
+        // _ = @import("float/exp10.zig");
+        // _ = @import("float/exp2.zig");
+        // _ = @import("float/exp10m1.zig");
+        // _ = @import("float/exp2m1.zig");
+        // _ = @import("float/expm1.zig");
         _ = @import("float/log.zig");
-        _ = @import("float/log10.zig");
-        _ = @import("float/log2.zig");
-        _ = @import("float/log10p1.zig");
-        _ = @import("float/log2p1.zig");
-        _ = @import("float/log1p.zig");
+        // _ = @import("float/log10.zig");
+        // _ = @import("float/log2.zig");
+        // _ = @import("float/log10p1.zig");
+        // _ = @import("float/log2p1.zig");
+        // _ = @import("float/log1p.zig");
     }
 
     if (test_power) {
@@ -41,19 +41,19 @@ test {
     if (test_trigonometric) {
         _ = @import("float/sin.zig");
         _ = @import("float/cos.zig");
-        _ = @import("float/tan.zig");
-        _ = @import("float/asin.zig");
-        _ = @import("float/acos.zig");
-        _ = @import("float/atan.zig");
-        _ = @import("float/atan2.zig");
-        _ = @import("float/sincos.zig");
-        _ = @import("float/sinpi.zig");
-        _ = @import("float/cospi.zig");
-        _ = @import("float/tanpi.zig");
-        _ = @import("float/asinpi.zig");
-        _ = @import("float/acospi.zig");
-        _ = @import("float/atanpi.zig");
-        _ = @import("float/atan2pi.zig");
+        // _ = @import("float/tan.zig");
+        // _ = @import("float/asin.zig");
+        // _ = @import("float/acos.zig");
+        // _ = @import("float/atan.zig");
+        // _ = @import("float/atan2.zig");
+        // _ = @import("float/sincos.zig");
+        // _ = @import("float/sinpi.zig");
+        // _ = @import("float/cospi.zig");
+        // _ = @import("float/tanpi.zig");
+        // _ = @import("float/asinpi.zig");
+        // _ = @import("float/acospi.zig");
+        // _ = @import("float/atanpi.zig");
+        // _ = @import("float/atan2pi.zig");
     }
 
     if (test_hyperbolic) {

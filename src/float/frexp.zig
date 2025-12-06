@@ -99,7 +99,7 @@ fn frexp80(x: f80, e: *i32) f80 {
     var ix: u32 = 0x7fff & se;
     e.* = 0;
 
-    if (ix == 0x7fff || ((ix | hx | lx) == 0))
+    if (ix == 0x7fff or ((ix | hx | lx) == 0))
         return x + x; // 0,inf,nan
 
     var xx: f80 = x;
@@ -110,7 +110,7 @@ fn frexp80(x: f80, e: *i32) f80 {
         e.* = -65;
     }
 
-    e.* += ix - 16382;
+    e.* += scast(i32, ix) -% 16382;
     se = (se & 0x8000) | 0x3ffe;
     ldbl80.setExp(&xx, se);
     return xx;
@@ -119,9 +119,9 @@ fn frexp80(x: f80, e: *i32) f80 {
 fn frexp128(x: f128, e: *i32) f128 {
     const two114: f128 = 2.0769187434139310514121985316880384e+34; // 0x4071000000000000, 0
 
-    var hx: u64 = undefined;
-    var lx: u64 = undefined;
-    ldbl128.getWords(&hx, &lx, x);
+    var hx: u64 = @truncate(@as(u128, @bitCast(x)) >> 64);
+    const lx: u64 = @truncate(@as(u128, @bitCast(x)) & 0xffffffffffffffff);
+    // ldbl128.getWords(&hx, &lx, x);
     var ix: u64 = 0x7fffffffffffffff & hx;
     e.* = 0;
     if (ix >= 0x7fff000000000000 or (ix | lx) == 0)
@@ -130,14 +130,16 @@ fn frexp128(x: f128, e: *i32) f128 {
     var xx: f128 = x;
     if (ix < 0x0001000000000000) { // subnormal
         xx *= two114;
-        ldbl128.getMsw(&hx, xx);
+        // ldbl128.getMsw(&hx, xx);
+        hx = @truncate(@as(u128, @bitCast(xx)) >> 64);
         ix = hx & 0x7fffffffffffffff;
         e.* = -114;
     }
 
     e.* += scast(i32, ix >> 48) -% 16382;
     hx = (hx & 0x8000ffffffffffff) | 0x3ffe000000000000;
-    ldbl128.setMsw(&xx, hx);
+    // ldbl128.setMsw(&xx, hx);
+    xx = @bitCast(@as(u128, (types.scast(u128, hx) << 64) | (@as(u128, @bitCast(xx)) & 0xffffffffffffffff)));
 
     return xx;
 }

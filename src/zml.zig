@@ -1,5 +1,3 @@
-const std = @import("std");
-
 pub const types = @import("types.zig");
 pub const scast = types.scast;
 pub const cast = types.cast;

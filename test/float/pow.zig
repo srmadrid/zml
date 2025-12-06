@@ -1,8 +1,9 @@
 const std = @import("std");
 const zml = @import("zml");
 const pow = zml.float.pow;
+const tzml = @import("../zml.zig");
 
-const data_f32: [735]struct { f32, f32, f32 } = blk: {
+const data_f32: [737]struct { f32, f32, f32 } = blk: {
     @setEvalBranchQuota(5000);
     break :blk .{
         .{ 0x1p+0, 0x0p+0, 0x0p+0 },
@@ -740,12 +741,12 @@ const data_f32: [735]struct { f32, f32, f32 } = blk: {
         .{ std.math.inf(f32), 0x9.8b82ap-4, -0x1.99907ap+12 },
         .{ 0x4.523988p+80, 0xd.73035p-4, -0x1.47bb8p+8 },
         .{ 0xf.ffe55p+124, 0x1.059c76p+0, 0xf.fc05fp+8 },
-        // .{ 0xf.fffffp+124, 0x2.f58f8p+4, 0x1.7p+4 },
-        // .{ -0xf.fffffp+124, -0x2.f58f8p+4, 0x1.7p+4 },
+        .{ 0xf.fffffp+124, 0x2.f58f8p+4, 0x1.7p+4 },
+        .{ -0xf.fffffp+124, -0x2.f58f8p+4, 0x1.7p+4 },
     };
 };
 
-const data_f64: [1326]struct { f64, f64, f64 } = blk: {
+const data_f64: [1328]struct { f64, f64, f64 } = blk: {
     @setEvalBranchQuota(5000);
     break :blk .{
         .{ 0x1p+0, 0x0p+0, 0x0p+0 },
@@ -2003,7 +2004,7 @@ const data_f64: [1326]struct { f64, f64, f64 } = blk: {
         .{ 0xf.fffffffffffc8p-4, 0xf.ffffffffffff8p-4, 0x7p+0 },
         .{ 0x1p+0, 0x1p+0, -0x1p+0 },
         .{ 0x1.000001000001p+0, 0xf.fffffp-4, -0x1p+0 },
-        // .{ 0x1.0000000000001p+0, 0xf.ffffffffffff8p-4, -0x1p+0 },
+        .{ 0x1.0000000000001p+0, 0xf.ffffffffffff8p-4, -0x1p+0 },
         .{ 0x1p+0, 0x1p+0, -0x2p+0 },
         .{ 0x1.000002000003p+0, 0xf.fffffp-4, -0x2p+0 },
         .{ 0x1.0000000000001p+0, 0xf.ffffffffffff8p-4, -0x2p+0 },
@@ -2067,7 +2068,7 @@ const data_f64: [1326]struct { f64, f64, f64 } = blk: {
         .{ 0x1.1211ae603c375p+0, 0x1.1p+0, 0x1.2p+0 },
         .{ 0x1.84e58377727acp+0, 0x1.8p+0, 0x1.08p+0 },
         .{ 0xf.ffffe8000006p+188, 0xf.fffffp+124, 0x1.8p+0 },
-        // .{ 0x5.232efee410298p+1020, 0x2.fa3414de4p+680, 0x1.8p+0 },
+        .{ 0x5.232efee410298p+1020, 0x2.fa3414de4p+680, 0x1.8p+0 },
         .{ 0x3.c74e2eeb2cdp-36, 0x1.ce78f2p+0, -0x2.7f1f78p+4 },
         .{ 0x2.35bc23fdfc30cp-732, 0xf.fffffp+124, -0x5.b5b648p+0 },
         .{ 0x8.df24532d4b7d8p+24, 0x1.430d4cp+0, 0x5.0e462p+4 },
@@ -2079,7 +2080,7 @@ const data_f64: [1326]struct { f64, f64, f64 } = blk: {
     };
 };
 
-const data_f80: [1975]struct { f80, f80, f80 } = blk: {
+const data_f80: [1977]struct { f80, f80, f80 } = blk: {
     @setEvalBranchQuota(10000);
     break :blk .{
         .{ 0x1p+0, 0x0p+0, 0x0p+0 },
@@ -3966,7 +3967,7 @@ const data_f80: [1975]struct { f80, f80, f80 } = blk: {
         .{ 0x1p+0, 0x1p+0, -0x1p+0 },
         .{ 0x1.000001000001p+0, 0xf.fffffp-4, -0x1p+0 },
         .{ 0x1.00000000000008p+0, 0xf.ffffffffffff8p-4, -0x1p+0 },
-        // .{ 0x1.0000000000000002p+0, 0xf.fffffffffffffffp-4, -0x1p+0 },
+        .{ 0x1.0000000000000002p+0, 0xf.fffffffffffffffp-4, -0x1p+0 },
         .{ 0x1p+0, 0x1p+0, -0x2p+0 },
         .{ 0x1.000002000003p+0, 0xf.fffffp-4, -0x2p+0 },
         .{ 0x1.0000000000001p+0, 0xf.ffffffffffff8p-4, -0x2p+0 },
@@ -3982,7 +3983,7 @@ const data_f80: [1975]struct { f80, f80, f80 } = blk: {
         .{ 0x1p+0, 0x1p+0, -0x5p+0 },
         .{ 0x1.00000500000fp+0, 0xf.fffffp-4, -0x5p+0 },
         .{ 0x1.00000000000028p+0, 0xf.ffffffffffff8p-4, -0x5p+0 },
-        // .{ 0x1.0000000000000006p+0, 0xf.fffffffffffffffp-4, -0x5p+0 },
+        .{ 0x1.0000000000000006p+0, 0xf.fffffffffffffffp-4, -0x5p+0 },
         .{ 0x1p+0, 0x1p+0, -0x6p+0 },
         .{ 0x1.000006000015p+0, 0xf.fffffp-4, -0x6p+0 },
         .{ 0x1.0000000000003p+0, 0xf.ffffffffffff8p-4, -0x6p+0 },
@@ -4062,7 +4063,7 @@ const data_f80: [1975]struct { f80, f80, f80 } = blk: {
     };
 };
 
-const data_f128: [2819]struct { f128, f128, f128 } = blk: {
+const data_f128: [2853]struct { f128, f128, f128 } = blk: {
     @setEvalBranchQuota(10000);
     break :blk .{
         .{ 0x1p+0, 0x0p+0, 0x0p+0 },
@@ -5587,7 +5588,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x1.00000a0000370000dc0002cb0008p+0, 0xf.fffffp-4, -0xap+0 },
         .{ 0x1.0000640013ba029eb44376a07b3dp+0, 0xf.fffffp-4, -0x6.4p+4 },
         .{ 0x1.0003e807a31df6cdda7c3a40d85fp+0, 0xf.fffffp-4, -0x3.e8p+8 },
-        // .{ 0x2.b7e152be7b971aa2272ed5772126p+0, 0xf.fffffp-4, -0x1p+24 },
+        .{ 0x2.b7e152be7b971aa2272ed5772126p+0, 0xf.fffffp-4, -0x1p+24 },
         .{ 0x1.4259ab1a8c764d243a58c5120fa2p+92, 0xf.fffffp-4, -0x4p+28 },
         .{ 0x2.13780c1d4b1441b2aba1fdfa168ap+104, 0xf.fffffp-4, -0x4.8d1598p+28 },
         .{ 0x7.63991f6e0531841345850fad35fcp+0, 0x1.000002p+0, 0x1p+24 },
@@ -5610,7 +5611,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ std.math.inf(f128), 0xf.fffffp-4, -0x4.8d159e26af37cp+60 },
         .{ 0x1.590f9a6586a16cd8802ac0e10965p+840, 0xf.ffffffffffff8p-4, -0x4.8d1598p+60 },
         .{ 0x1.5914feaeb8c2bb3f4dc103bc9a17p+840, 0xf.ffffffffffff8p-4, -0x4.8d15ap+60 },
-        // .{ 0x1.5913bfacf4af023616e6e4d86b73p+840, 0xf.ffffffffffff8p-4, -0x4.8d159e26af37cp+60 },
+        .{ 0x1.5913bfacf4af023616e6e4d86b73p+840, 0xf.ffffffffffff8p-4, -0x4.8d159e26af37cp+60 },
         .{ std.math.inf(f128), 0x1.000002p+0, 0x2.468adp+60 },
         .{ std.math.inf(f128), 0x1.000002p+0, 0x2.468accp+60 },
         .{ std.math.inf(f128), 0x1.000002p+0, 0x2.468acf13579bep+60 },
@@ -5627,7 +5628,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x1p+0, 0x1p+0, -0x2.468adp+60 },
         .{ 0x1p+0, 0x1p+0, -0x2.468acf13579bep+60 },
         .{ 0xb.ded059d22f8592ad9a28ad84a2ap-844, 0x1.0000000000001p+0, -0x2.468accp+60 },
-        // .{ 0xb.dea0deefbe4105a526fa1915e998p-844, 0x1.0000000000001p+0, -0x2.468adp+60 },
+        .{ 0xb.dea0deefbe4105a526fa1915e998p-844, 0x1.0000000000001p+0, -0x2.468adp+60 },
         .{ 0xb.deabd7ffdc3385ee405985fd8ef8p-844, 0x1.0000000000001p+0, -0x2.468acf13579bep+60 },
         .{ 0x1p+0, 0x1p+0, 0x2.468adp+76 },
         .{ 0x1p+0, 0x1p+0, 0x2.468accp+76 },
@@ -5799,7 +5800,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ std.math.inf(f128), 0xf.fffffffffffffffp-4, -0x4.8d159e26af37bc048d159e26af34p+124 },
         .{ std.math.inf(f128), 0xf.fffffffffffffffp-4, -0x4.8d159e26af37bc048d159e26aep+124 },
         .{ std.math.inf(f128), 0xf.fffffffffffffffp-4, -0x4.8d159e26af37bc048d159e26bp+124 },
-        // .{ 0x7.6b632ba5541aaf37ff8e0c6ce79cp+13444, 0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d1598p+124 },
+        .{ 0x7.6b632ba5541aaf37ff8e0c6ce79cp+13444, 0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d1598p+124 },
         .{ 0x7.6d3e3fd0495e25b4833a1a8c28bp+13444, 0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d15ap+124 },
         .{ 0x7.6cd0697cdc7ce7f3956c750bedc8p+13444, 0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d159e26af378p+124 },
         .{ 0x7.6cd0697ceb5688c68f34487ca7ecp+13444, 0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d159e26af37cp+124 },
@@ -5857,11 +5858,11 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x7.6b632ba5541aaf37ff8e0c6c1dp+13444, 0x1.0000000000000000000000000001p+0, 0x2.468accp+124 },
         .{ 0x7.6cd0697ceb5688c68f34487bdd2cp+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bep+124 },
         .{ 0x7.6cd0697cdc7ce7f3956c750b2308p+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bcp+124 },
-        // .{ 0x7.6cd0697cea6ac9ed79f6271edc44p+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde04p+124 },
+        .{ 0x7.6cd0697cea6ac9ed79f6271edc44p+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde04p+124 },
         .{ 0x7.6cd0697cea68eeb95f96ec84652cp+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bdep+124 },
         .{ 0x7.6cd0697cea69fd0fe7325c5be90cp+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf13579ap+124 },
         .{ 0x7.6cd0697cea69fd0fe7325c8b3ebcp+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf1358p+124 },
-        // .{ 0x7.6cd0697cea69fd0fe7325c1471b4p+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf1357p+124 },
+        .{ 0x7.6cd0697cea69fd0fe7325c1471b4p+13444, 0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf1357p+124 },
         .{ std.math.inf(f128), 0x1.000000000000000000000000008p+0, 0x2.468adp+124 },
         .{ std.math.inf(f128), 0x1.000000000000000000000000008p+0, 0x2.468accp+124 },
         .{ std.math.inf(f128), 0x1.000000000000000000000000008p+0, 0x2.468acf13579bep+124 },
@@ -5934,7 +5935,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x1.00000a0000370000dc0002cb0008p+0, -0xf.fffffp-4, -0xap+0 },
         .{ 0x1.0000640013ba029eb44376a07b3dp+0, -0xf.fffffp-4, -0x6.4p+4 },
         .{ 0x1.0003e807a31df6cdda7c3a40d85fp+0, -0xf.fffffp-4, -0x3.e8p+8 },
-        // .{ 0x2.b7e152be7b971aa2272ed5772126p+0, -0xf.fffffp-4, -0x1p+24 },
+        .{ 0x2.b7e152be7b971aa2272ed5772126p+0, -0xf.fffffp-4, -0x1p+24 },
         .{ 0x1.4259ab1a8c764d243a58c5120fa2p+92, -0xf.fffffp-4, -0x4p+28 },
         .{ 0x2.13780c1d4b1441b2aba1fdfa168ap+104, -0xf.fffffp-4, -0x4.8d1598p+28 },
         .{ 0x7.63991f6e0531841345850fad35fcp+0, -0x1.000002p+0, 0x1p+24 },
@@ -5957,7 +5958,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x1p+0, -0x1p+0, -0x4.8d159e26af37cp+60 },
         .{ 0x1.590f9a6586a16cd8802ac0e10965p+840, -0xf.ffffffffffff8p-4, -0x4.8d1598p+60 },
         .{ 0x1.5914feaeb8c2bb3f4dc103bc9a17p+840, -0xf.ffffffffffff8p-4, -0x4.8d15ap+60 },
-        // .{ 0x1.5913bfacf4af023616e6e4d86b73p+840, -0xf.ffffffffffff8p-4, -0x4.8d159e26af37cp+60 },
+        .{ 0x1.5913bfacf4af023616e6e4d86b73p+840, -0xf.ffffffffffff8p-4, -0x4.8d159e26af37cp+60 },
         .{ 0x1p+0, -0x1p+0, 0x2.468adp+60 },
         .{ 0x1p+0, -0x1p+0, 0x2.468accp+60 },
         .{ 0x1p+0, -0x1p+0, 0x2.468acf13579bep+60 },
@@ -5974,7 +5975,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x0p+0, -0x1.000002p+0, -0x2.468adp+60 },
         .{ 0x0p+0, -0x1.000002p+0, -0x2.468acf13579bep+60 },
         .{ 0xb.ded059d22f8592ad9a28ad84a2ap-844, -0x1.0000000000001p+0, -0x2.468accp+60 },
-        // .{ 0xb.dea0deefbe4105a526fa1915e998p-844, -0x1.0000000000001p+0, -0x2.468adp+60 },
+        .{ 0xb.dea0deefbe4105a526fa1915e998p-844, -0x1.0000000000001p+0, -0x2.468adp+60 },
         .{ 0xb.deabd7ffdc3385ee405985fd8ef8p-844, -0x1.0000000000001p+0, -0x2.468acf13579bep+60 },
         .{ 0x0p+0, -0xf.fffffp-4, 0x2.468adp+76 },
         .{ 0x0p+0, -0xf.fffffp-4, 0x2.468accp+76 },
@@ -6146,7 +6147,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ std.math.inf(f128), -0xf.fffffffffffffffp-4, -0x4.8d159e26af37bc048d159e26af34p+124 },
         .{ std.math.inf(f128), -0xf.fffffffffffffffp-4, -0x4.8d159e26af37bc048d159e26aep+124 },
         .{ std.math.inf(f128), -0xf.fffffffffffffffp-4, -0x4.8d159e26af37bc048d159e26bp+124 },
-        // .{ 0x7.6b632ba5541aaf37ff8e0c6ce79cp+13444, -0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d1598p+124 },
+        .{ 0x7.6b632ba5541aaf37ff8e0c6ce79cp+13444, -0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d1598p+124 },
         .{ 0x7.6d3e3fd0495e25b4833a1a8c28bp+13444, -0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d15ap+124 },
         .{ 0x7.6cd0697cdc7ce7f3956c750bedc8p+13444, -0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d159e26af378p+124 },
         .{ 0x7.6cd0697ceb5688c68f34487ca7ecp+13444, -0xf.fffffffffffffffffffffffffff8p-4, -0x4.8d159e26af37cp+124 },
@@ -6204,11 +6205,11 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x7.6b632ba5541aaf37ff8e0c6c1dp+13444, -0x1.0000000000000000000000000001p+0, 0x2.468accp+124 },
         .{ 0x7.6cd0697ceb5688c68f34487bdd2cp+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bep+124 },
         .{ 0x7.6cd0697cdc7ce7f3956c750b2308p+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bcp+124 },
-        // .{ 0x7.6cd0697cea6ac9ed79f6271edc44p+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde04p+124 },
+        .{ 0x7.6cd0697cea6ac9ed79f6271edc44p+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde04p+124 },
         .{ 0x7.6cd0697cea68eeb95f96ec84652cp+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bdep+124 },
         .{ 0x7.6cd0697cea69fd0fe7325c5be90cp+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf13579ap+124 },
         .{ 0x7.6cd0697cea69fd0fe7325c8b3ebcp+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf1358p+124 },
-        // .{ 0x7.6cd0697cea69fd0fe7325c1471b4p+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf1357p+124 },
+        .{ 0x7.6cd0697cea69fd0fe7325c1471b4p+13444, -0x1.0000000000000000000000000001p+0, 0x2.468acf13579bde02468acf1357p+124 },
         .{ std.math.inf(f128), -0x1.000000000000000000000000008p+0, 0x2.468adp+124 },
         .{ std.math.inf(f128), -0x1.000000000000000000000000008p+0, 0x2.468accp+124 },
         .{ std.math.inf(f128), -0x1.000000000000000000000000008p+0, 0x2.468acf13579bep+124 },
@@ -6300,7 +6301,7 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0xf.ffffffffffff9fffffffffffffap+764, 0xf.ffffffffffff8p+1020, 0xcp-4 },
         .{ 0xe.0b9d894b9a782d7f974f16449c28p+12284, 0xd.72cb2a95c7ef6cdp+16380, 0xcp-4 },
         .{ 0xe.0b9d894b9a782d730ef2400ce768p+12284, 0xd.72cb2a95c7ef6ccp+16380, 0xcp-4 },
-        // .{ 0xe.0b9d894b9a782d7e6be49bb6cdb8p+12284, 0xd.72cb2a95c7ef6cce81bf1e825ba8p+16380, 0xcp-4 },
+        .{ 0xe.0b9d894b9a782d7e6be49bb6cdb8p+12284, 0xd.72cb2a95c7ef6cce81bf1e825ba8p+16380, 0xcp-4 },
         .{ 0xe.0b9d894b9a782d7e6be49bb6cdb8p+12284, 0xd.72cb2a95c7ef6cce81bf1e825bap+16380, 0xcp-4 },
         .{ 0xf.ffffffffffffcffffffffffffce8p+764, 0xf.ffffffffffffbffffffffffffcp+1020, 0xcp-4 },
         .{ 0xf.fffff3fffffe7fffff5fffffa6p+92, 0xf.fffffp+124, 0xcp-4 },
@@ -6324,12 +6325,12 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x3.c530cea47806a579fac410fdcf44p+12256, 0xe.c96440ebeed58925ede59e838e9p+16340, 0xcp-4 },
         .{ 0x3.c530cea47806a579fac410fdcf44p+12256, 0xe.c96440ebeed58925ede59e838e88p+16340, 0xcp-4 },
         .{ 0xf.ffffffffffffcffffffffffffce8p+764, 0xf.ffffffffffffbffffffffffffcp+1020, 0xcp-4 },
-        // .{ 0xd.72cb2a95c7ef6cce81bf1e825ba8p+16380, 0xap+0, 0x1.344p+12 },
-        // .{ 0x1.584784422d97f147d9c64fd9d5f7p+16380, 0xap+0, 0x1.343p+12 },
-        // .{ 0x2.26d8d39d15bfe872f60a195c898cp+16376, 0xap+0, 0x1.342p+12 },
-        // .{ 0x3.715aec2e89330d84bcdcf560dc12p+16372, 0xap+0, 0x1.341p+12 },
+        .{ 0xd.72cb2a95c7ef6cce81bf1e825ba8p+16380, 0xap+0, 0x1.344p+12 },
+        .{ 0x1.584784422d97f147d9c64fd9d5f7p+16380, 0xap+0, 0x1.343p+12 },
+        .{ 0x2.26d8d39d15bfe872f60a195c898cp+16376, 0xap+0, 0x1.342p+12 },
+        .{ 0x3.715aec2e89330d84bcdcf560dc12p+16372, 0xap+0, 0x1.341p+12 },
         .{ 0xb.e5b66ecbce0b7b0e32e43935809p-16384, 0xap+0, -0x1.343p+12 },
-        // .{ 0x7.6f92053f60c72ce8dfcea3c17058p-16380, 0xap+0, -0x1.342p+12 },
+        .{ 0x7.6f92053f60c72ce8dfcea3c17058p-16380, 0xap+0, -0x1.342p+12 },
         .{ 0x4.a5bb43479c7c7c118be12658e638p-16376, 0xap+0, -0x1.341p+12 },
         .{ 0xf.8150d73a5bad7b733ee7fcf03568p+16320, 0x3.3b2e4p+88, 0xb.6p+4 },
         .{ 0xf.814331dd58d7f1fe3091f957b808p+16320, 0x3.3b2e3cp+88, 0xb.6p+4 },
@@ -6645,21 +6646,21 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x3.ab031b9f7490e4bb40b5d6cdc1bap-128, 0x2p+0, -0x7.e2p+4 },
         .{ 0x3.5d13f32b5a75abd0e69a2ee640b4p-128, 0x2p+0, -0x7.e4p+4 },
         .{ 0x3.159ca845541b6b74f8ab43259376p-128, 0x2p+0, -0x7.e6p+4 },
-        // .{ 0x2.d413cccfe779921165f626cdd52ap-128, 0x2p+0, -0x7.e8p+4 },
+        .{ 0x2.d413cccfe779921165f626cdd52ap-128, 0x2p+0, -0x7.e8p+4 },
         .{ 0x2.97fb5aa6c544e3a872f5fd885c42p-128, 0x2p+0, -0x7.eap+4 },
         .{ 0x2.60dfc14636e2a5bd1ab48c60b90cp-128, 0x2p+0, -0x7.ecp+4 },
         .{ 0x2.2e57078faa2f5b9bef918a1d6294p-128, 0x2p+0, -0x7.eep+4 },
         .{ 0x7.5606373ee921c976816bad9b8374p-972, 0x2p+0, -0x3.c92p+8 },
         .{ 0x6.ba27e656b4eb57a1cd345dcc8168p-972, 0x2p+0, -0x3.c94p+8 },
         .{ 0x6.2b39508aa836d6e9f156864b26ecp-972, 0x2p+0, -0x3.c96p+8 },
-        // .{ 0x5.a827999fcef32422cbec4d9baa54p-972, 0x2p+0, -0x3.c98p+8 },
+        .{ 0x5.a827999fcef32422cbec4d9baa54p-972, 0x2p+0, -0x3.c98p+8 },
         .{ 0x5.2ff6b54d8a89c750e5ebfb10b884p-972, 0x2p+0, -0x3.c9ap+8 },
         .{ 0x4.c1bf828c6dc54b7a356918c17218p-972, 0x2p+0, -0x3.c9cp+8 },
         .{ 0x4.5cae0f1f545eb737df23143ac528p-972, 0x2p+0, -0x3.c9ep+8 },
         .{ 0x3.ab031b9f7490e4bb40b5d6cdc1bap-1024, 0x2p+0, -0x3.fe2p+8 },
         .{ 0x3.5d13f32b5a75abd0e69a2ee640b4p-1024, 0x2p+0, -0x3.fe4p+8 },
         .{ 0x3.159ca845541b6b74f8ab43259376p-1024, 0x2p+0, -0x3.fe6p+8 },
-        // .{ 0x2.d413cccfe779921165f626cdd52ap-1024, 0x2p+0, -0x3.fe8p+8 },
+        .{ 0x2.d413cccfe779921165f626cdd52ap-1024, 0x2p+0, -0x3.fe8p+8 },
         .{ 0x2.97fb5aa6c544e3a872f5fd885c42p-1024, 0x2p+0, -0x3.feap+8 },
         .{ 0x2.60dfc14636e2a5bd1ab48c60b90cp-1024, 0x2p+0, -0x3.fecp+8 },
         .{ 0x2.2e57078faa2f5b9bef918a1d6294p-1024, 0x2p+0, -0x3.feep+8 },
@@ -6671,30 +6672,30 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x2.60dfc14636e2a5bd1ab48c60b90cp-16384, 0x2p+0, -0x3.ffecp+12 },
         .{ 0x2.2e57078faa2f5b9bef918a1d6294p-16384, 0x2p+0, -0x3.ffeep+12 },
         .{ 0x1.d5818dcfba48725da05aeb66e0dcp-16384, 0x2p+0, -0x3.fff2p+12 },
-        // .{ 0x1.ae89f995ad3ad5e8734d1773205cp-16384, 0x2p+0, -0x3.fff4p+12 },
+        .{ 0x1.ae89f995ad3ad5e8734d1773205cp-16384, 0x2p+0, -0x3.fff4p+12 },
         .{ 0x1.8ace5422aa0db5ba7c55a192c9bcp-16384, 0x2p+0, -0x3.fff6p+12 },
-        // .{ 0x1.6a09e667f3bcc908b2fb1366ea94p-16384, 0x2p+0, -0x3.fff8p+12 },
+        .{ 0x1.6a09e667f3bcc908b2fb1366ea94p-16384, 0x2p+0, -0x3.fff8p+12 },
         .{ 0x1.4bfdad5362a271d4397afec42e2p-16384, 0x2p+0, -0x3.fffap+12 },
-        // .{ 0x1.306fe0a31b7152de8d5a46305c84p-16384, 0x2p+0, -0x3.fffcp+12 },
-        // .{ 0x1.172b83c7d517adcdf7c8c50eb14cp-16384, 0x2p+0, -0x3.fffep+12 },
+        .{ 0x1.306fe0a31b7152de8d5a46305c84p-16384, 0x2p+0, -0x3.fffcp+12 },
+        .{ 0x1.172b83c7d517adcdf7c8c50eb14cp-16384, 0x2p+0, -0x3.fffep+12 },
         .{ 0x3.ab031b9f7490e4bb40b5d6cdc1bap-128, 0x8p-4, 0x7.e2p+4 },
         .{ 0x3.5d13f32b5a75abd0e69a2ee640b4p-128, 0x8p-4, 0x7.e4p+4 },
         .{ 0x3.159ca845541b6b74f8ab43259376p-128, 0x8p-4, 0x7.e6p+4 },
-        // .{ 0x2.d413cccfe779921165f626cdd52ap-128, 0x8p-4, 0x7.e8p+4 },
+        .{ 0x2.d413cccfe779921165f626cdd52ap-128, 0x8p-4, 0x7.e8p+4 },
         .{ 0x2.97fb5aa6c544e3a872f5fd885c42p-128, 0x8p-4, 0x7.eap+4 },
         .{ 0x2.60dfc14636e2a5bd1ab48c60b90cp-128, 0x8p-4, 0x7.ecp+4 },
         .{ 0x2.2e57078faa2f5b9bef918a1d6294p-128, 0x8p-4, 0x7.eep+4 },
         .{ 0x7.5606373ee921c976816bad9b8374p-972, 0x8p-4, 0x3.c92p+8 },
         .{ 0x6.ba27e656b4eb57a1cd345dcc8168p-972, 0x8p-4, 0x3.c94p+8 },
         .{ 0x6.2b39508aa836d6e9f156864b26ecp-972, 0x8p-4, 0x3.c96p+8 },
-        // .{ 0x5.a827999fcef32422cbec4d9baa54p-972, 0x8p-4, 0x3.c98p+8 },
+        .{ 0x5.a827999fcef32422cbec4d9baa54p-972, 0x8p-4, 0x3.c98p+8 },
         .{ 0x5.2ff6b54d8a89c750e5ebfb10b884p-972, 0x8p-4, 0x3.c9ap+8 },
         .{ 0x4.c1bf828c6dc54b7a356918c17218p-972, 0x8p-4, 0x3.c9cp+8 },
         .{ 0x4.5cae0f1f545eb737df23143ac528p-972, 0x8p-4, 0x3.c9ep+8 },
         .{ 0x3.ab031b9f7490e4bb40b5d6cdc1bap-1024, 0x8p-4, 0x3.fe2p+8 },
         .{ 0x3.5d13f32b5a75abd0e69a2ee640b4p-1024, 0x8p-4, 0x3.fe4p+8 },
         .{ 0x3.159ca845541b6b74f8ab43259376p-1024, 0x8p-4, 0x3.fe6p+8 },
-        // .{ 0x2.d413cccfe779921165f626cdd52ap-1024, 0x8p-4, 0x3.fe8p+8 },
+        .{ 0x2.d413cccfe779921165f626cdd52ap-1024, 0x8p-4, 0x3.fe8p+8 },
         .{ 0x2.97fb5aa6c544e3a872f5fd885c42p-1024, 0x8p-4, 0x3.feap+8 },
         .{ 0x2.60dfc14636e2a5bd1ab48c60b90cp-1024, 0x8p-4, 0x3.fecp+8 },
         .{ 0x2.2e57078faa2f5b9bef918a1d6294p-1024, 0x8p-4, 0x3.feep+8 },
@@ -6706,12 +6707,12 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ 0x2.60dfc14636e2a5bd1ab48c60b90cp-16384, 0x8p-4, 0x3.ffecp+12 },
         .{ 0x2.2e57078faa2f5b9bef918a1d6294p-16384, 0x8p-4, 0x3.ffeep+12 },
         .{ 0x1.d5818dcfba48725da05aeb66e0dcp-16384, 0x8p-4, 0x3.fff2p+12 },
-        // .{ 0x1.ae89f995ad3ad5e8734d1773205cp-16384, 0x8p-4, 0x3.fff4p+12 },
+        .{ 0x1.ae89f995ad3ad5e8734d1773205cp-16384, 0x8p-4, 0x3.fff4p+12 },
         .{ 0x1.8ace5422aa0db5ba7c55a192c9bcp-16384, 0x8p-4, 0x3.fff6p+12 },
-        // .{ 0x1.6a09e667f3bcc908b2fb1366ea94p-16384, 0x8p-4, 0x3.fff8p+12 },
+        .{ 0x1.6a09e667f3bcc908b2fb1366ea94p-16384, 0x8p-4, 0x3.fff8p+12 },
         .{ 0x1.4bfdad5362a271d4397afec42e2p-16384, 0x8p-4, 0x3.fffap+12 },
-        // .{ 0x1.306fe0a31b7152de8d5a46305c84p-16384, 0x8p-4, 0x3.fffcp+12 },
-        // .{ 0x1.172b83c7d517adcdf7c8c50eb14cp-16384, 0x8p-4, 0x3.fffep+12 },
+        .{ 0x1.306fe0a31b7152de8d5a46305c84p-16384, 0x8p-4, 0x3.fffcp+12 },
+        .{ 0x1.172b83c7d517adcdf7c8c50eb14cp-16384, 0x8p-4, 0x3.fffep+12 },
         .{ 0x3.ffe0807d02b2a29ff13c16e201dcp-128, 0x2.00002p+0, -0x7.ep+4 },
         .{ 0x3.ffc101f4059529fecf83967ebfd8p-128, -0x2.00004p+0, -0x7.ep+4 },
         .{ 0x3.ffa1846500d7b498a114c51038dap-128, 0x2.00006p+0, -0x7.ep+4 },
@@ -6783,11 +6784,11 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
         .{ -0x1.b5f0cef367ee7476219cf888dbfp-16384, -0x7.fffbp-4, 0x3.fffp+12 },
         .{ 0x1.bcd63c5a63795310b5b7e9e4e09p-16384, 0x7.fffb8p-4, 0x3.fffp+12 },
         .{ 0x3.aa76a38cf5d87fca390f911a880ap-1024, 0x2.000b3p+0, -0x3.fep+8 },
-        // .{ 0x3.d4e5475408a3f6e609288c887bfep-1024, 0x2.000584p+0, -0x3.fep+8 },
+        .{ 0x3.d4e5475408a3f6e609288c887bfep-1024, 0x2.000584p+0, -0x3.fep+8 },
         .{ 0x3.d503df508fb8195a8cb512092438p-1024, 0x2.00058p+0, -0x3.fep+8 },
         .{ 0x3.d4f49333bc2baaed11303c000cf4p-1024, 0x2.000582p+0, -0x3.fep+8 },
         .{ 0x3.35ec906f22fbbffeffc0d272938p-1024, 0x2p+0, -0x3.fe513p+8 },
-        // .{ 0x3.3bed4179f82bc002979648b91cfap-1024, 0x2p+0, -0x3.fe4e8p+8 },
+        .{ 0x3.3bed4179f82bc002979648b91cfap-1024, 0x2p+0, -0x3.fe4e8p+8 },
         .{ 0x1.999999999999999999999999999ap-4, 0xap+0, -0x1p+0 },
         .{ 0x2.8f5c28f5c28f5c28f5c28f5c28f6p-8, 0xap+0, -0x2p+0 },
         .{ 0x4.189374bc6a7ef9db22d0e5604188p-12, 0xap+0, -0x3p+0 },
@@ -6924,18 +6925,34 @@ const data_f128: [2819]struct { f128, f128, f128 } = blk: {
 
 test pow {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], pow(test_case[1], test_case[2]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            pow(test_case[1], test_case[2]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], pow(test_case[1], test_case[2]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            pow(test_case[1], test_case[2]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], pow(test_case[1], test_case[2]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            pow(test_case[1], test_case[2]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], pow(test_case[1], test_case[2]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            pow(test_case[1], test_case[2]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }

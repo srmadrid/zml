@@ -1,221 +1,333 @@
 const std = @import("std");
+
 const types = @import("../types.zig");
-const dla = @import("dla.zig");
-const root = @import("root.zig");
-const flt32 = @import("flt32.zig");
 const EnsureFloat = types.EnsureFloat;
-const scast = types.scast;
+const float = @import("../float.zig");
+
+const dbl64 = @import("dbl64.zig");
+const ldbl128 = @import("ldbl128.zig");
 
 pub inline fn sqrt(x: anytype) EnsureFloat(@TypeOf(x)) {
     comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
         @compileError("float.sqrt: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
 
     switch (EnsureFloat(@TypeOf(x))) {
-        f16 => return scast(f16, sqrt32(scast(f32, x))),
+        f16 => return types.scast(f16, sqrt32(types.scast(f32, x))),
         f32 => {
-            // glibc/sysdeps/ieee754/flt-32/e_sqrtf.c
-            return sqrt32(scast(f32, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/e_sqrtf.c
+            return sqrt32(types.scast(f32, x));
         },
         f64 => {
-            // glibc/sysdeps/ieee754/dbl-64/e_sqrt.c
-            return sqrt64(scast(f64, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/e_sqrt.c
+            return sqrt64(types.scast(f64, x));
         },
-        f80 => return scast(f80, sqrt128(scast(f128, x))),
+        f80 => {
+            //
+            // return sqrt80(types.scast(f80, x));
+            return types.scast(f80, sqrt128(types.scast(f128, x)));
+        },
         f128 => {
-            // Adapted from: glibc/sysdeps/ieee754/ldbl-128ibm/e_sqrtl.c
-            return sqrt128(scast(f128, x));
+            // https://github.com/JuliaMath/openlibm/blob/master/src/e_sqrtl.c
+            return sqrt128(types.scast(f128, x));
         },
         else => unreachable,
     }
 }
 
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/e_sqrtf.c
+//
+// Original copyright notice:
+// e_powf.c -- float version of e_pow.c.
+// Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
+//
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 fn sqrt32(x: f32) f32 {
-    var ix: i32 = undefined;
-    flt32.getWord(&ix, x);
+    var ix: i32 = @bitCast(x);
     const sign: u32 = 0x80000000;
 
-    // take care of Inf and NaN
+    // Take care of Inf and NaN
     if ((ix & 0x7f800000) == 0x7f800000) {
-        return x * x + x; // sqrt(NaN)=NaN, sqrt(+inf)=+inf, sqrt(-inf)=sNaN
+        return x * x + x; // sqrt(NaN) = NaN, sqrt(+inf) = +inf, sqrt(-inf) = sNaN
     }
 
-    // take care of zero
+    // Take care of zero
     if (ix <= 0) {
-        if ((ix & (~sign)) == 0) {
-            return x; // sqrt(+-0) = +-0
-        } else if (ix < 0) {
-            return (x - x) / (x - x); // sqrt(-ve) = sNaN
-        }
+        if ((ix & (~sign)) == 0)
+            return x // sqrt(±0) = ±0
+        else if (ix < 0)
+            return std.math.snan(f32); // sqrt(-ve) = sNaN
+
     }
 
-    // normalize x
+    // Normalize x
     var m: i32 = (ix >> 23);
-    if (m == 0) { // subnormal x
+    if (m == 0) { // Subnormal x
         var i: i32 = 0;
-        while ((ix & 0x00800000) == 0) {
+        while ((ix & 0x00800000) == 0) : (i += 1)
             ix <<= 1;
 
-            i += 1;
-        }
-
-        m -= i - 1;
+        m -%= i -% 1;
     }
 
-    m -= 127; // unbias exponent
+    m -%= 127; // Unbias exponent
     ix = (ix & 0x007fffff) | 0x00800000;
 
-    if ((m & 1) != 0) // odd m, double x to make it even
-        ix += ix;
+    if ((m & 1) != 0) // Odd m, double x to make it even
+        ix +%= ix;
 
     m >>= 1; // m = [m/2]
 
-    // generate sqrt(x) bit by bit
-    ix += ix;
+    // Generate sqrt(x) bit by bit
+    ix +%= ix;
     var s: i32 = 0;
     var q: i32 = 0; // q = sqrt(x)
     var r: i32 = 0x01000000; // r = moving bit from right to left
-
     while (r != 0) {
-        const t: i32 = s + r;
+        const t: i32 = s +% r;
         if (t <= ix) {
-            s = t + r;
-            ix -= t;
-            q += r;
+            s = t +% r;
+            ix -%= t;
+            q +%= r;
         }
 
-        ix += ix;
+        ix +%= ix;
         r >>= 1;
     }
 
-    // use floating add to find out rounding direction
-    var z: f32 = 0;
+    // Use floating add to find out rounding direction
     if (ix != 0) {
-        z = 0x1p0 - 0x1.4484cp-100; // trigger inexact flag.
+        var z: f32 = 0x1p0 - 0x1.4484cp-100; // Trigger inexact flag
         if (z >= 0x1p0) {
             z = 0x1p0 + 0x1.4484cp-100;
             if (z > 0x1p0) {
-                q += 2;
+                q +%= 2;
             } else {
-                q += (q & 1);
+                q +%= (q & 1);
             }
         }
     }
-    ix = (q >> 1) + 0x3f000000;
-    ix += (m << 23);
+
+    ix = (q >> 1) +% 0x3f000000;
+    ix +%= (m << 23);
     return @bitCast(ix);
 }
 
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/e_sqrt.c
+//
+// Original copyright notice:
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 fn sqrt64(x: f64) f64 {
-    const rt0: f64 = 9.99999999859990725855365213134618e-01;
-    const rt1: f64 = 4.99999999495955425917856814202739e-01;
-    const rt2: f64 = 3.75017500867345182581453026130850e-01;
-    const rt3: f64 = 3.12523626554518656309172508769531e-01;
-    const big: f64 = 134217728.0;
+    var ix0: i32 = @bitCast(dbl64.getHighPart(x));
+    var ix1: u32 = dbl64.getLowPart(x);
+    const sign: u32 = 0x80000000;
 
-    var a: [2]i32 = @bitCast(x);
-    const k: i32 = a[root.HIGH_HALF];
-    a[root.HIGH_HALF] = (k & 0x001fffff) | 0x3fe00000;
-    var t: f64 = root.inroot[@intCast((k & 0x001fffff) >> 14)];
-    const s: f64 = @bitCast(a);
-    //----------------- 2^-1022  <= | x |< 2^1024  -----------------
-    var c: [2]i32 = .{ 0, 0 };
-    if (k > 0x000fffff and k < 0x7ff00000) {
-        var y: f64 = 1.0 - t * (t * s);
-        t = t * (rt0 + y * (rt1 + y * (rt2 + y * rt3)));
-        c[root.HIGH_HALF] = 0x20000000 + ((k & 0x7fe00000) >> 1);
-        y = t * s;
-        const hy: f64 = (y + big) - big;
-        const del: f64 = 0.5 * t * ((s - hy * hy) - (y - hy) * (y + hy));
-        var res: f64 = y + del;
-        var ret: f64 = undefined;
-        if (res == (res + 1.002 * ((y - res) + del))) {
-            ret = res * @as(f64, @bitCast(c));
-        } else {
-            const res1: f64 = res + 1.5 * ((y - res) + del);
-            var z: f64 = undefined;
-            var zz: f64 = undefined;
-            dla.emulv(res, res1, &z, &zz); // (z+zz)=res*res1
-            res = if (((z - s) + zz) < 0) @max(res, res1) else @min(res, res1);
-            ret = res * @as(f64, @bitCast(c));
-        }
-        std.mem.doNotOptimizeAway(ret);
-        const dret: f64 = x / ret;
-        if (dret != ret) {
-            const force_inexact: f64 = 1.0 / 3.0;
-            std.mem.doNotOptimizeAway(force_inexact);
-            // The square root is inexact, ret is the round-to-nearest
-            // value which may need adjusting for other rounding
-            // modes.
-        }
-        // Otherwise (x / ret == ret), either the square root was exact or
-        // the division was inexact.
-        return ret;
-    } else {
-        if ((k & 0x7ff00000) == 0x7ff00000)
-            return x * x + x; // sqrt(NaN)=NaN, sqrt(+inf)=+inf, sqrt(-inf)=sNaN
-
-        if (x == 0)
-            return x; // sqrt(+0)=+0, sqrt(-0)=-0
-
-        if (k < 0)
-            return (x - x) / (x - x); // sqrt(-ve)=sNaN
-
-        return 0x1p-256 * sqrt64(x * 0x1p512);
+    // Take care of Inf and NaN
+    if ((ix0 & 0x7ff00000) == 0x7ff00000) {
+        return x * x + x; // sqrt(NaN) = NaN, sqrt(+inf) = +inf, sqrt(-inf) = sNaN
     }
+
+    // Take care of zero
+    if (ix0 <= 0) {
+        if (((ix0 & (~sign)) | @as(i32, @bitCast(ix1))) == 0)
+            return x // sqrt(±0) = ±0
+        else if (ix0 < 0)
+            return std.math.snan(f64); // sqrt(-ve) = sNaN
+    }
+
+    // Normalize x
+    var m: i32 = (ix0 >> 20);
+    if (m == 0) { // Subnormal x
+        while (ix0 == 0) {
+            m -%= 21;
+            ix0 |= @bitCast(ix1 >> 11);
+            ix1 <<= 21;
+        }
+
+        var i: i32 = 0;
+        while ((ix0 & 0x00100000) == 0) : (i += 1)
+            ix0 <<= 1;
+
+        m -%= i - 1;
+        ix0 |= @bitCast(ix1 >> @intCast(32 - i));
+        ix1 <<= @intCast(i);
+    }
+
+    m -%= 1023; // Unbias exponent
+    ix0 = (ix0 & 0x000fffff) | 0x00100000;
+    if ((m & 1) != 0) { // Odd m, double x to make it even
+        ix0 +%= ix0 +% types.scast(i32, (ix1 & sign) >> 31);
+        ix1 +%= ix1;
+    }
+
+    m >>= 1; // m = [m/2]
+
+    // Generate sqrt(x) bit by bit
+    ix0 +%= ix0 +% types.scast(i32, (ix1 & sign) >> 31);
+    ix1 +%= ix1;
+    var q: i32 = 0;
+    var s0: i32 = 0;
+    var r: u32 = 0x00200000; // r = moving bit from right to left
+    while (r != 0) {
+        const t: i32 = s0 +% types.scast(i32, r);
+        if (t <= ix0) {
+            s0 = t +% types.scast(i32, r);
+            ix0 -%= t;
+            q +%= types.scast(i32, r);
+        }
+
+        ix0 +%= ix0 +% types.scast(i32, (ix1 & sign) >> 31);
+        ix1 +%= ix1;
+        r >>= 1;
+    }
+
+    var q1: u32 = 0; // [q, q1] = sqrt(x)
+    var s1: u32 = 0;
+    r = sign;
+    while (r != 0) {
+        const t1: u32 = s1 +% r;
+        const t: i32 = s0;
+        if ((t < ix0) or (t == ix0 and t1 <= ix1)) {
+            s1 = t1 +% r;
+            if (((t1 & sign) == sign) and (s1 & sign) == 0)
+                s0 +%= 1;
+
+            ix0 -%= t;
+            if (ix1 < t1)
+                ix0 -%= 1;
+
+            ix1 -%= t1;
+            q1 +%= r;
+        }
+
+        ix0 +%= ix0 +% types.scast(i32, (ix1 & sign) >> 31);
+        ix1 +%= ix1;
+        r >>= 1;
+    }
+
+    // Use floating add to find out rounding direction
+    if ((@as(u32, @bitCast(ix0)) | ix1) != 0) {
+        var z: f64 = 1.0 - 1.0e-300; // Trigger inexact flag
+        if (z >= 1.0) {
+            z = 1.0 + 1.0e-300;
+            if (q1 == 0xffffffff) {
+                q1 = 0;
+                q +%= 1;
+            } else if (z > 1.0) {
+                if (q1 == 0xfffffffe) q +%= 1;
+                q1 +%= 2;
+            } else q1 +%= (q1 & 1);
+        }
+    }
+
+    ix0 = (q >> 1) +% 0x3fe00000;
+    ix1 = q1 >> 1;
+    if ((q & 1) == 1)
+        ix1 |= sign;
+
+    ix0 +%= (m << 20);
+    return dbl64.Parts.toFloat(.{ .msw = @bitCast(ix0), .lsw = ix1 });
 }
 
-// Very close to perfect but fails too many tests, although by very little margins
-fn sqrt128(x: f128) f128 {
-    const t16382: f128 = 0x1p16382;
-    const tm8191: f128 = 0x1p-8191;
-    const big: f128 = 0x1p120;
-    const big1: f128 = 0x1p120 + 1;
+fn sqrt80(x: f80) f80 {
+    _ = x;
+    return std.math.nan(f80);
+}
 
-    const a: [2]u64 = @bitCast(x);
-    const hi_index: u32 = if (@import("builtin").cpu.arch.endian() == .big) 0 else 1;
-    const lo_index: u32 = 1 - hi_index;
-    // Extract the components of the binary128 number
-    const sign_exp_hi: u64 = a[hi_index];
-    // Get the exponent bits (15 bits)
-    const exp: i64 = @intCast((sign_exp_hi >> 48) & 0x7fff);
-    // Mask for the high part mantissa bits
-    const mantissa_hi: u64 = sign_exp_hi & 0x0000ffffffffffff;
-    // Low part of mantissa
-    const mantissa_lo: u64 = a[lo_index];
-    //----------------- 2^-16382 <= |x| < 2^16384 -----------------
-    if (exp > 0 and exp < 0x7fff) {
-        // Normal number
-        if (x < 0) return (big1 - big1) / (big - big); // Return NaN for negative input
-        // Construct a normalized value with exponent 0x3ffe (bias 0x3fff + 0)
-        const adjusted_exp: i64 = exp - 0x3fff;
-        const is_odd: bool = (adjusted_exp & 1) != 0;
-        const exponent_part: u64 = if (is_odd) 0x4000 else 0x3fff;
-        var norm: [2]u64 = undefined;
-        norm[hi_index] = (sign_exp_hi & 0x8000000000000000) | (exponent_part << 48) | mantissa_hi;
-        norm[lo_index] = mantissa_lo;
-        const s: f128 = @bitCast(norm);
-        // Compute initial approximation using double precision sqrt
-        const d_approx: f64 = sqrt(scast(f64, s));
-        var i: f128 = scast(f128, d_approx);
-        // Set the exponent of the result: for sqrt, divide exponent by 2
-        const new_exp: i64 = if (is_odd) ((adjusted_exp - 1) >> 1) + 0x3fff else (adjusted_exp >> 1) + 0x3fff;
-        var c: [2]u64 = undefined;
-        c[hi_index] = (a[hi_index] & 0x8000000000000000) | (@as(u64, @intCast(new_exp & 0x7fff)) << 48);
-        c[lo_index] = 0;
-        // Newton-Raphson iterations for binary128 precision
-        const t: f128 = 0.5 * (i + s / i);
-        i = 0.5 * (t + s / t);
-        i = 0.5 * (i + s / i); // Extra iteration for quad precision
-        return @as(f128, @bitCast(c)) * i;
-    } else {
-        // Handle special cases
-        if (exp == 0x7fff) {
-            // sqrt(-Inf) = NaN, sqrt(NaN) = NaN, sqrt(+Inf) = +Inf
-            return x * x + x;
-        }
-        if (x == 0) return x; // sqrt(+0) = +0, sqrt(-0) = -0
-        if (x < 0) return (big1 - big1) / (big - big); // Return NaN for negative input
-        // Subnormal number: scale up and try again
-        return tm8191 * sqrt(x * t16382);
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/e_sqrtl.c
+//
+// Original copyright notice:
+// Copyright (c) 2007 Steven G. Kargl
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice unmodified, this list of conditions, and the following
+//    disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+fn sqrt128(x: f128) f128 {
+    var u: ldbl128.ShapeSplit = .fromFloat(x);
+
+    // If x = NaN, sqrt(x) = NaN
+    // If x = +inf, sqrt(x) = +inf
+    // If x = -inf, sqrt(x) = NaN
+    if (u.exponent == 16384 * 2 - 1)
+        return x * x + x;
+
+    // If x = ±0, sqrt(x) = ±0
+    if ((u.mantissa_high | u.mantissa_low | u.exponent) == 0)
+        return x;
+
+    // If x < 0, sqrt(x) = sNaN
+    if (u.sign != 0)
+        return std.math.snan(f128);
+
+    var k: i32 = 0;
+    if (u.exponent == 0) {
+        // Adjust subnormal numbers
+        u = .fromFloat(u.toFloat() * 0x1.0p514);
+        k = -514;
     }
+
+    // u is a normal number, so break it into u = e * 2^n. u = (2 * e) * 2^(2k) for odd n and u = (4 * e) * 2^(2k) for even n
+    if ((u.exponent -% 0x3ffe) & 1 != 0) { // n is odd
+        k +%= @as(i32, @intCast(u.exponent)) -% 0x3fff; // 2k = n - 1
+        u.exponent = 0x3fff; // u in [1,2)
+    } else {
+        k +%= @as(i32, @intCast(u.exponent)) -% 0x4000; // 2k = n - 2
+        u.exponent = 0x4000; // u in [2,4)
+    }
+
+    // Newton's iteration. Split u into a high and low part to achieve additional precision
+    var xn: f128 = types.scast(f128, sqrt64(types.scast(f64, u.toFloat())));
+    xn = (xn + (u.toFloat() / xn)) * 0.5;
+    var lo: f128 = u.toFloat();
+    u.mantissa_low = 0; // Zero out lower bits
+    lo = (lo - u.toFloat()) / xn; // Low bits divided by xn
+    xn += u.toFloat() / xn; // High portion estimate
+    u = .fromFloat(xn + lo); // Combine everything
+    if ((k >> 1) -% 1 > 0)
+        u.exponent +%= @intCast((k >> 1) -% 1)
+    else
+        u.exponent -%= @intCast(-((k >> 1) -% 1));
+    xn = x / u.toFloat();
+
+    if (xn == u.toFloat()) {
+        return u.toFloat();
+    }
+
+    u = .fromFloat(u.toFloat() + xn);
+    u.exponent -%= 1;
+    return u.toFloat();
 }

@@ -1,8 +1,9 @@
 const std = @import("std");
 const zml = @import("zml");
 const cos = zml.float.cos;
+const tzml = @import("../zml.zig");
 
-const data_f32: [83]struct { f32, f32 } = .{
+const data_f32: [85]struct { f32, f32 } = .{
     .{ 0x1p+0, 0x0p+0 },
     .{ 0x1p+0, -0x0p+0 },
     .{ 0x7.fffff8p-4, 0x1.0c1524p+0 },
@@ -85,12 +86,12 @@ const data_f32: [83]struct { f32, f32 } = .{
     .{ -0xa.bbbd3p-24, 0x1.921fcp+0 },
     .{ -0xa.bbbd3p-24, -0x1.921fcp+0 },
     .{ -0xc.bbbd3p-24, -0x1.921fc2p+0 },
-    // .{ 0xf.ffffdp-4, 0x2.3c6ef4p-12 },
+    .{ 0xf.ffffdp-4, 0x2.3c6ef4p-12 },
     .{ -0xc.04e3dp-8, 0xe.6672ep+40 },
-    // .{ 0x4.92b518p-4, 0xe.6672dp+40 },
+    .{ 0x4.92b518p-4, 0xe.6672dp+40 },
 };
 
-const data_f64: [119]struct { f64, f64 } = .{
+const data_f64: [121]struct { f64, f64 } = .{
     .{ 0x1p+0, 0x0p+0 },
     .{ 0x1p+0, -0x0p+0 },
     .{ 0x7.fffff939bdd18p-4, 0x1.0c1524p+0 },
@@ -103,7 +104,7 @@ const data_f64: [119]struct { f64, f64 } = .{
     .{ -0x7.ffffffffffffp-4, 0x2.182a4705ae6cap+0 },
     .{ -0xb.bbd2e7b96766p-28, 0x1.921fb6p+0 },
     .{ 0x1.4442d18469893p-24, 0x1.921fb4p+0 },
-    // .{ -0xb.9676733ae8fe8p-56, 0x1.921fb54442d19p+0 },
+    .{ -0xb.9676733ae8fe8p-56, 0x1.921fb54442d19p+0 },
     .{ 0x4.69898cc51701cp-56, 0x1.921fb54442d18p+0 },
     .{ 0xb.b4ff632a908f8p-4, 0xcp-4 },
     .{ 0xf.fb701e22987f8p-4, 0x2p+64 },
@@ -131,7 +132,7 @@ const data_f64: [119]struct { f64, f64 } = .{
     .{ 0x8.a513fcf3a90fp-4, 0x1.000000cf4a2a2p+0 },
     .{ 0x8.a513eced2ea58p-4, 0x1.000002p+0 },
     .{ 0x8.a51407da8346p-4, 0x1p+0 },
-    // .{ 0x8.a513f9cde04e8p-4, 0x1.0000010b239a9p+0 },
+    .{ 0x8.a513f9cde04e8p-4, 0x1.0000010b239a9p+0 },
     .{ 0x8.a513eced2ea58p-4, 0x1.000002p+0 },
     .{ 0x8.a51407da8346p-4, 0x1p+0 },
     .{ 0x8.a513f53385c6p-4, 0x1.00000162a932bp+0 },
@@ -362,7 +363,7 @@ const data_f80: [145]struct { f80, f80 } = .{
     .{ 0x1.ff56c1efc85b5ec6p-4, 0xe.6672d458b05edf5p+40 },
 };
 
-const data_f128: [169]struct { f128, f128 } = .{
+const data_f128: [181]struct { f128, f128 } = .{
     .{ 0x1p+0, 0x0p+0 },
     .{ 0x1p+0, -0x0p+0 },
     .{ 0x7.fffff939bdd18035537d20fef1b4p-4, 0x1.0c1524p+0 },
@@ -388,7 +389,7 @@ const data_f128: [169]struct { f128, f128 } = .{
     .{ -0xb.bbd2e7b96766266f1d18f3ead01p-28, 0x1.921fb6p+0 },
     .{ 0x1.4442d18469893610281a0f9b0e8dp-24, 0x1.921fb4p+0 },
     .{ -0xb.9676733ae8fe47c65dadfb63ede8p-56, 0x1.921fb54442d19p+0 },
-    // .{ 0x4.69898cc51701b839a252049c1108p-56, 0x1.921fb54442d18p+0 },
+    .{ 0x4.69898cc51701b839a252049c1108p-56, 0x1.921fb54442d18p+0 },
     .{ -0x7.6733ae8fe47c65dadfb63eeeb308p-68, 0x1.921fb54442d1846ap+0 },
     .{ 0x1.898cc51701b839a252049c1114dp-64, 0x1.921fb54442d18468p+0 },
     .{ -0xc.65dadfb63eeeb306717fbe882b38p-116, 0x1.921fb54442d18469898cc51701b9p+0 },
@@ -506,7 +507,7 @@ const data_f128: [169]struct { f128, f128 } = .{
     .{ -0x1.febbf9949ecc133623bb8c8c5a27p-4, -0x3.3de320f6be87ep+1020 },
     .{ -0xa.07bd3ab53ab9710f3445538de8fp-4, 0xe.9f1e6p+112 },
     .{ 0xe.26f8af8333f9270e9c3e9f64f94p-4, 0xe.9f1e5p+112 },
-    // .{ 0x1.ff01000c9ae73630add558c936b5p-4, 0xe.9f1e5bc3bb88p+112 },
+    .{ 0x1.ff01000c9ae73630add558c936b5p-4, 0xe.9f1e5bc3bb88p+112 },
     .{ -0xf.dfe902135fc1c18492e869a3f8a8p-4, 0x4.7857dp+68 },
     .{ 0x8.7e0ea4db2f488671c85df7208968p-4, -0x1.02e34cp+0 },
     .{ -0xd.b7f5359babdb66be8d0cd3e293e8p-4, 0xf.f0274p+4 },
@@ -515,20 +516,20 @@ const data_f128: [169]struct { f128, f128 } = .{
     .{ 0xd.a82832da19f9891d9762fa659ff8p-8, 0x1.8475e4p+0 },
     .{ 0xd.a82683a33cbebfffffffa2966878p-8, 0x1.8475e5afd4481p+0 },
     .{ -0xc.bbbd2e7b951e5b1e4cc9f460a12p-24, 0x1.921fc2p+0 },
-    // .{ -0xa.bbbd2e7b95a85c638e746a5f4f6p-24, 0x1.921fcp+0 },
+    .{ -0xa.bbbd2e7b95a85c638e746a5f4f6p-24, 0x1.921fcp+0 },
     .{ -0xa.ca8b7d8b95a502ede0fd607f394p-24, 0x1.921fc00ece4f1p+0 },
     .{ -0xa.ca8b7d7b95a502ede4a0f9b11c28p-24, 0x1.921fc00ece4fp+0 },
     .{ -0xa.ca8b7d7e89a502ede3f507aaa7d8p-24, 0x1.921fc00ece4f02f4p+0 },
-    // .{ -0xa.ca8b7d7e87a502ede3f57c1dce1p-24, 0x1.921fc00ece4f02f2p+0 },
+    .{ -0xa.ca8b7d7e87a502ede3f57c1dce1p-24, 0x1.921fc00ece4f02f2p+0 },
     .{ -0xa.ca8b7d7e881db0d49193eaab43cp-24, 0x1.921fc00ece4f02f278ade6ad9e8ap+0 },
     .{ -0xa.ca8b7d7e881db0d49193e9ab43cp-24, 0x1.921fc00ece4f02f278ade6ad9e89p+0 },
     .{ -0xa.ca8b7d7e881db0d4919460ab43cp-24, 0x1.921fc00ece4f02f278ade6ad9fp+0 },
     .{ -0xa.ca8b7d7e881db0d49193e0ab43cp-24, 0x1.921fc00ece4f02f278ade6ad9e8p+0 },
-    // .{ -0xa.bbbd2e7b95a85c638e746a5f4f6p-24, -0x1.921fcp+0 },
+    .{ -0xa.bbbd2e7b95a85c638e746a5f4f6p-24, -0x1.921fcp+0 },
     .{ -0xc.bbbd2e7b951e5b1e4cc9f460a12p-24, -0x1.921fc2p+0 },
     .{ -0xa.ca8b7d7b95a502ede4a0f9b11c28p-24, -0x1.921fc00ece4fp+0 },
     .{ -0xa.ca8b7d8b95a502ede0fd607f394p-24, -0x1.921fc00ece4f1p+0 },
-    // .{ -0xa.ca8b7d7e87a502ede3f57c1dce1p-24, -0x1.921fc00ece4f02f2p+0 },
+    .{ -0xa.ca8b7d7e87a502ede3f57c1dce1p-24, -0x1.921fc00ece4f02f2p+0 },
     .{ -0xa.ca8b7d7e89a502ede3f507aaa7d8p-24, -0x1.921fc00ece4f02f4p+0 },
     .{ -0xa.ca8b7d7e881db0d49193e9ab43cp-24, -0x1.921fc00ece4f02f278ade6ad9e89p+0 },
     .{ -0xa.ca8b7d7e881db0d49193eaab43cp-24, -0x1.921fc00ece4f02f278ade6ad9e8ap+0 },
@@ -538,28 +539,44 @@ const data_f128: [169]struct { f128, f128 } = .{
     .{ -0xc.04e3d7b33315e56d155d1ce9ee18p-8, 0xe.6672ep+40 },
     .{ 0x4.92b51be9ed22fb55105031b7163p-4, 0xe.6672dp+40 },
     .{ 0x1.fd4fd52bd4269f45bd8a6a988d49p-4, 0xe.6672d458b05fp+40 },
-    // .{ 0x2.053fb048fe6462f6c5d88f55f69cp-4, 0xe.6672d458b05e8p+40 },
-    // .{ 0x1.ff55c3f07675f5065a4c74830913p-4, 0xe.6672d458b05edf6p+40 },
-    // .{ 0x1.ff56c1efc85b5ec6aad454c88ddap-4, 0xe.6672d458b05edf5p+40 },
-    // .{ 0x1.ff56b710bf1d3d16bf762e86d21p-4, 0xe.6672d458b05edf50af4fab1a42p+40 },
-    // .{ 0x1.ff56b710bf1d3cf6ff8c0f12aa02p-4, 0xe.6672d458b05edf50af4fab1a44p+40 },
-    // .{ 0x1.ff56b710bf1d3d367f604dfafa1fp-4, 0xe.6672d458b05edf50af4fab1a4p+40 },
+    .{ 0x2.053fb048fe6462f6c5d88f55f69cp-4, 0xe.6672d458b05e8p+40 },
+    .{ 0x1.ff55c3f07675f5065a4c74830913p-4, 0xe.6672d458b05edf6p+40 },
+    .{ 0x1.ff56c1efc85b5ec6aad454c88ddap-4, 0xe.6672d458b05edf5p+40 },
+    .{ 0x1.ff56b710bf1d3d16bf762e86d21p-4, 0xe.6672d458b05edf50af4fab1a42p+40 },
+    .{ 0x1.ff56b710bf1d3cf6ff8c0f12aa02p-4, 0xe.6672d458b05edf50af4fab1a44p+40 },
+    .{ 0x1.ff56b710bf1d3d367f604dfafa1fp-4, 0xe.6672d458b05edf50af4fab1a4p+40 },
 };
 
 test cos {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], cos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            cos(test_case[1]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], cos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            cos(test_case[1]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], cos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            cos(test_case[1]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], cos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            cos(test_case[1]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }

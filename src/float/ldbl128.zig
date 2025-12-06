@@ -1,56 +1,165 @@
-pub const ieee_f128_shape64 = packed struct {
+pub const Shape = packed struct {
+    mantissa: u112,
+    exponent: u15,
+    sign: u1,
+
+    pub inline fn fromFloat(x: f128) Shape {
+        return @bitCast(x);
+    }
+
+    pub inline fn toFloat(self: Shape) f128 {
+        return @bitCast(self);
+    }
+};
+
+pub inline fn getMantissa(x: f128) u112 {
+    const tmp: Shape = @bitCast(x);
+    return tmp.mantissa;
+}
+
+pub inline fn getExponent(x: f128) u15 {
+    const tmp: Shape = @bitCast(x);
+    return tmp.exponent;
+}
+
+pub inline fn getSign(x: f128) u1 {
+    const tmp: Shape = @bitCast(x);
+    return tmp.sign;
+}
+
+pub inline fn setMantissa(x: *f128, v: u112) void {
+    var tmp: Shape = @bitCast(x.*);
+    tmp.mantissa = v;
+    x.* = @bitCast(tmp);
+}
+
+pub inline fn setExponent(x: *f128, v: u15) void {
+    var tmp: Shape = @bitCast(x.*);
+    tmp.exponent = v;
+    x.* = @bitCast(tmp);
+}
+
+pub inline fn setSign(x: *f128, v: u1) void {
+    var tmp: Shape = @bitCast(x.*);
+    tmp.sign = v;
+    x.* = @bitCast(tmp);
+}
+
+pub const ShapeSplit = packed struct {
+    mantissa_low: u64,
+    mantissa_high: u48,
+    exponent: u15,
+    sign: u1,
+
+    pub inline fn fromFloat(x: f128) ShapeSplit {
+        return @bitCast(x);
+    }
+
+    pub inline fn toFloat(self: ShapeSplit) f128 {
+        return @bitCast(self);
+    }
+};
+
+pub inline fn getMantissaHigh(x: f128) u64 {
+    const tmp: ShapeSplit = @bitCast(x);
+    return tmp.mantissa_high;
+}
+
+pub inline fn getMantissaLow(x: f128) u48 {
+    const tmp: ShapeSplit = @bitCast(x);
+    return tmp.mantissa_low;
+}
+
+pub const Parts32 = packed struct {
+    lswlo: u32,
+    lswhi: u32,
+    mswlo: u32,
+    mswhi: u32,
+
+    pub inline fn fromFloat(x: f128) Parts32 {
+        return @bitCast(x);
+    }
+
+    pub inline fn toFloat(self: Parts32) f128 {
+        return @bitCast(self);
+    }
+};
+
+pub inline fn getHighHighPart(x: f128) u32 {
+    const tmp: Parts32 = @bitCast(x);
+    return tmp.mswhi;
+}
+
+pub inline fn getHighLowPart(x: f128) u32 {
+    const tmp: Parts32 = @bitCast(x);
+    return tmp.mswlo;
+}
+
+pub inline fn getLowHighPart(x: f128) u32 {
+    const tmp: Parts32 = @bitCast(x);
+    return tmp.lswhi;
+}
+
+pub inline fn getLowLowPart(x: f128) u32 {
+    const tmp: Parts32 = @bitCast(x);
+    return tmp.lswlo;
+}
+
+pub inline fn setHighHighPart(x: *f128, v: u32) void {
+    var tmp: Parts32 = @bitCast(x.*);
+    tmp.mswhi = v;
+    x.* = @bitCast(tmp);
+}
+
+pub inline fn setHighLowPart(x: *f128, v: u32) void {
+    var tmp: Parts32 = @bitCast(x.*);
+    tmp.mswlo = v;
+    x.* = @bitCast(tmp);
+}
+
+pub inline fn setLowHighPart(x: *f128, v: u32) void {
+    var tmp: Parts32 = @bitCast(x.*);
+    tmp.lswhi = v;
+    x.* = @bitCast(tmp);
+}
+
+pub inline fn setLowLowPart(x: *f128, v: u32) void {
+    var tmp: Parts32 = @bitCast(x.*);
+    tmp.lswlo = v;
+    x.* = @bitCast(tmp);
+}
+
+pub const Parts64 = packed struct {
     lsw: u64,
     msw: u64,
+
+    pub inline fn fromFloat(x: f128) Parts64 {
+        return @bitCast(x);
+    }
+
+    pub inline fn toFloat(self: Parts64) f128 {
+        return @bitCast(self);
+    }
 };
 
-pub const ieee_f128_shape32 = packed struct {
-    w3: u32,
-    w2: u32,
-    w1: u32,
-    w0: u32,
-};
-
-pub const ieee_f128_shape = packed struct {
-    mantissa1: u48,
-    mantissa0: u64,
-    exponent: u15,
-    negative: u1,
-};
-
-pub const ieee_f128_shape2 = packed struct {
-    manl: u64,
-    manh: u48,
-    expsign: u16,
-};
-
-/// Get two 64 bit ints from a long double.
-pub inline fn getWords(ix0: anytype, ix1: anytype, d: f128) void {
-    const qw_u: ieee_f128_shape64 = @bitCast(d);
-    ix0.* = @bitCast(qw_u.msw);
-    ix1.* = @bitCast(qw_u.lsw);
+pub inline fn getHighPart(x: f128) u64 {
+    const tmp: Parts64 = @bitCast(x);
+    return tmp.msw;
 }
 
-/// Set a long double from two 64 bit ints.
-pub inline fn setWords(d: *f128, ix0: anytype, ix1: anytype) void {
-    const qw_u: ieee_f128_shape64 = .{ .msw = @bitCast(ix0), .lsw = @bitCast(ix1) };
-    d.* = @bitCast(qw_u);
+pub inline fn getLowPart(x: f128) u64 {
+    const tmp: Parts64 = @bitCast(x);
+    return tmp.lsw;
 }
 
-/// Get the more significant 64 bits of a long double mantissa.
-pub inline fn getMsw(v: anytype, d: f128) void {
-    const sh_u: ieee_f128_shape64 = @bitCast(d);
-    v.* = @bitCast(sh_u.msw);
+pub inline fn setHighPart(x: *f128, v: u64) void {
+    var tmp: Parts64 = @bitCast(x.*);
+    tmp.msw = v;
+    x.* = @bitCast(tmp);
 }
 
-/// Set the more significant 64 bits of a long double mantissa from an int.
-pub inline fn setMsw(d: *f128, v: anytype) void {
-    var sh_u: ieee_f128_shape64 = @bitCast(d.*);
-    sh_u.msw = @bitCast(v);
-    d.* = @bitCast(sh_u);
-}
-
-/// Get the least significant 64 bits of a long double mantissa.
-pub inline fn getLsw(v: anytype, d: f128) void {
-    const sh_u: ieee_f128_shape64 = @bitCast(d);
-    v.* = @bitCast(sh_u.lsw);
+pub inline fn setLowPart(x: *f128, v: u64) void {
+    var tmp: Parts64 = @bitCast(x.*);
+    tmp.lsw = v;
+    x.* = @bitCast(tmp);
 }
