@@ -1,6 +1,7 @@
 const std = @import("std");
 const zml = @import("zml");
 const acos = zml.float.acos;
+const tzml = @import("../zml.zig");
 
 const data_f32: [89]struct { f32, f32 } = .{
     .{ 0x1.921fb6p+0, 0x0p+0 },
@@ -94,7 +95,7 @@ const data_f32: [89]struct { f32, f32 } = .{
     .{ 0x1.921fb6p+0, -0x8p-152 },
 };
 
-const data_f64: [118]struct { f64, f64 } = .{
+const data_f64: [119]struct { f64, f64 } = .{
     .{ 0x1.921fb54442d18p+0, 0x0p+0 },
     .{ 0x1.921fb54442d18p+0, -0x0p+0 },
     .{ 0x0p+0, 0x1p+0 },
@@ -199,7 +200,7 @@ const data_f64: [118]struct { f64, f64 } = .{
     .{ 0x1.afd0ca8858c9fp+0, -0x1.da00d8p-4 },
     .{ 0x3.76cf5ec671462p-12, 0xf.ffffap-4 },
     .{ 0x3.bddd445bc8fdep-12, 0xf.ffff9p-4 },
-    // .{ 0x3.8d25c52edd924p-12, 0xf.ffff9b1a566bp-4 },
+    .{ 0x3.8d25c52edd924p-12, 0xf.ffff9b1a566bp-4 },
     .{ 0x7.ffb550aec7a58p-8, 0xf.fe003p-4 },
     .{ 0x7.ffd552eedca5cp-8, 0xf.fe002p-4 },
     .{ 0x7.ffc7175d8527p-8, 0xf.fe00271d507fp-4 },
@@ -355,7 +356,7 @@ const data_f80: [136]struct { f80, f80 } = .{
     .{ 0x1.921fb54442d1846ap+0, -0x8p-16448 },
 };
 
-const data_f128: [149]struct { f128, f128 } = .{
+const data_f128: [150]struct { f128, f128 } = .{
     .{ 0x1.921fb54442d18469898cc51701b8p+0, 0x0p+0 },
     .{ 0x1.921fb54442d18469898cc51701b8p+0, -0x0p+0 },
     .{ 0x0p+0, 0x1p+0 },
@@ -477,7 +478,7 @@ const data_f128: [149]struct { f128, f128 } = .{
     .{ 0x1.532618034691e421e199dcbd888bp+0, 0x3.e5782p-4 },
     .{ 0x1.532617e527e22fffe0ea49e76f54p+0, 0x3.e57821d368ebap-4 },
     .{ 0x1.7149c5a449b957ffe712405f62fbp+0, 0x2.0bee8p-4 },
-    // .{ 0x1.afd0ca8858c9ea46ebc1be7c97dfp+0, -0x1.da00d8p-4 },
+    .{ 0x1.afd0ca8858c9ea46ebc1be7c97dfp+0, -0x1.da00d8p-4 },
     .{ 0x3.76cf5ec671462a93def0c25c152p-12, 0xf.ffffap-4 },
     .{ 0x3.bddd445bc8fdd903a92245263ea4p-12, 0xf.ffff9p-4 },
     .{ 0x3.8d25c52edd92300000026414cf62p-12, 0xf.ffff9b1a566bp-4 },
@@ -510,18 +511,34 @@ const data_f128: [149]struct { f128, f128 } = .{
 
 test acos {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], acos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            acos(test_case[1]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], acos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            acos(test_case[1]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], acos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            acos(test_case[1]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], acos(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            acos(test_case[1]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }

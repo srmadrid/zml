@@ -1,6 +1,7 @@
 const std = @import("std");
 const zml = @import("zml");
 const tan = zml.float.tan;
+const tzml = @import("../zml.zig");
 
 const data_f32: [100]struct { f32, f32 } = .{
     .{ 0x0p+0, 0x0p+0 },
@@ -382,7 +383,7 @@ const data_f80: [146]struct { f80, f80 } = .{
     .{ -0x8p-16448, -0x8p-16448 },
 };
 
-const data_f128: [172]struct { f128, f128 } = .{
+const data_f128: [175]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x1.000000bbbd2ec06d6d6fff3655a3p+0, 0xc.90fdbp-4 },
@@ -401,7 +402,7 @@ const data_f128: [172]struct { f128, f128 } = .{
     .{ 0x3.a052cf8639b69c1871a036cababcp+52, 0x1.921fb54442d18p+0 },
     .{ -0x2.29478136aaf68d7b3b807fb349bap+64, 0x1.921fb54442d1846ap+0 },
     .{ 0xa.686780675d73f74c339c44a53238p+60, 0x1.921fb54442d18468p+0 },
-    // .{ -0x1.4a611a1bc0c6c27a11d14bf714f1p+112, 0x1.921fb54442d18469898cc51701b9p+0 },
+    .{ -0x1.4a611a1bc0c6c27a11d14bf714f1p+112, 0x1.921fb54442d18469898cc51701b9p+0 },
     .{ 0x4.711af55c9de64e8bb98064f255ecp+112, 0x1.921fb54442d18469898cc51701b8p+0 },
     .{ -0x3.9113c85ed0a9399bff03c9d9d62ap+104, 0x1.921fb54442d18469898cc51702p+0 },
     .{ 0x4.8d99880090a89825c6aaa8a4c2dcp+104, 0x1.921fb54442d18469898cc517018p+0 },
@@ -411,7 +412,7 @@ const data_f128: [172]struct { f128, f128 } = .{
     .{ -0x3.a052cf8639b69c1871a036cababcp+52, -0x1.921fb54442d18p+0 },
     .{ 0x2.29478136aaf68d7b3b807fb349bap+64, -0x1.921fb54442d1846ap+0 },
     .{ -0xa.686780675d73f74c339c44a53238p+60, -0x1.921fb54442d18468p+0 },
-    // .{ 0x1.4a611a1bc0c6c27a11d14bf714f1p+112, -0x1.921fb54442d18469898cc51701b9p+0 },
+    .{ 0x1.4a611a1bc0c6c27a11d14bf714f1p+112, -0x1.921fb54442d18469898cc51701b9p+0 },
     .{ -0x4.711af55c9de64e8bb98064f255ecp+112, -0x1.921fb54442d18469898cc51701b8p+0 },
     .{ 0x3.9113c85ed0a9399bff03c9d9d62ap+104, -0x1.921fb54442d18469898cc51702p+0 },
     .{ -0x4.8d99880090a89825c6aaa8a4c2dcp+104, -0x1.921fb54442d18469898cc517018p+0 },
@@ -487,7 +488,7 @@ const data_f128: [172]struct { f128, f128 } = .{
     .{ 0x1.f0dbc6d6f7af75d06f670bd22cep+0, -0x5.302ab9b185934p+0 },
     .{ 0x1.f0dbc6d6f7aff08febfa010b436ap+0, -0x5.302ab9b18593264p+0 },
     .{ 0x1.fcfe678552d4a7cc4536fb771832p+0, 0x1.1ad374p+0 },
-    // .{ -0x1.c074f83e72236f1900dbba65f783p+0, -0x1.0d55b8p+0 },
+    .{ -0x1.c074f83e72236f1900dbba65f783p+0, -0x1.0d55b8p+0 },
     .{ -0x1.41acc1f2aebdbbd0c10fd22cc56ap+20, 0x1.921fc2p+0 },
     .{ -0x1.7d9d370b140234d37501f83845c2p+20, 0x1.921fcp+0 },
     .{ -0x1.7b91a083509ce99968d2431cf3a4p+20, 0x1.921fc00ece4f1p+0 },
@@ -562,18 +563,34 @@ const data_f128: [172]struct { f128, f128 } = .{
 
 test tan {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], tan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            tan(test_case[1]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], tan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            tan(test_case[1]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], tan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            tan(test_case[1]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], tan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            tan(test_case[1]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }

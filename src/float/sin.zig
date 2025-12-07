@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const EnsureFloat = types.EnsureFloat;
-const Coerce = types.Coerce;
 const float = @import("../float.zig");
 
 const cos = @import("cos.zig");

@@ -41,19 +41,12 @@ test {
     if (test_trigonometric) {
         _ = @import("float/sin.zig");
         _ = @import("float/cos.zig");
-        // _ = @import("float/tan.zig");
-        // _ = @import("float/asin.zig");
-        // _ = @import("float/acos.zig");
-        // _ = @import("float/atan.zig");
-        // _ = @import("float/atan2.zig");
-        // _ = @import("float/sincos.zig");
-        // _ = @import("float/sinpi.zig");
-        // _ = @import("float/cospi.zig");
-        // _ = @import("float/tanpi.zig");
-        // _ = @import("float/asinpi.zig");
-        // _ = @import("float/acospi.zig");
-        // _ = @import("float/atanpi.zig");
-        // _ = @import("float/atan2pi.zig");
+        _ = @import("float/tan.zig");
+        _ = @import("float/asin.zig");
+        _ = @import("float/acos.zig");
+        _ = @import("float/atan.zig");
+        _ = @import("float/atan2.zig");
+        _ = @import("float/sincos.zig");
     }
 
     if (test_hyperbolic) {

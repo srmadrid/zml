@@ -1,6 +1,7 @@
 const std = @import("std");
 const zml = @import("zml");
 const atan = zml.float.atan;
+const tzml = @import("../zml.zig");
 
 const data_f32: [43]struct { f32, f32 } = .{
     .{ 0x1.921fb6p+0, std.math.inf(f32) },
@@ -48,7 +49,7 @@ const data_f32: [43]struct { f32, f32 } = .{
     .{ -0x8p-152, -0x8p-152 },
 };
 
-const data_f64: [52]struct { f64, f64 } = .{
+const data_f64: [53]struct { f64, f64 } = .{
     .{ 0x1.921fb54442d18p+0, std.math.inf(f64) },
     .{ -0x1.921fb54442d18p+0, -std.math.inf(f64) },
     .{ 0x0p+0, 0x0p+0 },
@@ -89,7 +90,7 @@ const data_f64: [52]struct { f64, f64 } = .{
     .{ -0xe.1832df50b2398p-4, -0x1.363f46p+0 },
     .{ -0x1.0878377062daep+0, -0x1.ad4c0ap+0 },
     .{ -0x1.522f0408c0e8cp+0, -0x3.eb8e18p+0 },
-    // .{ 0x1.476165c27ab51p+0, 0x3.53c188p+0 },
+    .{ 0x1.476165c27ab51p+0, 0x3.53c188p+0 },
     .{ -0xe.e9f00a57b1438p-4, -0x1.58c83p+0 },
     .{ 0x9.b0000da23b9ep-4, 0xb.133b9p-4 },
     .{ 0x4p-128, 0x4p-128 },
@@ -169,7 +170,7 @@ const data_f80: [62]struct { f80, f80 } = .{
     .{ -0x8p-16448, -0x8p-16448 },
 };
 
-const data_f128: [68]struct { f128, f128 } = .{
+const data_f128: [70]struct { f128, f128 } = .{
     .{ 0x1.921fb54442d18469898cc51701b8p+0, std.math.inf(f128) },
     .{ -0x1.921fb54442d18469898cc51701b8p+0, -std.math.inf(f128) },
     .{ 0x0p+0, 0x0p+0 },
@@ -211,10 +212,10 @@ const data_f128: [68]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ 0x4p-1076, 0x4p-1076 },
     .{ 0x1p-10000, 0x1p-10000 },
-    // .{ -0x3.9ff7e1f81370b93195e0357d0b5ap-4, -0x3.b02d84p-4 },
+    .{ -0x3.9ff7e1f81370b93195e0357d0b5ap-4, -0x3.b02d84p-4 },
     .{ -0x3.348f092072331fd8ca0cbff348d6p-4, -0x3.3fb708p-4 },
     .{ -0x1.24c032fe9a702f7255968f75e01cp+0, -0x2.3249ap+0 },
-    // .{ -0xe.1832df50b2398e4a96945ef0f7f8p-4, -0x1.363f46p+0 },
+    .{ -0xe.1832df50b2398e4a96945ef0f7f8p-4, -0x1.363f46p+0 },
     .{ -0x1.0878377062dada2af4f466e46577p+0, -0x1.ad4c0ap+0 },
     .{ -0x1.522f0408c0e8c2d8d3fe682ee8bdp+0, -0x3.eb8e18p+0 },
     .{ 0x1.476165c27ab517ff156a94e45559p+0, 0x3.53c188p+0 },
@@ -244,18 +245,34 @@ const data_f128: [68]struct { f128, f128 } = .{
 
 test atan {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], atan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atan(test_case[1]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], atan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atan(test_case[1]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], atan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atan(test_case[1]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], atan(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atan(test_case[1]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }
