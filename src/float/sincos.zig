@@ -221,7 +221,7 @@ fn sincos64(x: f64, sinx: *f64, cosx: *f64) void {
         sinx.* = x - x;
         cosx.* = x - x;
     } else { // Argument reduction needed
-        // Calculate remainer, then sub out to kernel */
+        // Calculate remainer, then sub out to kernel
         var y: [2]f64 = undefined;
         const n: i32 = rem_pio2_64(x, &y);
         k_sincos64(y[0], y[1], 1, sinx, cosx);

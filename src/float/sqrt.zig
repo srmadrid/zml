@@ -102,19 +102,6 @@ fn sqrt32(x: f32) f32 {
         r >>= 1;
     }
 
-    // Use floating add to find out rounding direction
-    if (ix != 0) {
-        var z: f32 = 0x1p0 - 0x1.4484cp-100; // Trigger inexact flag
-        if (z >= 0x1p0) {
-            z = 0x1p0 + 0x1.4484cp-100;
-            if (z > 0x1p0) {
-                q +%= 2;
-            } else {
-                q +%= (q & 1);
-            }
-        }
-    }
-
     ix = (q >> 1) +% 0x3f000000;
     ix +%= (m << 23);
     return @bitCast(ix);
@@ -218,21 +205,6 @@ fn sqrt64(x: f64) f64 {
         ix0 +%= ix0 +% types.scast(i32, (ix1 & sign) >> 31);
         ix1 +%= ix1;
         r >>= 1;
-    }
-
-    // Use floating add to find out rounding direction
-    if ((@as(u32, @bitCast(ix0)) | ix1) != 0) {
-        var z: f64 = 1.0 - 1.0e-300; // Trigger inexact flag
-        if (z >= 1.0) {
-            z = 1.0 + 1.0e-300;
-            if (q1 == 0xffffffff) {
-                q1 = 0;
-                q +%= 1;
-            } else if (z > 1.0) {
-                if (q1 == 0xfffffffe) q +%= 1;
-                q1 +%= 2;
-            } else q1 +%= (q1 & 1);
-        }
     }
 
     ix0 = (q >> 1) +% 0x3fe00000;

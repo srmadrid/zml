@@ -55,14 +55,12 @@ fn asin32(x: f32) f32 {
 
     if (ix >= 0x3f800000) { // |x| >= 1
         if (ix == 0x3f800000) // |x| == 1
-            return x * 1.570796326794896558e+0; // asin(±1) = ±pi/2 with inexact
+            return x * 1.570796326794896558e+0; // asin(±1) = ±pi/2
 
         return (x - x) / (x - x); // asin(|x| > 1) is NaN
     } else if (ix < 0x3f000000) { // |x| < 0.5
-        if (ix < 0x39800000) { // |x| < 2**-12
-            if (1.000e+30 + x > 1.0)
-                return x; // return x with inexact if x != 0
-        }
+        if (ix < 0x39800000) // |x| < 2**-12
+            return x;
 
         const t: f32 = x * x;
         const p: f32 = t * (1.6666586697e-1 + t * (-4.2743422091e-2 + t * -8.6563630030e-3));
@@ -103,15 +101,13 @@ fn asin64(x: f64) f64 {
 
     if (ix >= 0x3ff00000) { // |x| >= 1
         const lx: i32 = @bitCast(dbl64.getLowPart(x));
-        if (((ix - 0x3ff00000) | lx) == 0) // asin(1) = ±pi/2 with inexact
+        if (((ix - 0x3ff00000) | lx) == 0) // asin(1) = ±pi/2
             return x * 1.57079632679489655800e+0 + x * 6.12323399573676603587e-17;
 
         return (x - x) / (x - x); // asin(|x| > 1) is NaN
     } else if (ix < 0x3fe00000) { // |x| < 0.5
-        if (ix < 0x3e500000) { // If |x| < 2**-26
-            if (1.000e+300 + x > 1.0)
-                return x; // Return x with inexact if x != 0
-        }
+        if (ix < 0x3e500000) // If |x| < 2**-26
+            return x;
 
         const t: f64 = x * x;
         const p: f64 = t *
@@ -188,16 +184,14 @@ fn asin128(x: f128) f128 {
     const expt: i15 = @bitCast(u.exponent);
 
     if (expt >= (16384 - 1)) { // |x| >= 1
-        if (expt == (16384 - 1) and (u.mantissa_high | u.mantissa_low) == 0) // asin(1) = ±pi/2 with inexact
+        if (expt == (16384 - 1) and (u.mantissa_high | u.mantissa_low) == 0) // asin(1) = ±pi/2
             return x * 1.57079632679489661923132169163975140e+0 +
                 x * 4.33590506506189051239852201302167613e-35;
 
         return (x - x) / (x - x); // asin(|x| > 1) is NaN
     } else if (expt < (16384 - 2)) { // |x| < 0.5
-        if (expt < (16384 - 57)) { // if |x| is small, asinl(x) = x
-            if (1.000e+300 + x > 1.0)
-                return x; // Return x with inexact if x != 0
-        }
+        if (expt < (16384 - 57)) // if |x| is small, asinl(x) = x
+            return x;
 
         const t: f128 = x * x;
         const p: f128 = t *

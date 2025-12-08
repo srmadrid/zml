@@ -65,8 +65,7 @@ fn cos32(x: f32) f32 {
 
     if (ix <= 0x3f490fda) { // |x| ~<= pi/4
         if (ix < 0x39800000) // |x| < 2**-12
-            if (types.scast(i32, x) == 0)
-                return 1.0; // 1 with inexact if x != 0
+            return 1.0;
 
         return k_cos32(types.scast(f64, x));
     }
@@ -121,10 +120,8 @@ fn cos64(x: f64) f64 {
     const ix: i32 = @bitCast(dbl64.getHighPart(x) & 0x7fffffff);
 
     if (ix <= 0x3fe921fb) { // |x| ~< pi/4
-        if (ix < 0x3e46a09e) { // x < 2**-27 * sqrt(2)
-            if (types.scast(i32, x) == 0) // Generate inexact
-                return 1.0;
-        }
+        if (ix < 0x3e46a09e) // x < 2**-27 * sqrt(2)
+            return 1.0;
 
         return k_cos64(x, 0.0);
     } else if (ix >= 0x7ff00000) { // cos(Inf or NaN) is NaN

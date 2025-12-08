@@ -65,8 +65,7 @@ fn sin32(x: f32) f32 {
 
     if (ix <= 0x3f490fda) { // |x| ~<= pi/4
         if (ix < 0x39800000) // |x| < 2**-12
-            if (types.scast(i32, x) == 0)
-                return x; // x with inexact if x != 0
+            return x;
 
         return k_sin32(types.scast(f64, x));
     }
@@ -121,10 +120,8 @@ fn sin64(x: f64) f64 {
     const ix: i32 = @bitCast(dbl64.getHighPart(x) & 0x7fffffff);
 
     if (ix <= 0x3fe921fb) { // |x| ~< pi/4
-        if (ix < 0x3e500000) { // |x| < 2**-26
-            if (types.scast(i32, x) == 0) // Generate inexact
-                return x;
-        }
+        if (ix < 0x3e500000) // |x| < 2**-26
+            return x;
 
         return k_sin64(x, 0.0, 0);
     } else if (ix >= 0x7ff00000) { // sin(Inf or NaN) is NaN

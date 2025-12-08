@@ -65,10 +65,8 @@ fn atan32(x: f32) f32 {
     var id: i32 = undefined;
     var xx: f32 = x;
     if (ix < 0x3ee00000) { // |x| < 0.4375
-        if (ix < 0x39800000) { // |x| < 2**-12
-            if (1.0e30 + x > 1.0)
-                return x; // Raise inexact
-        }
+        if (ix < 0x39800000) // |x| < 2**-12
+            return x;
 
         id = -1;
     } else {
@@ -156,10 +154,8 @@ fn atan64(x: f64) f64 {
     var id: i32 = undefined;
     var xx: f64 = x;
     if (ix < 0x3fdc0000) { // |x| < 0.4375
-        if (ix < 0x3e400000) { // |x| < 2^-27
-            if (1.0e300 + x > 1.0)
-                return x; // Raise inexact
-        }
+        if (ix < 0x3e400000) // |x| < 2^-27
+            return x;
 
         id = -1;
     } else {
@@ -261,10 +257,9 @@ fn atan128(x: f128) f128 {
     var id: i32 = undefined;
     var xx: f128 = x;
     if (expman < ((16384 - 3) << 8) + 0xc0) { // |x| < 0.4375
-        if (expt < (16384 - 57)) { // |x| is small, atanl(x) ~= x
-            if (1.0e300 + x > 1.0)
-                return x; // Raise inexact
-        }
+        if (expt < (16384 - 57)) // |x| is small, atanl(x) ~= x
+            return x;
+
         id = -1;
     } else {
         xx = float.abs(xx);

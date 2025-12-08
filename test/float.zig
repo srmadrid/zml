@@ -3,7 +3,7 @@ test {
     const test_exponential = true;
     const test_power = true;
     const test_trigonometric = true;
-    const test_hyperbolic = false;
+    const test_hyperbolic = true;
     const test_error_gamma = false;
     const test_bessel = false;
     const test_nearest_integer = false;
@@ -22,7 +22,7 @@ test {
         // _ = @import("float/exp2.zig");
         // _ = @import("float/exp10m1.zig");
         // _ = @import("float/exp2m1.zig");
-        // _ = @import("float/expm1.zig");
+        _ = @import("float/expm1.zig");
         _ = @import("float/log.zig");
         // _ = @import("float/log10.zig");
         // _ = @import("float/log2.zig");
@@ -53,9 +53,9 @@ test {
         _ = @import("float/sinh.zig");
         _ = @import("float/cosh.zig");
         _ = @import("float/tanh.zig");
-        _ = @import("float/asinh.zig");
-        _ = @import("float/acosh.zig");
-        _ = @import("float/atanh.zig");
+        // _ = @import("float/asinh.zig");
+        // _ = @import("float/acosh.zig");
+        // _ = @import("float/atanh.zig");
     }
 
     if (test_error_gamma) {

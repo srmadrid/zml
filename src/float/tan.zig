@@ -61,8 +61,7 @@ fn tan32(x: f32) f32 {
 
     if (ix <= 0x3f490fda) { // |x| ~<= pi/4
         if (ix < 0x39800000) // |x| < 2**-12
-            if ((types.scast(i32, x)) == 0)
-                return x; // x with inexact if x != 0
+            return x;
 
         return k_tan32(x, 1);
     }
@@ -108,8 +107,7 @@ fn tan64(x: f64) f64 {
 
     if (ix <= 0x3fe921fb) { // |x| ~< pi/4
         if (ix < 0x3e400000) // x < 2**-27
-            if (types.scast(i32, x) == 0)
-                return x; // Generate inexact */
+            return x;
 
         return k_tan64(x, 0.0, 1);
     } else if (ix >= 0x7ff00000) { // tan(Inf or NaN) is NaN
@@ -327,11 +325,9 @@ pub fn k_tan128(x: f128, y: f128, iy: i32) f128 {
         // -1.0 / (xx + r) here
         // Compute -1.0 / (xx + r) accurately
         z = w;
-        z = z + 0x1p60 - 0x1p60;
         v = r - (z - xx); // z + v = r + xx
         const a: f128 = -1.0 / w;
-        var t: f128 = -1.0 / w;
-        t = t + 0x1p60 - 0x1p60;
+        const t: f128 = -1.0 / w;
         s = 1.0 + t * z;
         return t + a * (s + t * v);
     }

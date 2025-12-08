@@ -92,8 +92,7 @@ fn exp32(x: f32) f32 {
 
         xx = hi - lo;
     } else if (hx < 0x39000000) { // |x| < 2**-14
-        if (x + 1.0e+30 > 1.0e+30) // Trigger inexact
-            return 1.0 + x;
+        return 1.0 + x;
     } else {
         k = 0;
     }
@@ -187,8 +186,7 @@ fn exp64(x: f64) f64 {
 
         xx = hi - lo;
     } else if (hx < 0x39000000) { // |x| < 2**-14
-        if (x + 1.0e+30 > 1.0e+30) // Trigger inexact
-            return 1.0 + x;
+        return 1.0 + x;
     } else {
         k = 0;
     }

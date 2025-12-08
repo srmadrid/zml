@@ -70,33 +70,33 @@ fn atan2_32(y: f32, x: f32) f32 {
     if (iy == 0) { // y = 0
         return switch (m) {
             0, 1 => y, // atan(±0, +anything) = ±0
-            2 => 3.1415927410e+0 + 1.0e-30, // atan(+0, -anything) = pi
-            3 => -3.1415927410e+0 - 1.0e-30, // atan(-0, -anything) = -pi
+            2 => 3.1415927410e+0, // atan(+0, -anything) = pi
+            3 => -3.1415927410e+0, // atan(-0, -anything) = -pi
             else => unreachable,
         };
     }
 
     if (ix == 0) // x = 0
         return if (hy < 0)
-            -1.5707963705e+0 - 1.0e-30
+            -1.5707963705e+0
         else
-            1.5707963705e+0 + 1.0e-30;
+            1.5707963705e+0;
 
     if (ix == 0x7f800000) { // x is Inf
         if (iy == 0x7f800000) {
             return switch (m) {
-                0 => 7.8539818525e-1 + 1.0e-30, // atan(+Inf, +Inf)
-                1 => -7.8539818525e-1 - 1.0e-30, // atan(-Inf, +Inf)
-                2 => 3.0 * 7.8539818525e-1 + 1.0e-30, // atan(+Inf, -Inf)
-                3 => -3.0 * 7.8539818525e-1 - 1.0e-30, // atan(-Inf, -Inf)
+                0 => 7.8539818525e-1, // atan(+Inf, +Inf)
+                1 => -7.8539818525e-1, // atan(-Inf, +Inf)
+                2 => 3.0 * 7.8539818525e-1, // atan(+Inf, -Inf)
+                3 => -3.0 * 7.8539818525e-1, // atan(-Inf, -Inf)
                 else => unreachable,
             };
         } else {
             return switch (m) {
                 0 => 0.0, // atan(+..., +Inf)
                 1 => -0.0, // atan(-..., +Inf)
-                2 => 3.1415927410e+0 + 1.0e-30, // atan(+..., -Inf)
-                3 => -3.1415927410e+0 - 1.0e-30, // atan(-..., -Inf)
+                2 => 3.1415927410e+0, // atan(+..., -Inf)
+                3 => -3.1415927410e+0, // atan(-..., -Inf)
                 else => unreachable,
             };
         }
@@ -104,9 +104,9 @@ fn atan2_32(y: f32, x: f32) f32 {
 
     if (iy == 0x7f800000) // y is Inf
         return if (hy < 0)
-            -1.5707963705e+0 - 1.0e-30
+            -1.5707963705e+0
         else
-            1.5707963705e+0 + 1.0e-30;
+            1.5707963705e+0;
 
     // Compute y/x
     const k: i32 = (iy - ix) >> 23;
@@ -117,7 +117,7 @@ fn atan2_32(y: f32, x: f32) f32 {
     } else if (k < -26 and hx < 0) {
         z = 0.0; // 0 > |y|/x > -2**-26
     } else {
-        z = float.atan(float.abs(y / x)); // Safe to do y/x */
+        z = float.atan(float.abs(y / x)); // Safe to do y/x
     }
 
     return switch (m) {
@@ -159,33 +159,33 @@ fn atan2_64(y: f64, x: f64) f64 {
     if ((@as(u32, @bitCast(iy)) | ly) == 0) { // y = 0
         return switch (m) {
             0, 1 => y, // atan(±0, +anything)= ±0
-            2 => 3.1415926535897931160e+0 + 1.0e-300, // atan(+0, -anything) = pi
-            3 => -3.1415926535897931160e+0 - 1.0e-300, // atan(-0, -anything) = -pi
+            2 => 3.1415926535897931160e+0, // atan(+0, -anything) = pi
+            3 => -3.1415926535897931160e+0, // atan(-0, -anything) = -pi
             else => unreachable,
         };
     }
 
     if ((@as(u32, @bitCast(ix)) | lx) == 0) // x = 0
         return if (hy < 0)
-            -1.5707963267948965580e+0 - 1.0e-300
+            -1.5707963267948965580e+0
         else
-            1.5707963267948965580e+0 + 1.0e-300;
+            1.5707963267948965580e+0;
 
     if (ix == 0x7ff00000) { // x is Inf
         if (iy == 0x7ff00000) {
             return switch (m) {
-                0 => 7.8539816339744827900e-1 + 1.0e-300, // atan(+Inf, +Inf)
-                1 => -7.8539816339744827900e-1 - 1.0e-300, // atan(-Inf, +Inf)
-                2 => 3.0 * 7.8539816339744827900e-1 + 1.0e-300, //atan(+Inf, -Inf)
-                3 => -3.0 * 7.8539816339744827900e-1 - 1.0e-300, //atan(-Inf, -Inf)
+                0 => 7.8539816339744827900e-1, // atan(+Inf, +Inf)
+                1 => -7.8539816339744827900e-1, // atan(-Inf, +Inf)
+                2 => 3.0 * 7.8539816339744827900e-1, //atan(+Inf, -Inf)
+                3 => -3.0 * 7.8539816339744827900e-1, //atan(-Inf, -Inf)
                 else => unreachable,
             };
         } else {
             return switch (m) {
                 0 => 0.0, // atan(+..., +Inf)
                 1 => -0.0, // atan(-..., +Inf)
-                2 => 3.1415926535897931160e+0 + 1.0e-300, // atan(+..., -Inf)
-                3 => -3.1415926535897931160e+0 - 1.0e-300, // atan(-..., -Inf)
+                2 => 3.1415926535897931160e+0, // atan(+..., -Inf)
+                3 => -3.1415926535897931160e+0, // atan(-..., -Inf)
                 else => unreachable,
             };
         }
@@ -193,9 +193,9 @@ fn atan2_64(y: f64, x: f64) f64 {
 
     if (iy == 0x7ff00000) // y is Inf
         return if (hy < 0)
-            -1.5707963267948965580e+0 - 1.0e-300
+            -1.5707963267948965580e+0
         else
-            1.5707963267948965580e+0 + 1.0e-300;
+            1.5707963267948965580e+0;
 
     // Compute y/x
     const k: i32 = (iy - ix) >> 20;
@@ -206,7 +206,7 @@ fn atan2_64(y: f64, x: f64) f64 {
     } else if (k < -60 and hx < 0) {
         z = 0.0; // 0 > |y|/x > -2**-60
     } else {
-        z = float.atan(float.abs(y / x)); // Safe to do y/x */
+        z = float.atan(float.abs(y / x)); // Safe to do y/x
     }
 
     return switch (m) {
@@ -259,33 +259,33 @@ fn atan2_128(y: f128, x: f128) f128 {
     if (expty == 0 and (uy.mantissa_high | uy.mantissa_low) == 0) { // y = 0
         return switch (m) {
             0, 1 => y, // atan(±0, +anything)= ±0
-            2 => 3.14159265358979323846264338327950280e+0 + 1.0e-300, // atan(+0, -anything) = pi
-            3 => -3.14159265358979323846264338327950280e+0 - 1.0e-300, // atan(-0, -anything) = -pi
+            2 => 3.14159265358979323846264338327950280e+0, // atan(+0, -anything) = pi
+            3 => -3.14159265358979323846264338327950280e+0, // atan(-0, -anything) = -pi
             else => unreachable,
         };
     }
 
     if (exptx == 0 and (ux.mantissa_high | ux.mantissa_low) == 0) // x = 0
         return if (signy != 0)
-            -1.57079632679489661923132169163975140e+0 - 1.0e-300
+            -1.57079632679489661923132169163975140e+0
         else
-            1.57079632679489661923132169163975140e+0 + 1.0e-300;
+            1.57079632679489661923132169163975140e+0;
 
     if (exptx == (16384 - 1) + 16384) { // x is Inf
         if (expty == (16384 - 1) + 16384) {
             return switch (m) {
-                0 => 1.57079632679489661923132169163975140e+0 * 0.5 + 1.0e-300, // atan(+Inf, +Inf)
-                1 => -1.57079632679489661923132169163975140e+0 * 0.5 - 1.0e-300, // atan(-Inf, +Inf)
-                2 => 1.5 * 1.57079632679489661923132169163975140e+0 + 1.0e-300, //atan(+Inf, -Inf)
-                3 => -1.5 * 1.57079632679489661923132169163975140e+0 - 1.0e-300, //atan(-Inf, -Inf)
+                0 => 1.57079632679489661923132169163975140e+0 * 0.5, // atan(+Inf, +Inf)
+                1 => -1.57079632679489661923132169163975140e+0 * 0.5, // atan(-Inf, +Inf)
+                2 => 1.5 * 1.57079632679489661923132169163975140e+0, //atan(+Inf, -Inf)
+                3 => -1.5 * 1.57079632679489661923132169163975140e+0, //atan(-Inf, -Inf)
                 else => unreachable,
             };
         } else {
             return switch (m) {
                 0 => 0.0, // atan(+..., +Inf)
                 1 => -0.0, // atan(-..., +Inf)
-                2 => 3.14159265358979323846264338327950280e+0 + 1.0e-300, // atan(+..., -Inf)
-                3 => -3.14159265358979323846264338327950280e+0 - 1.0e-300, // atan(-..., -Inf)
+                2 => 3.14159265358979323846264338327950280e+0, // atan(+..., -Inf)
+                3 => -3.14159265358979323846264338327950280e+0, // atan(-..., -Inf)
                 else => unreachable,
             };
         }
@@ -293,9 +293,9 @@ fn atan2_128(y: f128, x: f128) f128 {
 
     if (expty == (16384 - 1) + 16384) // y is Inf
         return if (signy != 0)
-            -1.57079632679489661923132169163975140e+0 - 1.0e-300
+            -1.57079632679489661923132169163975140e+0
         else
-            1.57079632679489661923132169163975140e+0 + 1.0e-300;
+            1.57079632679489661923132169163975140e+0;
 
     // Compute y/x
     const k: i16 = expty - exptx;
@@ -306,7 +306,7 @@ fn atan2_128(y: f128, x: f128) f128 {
     } else if (k < -114 and signx != 0) {
         z = 0.0; // |y/x| tiny, x < 0
     } else {
-        z = float.atan(float.abs(y / x)); // Safe to do y/x */
+        z = float.atan(float.abs(y / x)); // Safe to do y/x
     }
 
     return switch (m) {
