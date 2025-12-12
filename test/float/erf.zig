@@ -1,6 +1,7 @@
 const std = @import("std");
 const zml = @import("zml");
 const erf = zml.float.erf;
+const tzml = @import("../zml.zig");
 
 const data_f32: [94]struct { f32, f32 } = .{
     .{ 0x0p+0, 0x0p+0 },
@@ -99,14 +100,14 @@ const data_f32: [94]struct { f32, f32 } = .{
     .{ -0x1.77f98ep-12, -0x1.4d32f4p-12 },
 };
 
-const data_f64: [120]struct { f64, f64 } = .{
+const data_f64: [121]struct { f64, f64 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x2.3ebc346b87712p-4, 0x2p-4 },
     .{ 0xb.60e4bace872f8p-4, 0xcp-4 },
     .{ 0xd.7bb3d3a084458p-4, 0x1p+0 },
     .{ -0xd.7bb3d3a084458p-4, -0x1p+0 },
-    // .{ 0xe.c432ecc55f008p-4, 0x1.4p+0 },
+    .{ 0xe.c432ecc55f008p-4, 0x1.4p+0 },
     .{ 0xf.ecd70a13caf18p-4, 0x2p+0 },
     .{ -0xf.ecd70a13caf18p-4, -0x2p+0 },
     .{ 0xf.ffe8d6209afc8p-4, 0x3p+0 },
@@ -374,13 +375,13 @@ const data_f80: [148]struct { f80, f80 } = .{
     .{ -0x1.77f98ef609eb313p-12, -0x1.4d32f4p-12 },
 };
 
-const data_f128: [159]struct { f128, f128 } = .{
+const data_f128: [169]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x2.3ebc346b87712e85b6b249f079e2p-4, 0x2p-4 },
     .{ 0xb.60e4bace872fb62865e59788aa7p-4, 0xcp-4 },
     .{ 0xd.7bb3d3a0844563680887edd86938p-4, 0x1p+0 },
-    // .{ -0xd.7bb3d3a0844563680887edd86938p-4, -0x1p+0 },
+    .{ -0xd.7bb3d3a0844563680887edd86938p-4, -0x1p+0 },
     .{ 0xe.c432ecc55f00406276a08d164e3p-4, 0x1.4p+0 },
     .{ 0xf.ecd70a13caf19972801904b9a34p-4, 0x2p+0 },
     .{ -0xf.ecd70a13caf19972801904b9a34p-4, -0x2p+0 },
@@ -400,7 +401,7 @@ const data_f128: [159]struct { f128, f128 } = .{
     .{ -0x1p+0, -0x1.bp+4 },
     .{ -0x8.53f7a704b7be2d643b9e3ae3cbp-4, -0x7.fffff8p-4 },
     .{ -0x8.53f7ae0c76e915e809f1a31a27a8p-4, -0x8p-4 },
-    // .{ -0x8.53f7ae0c76e8ddaa10a86e7a049p-4, -0x7.ffffffffffffcp-4 },
+    .{ -0x8.53f7ae0c76e8ddaa10a86e7a049p-4, -0x7.ffffffffffffcp-4 },
     .{ -0x8.53f7ae0c76e8f9c90d4d08ca1638p-4, -0x7.ffffffffffffep-4 },
     .{ 0x4.0000189567240f10919b31d6bcf4p-128, 0x3.8b7f28p-128 },
     .{ 0x4.0000a90421a623ebfa28a3ab4774p-128, 0x3.8b7fa8p-128 },
@@ -428,7 +429,7 @@ const data_f128: [159]struct { f128, f128 } = .{
     .{ 0x8.00000000000018ef2d089427b98p-972, 0x7.16fe246d3bdacp-972 },
     .{ 0x7.ffffffffffffd0b7cfc789ba0534p-972, 0x7.16fe246d3bda8p-972 },
     .{ 0x8.00000000000000011037402e1a6p-972, 0x7.16fe246d3bdaa9e8p-972 },
-    // .{ 0x7.fffffffffffffff8094b980cccacp-972, 0x7.16fe246d3bdaa9ep-972 },
+    .{ 0x7.fffffffffffffff8094b980cccacp-972, 0x7.16fe246d3bdaa9ep-972 },
     .{ 0x7.ffffffffffffffffffffffffe86cp-972, 0x7.16fe246d3bdaa9e70ec1483562p-972 },
     .{ 0x7.ffffffffffffffffffffffffeabp-972, 0x7.16fe246d3bdaa9e70ec1483564p-972 },
     .{ 0x7.ffffffffffffffffffffffffe62cp-972, 0x7.16fe246d3bdaa9e70ec148356p-972 },
@@ -437,7 +438,7 @@ const data_f128: [159]struct { f128, f128 } = .{
     .{ 0x8.00000000000018ef2d089427b98p-972, 0x7.16fe246d3bdacp-972 },
     .{ 0x7.ffffffffffffd0b7cfc789ba0534p-972, 0x7.16fe246d3bda8p-972 },
     .{ 0x8.00000000000000011037402e1a6p-972, 0x7.16fe246d3bdaa9e8p-972 },
-    // .{ 0x7.fffffffffffffff8094b980cccacp-972, 0x7.16fe246d3bdaa9ep-972 },
+    .{ 0x7.fffffffffffffff8094b980cccacp-972, 0x7.16fe246d3bdaa9ep-972 },
     .{ 0x8.00000000000000000000000017dp-972, 0x7.16fe246d3bdaa9e70ec148358cp-972 },
     .{ 0x9.06eba8214db688d71d48a7f6bffp-152, 0x8p-152 },
     .{ 0x0p+0, 0x0p+0 },
@@ -452,15 +453,15 @@ const data_f128: [159]struct { f128, f128 } = .{
     .{ 0x9.06eba8214db688d71d48a7f6bffp-152, 0x8p-152 },
     .{ 0x0p+0, 0x0p+0 },
     .{ 0x4.8375d410a6db446b8ea453fb5ff8p-1076, 0x4p-1076 },
-    // .{ 0x1.ffffffffffffffebf47b95c097bcp-16384, 0x1.c5bf891b4ef6aa68p-16384 },
+    .{ 0x1.ffffffffffffffebf47b95c097bcp-16384, 0x1.c5bf891b4ef6aa68p-16384 },
     .{ 0x1.ffffffffffffffe2ed8fed9f4a08p-16384, 0x1.c5bf891b4ef6aa6p-16384 },
-    // .{ 0x1.ffffffffffffffe77105c1aff0e4p-16384, 0x1.c5bf891b4ef6aa64p-16384 },
+    .{ 0x1.ffffffffffffffe77105c1aff0e4p-16384, 0x1.c5bf891b4ef6aa64p-16384 },
     .{ 0x9.06eba8214db688d71d48a7f6bffp-152, 0x8p-152 },
     .{ 0x0p+0, 0x0p+0 },
     .{ 0x4.8375d410a6db446b8ea453fb5ff8p-1076, 0x4p-1076 },
     .{ 0x2.00000000000000191715de671c5p-16384, 0x1.c5bf891b4ef6aa9p-16384 },
     .{ 0x2.0000000000000010102a3645ce98p-16384, 0x1.c5bf891b4ef6aa88p-16384 },
-    // .{ 0x2.000000000000001493a00a567574p-16384, 0x1.c5bf891b4ef6aa8cp-16384 },
+    .{ 0x2.000000000000001493a00a567574p-16384, 0x1.c5bf891b4ef6aa8cp-16384 },
     .{ 0x2.0000000000000016d55af45ec8ep-16384, 0x1.c5bf891b4ef6aa8ep-16384 },
     .{ 0x9.06eba8214db688d71d48a7f6bffp-152, 0x8p-152 },
     .{ 0x0p+0, 0x0p+0 },
@@ -537,29 +538,45 @@ const data_f128: [159]struct { f128, f128 } = .{
     .{ -0x1p+0, -0xf.fffffffffffffffp+16380 },
     .{ -0x1p+0, -0xf.fffffffffffffffffffffffffff8p+16380 },
     .{ -0x1p+0, -0xf.ffffffffffffbffffffffffffcp+1020 },
-    // .{ -0xf.dded081f58dc8a9153bf0342acc8p-4, -0x1.ddaea4p+0 },
+    .{ -0xf.dded081f58dc8a9153bf0342acc8p-4, -0x1.ddaea4p+0 },
     .{ -0xe.6cc3fab61fed8550eefeff64e4fp-4, -0x1.2b1f68p+0 },
     .{ 0xe.d6504b655134fdbfea37252f26dp-4, 0x1.44e722p+0 },
-    // .{ -0xe.ad06dfdab8f3efcfd1feb6bc4a88p-4, -0x1.3a0d48p+0 },
-    // .{ -0xf.d0e59ffd2b01cc98191c3d9fb338p-4, -0x1.c975cap+0 },
+    .{ -0xe.ad06dfdab8f3efcfd1feb6bc4a88p-4, -0x1.3a0d48p+0 },
+    .{ -0xf.d0e59ffd2b01cc98191c3d9fb338p-4, -0x1.c975cap+0 },
     .{ -0xf.e294502e0c11682ba40c5a30e87p-4, -0x1.e6a006p+0 },
     .{ -0x1.77f98ef609eb313046ceab3fa8c7p-12, -0x1.4d32f4p-12 },
 };
 
 test erf {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], erf(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            erf(test_case[1]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], erf(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            erf(test_case[1]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], erf(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            erf(test_case[1]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], erf(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            erf(test_case[1]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }

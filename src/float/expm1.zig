@@ -27,7 +27,7 @@ pub inline fn expm1(x: anytype) EnsureFloat(@TypeOf(x)) {
             return types.scast(f80, expm1_128(types.scast(f128, x)));
         },
         f128 => {
-            // glibc/sysdeps/ieee754/ldbl-128/s_expm1l.c
+            // https://github.com/JuliaMath/openlibm/blob/master/ld128/s_expm1l.c
             return expm1_128(types.scast(f128, x));
         },
         else => unreachable,

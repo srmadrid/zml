@@ -4,7 +4,7 @@ test {
     const test_power = true;
     const test_trigonometric = true;
     const test_hyperbolic = true;
-    const test_error_gamma = false;
+    const test_error_gamma = true;
     const test_bessel = false;
     const test_nearest_integer = false;
     const test_floating_point = false;
@@ -20,15 +20,15 @@ test {
         _ = @import("float/exp.zig");
         // _ = @import("float/exp10.zig");
         // _ = @import("float/exp2.zig");
+        _ = @import("float/expm1.zig");
         // _ = @import("float/exp10m1.zig");
         // _ = @import("float/exp2m1.zig");
-        _ = @import("float/expm1.zig");
         _ = @import("float/log.zig");
         // _ = @import("float/log10.zig");
         // _ = @import("float/log2.zig");
+        _ = @import("float/log1p.zig");
         // _ = @import("float/log10p1.zig");
         // _ = @import("float/log2p1.zig");
-        // _ = @import("float/log1p.zig");
     }
 
     if (test_power) {
@@ -53,16 +53,16 @@ test {
         _ = @import("float/sinh.zig");
         _ = @import("float/cosh.zig");
         _ = @import("float/tanh.zig");
-        // _ = @import("float/asinh.zig");
-        // _ = @import("float/acosh.zig");
-        // _ = @import("float/atanh.zig");
+        _ = @import("float/asinh.zig");
+        _ = @import("float/acosh.zig");
+        _ = @import("float/atanh.zig");
     }
 
     if (test_error_gamma) {
         _ = @import("float/erf.zig");
         _ = @import("float/erfc.zig");
-        _ = @import("float/gamma.zig");
-        _ = @import("float/lgamma.zig");
+        // _ = @import("float/gamma.zig");
+        // _ = @import("float/lgamma.zig");
     }
 
     if (test_bessel) {

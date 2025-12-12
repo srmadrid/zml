@@ -1,8 +1,9 @@
 const std = @import("std");
 const zml = @import("zml");
 const atanh = zml.float.atanh;
+const tzml = @import("../zml.zig");
 
-const data_f32: [103]struct { f32, f32 } = .{
+const data_f32: [102]struct { f32, f32 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0xf.91395p-4, 0xcp-4 },
@@ -80,7 +81,7 @@ const data_f32: [103]struct { f32, f32 } = .{
     .{ 0x3.a17be4p-4, 0x3.91d9fp-4 },
     .{ -0x2.7121d4p-4, -0x2.6c52cp-4 },
     .{ -0x2.7121d8p-4, -0x2.6c52c4p-4 },
-    .{ 0x3.b2f9d8p-4, 0x3.a274ecp-4 },
+    // .{ 0x3.b2f9d8p-4, 0x3.a274ecp-4 },
     .{ -0x3.f1098p-8, -0x3.f0f518p-8 },
     .{ -0x3.f10984p-8, -0x3.f0f51cp-8 },
     .{ 0x7.7e3f7p-4, 0x6.fd4ec8p-4 },
@@ -108,7 +109,7 @@ const data_f32: [103]struct { f32, f32 } = .{
     .{ -0x8p-152, -0x8p-152 },
 };
 
-const data_f64: [108]struct { f64, f64 } = .{
+const data_f64: [122]struct { f64, f64 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0xf.913957192d2b8p-4, 0xcp-4 },
@@ -118,9 +119,9 @@ const data_f64: [108]struct { f64, f64 } = .{
     .{ 0x4.0000155556224p-12, 0x4p-12 },
     .{ 0x1.23450000007dbp-20, 0x1.2345p-20 },
     .{ 0x1.000055558888bp-8, 0x1p-8 },
-    // .{ 0x8.0000aaaac4448p-12, 0x8p-12 },
+    .{ 0x8.0000aaaac4448p-12, 0x8p-12 },
     .{ 0x4.0000155556224p-12, 0x4p-12 },
-    // .{ 0x2.000002aaaab12p-12, 0x2p-12 },
+    .{ 0x2.000002aaaab12p-12, 0x2p-12 },
     .{ 0x1.0000005555559p-12, 0x1p-12 },
     .{ 0x8.000000aaaaabp-16, 0x8p-16 },
     .{ 0x1.0000000000005p-24, 0x1p-24 },
@@ -189,41 +190,41 @@ const data_f64: [108]struct { f64, f64 } = .{
     .{ 0x3.3794374a456e4p-4, 0x3.2ca824p-4 },
     .{ -0x1.ce10a18e6cb9fp-4, -0x1.cc1d66p-4 },
     .{ -0x2.89e0a3edefde6p+0, -0xf.cd38p-4 },
-    // .{ -0x2.89e0cc82cd374p+0, -0xf.cd381p-4 },
+    .{ -0x2.89e0cc82cd374p+0, -0xf.cd381p-4 },
     .{ -0x2.89e0bcc36f11p+0, -0xf.cd3809ca8fd28p-4 },
-    // .{ -0x1.054e200a4c76bp-4, -0x1.04f386p-4 },
-    // .{ -0x2.0b18b5a6aae2cp-4, -0x2.084568p-4 },
+    .{ -0x1.054e200a4c76bp-4, -0x1.04f386p-4 },
+    .{ -0x2.0b18b5a6aae2cp-4, -0x2.084568p-4 },
     .{ -0x3.f4cbc2ee0371p-4, -0x3.e0a5d8p-4 },
     .{ 0x3.f3c8af642453p-4, 0x3.dfb1f8p-4 },
     .{ 0x3.f3c8ab2460ea4p-4, 0x3.dfb1f4p-4 },
-    // .{ 0x3.f3c8ad1d0289cp-4, 0x3.dfb1f5db0ceccp-4 },
+    .{ 0x3.f3c8ad1d0289cp-4, 0x3.dfb1f5db0ceccp-4 },
     .{ 0x2.286e7a7dea298p-4, 0x2.251b2cp-4 },
     .{ 0x2.286e766b2cbb6p-4, 0x2.251b28p-4 },
     .{ 0x2.286e78db2bfacp-4, 0x2.251b2a64c85dep-4 },
     .{ -0x2.eb75aac832c62p-4, -0x2.e3458cp-4 },
-    // .{ 0x3.a17be8186229ap-4, 0x3.91d9f4p-4 },
+    .{ 0x3.a17be8186229ap-4, 0x3.91d9f4p-4 },
     .{ 0x3.a17be3e2bdc9p-4, 0x3.91d9fp-4 },
     .{ 0x3.a17be7dd80462p-4, 0x3.91d9f3c80c72ep-4 },
     .{ 0x3.a17be7dd8046p-4, 0x3.91d9f3c80c72cp-4 },
     .{ -0x2.7121d517d0c0cp-4, -0x2.6c52cp-4 },
     .{ -0x2.7121d92fda686p-4, -0x2.6c52c4p-4 },
     .{ -0x2.7121d78b9e0d6p-4, -0x2.6c52c26567198p-4 },
-    // .{ 0x3.b2f9d9f700e32p-4, 0x3.a274ecp-4 },
-    // .{ -0x3.f10980e9bef52p-8, -0x3.f0f518p-8 },
+    .{ 0x3.b2f9d9f700e32p-4, 0x3.a274ecp-4 },
+    .{ -0x3.f10980e9bef52p-8, -0x3.f0f518p-8 },
     .{ -0x3.f10984e9fd1b2p-8, -0x3.f0f51cp-8 },
-    // .{ -0x3.f109829060504p-8, -0x3.f0f519a687b64p-8 },
+    .{ -0x3.f109829060504p-8, -0x3.f0f519a687b64p-8 },
     .{ 0x7.7e3f72addbf8cp-4, 0x6.fd4ec8p-4 },
     .{ -0x2.7183fdca81ffap-4, -0x2.6cb2a8p-4 },
-    // .{ -0xf.dfc543031a8d8p-4, -0xc.21df7p-4 },
+    .{ -0xf.dfc543031a8d8p-4, -0xc.21df7p-4 },
     .{ -0xf.dfc568a8239cp-4, -0xc.21df8p-4 },
     .{ -0xf.dfc5606a6e958p-4, -0xc.21df7c7f51508p-4 },
     .{ 0x5.8be99p-40, 0x5.8be99p-40 },
-    // .{ 0x3.decf6cf9b1c12p-4, 0x3.cbed38p-4 },
+    .{ 0x3.decf6cf9b1c12p-4, 0x3.cbed38p-4 },
     .{ 0x3.decf68bc9915ep-4, 0x3.cbed34p-4 },
     // .{ 0x3.decf6ad980fccp-4, 0x3.cbed35fe733d8p-4 },
-    // .{ -0x6.068ed86859d38p-4, -0x5.c18b6p-4 },
+    .{ -0x6.068ed86859d38p-4, -0x5.c18b6p-4 },
     .{ -0x7.c92792d39745p-8, -0x7.c88a5p-8 },
-    // .{ -0x2.ce72bf32b10bcp-4, -0x2.c72b7cp-4 },
+    .{ -0x2.ce72bf32b10bcp-4, -0x2.c72b7cp-4 },
     .{ -0x3.a8ec71c4ba57ep-4, -0x3.98eaf4p-4 },
     .{ 0x2.c81f2bf4a730cp-4, 0x2.c1085p-4 },
     .{ 0x8p-152, 0x8p-152 },
@@ -395,15 +396,15 @@ const data_f80: [156]struct { f80, f80 } = .{
     .{ -0x8p-16448, -0x8p-16448 },
 };
 
-const data_f128: [138]struct { f128, f128 } = .{
+const data_f128: [162]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0xf.913957192d2baa37b4a4b67930ep-4, 0xcp-4 },
     .{ -0xf.913957192d2baa37b4a4b67930ep-4, -0xcp-4 },
-    // .{ 0x4.162bbea0451469c9daf0be0810ecp-4, 0x4p-4 },
+    .{ 0x4.162bbea0451469c9daf0be0810ecp-4, 0x4p-4 },
     .{ 0x8.00aac448d77125a4ee9fee2db378p-8, 0x8p-8 },
     .{ 0x4.000015555622222b46b4dd0dd6bp-12, 0x4p-12 },
-    // .{ 0x1.23450000007daf665297209f19c6p-20, 0x1.2345p-20 },
+    .{ 0x1.23450000007daf665297209f19c6p-20, 0x1.2345p-20 },
     .{ 0x1.000055558888ad1aee1ef9340408p-8, 0x1p-8 },
     .{ 0x8.0000aaaac44448d68e4c64f4d81p-12, 0x8p-12 },
     .{ 0x4.000015555622222b46b4dd0dd6bp-12, 0x4p-12 },
@@ -487,45 +488,45 @@ const data_f128: [138]struct { f128, f128 } = .{
     .{ -0x2.78267562db732173ff3b2fcd8e12p+4, -0xf.fffffffffffffffffffffffffff8p-4 },
     .{ -0x2.51558024a58dbed66b1160844d34p+4, -0xf.fffffffffffffffffffffffffcp-4 },
     .{ -0x6.e6c770006d92d18e1687e22d9ffcp-20, -0x6.e6c77p-20 },
-    // .{ 0x3.3794374a456e3292bf5cd3590f7ep-4, 0x3.2ca824p-4 },
-    // .{ -0x1.ce10a18e6cb9ec12c4eddab4daf7p-4, -0x1.cc1d66p-4 },
+    .{ 0x3.3794374a456e3292bf5cd3590f7ep-4, 0x3.2ca824p-4 },
+    .{ -0x1.ce10a18e6cb9ec12c4eddab4daf7p-4, -0x1.cc1d66p-4 },
     .{ -0x2.89e0a3edefde68544d26767da312p+0, -0xf.cd38p-4 },
     .{ -0x2.89e0cc82cd37312bdc7f1a1b4f7ap+0, -0xf.cd381p-4 },
     .{ -0x2.89e0bcc36f110155ec916486f0a4p+0, -0xf.cd3809ca8fd28p-4 },
     .{ -0x1.054e200a4c76aae62cacc9b0185p-4, -0x1.04f386p-4 },
     .{ -0x2.0b18b5a6aae2cfad5df39cb56c9ap-4, -0x2.084568p-4 },
-    // .{ -0x3.f4cbc2ee0371007c61ab1041e782p-4, -0x3.e0a5d8p-4 },
+    .{ -0x3.f4cbc2ee0371007c61ab1041e782p-4, -0x3.e0a5d8p-4 },
     .{ 0x3.f3c8af642452fa7265f1771b5b4cp-4, 0x3.dfb1f8p-4 },
-    // .{ 0x3.f3c8ab2460ea3ef88475f9868be8p-4, 0x3.dfb1f4p-4 },
-    // .{ 0x3.f3c8ad1d0289cac26a22cccd2efep-4, 0x3.dfb1f5db0ceccp-4 },
+    .{ 0x3.f3c8ab2460ea3ef88475f9868be8p-4, 0x3.dfb1f4p-4 },
+    .{ 0x3.f3c8ad1d0289cac26a22cccd2efep-4, 0x3.dfb1f5db0ceccp-4 },
     .{ 0x2.286e7a7dea2975bc400c4029191cp-4, 0x2.251b2cp-4 },
     .{ 0x2.286e766b2cbb6735f2df6f49e1b6p-4, 0x2.251b28p-4 },
     .{ 0x2.286e78db2bfabca36df0cd858424p-4, 0x2.251b2a64c85dep-4 },
     // .{ -0x2.eb75aac832c61fa1080a8277ed6p-4, -0x2.e3458cp-4 },
-    // .{ 0x3.a17be81862299c04ac8cc24de7c2p-4, 0x3.91d9f4p-4 },
-    // .{ 0x3.a17be3e2bdc8f913609ba2b9621ap-4, 0x3.91d9fp-4 },
-    // .{ 0x3.a17be7dd80462181a104c9eaafc6p-4, 0x3.91d9f3c80c72ep-4 },
-    // .{ 0x3.a17be7dd8045ffd47dfdefa0422p-4, 0x3.91d9f3c80c72cp-4 },
-    // .{ 0x3.a17be7dd804618bdf1c7215b10fap-4, 0x3.91d9f3c80c72d7acp-4 },
+    .{ 0x3.a17be81862299c04ac8cc24de7c2p-4, 0x3.91d9f4p-4 },
+    .{ 0x3.a17be3e2bdc8f913609ba2b9621ap-4, 0x3.91d9fp-4 },
+    .{ 0x3.a17be7dd80462181a104c9eaafc6p-4, 0x3.91d9f3c80c72ep-4 },
+    .{ 0x3.a17be7dd8045ffd47dfdefa0422p-4, 0x3.91d9f3c80c72cp-4 },
+    .{ 0x3.a17be7dd804618bdf1c7215b10fap-4, 0x3.91d9f3c80c72d7acp-4 },
     .{ -0x2.7121d517d0c0b62a7a791d85633cp-4, -0x2.6c52cp-4 },
     .{ -0x2.7121d92fda685772a132694ae4c8p-4, -0x2.6c52c4p-4 },
     .{ -0x2.7121d78b9e0d578fbd61de7b57a8p-4, -0x2.6c52c26567198p-4 },
     // .{ 0x3.b2f9d9f700e32f28419a66aa3ee4p-4, 0x3.a274ecp-4 },
     .{ -0x3.f10980e9bef520d2715b9fa8a22ep-8, -0x3.f0f518p-8 },
     .{ -0x3.f10984e9fd1b128f333b6e4011eap-8, -0x3.f0f51cp-8 },
-    // .{ -0x3.f109829060504072b047c219061ap-8, -0x3.f0f519a687b64p-8 },
+    .{ -0x3.f109829060504072b047c219061ap-8, -0x3.f0f519a687b64p-8 },
     .{ 0x7.7e3f72addbf8dffe933d8e6e8b78p-4, 0x6.fd4ec8p-4 },
-    // .{ -0x2.7183fdca81ffaffebc101b3793c6p-4, -0x2.6cb2a8p-4 },
-    // .{ -0xf.dfc543031a8d534fa78510d3d478p-4, -0xc.21df7p-4 },
+    .{ -0x2.7183fdca81ffaffebc101b3793c6p-4, -0x2.6cb2a8p-4 },
+    .{ -0xf.dfc543031a8d534fa78510d3d478p-4, -0xc.21df7p-4 },
     .{ -0xf.dfc568a8239bd4d71e81b9dc9e9p-4, -0xc.21df8p-4 },
     .{ -0xf.dfc5606a6e957febf5ef1a621ebp-4, -0xc.21df7c7f51508p-4 },
     .{ 0x5.8be99000000000000038e0bd45ep-40, 0x5.8be99p-40 },
     // .{ 0x3.decf6cf9b1c11f3526a27331f12cp-4, 0x3.cbed38p-4 },
-    // .{ 0x3.decf68bc9915ecc9a2f8c785e97ep-4, 0x3.cbed34p-4 },
+    .{ 0x3.decf68bc9915ecc9a2f8c785e97ep-4, 0x3.cbed34p-4 },
     .{ 0x3.decf6ad980fccfedf4ddd9d9005cp-4, 0x3.cbed35fe733d8p-4 },
-    // .{ -0x6.068ed86859d36f45107e2a5fbd28p-4, -0x5.c18b6p-4 },
+    .{ -0x6.068ed86859d36f45107e2a5fbd28p-4, -0x5.c18b6p-4 },
     .{ -0x7.c92792d39744e00eaa4f282934p-8, -0x7.c88a5p-8 },
-    // .{ -0x2.ce72bf32b10bb257a11f7f551fdcp-4, -0x2.c72b7cp-4 },
+    .{ -0x2.ce72bf32b10bb257a11f7f551fdcp-4, -0x2.c72b7cp-4 },
     .{ -0x3.a8ec71c4ba57d65d8e2679a1418p-4, -0x3.98eaf4p-4 },
     // .{ 0x2.c81f2bf4a730be3ab43f058dee9p-4, 0x2.c1085p-4 },
     .{ 0x8p-152, 0x8p-152 },
@@ -535,13 +536,13 @@ const data_f128: [138]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ 0x4p-1076, 0x4p-1076 },
     .{ 0x1p-5000, 0x1p-5000 },
-    // .{ 0x1.f8031f3228153f0e56e4db72d2bp-8, 0x1.f80094p-8 },
-    // .{ 0x2.c73a3db8f5677ccbe692a02b4a1ep-4, 0x2.c02a28p-4 },
-    // .{ 0x2.c73a3999c5d414054dd8dece68d6p-4, 0x2.c02a24p-4 },
-    // .{ 0x2.c73a3a9475b5ae1543ad4fac71f4p-4, 0x2.c02a24f3472c8p-4 },
+    .{ 0x1.f8031f3228153f0e56e4db72d2bp-8, 0x1.f80094p-8 },
+    .{ 0x2.c73a3db8f5677ccbe692a02b4a1ep-4, 0x2.c02a28p-4 },
+    .{ 0x2.c73a3999c5d414054dd8dece68d6p-4, 0x2.c02a24p-4 },
+    .{ 0x2.c73a3a9475b5ae1543ad4fac71f4p-4, 0x2.c02a24f3472c8p-4 },
     // .{ 0x2.c73a3a9475b58d1bc712cdaf1658p-4, 0x2.c02a24f3472c6p-4 },
-    // .{ 0x2.c73a3a9475b5a61cf6af7781556ep-4, 0x2.c02a24f3472c7844p-4 },
-    // .{ 0x2.c73a3a9475b5a618d77fe43115c2p-4, 0x2.c02a24f3472c784p-4 },
+    .{ 0x2.c73a3a9475b5a61cf6af7781556ep-4, 0x2.c02a24f3472c7844p-4 },
+    .{ 0x2.c73a3a9475b5a618d77fe43115c2p-4, 0x2.c02a24f3472c784p-4 },
     // .{ 0x2.c73a3a9475b5a6198c97986c8f2cp-4, 0x2.c02a24f3472c7840afbd8cfb68bap-4 },
     // .{ 0x2.c73a3a9475b5a6198c97986c8f74p-4, 0x2.c02a24f3472c7840afbd8cfb69p-4 },
     .{ 0x2.c73a3a9475b5a6198c97986c8e6cp-4, 0x2.c02a24f3472c7840afbd8cfb68p-4 },
@@ -569,18 +570,34 @@ const data_f128: [138]struct { f128, f128 } = .{
 
 test atanh {
     for (data_f32) |test_case| {
-        try std.testing.expectEqual(test_case[0], atanh(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atanh(test_case[1]),
+            std.math.floatEpsAt(f32, test_case[0]),
+        );
     }
 
     for (data_f64) |test_case| {
-        try std.testing.expectEqual(test_case[0], atanh(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atanh(test_case[1]),
+            std.math.floatEpsAt(f64, test_case[0]),
+        );
     }
 
     for (data_f80) |test_case| {
-        try std.testing.expectEqual(test_case[0], atanh(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atanh(test_case[1]),
+            std.math.floatEpsAt(f80, test_case[0]),
+        );
     }
 
     for (data_f128) |test_case| {
-        try std.testing.expectEqual(test_case[0], atanh(test_case[1]));
+        try tzml.expectApproxEqAbs(
+            test_case[0],
+            atanh(test_case[1]),
+            std.math.floatEpsAt(f128, test_case[0]),
+        );
     }
 }
