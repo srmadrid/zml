@@ -18,11 +18,8 @@ test {
 
     if (test_exponential) {
         _ = @import("float/exp.zig");
-        // _ = @import("float/exp10.zig");
-        // _ = @import("float/exp2.zig");
+        _ = @import("float/exp2.zig");
         _ = @import("float/expm1.zig");
-        // _ = @import("float/exp10m1.zig");
-        // _ = @import("float/exp2m1.zig");
         _ = @import("float/log.zig");
         // _ = @import("float/log10.zig");
         // _ = @import("float/log2.zig");

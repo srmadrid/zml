@@ -90,21 +90,18 @@ pub const neg_ = ops.neg_;
 pub const Exp = ops.Exp;
 pub const exp = ops.exp;
 pub const exp_ = ops.exp_;
-pub const Exp10 = ops.Exp10;
-pub const exp10 = ops.exp10;
-pub const exp10_ = ops.exp10_;
 pub const Exp2 = ops.Exp2;
 pub const exp2 = ops.exp2;
 pub const exp2_ = ops.exp2_;
 pub const Log = ops.Log;
 pub const log = ops.log;
 pub const log_ = ops.log_;
-pub const Log10 = ops.Log10;
-pub const log10 = ops.log10;
-pub const log10_ = ops.log10_;
 pub const Log2 = ops.Log2;
 pub const log2 = ops.log2;
 pub const log2_ = ops.log2_;
+pub const Log10 = ops.Log10;
+pub const log10 = ops.log10;
+pub const log10_ = ops.log10_;
 
 // Power functions
 pub const Pow = ops.Pow;

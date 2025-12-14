@@ -275,10 +275,7 @@ pub const abs = @import("float/abs.zig").abs;
 
 // Exponential functions
 pub const exp = @import("float/exp.zig").exp;
-pub const exp10 = @import("float/exp10.zig").exp10;
 pub const exp2 = @import("float/exp2.zig").exp2;
-pub const exp10m1 = @import("float/exp10m1.zig").exp10m1;
-pub const exp2m1 = @import("float/exp2m1.zig").exp2m1;
 pub const expm1 = @import("float/expm1.zig").expm1;
 pub const log = @import("float/log.zig").log;
 pub const log10 = @import("float/log10.zig").log10;

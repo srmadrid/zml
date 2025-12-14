@@ -36,7 +36,6 @@ pub inline fn exp(x: anytype) EnsureFloat(@TypeOf(x)) {
 // https://github.com/JuliaMath/openlibm/blob/master/src/e_expf.c
 //
 // Original copyright notice:
-// e_expf.c -- float version of e_exp.c.
 // Conversion to float by Ian Lance Taylor, Cygnus Support, ian@cygnus.com.
 //
 // ====================================================
