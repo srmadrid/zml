@@ -1,125 +1,193 @@
 const std = @import("std");
+
 const types = @import("../types.zig");
-const flt32 = @import("flt32.zig");
+const EnsureFloat = types.EnsureFloat;
+const float = @import("../float.zig");
+
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
-const EnsureFloat = types.EnsureFloat;
-const cast = types.cast;
 
 pub inline fn rint(x: anytype) @TypeOf(x) {
     comptime if (types.numericType(@TypeOf(x)) != .float)
         @compileError("float.rint: x must be a float, got " ++ @typeName(@TypeOf(x)));
 
     switch (@TypeOf(x)) {
-        f16 => return cast(f16, rint32(cast(f32, x))),
+        f16 => return types.cast(f16, rint32(types.cast(f32, x))),
         f32 => {
-            // glibc/sysdeps/ieee754/flt-32/s_rintf.c
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_rintf.c
             return rint32(x);
         },
         f64 => {
-            // glibc/sysdeps/ieee754/dbl-64/s_rint.c
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_rint.c
             return rint64(x);
         },
-        f80 => return cast(f80, rint128(cast(f128, x, .{})), .{}),
+        f80 => return types.cast(f80, rint128(types.cast(f128, x, .{})), .{}),
         f128 => {
-            // glibc/sysdeps/ieee754/ldbl-128/s_rintl.c
+            // https://github.com/JuliaMath/openlibm/blob/master/src/s_rintl.c
             return rint128(x);
         },
         else => unreachable,
     }
 }
 
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_rintf.c
+//
+// Original copyright notice:
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 fn rint32(x: f32) f32 {
-    // Use generic implementation.
     const TWO23: [2]f32 = .{
-        8.3886080000e+06, // 0x4b000000
-        -8.3886080000e+06, // 0xcb000000
+        8.3886080000e+6,
+        -8.3886080000e+6,
     };
 
-    var I0: i32 = undefined;
-    flt32.getWord(&I0, x);
+    var I0: i32 = @bitCast(x);
     const sx: i32 = (I0 >> 31) & 1;
-    const j0: i32 = ((I0 >> 23) & 0xff) - 0x7f;
+    const j0: i32 = ((I0 >> 23) & 0xff) -% 0x7f;
     if (j0 < 23) {
         if (j0 < 0) {
-            const w: f32 = TWO23[@intCast(sx)] + x;
-            var t = w - TWO23[@intCast(sx)];
-            flt32.getWord(&I0, t);
-            flt32.setWord(&t, (I0 & 0x7fffffff) | (sx << 31));
+            if ((I0 & 0x7fffffff) == 0)
+                return x;
+
+            const w: f32 = TWO23[types.scast(u32, sx)] + x;
+            var t = w - TWO23[types.scast(u32, sx)];
+            I0 = @bitCast(t);
+            t = @bitCast((I0 & 0x7fffffff) | (sx << 31));
             return t;
         }
-    } else {
-        if (j0 == 0x80) {
-            return x + x; // inf or NaN
-        } else {
-            return x; // x is integral
-        }
+
+        const w: f32 = TWO23[types.scast(u32, sx)] + x;
+        return w - TWO23[types.scast(u32, sx)];
     }
-    const w: f32 = TWO23[@intCast(sx)] + x;
-    return w - TWO23[@intCast(sx)];
+
+    if (j0 == 0x80)
+        return x + x // inf or NaN
+    else
+        return x; // x is integral
 }
 
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_rint.c
+//
+// Original copyright notice:
+// ====================================================
+// Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+//
+// Developed at SunPro, a Sun Microsystems, Inc. business.
+// Permission to use, copy, modify, and distribute this
+// software is freely granted, provided that this notice
+// is preserved.
+// ====================================================
 fn rint64(x: f64) f64 {
     const TWO52: [2]f64 = .{
-        4.50359962737049600000e+15, // 0x43300000, 0x00000000
-        -4.50359962737049600000e+15, // 0xC3300000, 0x00000000
+        4.50359962737049600000e+15,
+        -4.50359962737049600000e+15,
     };
 
-    var I0: i64 = undefined;
-    dbl64.extractWords64(&I0, x);
-    const sx: i64 = (I0 >> 63) & 1;
-    const j0: i32 = @truncate(((I0 >> 52) & 0x7ff) - 0x3ff);
-    if (j0 < 52) {
+    var I0: i32 = @bitCast(dbl64.getHighPart(x));
+    var I1: i32 = @bitCast(dbl64.getLowPart(x));
+    const sx: i32 = (I0 >> 31) & 1;
+    const j0: i32 = ((I0 >> 20) & 0x7ff) - 0x3ff;
+    if (j0 < 20) {
         if (j0 < 0) {
-            const w: f64 = TWO52[@intCast(sx)] + x;
-            var t: f64 = w - TWO52[@intCast(sx)];
-            dbl64.extractWords64(&I0, t);
-            dbl64.insertWords64(&t, (I0 & 0x7fffffffffffffff) | (sx << 63));
+            if (((I0 & 0x7fffffff) | I1) == 0)
+                return x;
+
+            I1 |= (I0 & 0x0fffff);
+            I0 &= 0xfffe0000;
+            I0 |= ((I1 | -I1) >> 12) & 0x80000;
+            var xx: f64 = x;
+            dbl64.setHighPart(&xx, I0);
+            const w: f64 = TWO52[types.scast(u32, sx)] + xx;
+            var t: f64 = w - TWO52[types.scast(u32, sx)];
+            I0 = @bitCast(dbl64.getHighPart(t));
+            dbl64.setHighPart(&t, (I0 & 0x7fffffff) | (sx << 31));
             return t;
-        }
-    } else {
-        if (j0 == 0x400) {
-            return x + x; // inf or NaN
         } else {
-            return x; // x is integral
+            var i: i32 = (0x000fffff) >> @intCast(j0);
+            if (((I0 & i) | I1) == 0)
+                return x; // x is integral
+
+            i >>= 1;
+            if (((I0 & i) | I1) != 0) {
+                if (j0 == 19) I1 = 0x40000000 else if (j0 == 18)
+                    I1 = 0x80000000
+                else
+                    I0 = (I0 & (~i)) | ((0x20000) >> @intCast(j0));
+            }
         }
+    } else if (j0 > 51) {
+        if (j0 == 0x400) // inf or NaN
+            return x + x
+        else // x is integral
+            return x;
+    } else {
+        var i: i32 = @bitCast(@as(u32, 0xffffffff) >> @intCast(j0 -% 20));
+        if ((I1 & i) == 0)
+            return x; // x is integral
+
+        i >>= 1;
+        if ((I1 & i) != 0)
+            I1 = (I1 & (~i)) | ((0x40000000) >> @intCast(j0 - 20));
     }
 
-    const w: f64 = TWO52[@intCast(sx)] + x;
-    return w - TWO52[@intCast(sx)];
+    var xx: f64 = x;
+    dbl64.setFromParts(&xx, @bitCast(I0), @bitCast(I1));
+    const w: f64 = TWO52[types.scast(u32, sx)] + xx;
+    return w - TWO52[types.scast(u32, sx)];
 }
 
+// Translation of:
+// https://github.com/JuliaMath/openlibm/blob/master/src/s_rint.c
+//
+// Original copyright notice:
+// Copyright (c) 2008 David Schultz <das@FreeBSD.ORG>
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR AND CONTRIBUTORS ``AS IS'' AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+// ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+// OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+// HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+// LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+// OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+// SUCH DAMAGE.
 fn rint128(x: f128) f128 {
-    const TWO112: [2]f128 = .{
-        5.19229685853482762853049632922009600e+33, // 0x406F000000000000, 0
-        -5.19229685853482762853049632922009600e+33, // 0xC06F000000000000, 0
-    };
+    const u: ldbl128.ShapeSplit = .fromFloat(x);
+    const ex: i32 = @intCast(u.exponent);
 
-    var I0: i64 = undefined;
-    var I1: u64 = undefined;
-    ldbl128.getWords(&I0, &I1, x);
-    var sx: i64 = undefined;
-    {
-        @setRuntimeSafety(false);
-        sx = @bitCast((@as(u64, @intCast(I0))) >> 63);
-    }
-    const j0: i64 = ((I0 >> 48) & 0x7fff) - 0x3fff;
-    if (j0 < 112) {
-        if (j0 < 0) {
-            const w: f128 = TWO112[@intCast(sx)] + x;
-            var t: f128 = w - TWO112[@intCast(sx)];
-            ldbl128.getMsw(&I0, t);
-            ldbl128.setMsw(&t, (I0 & 0x7fffffffffffffff) | (sx << 63));
-            return t;
-        }
-    } else {
-        if (j0 == 0x4000) {
-            return x + x; // inf or NaN
-        } else {
-            return x; // x is integral
-        }
+    if (ex >= (16384 - 1) + 113 - 1) {
+        if (ex == (16384 - 1) + 16384)
+            return x + x; // Inf, NaN, or unsupported format
+
+        return x; // Finite and already an integer
     }
 
-    const w: f128 = TWO112[@intCast(sx)] + x;
-    return w - TWO112[@intCast(sx)];
+    var xx: f128 = x;
+    xx += if (u.sign == 0) 0x1.0p112 else -0x1.0p112;
+    xx -= if (u.sign == 0) 0x1.0p112 else -0x1.0p112;
+
+    if (ex < (16384 - 1) and xx == 0.0)
+        return if (u.sign == 0) 0.0 else -0.0;
+
+    return xx;
 }

@@ -1,10 +1,8 @@
 //! Namespace for float operations.
 
 const types = @import("types.zig");
-const scast = types.scast;
 const Coerce = types.Coerce;
-const EnsureFloat = types.EnsureFloat;
-const Order = types.Order;
+const Cmp = types.Cmp;
 
 // Constant functions
 pub inline fn pi(comptime T: type) T {
@@ -64,7 +62,7 @@ pub inline fn add(
         @compileError("float.add requires at least one of x or y to be a float, the other must be a bool, int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return scast(C, x) + scast(C, y);
+    return types.scast(C, x) + types.scast(C, y);
 }
 
 pub inline fn sub(
@@ -81,7 +79,7 @@ pub inline fn sub(
         @compileError("float.sub requires at least one of x or y to be a float, the other must be a bool, int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return scast(C, x) - scast(C, y);
+    return types.scast(C, x) - types.scast(C, y);
 }
 
 pub inline fn mul(
@@ -98,7 +96,7 @@ pub inline fn mul(
         @compileError("float.mul requires at least one of x or y to be a float, the other must be a bool, int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return scast(C, x) * scast(C, y);
+    return types.scast(C, x) * types.scast(C, y);
 }
 
 pub inline fn div(
@@ -115,13 +113,13 @@ pub inline fn div(
         @compileError("float.div requires at least one of x or y to be a float, the other must be a bool, int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return scast(C, x) / scast(C, y);
+    return types.scast(C, x) / types.scast(C, y);
 }
 
 pub inline fn cmp(
     x: anytype,
     y: anytype,
-) Order {
+) Cmp {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -149,7 +147,7 @@ pub inline fn eq(
         @compileError("float.eq requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return types.scast(Coerce(X, Y), x) == types.scast(Coerce(X, Y), y);
+    return types.types.scast(Coerce(X, Y), x) == types.types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn ne(
@@ -165,7 +163,7 @@ pub inline fn ne(
         @compileError("float.neq requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return types.scast(Coerce(X, Y), x) != types.scast(Coerce(X, Y), y);
+    return types.types.scast(Coerce(X, Y), x) != types.types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn lt(
@@ -181,7 +179,7 @@ pub inline fn lt(
         @compileError("float.lt requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return types.scast(Coerce(X, Y), x) < types.scast(Coerce(X, Y), y);
+    return types.types.scast(Coerce(X, Y), x) < types.types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn le(
@@ -197,7 +195,7 @@ pub inline fn le(
         @compileError("float.le requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return types.scast(Coerce(X, Y), x) <= types.scast(Coerce(X, Y), y);
+    return types.types.scast(Coerce(X, Y), x) <= types.types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn gt(
@@ -213,7 +211,7 @@ pub inline fn gt(
         @compileError("float.gt requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return types.scast(Coerce(X, Y), x) > types.scast(Coerce(X, Y), y);
+    return types.types.scast(Coerce(X, Y), x) > types.types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn ge(
@@ -229,7 +227,7 @@ pub inline fn ge(
         @compileError("float.ge requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return types.scast(Coerce(X, Y), x) >= types.scast(Coerce(X, Y), y);
+    return types.types.scast(Coerce(X, Y), x) >= types.types.scast(Coerce(X, Y), y);
 }
 
 pub inline fn max(
@@ -246,7 +244,7 @@ pub inline fn max(
         @compileError("float.ge requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return if (x > y) scast(C, x) else scast(C, y);
+    return if (x > y) types.scast(C, x) else types.scast(C, y);
 }
 
 pub inline fn min(
@@ -263,7 +261,7 @@ pub inline fn min(
         @compileError("float.min requires at least one of x or y to be a float, the other must be an int or float, got " ++
             @typeName(X) ++ " and " ++ @typeName(Y));
 
-    return if (x < y) scast(C, x) else scast(C, y);
+    return if (x < y) types.scast(C, x) else types.scast(C, y);
 }
 
 // Basic operations
@@ -280,8 +278,6 @@ pub const expm1 = @import("float/expm1.zig").expm1;
 pub const log = @import("float/log.zig").log;
 pub const log10 = @import("float/log10.zig").log10;
 pub const log2 = @import("float/log2.zig").log2;
-pub const log10p1 = @import("float/log10p1.zig").log10p1;
-pub const log2p1 = @import("float/log2p1.zig").log2p1;
 pub const log1p = @import("float/log1p.zig").log1p;
 
 // Power functions
@@ -329,8 +325,6 @@ pub const trunc = @import("float/trunc.zig").trunc;
 pub const round = @import("float/round.zig").round;
 // pub const nearbyint = @import("float/nearbyint.zig").nearbyint; // to implement
 pub const rint = @import("float/rint.zig").rint;
-// pub const lrint = @import("float/lrint.zig").lrint; // to implement
-// pub const llrint = @import("float/llrint.zig").llrint; // to implement. Join the rint's and choose one depending on input integer type?
 
 // Floating-point manipulation functions
 pub const frexp = @import("float/frexp.zig").frexp;

@@ -21,11 +21,9 @@ test {
         _ = @import("float/exp2.zig");
         _ = @import("float/expm1.zig");
         _ = @import("float/log.zig");
-        // _ = @import("float/log10.zig");
-        // _ = @import("float/log2.zig");
+        _ = @import("float/log10.zig");
+        _ = @import("float/log2.zig");
         _ = @import("float/log1p.zig");
-        // _ = @import("float/log10p1.zig");
-        // _ = @import("float/log2p1.zig");
     }
 
     if (test_power) {
@@ -58,8 +56,8 @@ test {
     if (test_error_gamma) {
         _ = @import("float/erf.zig");
         _ = @import("float/erfc.zig");
-        // _ = @import("float/gamma.zig");
-        // _ = @import("float/lgamma.zig");
+        _ = @import("float/gamma.zig");
+        _ = @import("float/lgamma.zig");
     }
 
     if (test_bessel) {
