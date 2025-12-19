@@ -410,24 +410,24 @@ pub inline fn abs1(
     return float.abs(z.re) + float.abs(z.im);
 }
 
-pub const arg = @import("cfloat/arg.zig").arg; // 11/215 tests fail: 11 for cf128
-pub const abs = @import("cfloat/abs.zig").abs; // 0/106 tests fail
+pub const arg = @import("cfloat/arg.zig").arg;
+pub const abs = @import("cfloat/abs.zig").abs;
 pub const abs2 = @import("cfloat/abs2.zig").abs2;
 pub const neg = @import("cfloat/neg.zig").neg;
-pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // 446/1695 tests fail: 17 for cf32, 68 for cf64, 141 for cf80, 220 for cf128
-pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32, 4 for cf64, 8 for cf80, 12 for cf128
-pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for cf32, 133 for cf64, 217 for cf80, 640 for cf128
-pub const log10 = @import("cfloat/log10.zig").log10; // 2427/4861 tests fail: 278 for cf32, 596 for cf64, 635 for cf80, 918 for cf128
-pub const sin = @import("cfloat/sin.zig").sin; // 36/260 tests fail: 6 for cf32, 4 for cf64, 3 for cf80, 23 for cf128
-pub const cos = @import("cfloat/cos.zig").cos; // 37/176 tests fail: 6 for cf32, 5 for cf64, 2 for cf80, 24 for cf128
-pub const tan = @import("cfloat/tan.zig").tan; // 122/280 tests fail: 12 for cf32, 16 for cf64, 33 for cf80, 61 for cf128
-pub const asin = @import("cfloat/asin.zig").asin; // 2540/7087 tests fail: 332 for cf32, 396 for cf64, 713 for cf80, 1126 for cf128
-pub const acos = @import("cfloat/acos.zig").acos; // 2244/7087 tests fail: 312 for cf32, 375 for cf64, 537 for cf80, 1020 for cf128
-pub const atan = @import("cfloat/atan.zig").atan; // 449/5836 tests fail: 49 for cf32, 105 for cf64, 34 for cf80, 261 for cf128
-pub const sinh = @import("cfloat/sinh.zig").sinh; // 37/260 tests fail: 7 for cf32, 5 for cf64, 3 for cf80, 22 for cf128
-pub const cosh = @import("cfloat/cosh.zig").cosh; // 38/176 tests fail: 7 for cf32, 5 for cf64, 2 for cf80, 24 for cf128
-pub const tanh = @import("cfloat/tanh.zig").tanh; // 129/280 tests fail: 14 for cf32, 18 for cf64, 35 for cf80, 62 for cf128
-pub const asinh = @import("cfloat/asinh.zig").asinh; // 2543/7087 tests fail: 333 for cf32, 396 for cf64, 714 for cf80, 1100 for cf128
-pub const acosh = @import("cfloat/acosh.zig").acosh; // 2244/7087 tests fail: 312 for cf32, 375 for cf64, 537 for cf80, 1020 for cf128
-pub const atanh = @import("cfloat/atanh.zig").atanh; // 449/5836 tests fail: 48 for cf32, 105 for cf64, 34 for cf80, 262 for cf128
-pub const pow = @import("cfloat/pow.zig").pow; // 175/184 tests fail (MANY CATASTYOFIC): 8 for cf32, 19 for cf64, 42 for cf80, 106 for cf128
+pub const sqrt = @import("cfloat/sqrt.zig").sqrt;
+// pub const exp = @import("cfloat/exp.zig").exp; // 28/309 tests fail: 4 for cf32, 4 for cf64, 8 for cf80, 12 for cf128
+// pub const log = @import("cfloat/log.zig").log; // 1064/4869 tests fail: 74 for cf32, 133 for cf64, 217 for cf80, 640 for cf128
+// pub const log10 = @import("cfloat/log10.zig").log10; // 2427/4861 tests fail: 278 for cf32, 596 for cf64, 635 for cf80, 918 for cf128
+// pub const sin = @import("cfloat/sin.zig").sin; // 36/260 tests fail: 6 for cf32, 4 for cf64, 3 for cf80, 23 for cf128
+// pub const cos = @import("cfloat/cos.zig").cos; // 37/176 tests fail: 6 for cf32, 5 for cf64, 2 for cf80, 24 for cf128
+// pub const tan = @import("cfloat/tan.zig").tan; // 122/280 tests fail: 12 for cf32, 16 for cf64, 33 for cf80, 61 for cf128
+// pub const asin = @import("cfloat/asin.zig").asin; // 2540/7087 tests fail: 332 for cf32, 396 for cf64, 713 for cf80, 1126 for cf128
+// pub const acos = @import("cfloat/acos.zig").acos; // 2244/7087 tests fail: 312 for cf32, 375 for cf64, 537 for cf80, 1020 for cf128
+// pub const atan = @import("cfloat/atan.zig").atan; // 449/5836 tests fail: 49 for cf32, 105 for cf64, 34 for cf80, 261 for cf128
+// pub const sinh = @import("cfloat/sinh.zig").sinh; // 37/260 tests fail: 7 for cf32, 5 for cf64, 3 for cf80, 22 for cf128
+// pub const cosh = @import("cfloat/cosh.zig").cosh; // 38/176 tests fail: 7 for cf32, 5 for cf64, 2 for cf80, 24 for cf128
+// pub const tanh = @import("cfloat/tanh.zig").tanh; // 129/280 tests fail: 14 for cf32, 18 for cf64, 35 for cf80, 62 for cf128
+// pub const asinh = @import("cfloat/asinh.zig").asinh; // 2543/7087 tests fail: 333 for cf32, 396 for cf64, 714 for cf80, 1100 for cf128
+// pub const acosh = @import("cfloat/acosh.zig").acosh; // 2244/7087 tests fail: 312 for cf32, 375 for cf64, 537 for cf80, 1020 for cf128
+// pub const atanh = @import("cfloat/atanh.zig").atanh; // 449/5836 tests fail: 48 for cf32, 105 for cf64, 34 for cf80, 262 for cf128
+// pub const pow = @import("cfloat/pow.zig").pow; // 175/184 tests fail (MANY CATASTYOFIC): 8 for cf32, 19 for cf64, 42 for cf80, 106 for cf128

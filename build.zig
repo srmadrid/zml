@@ -78,6 +78,9 @@ pub fn build(b: *std.Build) void {
     cblas_step.dependOn(&cblas_install.step);
 
     // Tests
+    const opt_verbose_tests = b.option(bool, "verbose_tests", "Enable verbose output for tests") orelse false;
+    options.addOption(bool, "verbose_tests", opt_verbose_tests);
+
     const lib_unit_tests = b.addTest(.{
         .root_module = b.createModule(.{
             .root_source_file = b.path("test/zml.zig"),

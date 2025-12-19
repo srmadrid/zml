@@ -1,5 +1,10 @@
 const std = @import("std");
 
+const zml = @import("zml");
+
+pub const float = @import("float.zig");
+pub const cfloat = @import("cfloat.zig");
+
 pub inline fn expectApproxEqAbs(expected: anytype, actual: anytype, tolerance: anytype) !void {
     if (expected != actual)
         try std.testing.expectApproxEqAbs(expected, actual, tolerance);
@@ -8,7 +13,7 @@ pub inline fn expectApproxEqAbs(expected: anytype, actual: anytype, tolerance: a
 test {
     const test_types = false;
     const test_float = true;
-    const test_cfloat = false;
+    const test_cfloat = true;
     const test_linalg = false;
 
     if (test_types) {

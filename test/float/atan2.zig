@@ -566,8 +566,8 @@ const data_f64: [405]struct { f64, f64, f64 } = .{
     .{ -0x3.243f6a8885a3p+0, -0x4p-1076, -0x1p+0 },
 };
 
-const data_f80: [784]struct { f80, f80, f80 } = blk: {
-    @setEvalBranchQuota(5000);
+const data_f80: [786]struct { f80, f80, f80 } = blk: {
+    @setEvalBranchQuota(1572);
     break :blk .{
         .{ 0x0p+0, 0x1p+0, std.math.inf(f80) },
         .{ 0x0p+0, 0x0p+0, std.math.inf(f80) },
@@ -1271,10 +1271,10 @@ const data_f80: [784]struct { f80, f80, f80 } = blk: {
         .{ -0x3.243f6a8885a308d4p+0, -0x8p-16448, -0xf.fffffffffffffffp+16380 },
         .{ 0x1.000001000001p-128, 0x1p+0, 0xf.fffffp+124 },
         .{ 0x1.00000000000008p-1024, 0x1p+0, 0xf.ffffffffffff8p+1020 },
-        // .{ 0x1p-16384, 0x1p+0, 0xf.fffffffffffffffp+16380 },
+        .{ 0x1p-16384, 0x1p+0, 0xf.fffffffffffffffp+16380 },
         .{ -0x1.000001000001p-128, -0x1p+0, 0xf.fffffp+124 },
         .{ -0x1.00000000000008p-1024, -0x1p+0, 0xf.ffffffffffff8p+1020 },
-        // .{ -0x1p-16384, -0x1p+0, 0xf.fffffffffffffffp+16380 },
+        .{ -0x1p-16384, -0x1p+0, 0xf.fffffffffffffffp+16380 },
         .{ 0x4.000004000004p-256, 0x4p-128, 0xf.fffffp+124 },
         .{ 0x4.0000000000002p-1152, 0x4p-128, 0xf.ffffffffffff8p+1020 },
         .{ 0x0p+0, 0x4p-128, 0xf.fffffffffffffffp+16380 },
@@ -1358,8 +1358,8 @@ const data_f80: [784]struct { f80, f80, f80 } = blk: {
     };
 };
 
-const data_f128: [1325]struct { f128, f128, f128 } = blk: {
-    @setEvalBranchQuota(5000);
+const data_f128: [1329]struct { f128, f128, f128 } = blk: {
+    @setEvalBranchQuota(2658);
     break :blk .{
         .{ 0x0p+0, 0x1p+0, std.math.inf(f128) },
         .{ 0x0p+0, 0x0p+0, std.math.inf(f128) },
@@ -2542,13 +2542,13 @@ const data_f128: [1325]struct { f128, f128, f128 } = blk: {
         .{ -0x3.243f6a8885a308d313198a2e037p+0, -0x4p-16496, -0xf.ffffffffffffbffffffffffffcp+1020 },
         .{ 0x1.000001000001000001000001p-128, 0x1p+0, 0xf.fffffp+124 },
         .{ 0x1.000000000000080000000000004p-1024, 0x1p+0, 0xf.ffffffffffff8p+1020 },
-        // .{ 0x1.0000000000000001p-16384, 0x1p+0, 0xf.fffffffffffffffp+16380 },
-        // .{ 0x1p-16384, 0x1p+0, 0xf.fffffffffffffffffffffffffff8p+16380 },
+        .{ 0x1.0000000000000001p-16384, 0x1p+0, 0xf.fffffffffffffffp+16380 },
+        .{ 0x1p-16384, 0x1p+0, 0xf.fffffffffffffffffffffffffff8p+16380 },
         .{ 0x1.000000000000040000000000005p-1024, 0x1p+0, 0xf.ffffffffffffbffffffffffffcp+1020 },
         .{ -0x1.000001000001000001000001p-128, -0x1p+0, 0xf.fffffp+124 },
         .{ -0x1.000000000000080000000000004p-1024, -0x1p+0, 0xf.ffffffffffff8p+1020 },
-        // .{ -0x1.0000000000000001p-16384, -0x1p+0, 0xf.fffffffffffffffp+16380 },
-        // .{ -0x1p-16384, -0x1p+0, 0xf.fffffffffffffffffffffffffff8p+16380 },
+        .{ -0x1.0000000000000001p-16384, -0x1p+0, 0xf.fffffffffffffffp+16380 },
+        .{ -0x1p-16384, -0x1p+0, 0xf.fffffffffffffffffffffffffff8p+16380 },
         .{ -0x1.000000000000040000000000005p-1024, -0x1p+0, 0xf.ffffffffffffbffffffffffffcp+1020 },
         .{ 0x4.000004000004000004000004p-256, 0x4p-128, 0xf.fffffp+124 },
         .{ 0x4.00000000000020000000000001p-1152, 0x4p-128, 0xf.ffffffffffff8p+1020 },
@@ -2694,35 +2694,36 @@ const data_f128: [1325]struct { f128, f128, f128 } = blk: {
 };
 
 test atan2 {
-    for (data_f32) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            atan2(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f32, test_case[0]),
-        );
+    var results_f32: [data_f32.len]f32 = undefined;
+    var results_f64: [data_f64.len]f64 = undefined;
+    var results_f80: [data_f80.len]f80 = undefined;
+    var results_f128: [data_f128.len]f128 = undefined;
+
+    for (0..data_f32.len) |i| {
+        results_f32[i] = atan2(data_f32[i][1], data_f32[i][2]);
     }
 
-    for (data_f64) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            atan2(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f64, test_case[0]),
-        );
+    for (0..data_f64.len) |i| {
+        results_f64[i] = atan2(data_f64[i][1], data_f64[i][2]);
     }
 
-    for (data_f80) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            atan2(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f80, test_case[0]),
-        );
+    for (0..data_f80.len) |i| {
+        results_f80[i] = atan2(data_f80[i][1], data_f80[i][2]);
     }
 
-    for (data_f128) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            atan2(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f128, test_case[0]),
-        );
+    for (0..data_f128.len) |i| {
+        results_f128[i] = atan2(data_f128[i][1], data_f128[i][2]);
     }
+
+    tzml.float.printReport(
+        "float.atan2",
+        data_f32,
+        results_f32,
+        data_f64,
+        results_f64,
+        data_f80,
+        results_f80,
+        data_f128,
+        results_f128,
+    );
 }

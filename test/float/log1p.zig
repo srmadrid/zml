@@ -289,7 +289,7 @@ const data_f80: [119]struct { f80, f80 } = .{
     .{ 0x5.95f3ec4683fa14ap-4, 0x6.af53d00fd2845d4p-4 },
 };
 
-const data_f128: [141]struct { f128, f128 } = .{
+const data_f128: [144]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x1.00000039ece11db67b8f96c29c56p+0, 0x1.b7e152p+0 },
@@ -358,7 +358,7 @@ const data_f128: [141]struct { f128, f128 } = .{
     .{ 0x5.8bb34c4430e0a4587cab2360533p-4, 0x6.a0cf42befce9cp-4 },
     .{ 0x5.8bb34c4430e0c45cffac98fe0dap-4, 0x6.a0cf42befce9ed48p-4 },
     .{ 0x5.8bb34c4430e0c45757913653cec8p-4, 0x6.a0cf42befce9ed4p-4 },
-    // .{ 0x5.8bb34c4430e0c457b6453ad6d01cp-4, 0x6.a0cf42befce9ed4085ef59254b48p-4 },
+    .{ 0x5.8bb34c4430e0c457b6453ad6d01cp-4, 0x6.a0cf42befce9ed4085ef59254b48p-4 },
     .{ 0x5.8bb34c4430e0c457b6453ad6d0ap-4, 0x6.a0cf42befce9ed4085ef59254cp-4 },
     .{ 0x5.8bb34c4430e0c457b6453ad6cf34p-4, 0x6.a0cf42befce9ed4085ef59254ap-4 },
     .{ 0x5.8b90bfae8e7bc55e4f18476ac644p+4, 0xf.fffffp+124 },
@@ -404,7 +404,7 @@ const data_f128: [141]struct { f128, f128 } = .{
     .{ -0x5.ec964fc6583a8a0d9742e5d7514p-4, -0x4.f37d3c9ce0b18p-4 },
     .{ -0x5.ec964fc6583a3e8666c48368bfd4p-4, -0x4.f37d3c9ce0b14bd8p-4 },
     .{ -0x5.ec964fc6583a3e91fc802de111d4p-4, -0x4.f37d3c9ce0b14bep-4 },
-    // .{ -0x5.ec964fc6583a3e8e67ba42e3763p-4, -0x4.f37d3c9ce0b14bdd86eb157df5d4p-4 },
+    .{ -0x5.ec964fc6583a3e8e67ba42e3763p-4, -0x4.f37d3c9ce0b14bdd86eb157df5d4p-4 },
     .{ -0x5.ec964fc6583a3e8e67ba42e37388p-4, -0x4.f37d3c9ce0b14bdd86eb157df4p-4 },
     .{ -0x5.ec964fc6583a3e8e67ba42e3767p-4, -0x4.f37d3c9ce0b14bdd86eb157df6p-4 },
     .{ 0x5.eee1d129eb6330c8efb7fbb2898p-4, 0x7.2eca58p-4 },
@@ -431,41 +431,42 @@ const data_f128: [141]struct { f128, f128 } = .{
     .{ 0x5.95f3ec4683f9fffcabe1ce64f9f4p-4, 0x6.af53d00fd2844p-4 },
     .{ 0x5.95f3ec4683fa14a3b80d46ab2084p-4, 0x6.af53d00fd2845d48p-4 },
     .{ 0x5.95f3ec4683fa149e1390a512539p-4, 0x6.af53d00fd2845d4p-4 },
-    // .{ 0x5.95f3ec4683fa14a354007a53e9f8p-4, 0x6.af53d00fd2845d4772260ef5adc4p-4 },
+    .{ 0x5.95f3ec4683fa14a354007a53e9f8p-4, 0x6.af53d00fd2845d4772260ef5adc4p-4 },
     .{ 0x5.95f3ec4683fa14a354007a53ea2p-4, 0x6.af53d00fd2845d4772260ef5aep-4 },
     .{ 0x5.95f3ec4683fa14a354007a53e8b8p-4, 0x6.af53d00fd2845d4772260ef5acp-4 },
 };
 
 test log1p {
-    for (data_f32) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            log1p(test_case[1]),
-            std.math.floatEpsAt(f32, test_case[0]),
-        );
+    var results_f32: [data_f32.len]f32 = undefined;
+    var results_f64: [data_f64.len]f64 = undefined;
+    var results_f80: [data_f80.len]f80 = undefined;
+    var results_f128: [data_f128.len]f128 = undefined;
+
+    for (0..data_f32.len) |i| {
+        results_f32[i] = log1p(data_f32[i][1]);
     }
 
-    for (data_f64) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            log1p(test_case[1]),
-            std.math.floatEpsAt(f64, test_case[0]),
-        );
+    for (0..data_f64.len) |i| {
+        results_f64[i] = log1p(data_f64[i][1]);
     }
 
-    for (data_f80) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            log1p(test_case[1]),
-            std.math.floatEpsAt(f80, test_case[0]),
-        );
+    for (0..data_f80.len) |i| {
+        results_f80[i] = log1p(data_f80[i][1]);
     }
 
-    for (data_f128) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            log1p(test_case[1]),
-            std.math.floatEpsAt(f128, test_case[0]),
-        );
+    for (0..data_f128.len) |i| {
+        results_f128[i] = log1p(data_f128[i][1]);
     }
+
+    tzml.float.printReport(
+        "float.log1p",
+        data_f32,
+        results_f32,
+        data_f64,
+        results_f64,
+        data_f80,
+        results_f80,
+        data_f128,
+        results_f128,
+    );
 }

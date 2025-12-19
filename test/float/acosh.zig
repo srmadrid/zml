@@ -3,7 +3,7 @@ const zml = @import("zml");
 const acosh = zml.float.acosh;
 const tzml = @import("../zml.zig");
 
-const data_f32: [68]struct { f32, f32 } = .{
+const data_f32: [69]struct { f32, f32 } = .{
     .{ 0x0p+0, 0x1p+0 },
     .{ 0x2p-12, 0x1.000002p+0 },
     .{ 0x2p-12, 0x1.000002p+0 },
@@ -54,7 +54,7 @@ const data_f32: [68]struct { f32, f32 } = .{
     .{ 0x4.cd329p-4, 0x1.0b9d3ep+0 },
     .{ 0x5.f3a5ep-4, 0x1.11eab6p+0 },
     .{ 0x5.a0a868p-4, 0x1.0fffaap+0 },
-    // .{ 0x3.9cf258p-4, 0x1.068e1p+0 },
+    .{ 0x3.9cf258p-4, 0x1.068e1p+0 },
     .{ 0x3.9cf1ccp-4, 0x1.068e0ep+0 },
     .{ 0x1.96d14cp+0, 0x2.8d4288p+0 },
     .{ 0x1.9f526p+4, 0x1.5d71a6p+36 },
@@ -75,7 +75,7 @@ const data_f32: [68]struct { f32, f32 } = .{
     .{ 0x5.96a7ep+4, 0xf.fffffp+124 },
 };
 
-const data_f64: [83]struct { f64, f64 } = .{
+const data_f64: [85]struct { f64, f64 } = .{
     .{ 0x0p+0, 0x1p+0 },
     .{ 0x1.ffffffaaaaaadp-12, 0x1.000002p+0 },
     .{ 0x1.ffffffaaaaaadp-12, 0x1.000002p+0 },
@@ -143,11 +143,11 @@ const data_f64: [83]struct { f64, f64 } = .{
     .{ 0x3.38018c2243818p+0, 0xc.84cb2p+0 },
     .{ 0x3.38018ada065fcp+0, 0xc.84cb1p+0 },
     .{ 0x3.38018bf3c523ap+0, 0xc.84cb1dbbd1b1p+0 },
-    // .{ 0x3.c4bc22bfc0f1p-4, 0x1.072238p+0 },
+    .{ 0x3.c4bc22bfc0f1p-4, 0x1.072238p+0 },
     .{ 0x3.c4bb9c223d182p-4, 0x1.072236p+0 },
     .{ 0x3.c4bba7bdf5dacp-4, 0x1.0722362c26ba5p+0 },
     .{ 0xe.aaeb3064737c8p-4, 0x1.73515p+0 },
-    // .{ 0x7.5a648ae540c28p-4, 0x1.1b836p+0 },
+    .{ 0x7.5a648ae540c28p-4, 0x1.1b836p+0 },
     .{ 0x3.efb2c425f3ffcp-4, 0x1.07c956p+0 },
     .{ 0x6.e14ea65707588p-4, 0x1.1808eep+0 },
     .{ 0x5.af0cbc66dcd48p-4, 0x1.1052c4p+0 },
@@ -259,7 +259,7 @@ const data_f80: [93]struct { f80, f80 } = .{
     .{ 0x2.c5d37700c6bb03a8p+12, 0xf.fffffffffffffffp+16380 },
 };
 
-const data_f128: [98]struct { f128, f128 } = .{
+const data_f128: [102]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x1p+0 },
     .{ 0x1.ffffffaaaaaad11110fa35a369c4p-12, 0x1.000002p+0 },
     .{ 0x1.ffffffaaaaaad11110fa35a369c4p-12, 0x1.000002p+0 },
@@ -341,20 +341,20 @@ const data_f128: [98]struct { f128, f128 } = .{
     .{ 0xe.aaeb3064737cace4c93072164fdp-4, 0x1.73515p+0 },
     .{ 0x7.5a648ae540c2605c952f79c9f67cp-4, 0x1.1b836p+0 },
     .{ 0x3.efb2c425f3ffc3080db4776262p-4, 0x1.07c956p+0 },
-    // .{ 0x6.e14ea6570758830c709fd6ddc388p-4, 0x1.1808eep+0 },
+    .{ 0x6.e14ea6570758830c709fd6ddc388p-4, 0x1.1808eep+0 },
     .{ 0x5.af0cbc66dcd4992c060eb8ff4ap-4, 0x1.1052c4p+0 },
     .{ 0x7.c580228bed2a828f8042d267c3f4p-4, 0x1.1ecbep+0 },
     .{ 0x7.c57fe32f85bf5c4bb5c8e26d43dcp-4, 0x1.1ecbdep+0 },
     .{ 0x7.c58009b5885c945dbf38fa630eccp-4, 0x1.1ecbdf374bce1p+0 },
     .{ 0x7.c58009b5885a997a85c0ab84dd98p-4, 0x1.1ecbdf374bcep+0 },
-    // .{ 0x7.c58009b5885ad2282e0dbf567ccp-4, 0x1.1ecbdf374bce01cap+0 },
+    .{ 0x7.c58009b5885ad2282e0dbf567ccp-4, 0x1.1ecbdf374bce01cap+0 },
     .{ 0x5.8e60c2aef6b859fea83073e03dd8p-4, 0x1.0f975ap+0 },
     .{ 0x5.8e60685c1d693545e67181d1a6ep-4, 0x1.0f9758p+0 },
     .{ 0x5.8e607be4bc4cd59aa3e6945d8678p-4, 0x1.0f97586eba091p+0 },
-    // .{ 0x5.8e607be4bc4a0303cbe388d3bc78p-4, 0x1.0f97586eba09p+0 },
+    .{ 0x5.8e607be4bc4a0303cbe388d3bc78p-4, 0x1.0f97586eba09p+0 },
     .{ 0x5.8e607be4bc4a5db0f9beeaa67be4p-4, 0x1.0f97586eba090202p+0 },
     .{ 0x5.8e607be4bc4a5d56a6e3ea450a98p-4, 0x1.0f97586eba0902p+0 },
-    // .{ 0x5.8e607be4bc4a5d59bfae715e3d1p-4, 0x1.0f97586eba090200118df0902f99p+0 },
+    .{ 0x5.8e607be4bc4a5d59bfae715e3d1p-4, 0x1.0f97586eba090200118df0902f99p+0 },
     .{ 0x5.8e607be4bc4a5d59bfae715e4f3cp-4, 0x1.0f97586eba090200118df0903p+0 },
     .{ 0x5.8e607be4bc4a5d59bfae715e38a8p-4, 0x1.0f97586eba090200118df0902f8p+0 },
     .{ 0x5.96a7e12e0b98bcf90bb682a4468p+4, 0xf.fffffp+124 },
@@ -365,35 +365,36 @@ const data_f128: [98]struct { f128, f128 } = .{
 };
 
 test acosh {
-    for (data_f32) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            acosh(test_case[1]),
-            std.math.floatEpsAt(f32, test_case[0]),
-        );
+    var results_f32: [data_f32.len]f32 = undefined;
+    var results_f64: [data_f64.len]f64 = undefined;
+    var results_f80: [data_f80.len]f80 = undefined;
+    var results_f128: [data_f128.len]f128 = undefined;
+
+    for (0..data_f32.len) |i| {
+        results_f32[i] = acosh(data_f32[i][1]);
     }
 
-    for (data_f64) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            acosh(test_case[1]),
-            std.math.floatEpsAt(f64, test_case[0]),
-        );
+    for (0..data_f64.len) |i| {
+        results_f64[i] = acosh(data_f64[i][1]);
     }
 
-    for (data_f80) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            acosh(test_case[1]),
-            std.math.floatEpsAt(f80, test_case[0]),
-        );
+    for (0..data_f80.len) |i| {
+        results_f80[i] = acosh(data_f80[i][1]);
     }
 
-    for (data_f128) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            acosh(test_case[1]),
-            std.math.floatEpsAt(f128, test_case[0]),
-        );
+    for (0..data_f128.len) |i| {
+        results_f128[i] = acosh(data_f128[i][1]);
     }
+
+    tzml.float.printReport(
+        "float.acosh",
+        data_f32,
+        results_f32,
+        data_f64,
+        results_f64,
+        data_f80,
+        results_f80,
+        data_f128,
+        results_f128,
+    );
 }

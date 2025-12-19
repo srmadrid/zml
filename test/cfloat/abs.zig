@@ -1,6 +1,7 @@
 const std = @import("std");
 const zml = @import("zml");
 const abs = zml.cfloat.abs;
+const tzml = @import("../zml.zig");
 
 const data_cf32: [25]struct { f32, zml.cf32 } = .{
     .{ 0xc.69ce3p+0, zml.cf32.init(0xcp-4, 0xc.64p+0) },
@@ -121,19 +122,36 @@ const data_cf128: [27]struct { f128, zml.cf128 } = .{
 };
 
 test abs {
-    for (data_cf32) |test_case| {
-        try std.testing.expectEqual(test_case[0], abs(test_case[1]));
+    var results_cf32: [data_cf32.len]f32 = undefined;
+    var results_cf64: [data_cf64.len]f64 = undefined;
+    var results_cf80: [data_cf80.len]f80 = undefined;
+    var results_cf128: [data_cf128.len]f128 = undefined;
+
+    for (0..data_cf32.len) |i| {
+        results_cf32[i] = abs(data_cf32[i][1]);
     }
 
-    for (data_cf64) |test_case| {
-        try std.testing.expectEqual(test_case[0], abs(test_case[1]));
+    for (0..data_cf64.len) |i| {
+        results_cf64[i] = abs(data_cf64[i][1]);
     }
 
-    for (data_cf80) |test_case| {
-        try std.testing.expectEqual(test_case[0], abs(test_case[1]));
+    for (0..data_cf80.len) |i| {
+        results_cf80[i] = abs(data_cf80[i][1]);
     }
 
-    for (data_cf128) |test_case| {
-        try std.testing.expectEqual(test_case[0], abs(test_case[1]));
+    for (0..data_cf128.len) |i| {
+        results_cf128[i] = abs(data_cf128[i][1]);
     }
+
+    tzml.cfloat.printReport(
+        "cfloat.abs",
+        data_cf32,
+        results_cf32,
+        data_cf64,
+        results_cf64,
+        data_cf80,
+        results_cf80,
+        data_cf128,
+        results_cf128,
+    );
 }

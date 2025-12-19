@@ -369,7 +369,7 @@ const data_f80: [139]struct { f80, f80 } = .{
     .{ -0x8p-16448, -0x8p-16448 },
 };
 
-const data_f128: [149]struct { f128, f128 } = .{
+const data_f128: [150]struct { f128, f128 } = .{
     .{ 0x0p+0, 0x0p+0 },
     .{ -0x0p+0, -0x0p+0 },
     .{ 0x1.b7e151628aed2a6abf7158809cf5p+0, 0x1p+0 },
@@ -497,7 +497,7 @@ const data_f128: [149]struct { f128, f128 } = .{
     .{ 0x6.c23b7a4dd5957bac63c564d0b838p-4, 0x5.a343df0d68008p-4 },
     .{ 0x6.c23b7a4dd595a02ad825029fb488p-4, 0x5.a343df0d680099a8p-4 },
     .{ 0x6.c23b7a4dd595a01f77074578c9bcp-4, 0x5.a343df0d680099ap-4 },
-    // .{ 0x6.c23b7a4dd595a02a51f35d6c1588p-4, 0x5.a343df0d680099a7a1a873a751a8p-4 },
+    .{ 0x6.c23b7a4dd595a02a51f35d6c1588p-4, 0x5.a343df0d680099a7a1a873a751a8p-4 },
     .{ 0x6.c23b7a4dd595a02a51f35d6c1604p-4, 0x5.a343df0d680099a7a1a873a752p-4 },
     .{ 0x6.c23b7a4dd595a02a51f35d6c132cp-4, 0x5.a343df0d680099a7a1a873a75p-4 },
     .{ 0x4p-128, 0x4p-128 },
@@ -523,35 +523,36 @@ const data_f128: [149]struct { f128, f128 } = .{
 };
 
 test expm1 {
-    for (data_f32) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            expm1(test_case[1]),
-            std.math.floatEpsAt(f32, test_case[0]),
-        );
+    var results_f32: [data_f32.len]f32 = undefined;
+    var results_f64: [data_f64.len]f64 = undefined;
+    var results_f80: [data_f80.len]f80 = undefined;
+    var results_f128: [data_f128.len]f128 = undefined;
+
+    for (0..data_f32.len) |i| {
+        results_f32[i] = expm1(data_f32[i][1]);
     }
 
-    for (data_f64) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            expm1(test_case[1]),
-            std.math.floatEpsAt(f64, test_case[0]),
-        );
+    for (0..data_f64.len) |i| {
+        results_f64[i] = expm1(data_f64[i][1]);
     }
 
-    for (data_f80) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            expm1(test_case[1]),
-            std.math.floatEpsAt(f80, test_case[0]),
-        );
+    for (0..data_f80.len) |i| {
+        results_f80[i] = expm1(data_f80[i][1]);
     }
 
-    for (data_f128) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            expm1(test_case[1]),
-            std.math.floatEpsAt(f128, test_case[0]),
-        );
+    for (0..data_f128.len) |i| {
+        results_f128[i] = expm1(data_f128[i][1]);
     }
+
+    tzml.float.printReport(
+        "float.expm1",
+        data_f32,
+        results_f32,
+        data_f64,
+        results_f64,
+        data_f80,
+        results_f80,
+        data_f128,
+        results_f128,
+    );
 }

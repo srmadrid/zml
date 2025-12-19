@@ -1,6 +1,6 @@
 const types = @import("../types.zig");
-const float = @import("../float.zig");
 const Scalar = types.Scalar;
+const float = @import("../float.zig");
 
 pub fn abs(z: anytype) Scalar(@TypeOf(z)) {
     comptime if (types.numericType(@TypeOf(z)) != .cfloat)

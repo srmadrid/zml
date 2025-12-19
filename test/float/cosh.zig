@@ -397,7 +397,7 @@ const data_f80: [165]struct { f80, f80 } = .{
     .{ 0xf.ffee36239bc01b2p+16380, -0x2.c5d376eefcd4bbecp+12 },
 };
 
-const data_f128: [189]struct { f128, f128 } = .{
+const data_f128: [192]struct { f128, f128 } = .{
     .{ 0x1p+0, 0x0p+0 },
     .{ 0x1p+0, -0x0p+0 },
     .{ 0x1.4b705d1e5d6a787aa2de94beca32p+0, 0xcp-4 },
@@ -578,8 +578,8 @@ const data_f128: [189]struct { f128, f128 } = .{
     .{ 0xf.eb9d7748586375cf28c2e4264d88p+1020, 0x2.c6788afe3ccd6p+8 },
     .{ std.math.inf(f128), 0x2.c5d378p+12 },
     .{ 0xf.fcff8165c0f3206f5cab3921788p+16380, 0x2.c5d374p+12 },
-    // .{ 0xf.ff15bf3871a75761db61506a9bbp+16380, 0x2.c5d376167f406p+12 },
-    // .{ 0xf.ff15bf3851a92be36a9dffe75668p+16380, 0x2.c5d376167f404p+12 },
+    .{ 0xf.ff15bf3871a75761db61506a9bbp+16380, 0x2.c5d376167f406p+12 },
+    .{ 0xf.ff15bf3851a92be36a9dffe75668p+16380, 0x2.c5d376167f404p+12 },
     .{ 0xf.ff15bf38649c16662e1ff4acb94p+16380, 0x2.c5d376167f4052f4p+12 },
     .{ 0xf.fcff8165c0f3206f5cab3921788p+16380, -0x2.c5d374p+12 },
     .{ std.math.inf(f128), -0x2.c5d378p+12 },
@@ -587,41 +587,42 @@ const data_f128: [189]struct { f128, f128 } = .{
     .{ 0xf.ffee36239fd416975d055a5c2fep+16380, -0x2.c5d376eefcd4cp+12 },
     .{ 0xf.ffee36239bbc1b2482e87ba9d31p+16380, -0x2.c5d376eefcd4bbe8p+12 },
     .{ 0xf.ffee36239bc01b201071629959ep+16380, -0x2.c5d376eefcd4bbecp+12 },
-    // .{ 0xf.ffee36239bbf1b257fe2a0ad4a38p+16380, -0x2.c5d376eefcd4bbeb000452d84662p+12 },
+    .{ 0xf.ffee36239bbf1b257fe2a0ad4a38p+16380, -0x2.c5d376eefcd4bbeb000452d84662p+12 },
     .{ 0xf.ffee36239bbf1b257fe2a04b4aa8p+16380, -0x2.c5d376eefcd4bbeb000452d846p+12 },
     .{ 0xf.ffee36239bbf1b257fe2a14b4988p+16380, -0x2.c5d376eefcd4bbeb000452d847p+12 },
 };
 
 test cosh {
-    for (data_f32) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            cosh(test_case[1]),
-            std.math.floatEpsAt(f32, test_case[0]),
-        );
+    var results_f32: [data_f32.len]f32 = undefined;
+    var results_f64: [data_f64.len]f64 = undefined;
+    var results_f80: [data_f80.len]f80 = undefined;
+    var results_f128: [data_f128.len]f128 = undefined;
+
+    for (0..data_f32.len) |i| {
+        results_f32[i] = cosh(data_f32[i][1]);
     }
 
-    for (data_f64) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            cosh(test_case[1]),
-            std.math.floatEpsAt(f64, test_case[0]),
-        );
+    for (0..data_f64.len) |i| {
+        results_f64[i] = cosh(data_f64[i][1]);
     }
 
-    for (data_f80) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            cosh(test_case[1]),
-            std.math.floatEpsAt(f80, test_case[0]),
-        );
+    for (0..data_f80.len) |i| {
+        results_f80[i] = cosh(data_f80[i][1]);
     }
 
-    for (data_f128) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            cosh(test_case[1]),
-            std.math.floatEpsAt(f128, test_case[0]),
-        );
+    for (0..data_f128.len) |i| {
+        results_f128[i] = cosh(data_f128[i][1]);
     }
+
+    tzml.float.printReport(
+        "float.cosh",
+        data_f32,
+        results_f32,
+        data_f64,
+        results_f64,
+        data_f80,
+        results_f80,
+        data_f128,
+        results_f128,
+    );
 }

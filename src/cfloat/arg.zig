@@ -1,7 +1,7 @@
 const types = @import("../types.zig");
-const float = @import("../float.zig");
-const Scalar = types.Scalar;
 const EnsureFloat = types.EnsureFloat;
+const Scalar = types.Scalar;
+const float = @import("../float.zig");
 
 pub fn arg(z: anytype) EnsureFloat(Scalar(@TypeOf(z))) {
     comptime if (!types.isFixedPrecision(@TypeOf(z)))

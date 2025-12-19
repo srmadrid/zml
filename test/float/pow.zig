@@ -4063,7 +4063,7 @@ const data_f80: [1977]struct { f80, f80, f80 } = blk: {
     };
 };
 
-const data_f128: [2853]struct { f128, f128, f128 } = blk: {
+const data_f128: [2854]struct { f128, f128, f128 } = blk: {
     @setEvalBranchQuota(10000);
     break :blk .{
         .{ 0x1p+0, 0x0p+0, 0x0p+0 },
@@ -6915,7 +6915,7 @@ const data_f128: [2853]struct { f128, f128, f128 } = blk: {
         .{ 0x3.c74e2eeb2cd0026957cffeb3a1f4p-36, 0x1.ce78f2p+0, -0x2.7f1f78p+4 },
         .{ 0x2.35bc23fdfc30b0399e26d6c287bcp-732, 0xf.fffffp+124, -0x5.b5b648p+0 },
         .{ 0x8.df24532d4b7d75f382e88fde63a8p+24, 0x1.430d4cp+0, 0x5.0e462p+4 },
-        // .{ 0xd.20e27f191eac856f26aecd57757p+4880, 0x9.8b82ap-4, -0x1.99907ap+12 },
+        .{ 0xd.20e27f191eac856f26aecd57757p+4880, 0x9.8b82ap-4, -0x1.99907ap+12 },
         .{ 0x4.523987c590d3192757b32fb92c74p+80, 0xd.73035p-4, -0x1.47bb8p+8 },
         .{ 0xf.ffe5535a38f9be648255c105d568p+124, 0x1.059c76p+0, 0xf.fc05fp+8 },
         .{ 0xf.fffff29cf02eeec4a7cde7b5a2ep+124, 0x2.f58f8p+4, 0x1.7p+4 },
@@ -6924,35 +6924,36 @@ const data_f128: [2853]struct { f128, f128, f128 } = blk: {
 };
 
 test pow {
-    for (data_f32) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            pow(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f32, test_case[0]),
-        );
+    var results_f32: [data_f32.len]f32 = undefined;
+    var results_f64: [data_f64.len]f64 = undefined;
+    var results_f80: [data_f80.len]f80 = undefined;
+    var results_f128: [data_f128.len]f128 = undefined;
+
+    for (0..data_f32.len) |i| {
+        results_f32[i] = pow(data_f32[i][1], data_f32[i][2]);
     }
 
-    for (data_f64) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            pow(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f64, test_case[0]),
-        );
+    for (0..data_f64.len) |i| {
+        results_f64[i] = pow(data_f64[i][1], data_f64[i][2]);
     }
 
-    for (data_f80) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            pow(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f80, test_case[0]),
-        );
+    for (0..data_f80.len) |i| {
+        results_f80[i] = pow(data_f80[i][1], data_f80[i][2]);
     }
 
-    for (data_f128) |test_case| {
-        try tzml.expectApproxEqAbs(
-            test_case[0],
-            pow(test_case[1], test_case[2]),
-            std.math.floatEpsAt(f128, test_case[0]),
-        );
+    for (0..data_f128.len) |i| {
+        results_f128[i] = pow(data_f128[i][1], data_f128[i][2]);
     }
+
+    tzml.float.printReport(
+        "float.pow",
+        data_f32,
+        results_f32,
+        data_f64,
+        results_f64,
+        data_f80,
+        results_f80,
+        data_f128,
+        results_f128,
+    );
 }
