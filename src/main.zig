@@ -562,8 +562,24 @@ pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
-    const a = gpa.allocator();
-    //const a = std.heap.page_allocator;
+    //const a = gpa.allocator();
+
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
+    const rand = prng.random();
+
+    const a: zml.cf64 = .init(rand.float(f64), rand.float(f64));
+    const b: zml.cf64 = .init(rand.float(f64), rand.float(f64));
+    const c: zml.cf64 = .init(rand.float(f64), rand.float(f64));
+
+    std.debug.print("a = {}\n", .{a});
+    std.debug.print("b = {}\n", .{b});
+    std.debug.print("c = {}\n", .{c});
+
+    const d_direct: zml.cf64 = zml.cfloat.add(zml.cfloat.mul(a, b), c);
+    const d_fma: zml.cf64 = zml.cfloat.fma(a, b, c);
+    std.debug.print("Direct (a*b)+c = {}\n", .{d_direct});
+    std.debug.print("FMA fma(a,b,c) = {}\n", .{d_fma});
+    std.debug.print("Difference = {}\n", .{zml.cfloat.abs(zml.cfloat.sub(d_direct, d_fma))});
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;
@@ -594,7 +610,7 @@ pub fn main() !void {
 
     // try decompPerfTesting(a);
 
-    try vectorTesting(a);
+    //try vectorTesting(a);
 
     // try matrixTesting(a);
 

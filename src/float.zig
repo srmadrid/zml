@@ -99,6 +99,26 @@ pub inline fn mul(
     return types.scast(C, x) * types.scast(C, y);
 }
 
+pub inline fn fma(
+    x: anytype,
+    y: anytype,
+    z: anytype,
+) Coerce(@TypeOf(x), Coerce(@TypeOf(y), @TypeOf(z))) {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+    const Z: type = @TypeOf(z);
+    const C: type = Coerce(X, Coerce(Y, Z));
+
+    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float) or
+        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float) or
+        (types.numericType(Z) != .bool and types.numericType(Z) != .int and types.numericType(Z) != .float) or
+        (types.numericType(X) != .float and types.numericType(Y) != .float and types.numericType(Z) != .float))
+        @compileError("float.fma requires at least one of x, y or z to be a float, the others must be bool, int or float, got " ++
+            @typeName(X) ++ " and " ++ @typeName(Y));
+
+    return @mulAdd(C, types.scast(C, x), types.scast(C, y), types.scast(C, z));
+}
+
 pub inline fn div(
     x: anytype,
     y: anytype,

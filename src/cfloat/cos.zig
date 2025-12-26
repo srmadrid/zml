@@ -1,20 +1,25 @@
 const types = @import("../types.zig");
-const cfloat = @import("../cfloat.zig");
-const Scalar = types.Scalar;
-const EnsureFloat = types.EnsureFloat;
-const Cfloat = @import("../cfloat.zig").Cfloat;
-const scast = types.scast;
+const float = @import("../float.zig");
 
-pub fn cos(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("cfloat.cos: z must be a bool, int, float or cfloat, got " ++ @typeName(@TypeOf(z)));
+pub fn cos(z: anytype) @TypeOf(z) {
+    comptime if (types.numericType(@TypeOf(z)) != .cfloat)
+        @compileError("cfloat.cos: z must be a cfloat, got " ++ @typeName(@TypeOf(z)));
 
-    const zz: Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) = scast(Cfloat(EnsureFloat(Scalar(@TypeOf(z)))), z);
+    var s: @TypeOf(z.re) = undefined;
+    var c: @TypeOf(z.re) = undefined;
+    if (float.abs(z.re) <= 0.5) {
+        s = float.sinh(z.im);
+        c = float.cosh(z.im);
+    } else {
+        var e: @TypeOf(z.re) = float.exp(z.im);
+        const e_inv: @TypeOf(z.re) = 0.5 / e;
+        e = 0.5 * e;
+        s = e - e_inv;
+        c = e + e_inv;
+    }
 
-    const y: @TypeOf(zz) = .{
-        .re = -zz.im,
-        .im = zz.re,
+    return .{
+        .re = float.cos(z.re) * c,
+        .im = float.sin(z.re) * s,
     };
-
-    return cfloat.cosh(y);
 }

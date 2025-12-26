@@ -1,14 +1,15 @@
 const std = @import("std");
 const zml = @import("zml");
 const exp = zml.cfloat.exp;
+const tzml = @import("../zml.zig");
 
-const data_cf32: [31]struct { zml.cf32, zml.cf32 } = .{
+const data_cf32: [35]struct { zml.cf32, zml.cf32 } = .{
     .{ zml.cf32.init(0x1p+0, 0x0p+0), zml.cf32.init(0x0p+0, 0x0p+0) },
     .{ zml.cf32.init(0x1p+0, 0x0p+0), zml.cf32.init(-0x0p+0, 0x0p+0) },
     .{ zml.cf32.init(0x1p+0, -0x0p+0), zml.cf32.init(0x0p+0, -0x0p+0) },
     .{ zml.cf32.init(0x1p+0, -0x0p+0), zml.cf32.init(-0x0p+0, -0x0p+0) },
-    // .{ zml.cf32.init(0xa.ae3bcp-4, 0x2.024ddcp+0), zml.cf32.init(0xcp-4, 0x1.4p+0) },
-    // .{ zml.cf32.init(-0x2.24c92cp-4, -0x4.e3a3fp-8), zml.cf32.init(-0x2p+0, -0x3p+0) },
+    .{ zml.cf32.init(0xa.ae3bcp-4, 0x2.024ddcp+0), zml.cf32.init(0xcp-4, 0x1.4p+0) },
+    .{ zml.cf32.init(-0x2.24c92cp-4, -0x4.e3a3fp-8), zml.cf32.init(-0x2p+0, -0x3p+0) },
     .{ zml.cf32.init(0xf.fb702p-4, -0xc.143e1p-8), zml.cf32.init(0x0p+0, 0x2p+64) },
     .{ zml.cf32.init(0xf.fb702p-4, 0xc.143e1p-8), zml.cf32.init(0x0p+0, -0x2p+64) },
     .{ zml.cf32.init(0xd.bc483p+68, 0xa.f35fcp+68), zml.cf32.init(0x3.2p+4, 0x8p+124) },
@@ -18,13 +19,13 @@ const data_cf32: [31]struct { zml.cf32, zml.cf32 } = .{
     .{ zml.cf32.init(std.math.inf(f32), -std.math.inf(f32)), zml.cf32.init(0x1.f4p+8, 0xf.fffffp+124) },
     .{ zml.cf32.init(0xd.a5f96p-4, -0x8.599b3p-4), zml.cf32.init(0x0p+0, 0xf.fffffp+124) },
     .{ zml.cf32.init(0x0p+0, -0x0p+0), zml.cf32.init(-0x2.71p+12, 0xf.fffffp+124) },
-    // .{ zml.cf32.init(0xc.0783ap+124, 0xb.34dd5p+124), zml.cf32.init(0x5.8cp+4, 0xcp-4) },
+    .{ zml.cf32.init(0xc.0783ap+124, 0xb.34dd5p+124), zml.cf32.init(0x5.8cp+4, 0xcp-4) },
     .{ zml.cf32.init(0x5.a18p-140, 0x5.3fp-140), zml.cf32.init(-0x5.fp+4, 0xcp-4) },
     .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x2.c5dp+8, 0xcp-4) },
     .{ zml.cf32.init(0x0p+0, 0x0p+0), zml.cf32.init(-0x2.dp+8, 0xcp-4) },
     .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x2.c5c9p+12, 0xcp-4) },
     .{ zml.cf32.init(0x0p+0, 0x0p+0), zml.cf32.init(-0x2.c6ap+12, 0xcp-4) },
-    // .{ zml.cf32.init(std.math.inf(f32), 0x6.6e68c8p+108), zml.cf32.init(0xb.4p+4, 0x8p-152) },
+    .{ zml.cf32.init(std.math.inf(f32), 0x6.6e68c8p+108), zml.cf32.init(0xb.4p+4, 0x8p-152) },
     .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x5.ap+8, 0x8p-152) },
     .{ zml.cf32.init(std.math.inf(f32), 0x0p+0), zml.cf32.init(0x5.ap+8, 0x0p+0) },
     .{ zml.cf32.init(std.math.inf(f32), std.math.inf(f32)), zml.cf32.init(0x5.8cap+12, 0x8p-152) },
@@ -40,7 +41,7 @@ const data_cf32: [31]struct { zml.cf32, zml.cf32 } = .{
     .{ zml.cf32.init(0x1p+0, -0x8p-152), zml.cf32.init(0x4p-128, -0x8p-152) },
 };
 
-const data_cf64: [58]struct { zml.cf64, zml.cf64 } = .{
+const data_cf64: [62]struct { zml.cf64, zml.cf64 } = .{
     .{ zml.cf64.init(0x1p+0, 0x0p+0), zml.cf64.init(0x0p+0, 0x0p+0) },
     .{ zml.cf64.init(0x1p+0, 0x0p+0), zml.cf64.init(-0x0p+0, 0x0p+0) },
     .{ zml.cf64.init(0x1p+0, -0x0p+0), zml.cf64.init(0x0p+0, -0x0p+0) },
@@ -49,21 +50,21 @@ const data_cf64: [58]struct { zml.cf64, zml.cf64 } = .{
     .{ zml.cf64.init(-0x2.24c92bfe91964p-4, -0x4.e3a3eebe631d4p-8), zml.cf64.init(-0x2p+0, -0x3p+0) },
     .{ zml.cf64.init(0xf.fb701e22987f8p-4, -0xc.143e153b0702p-8), zml.cf64.init(0x0p+0, 0x2p+64) },
     .{ zml.cf64.init(0xf.fb701e22987f8p-4, 0xc.143e153b0702p-8), zml.cf64.init(0x0p+0, -0x2p+64) },
-    // .{ zml.cf64.init(0xd.bc4832122aeap+68, 0xa.f35fc6babe8p+68), zml.cf64.init(0x3.2p+4, 0x8p+124) },
+    .{ zml.cf64.init(0xd.bc4832122aeap+68, 0xa.f35fc6babe8p+68), zml.cf64.init(0x3.2p+4, 0x8p+124) },
     .{ zml.cf64.init(0xf.431dd7a36cf38p-4, -0x4.cd7e86c4077cp-4), zml.cf64.init(0x0p+0, 0x2.1e19e4p+72) },
     .{ zml.cf64.init(0xa.dd6f6bacd2068p-4, -0xb.becc47ab1b8c8p-4), zml.cf64.init(0x0p+0, 0x2.1e19ep+72) },
     .{ zml.cf64.init(0x8.5f167780e47ap-4, -0xd.a29d5bb5f9cb8p-4), zml.cf64.init(0x0p+0, 0x2.1e19e0c9bab24p+72) },
     .{ zml.cf64.init(0xd.a5f963cdefe7p-4, -0x8.599b32844aba8p-4), zml.cf64.init(0x0p+0, 0xf.fffffp+124) },
     .{ zml.cf64.init(-0xd.38cf9361195f8p-4, 0x9.0292465edbbp-4), zml.cf64.init(0x0p+0, 0x8p+1020) },
     .{ zml.cf64.init(0x2.2bb44f145618p+720, -0x1.53fa90b97c5f3p+720), zml.cf64.init(0x1.f4p+8, 0xf.fffffp+124) },
-    // .{ zml.cf64.init(-0x2.1a57a00f46cap+720, 0x1.6eda2234d2fb8p+720), zml.cf64.init(0x1.f4p+8, 0x8p+1020) },
+    .{ zml.cf64.init(-0x2.1a57a00f46cap+720, 0x1.6eda2234d2fb8p+720), zml.cf64.init(0x1.f4p+8, 0x8p+1020) },
     .{ zml.cf64.init(0xd.a5f963cdefe7p-4, -0x8.599b32844aba8p-4), zml.cf64.init(0x0p+0, 0xf.fffffp+124) },
     .{ zml.cf64.init(-0xf.fff31767d5ba8p-4, 0x1.452fc98b34e97p-8), zml.cf64.init(0x0p+0, 0xf.ffffffffffff8p+1020) },
     .{ zml.cf64.init(0x0p+0, -0x0p+0), zml.cf64.init(-0x2.71p+12, 0xf.fffffp+124) },
     .{ zml.cf64.init(-0x0p+0, 0x0p+0), zml.cf64.init(-0x2.71p+12, 0xf.ffffffffffff8p+1020) },
     .{ zml.cf64.init(0xc.0783a6d3e5c3p+124, 0xb.34dd5592f15a8p+124), zml.cf64.init(0x5.8cp+4, 0xcp-4) },
-    // .{ zml.cf64.init(0x5.a16b1470bfb7cp-140, 0x5.3ed1f6801e8acp-140), zml.cf64.init(-0x5.fp+4, 0xcp-4) },
-    // .{ zml.cf64.init(0xc.0f9cc448d42c8p+1020, 0xb.3c68a413f4468p+1020), zml.cf64.init(0x2.c5dp+8, 0xcp-4) },
+    .{ zml.cf64.init(0x5.a16b1470bfb7cp-140, 0x5.3ed1f6801e8acp-140), zml.cf64.init(-0x5.fp+4, 0xcp-4) },
+    .{ zml.cf64.init(0xc.0f9cc448d42c8p+1020, 0xb.3c68a413f4468p+1020), zml.cf64.init(0x2.c5dp+8, 0xcp-4) },
     .{ zml.cf64.init(0x1.c078b9f18p-1040, 0x1.a1cb672dp-1040), zml.cf64.init(-0x2.dp+8, 0xcp-4) },
     .{ zml.cf64.init(std.math.inf(f64), std.math.inf(f64)), zml.cf64.init(0x2.c5c9p+12, 0xcp-4) },
     .{ zml.cf64.init(0x0p+0, 0x0p+0), zml.cf64.init(-0x2.c6ap+12, 0xcp-4) },
@@ -105,16 +106,16 @@ const data_cf64: [58]struct { zml.cf64, zml.cf64 } = .{
     .{ zml.cf64.init(0x1p+0, -0x4p-1076), zml.cf64.init(0x8p-972, -0x4p-1076) },
 };
 
-const data_cf80: [85]struct { zml.cf80, zml.cf80 } = .{
+const data_cf80: [93]struct { zml.cf80, zml.cf80 } = .{
     .{ zml.cf80.init(0x1p+0, 0x0p+0), zml.cf80.init(0x0p+0, 0x0p+0) },
     .{ zml.cf80.init(0x1p+0, 0x0p+0), zml.cf80.init(-0x0p+0, 0x0p+0) },
     .{ zml.cf80.init(0x1p+0, -0x0p+0), zml.cf80.init(0x0p+0, -0x0p+0) },
     .{ zml.cf80.init(0x1p+0, -0x0p+0), zml.cf80.init(-0x0p+0, -0x0p+0) },
-    // .{ zml.cf80.init(0xa.ae3bbed44ba9736p-4, 0x2.024dda939ed8dc98p+0), zml.cf80.init(0xcp-4, 0x1.4p+0) },
+    .{ zml.cf80.init(0xa.ae3bbed44ba9736p-4, 0x2.024dda939ed8dc98p+0), zml.cf80.init(0xcp-4, 0x1.4p+0) },
     .{ zml.cf80.init(-0x2.24c92bfe91963d04p-4, -0x4.e3a3eebe631d442p-8), zml.cf80.init(-0x2p+0, -0x3p+0) },
     .{ zml.cf80.init(0xf.fb701e22987fbe7p-4, -0xc.143e153b0701e8p-8), zml.cf80.init(0x0p+0, 0x2p+64) },
     .{ zml.cf80.init(0xf.fb701e22987fbe7p-4, 0xc.143e153b0701e8p-8), zml.cf80.init(0x0p+0, -0x2p+64) },
-    // .{ zml.cf80.init(0xd.bc4832122ae9c44p+68, 0xa.f35fc6babe7fd7p+68), zml.cf80.init(0x3.2p+4, 0x8p+124) },
+    .{ zml.cf80.init(0xd.bc4832122ae9c44p+68, 0xa.f35fc6babe7fd7p+68), zml.cf80.init(0x3.2p+4, 0x8p+124) },
     .{ zml.cf80.init(0xf.431dd7a36cf37dep-4, -0x4.cd7e86c4077bf0ep-4), zml.cf80.init(0x0p+0, 0x2.1e19e4p+72) },
     .{ zml.cf80.init(0xa.dd6f6bacd20654cp-4, -0xb.becc47ab1b8c708p-4), zml.cf80.init(0x0p+0, 0x2.1e19ep+72) },
     .{ zml.cf80.init(0x8.5f167780e479c9ap-4, -0xd.a29d5bb5f9cb87dp-4), zml.cf80.init(0x0p+0, 0x2.1e19e0c9bab24p+72) },
@@ -125,14 +126,14 @@ const data_cf80: [85]struct { zml.cf80, zml.cf80 } = .{
     .{ zml.cf80.init(0xd.a5f963cdefe6d53p-4, -0x8.599b32844aba907p-4), zml.cf80.init(0x0p+0, 0xf.fffffp+124) },
     .{ zml.cf80.init(-0xf.fff31767d5ba9ep-4, 0x1.452fc98b34e96b62p-8), zml.cf80.init(0x0p+0, 0xf.ffffffffffff8p+1020) },
     .{ zml.cf80.init(0xe.bcc2fc82ae39ecp-4, 0x6.3ad4b2136cc6882p-4), zml.cf80.init(0x0p+0, 0x8p+16380) },
-    // .{ zml.cf80.init(0x1.c4053e6f86ae06fap-14428, -0x1.148b929412b0629cp-14428), zml.cf80.init(-0x2.71p+12, 0xf.fffffp+124) },
+    .{ zml.cf80.init(0x1.c4053e6f86ae06fap-14428, -0x1.148b929412b0629cp-14428), zml.cf80.init(-0x2.71p+12, 0xf.fffffp+124) },
     .{ zml.cf80.init(-0x2.11e61ef928e7d0fp-14428, 0x2.a11e2ecfaecac194p-14436), zml.cf80.init(-0x2.71p+12, 0xf.ffffffffffff8p+1020) },
-    // .{ zml.cf80.init(0x1.e8166e7f3558751cp-14428, 0xc.e535876597146d4p-14432), zml.cf80.init(-0x2.71p+12, 0x8p+16380) },
-    // .{ zml.cf80.init(0xc.0783a6d3e5c3238p+124, 0xb.34dd5592f15a8d6p+124), zml.cf80.init(0x5.8cp+4, 0xcp-4) },
-    // .{ zml.cf80.init(0x5.a16b1470bfb7dfd8p-140, 0x5.3ed1f6801e8aae4p-140), zml.cf80.init(-0x5.fp+4, 0xcp-4) },
-    // .{ zml.cf80.init(0xc.0f9cc448d42c9e2p+1020, 0xb.3c68a413f4464cep+1020), zml.cf80.init(0x2.c5dp+8, 0xcp-4) },
+    .{ zml.cf80.init(0x1.e8166e7f3558751cp-14428, 0xc.e535876597146d4p-14432), zml.cf80.init(-0x2.71p+12, 0x8p+16380) },
+    .{ zml.cf80.init(0xc.0783a6d3e5c3238p+124, 0xb.34dd5592f15a8d6p+124), zml.cf80.init(0x5.8cp+4, 0xcp-4) },
+    .{ zml.cf80.init(0x5.a16b1470bfb7dfd8p-140, 0x5.3ed1f6801e8aae4p-140), zml.cf80.init(-0x5.fp+4, 0xcp-4) },
+    .{ zml.cf80.init(0xc.0f9cc448d42c9e2p+1020, 0xb.3c68a413f4464cep+1020), zml.cf80.init(0x2.c5dp+8, 0xcp-4) },
     .{ zml.cf80.init(0x1.c078b9f17de70504p-1040, 0x1.a1cb672cfaaa50eep-1040), zml.cf80.init(-0x2.dp+8, 0xcp-4) },
-    // .{ zml.cf80.init(0xc.2c7b4ebbdc07f29p+16380, 0xb.574da480ee94521p+16380), zml.cf80.init(0x2.c5c9p+12, 0xcp-4) },
+    .{ zml.cf80.init(0xc.2c7b4ebbdc07f29p+16380, 0xb.574da480ee94521p+16380), zml.cf80.init(0x2.c5c9p+12, 0xcp-4) },
     .{ zml.cf80.init(0x1.13a6153b6cp-16404, 0x1.00cb1cf14f8p-16404), zml.cf80.init(-0x2.c6ap+12, 0xcp-4) },
     .{ zml.cf80.init(0xc.dcd1958ec442a6ep+256, 0x6.6e68cac76221537p+108), zml.cf80.init(0xb.4p+4, 0x8p-152) },
     .{ zml.cf80.init(0x2.ca88b529f424d188p+2076, 0x1.65445a94fa1268c4p+1928), zml.cf80.init(0x5.ap+8, 0x8p-152) },
@@ -201,35 +202,35 @@ const data_cf80: [85]struct { zml.cf80, zml.cf80 } = .{
     .{ zml.cf80.init(0x1p+0, -0x8p-16448), zml.cf80.init(0x8p-972, -0x8p-16448) },
 };
 
-const data_cf128: [107]struct { zml.cf128, zml.cf128 } = .{
+const data_cf128: [119]struct { zml.cf128, zml.cf128 } = .{
     .{ zml.cf128.init(0x1p+0, 0x0p+0), zml.cf128.init(0x0p+0, 0x0p+0) },
     .{ zml.cf128.init(0x1p+0, 0x0p+0), zml.cf128.init(-0x0p+0, 0x0p+0) },
     .{ zml.cf128.init(0x1p+0, -0x0p+0), zml.cf128.init(0x0p+0, -0x0p+0) },
     .{ zml.cf128.init(0x1p+0, -0x0p+0), zml.cf128.init(-0x0p+0, -0x0p+0) },
-    // .{ zml.cf128.init(0xa.ae3bbed44ba9735d1448d2314a5p-4, 0x2.024dda939ed8dc96880c3ee758aap+0), zml.cf128.init(0xcp-4, 0x1.4p+0) },
-    // .{ zml.cf128.init(-0x2.24c92bfe91963d02be8ecb5378aep-4, -0x4.e3a3eebe631d441ee01e4010f29cp-8), zml.cf128.init(-0x2p+0, -0x3p+0) },
+    .{ zml.cf128.init(0xa.ae3bbed44ba9735d1448d2314a5p-4, 0x2.024dda939ed8dc96880c3ee758aap+0), zml.cf128.init(0xcp-4, 0x1.4p+0) },
+    .{ zml.cf128.init(-0x2.24c92bfe91963d02be8ecb5378aep-4, -0x4.e3a3eebe631d441ee01e4010f29cp-8), zml.cf128.init(-0x2p+0, -0x3p+0) },
     .{ zml.cf128.init(0xf.fb701e22987fbe68852ee2bc897p-4, -0xc.143e153b0701e800f9b8a47b75b8p-8), zml.cf128.init(0x0p+0, 0x2p+64) },
     .{ zml.cf128.init(0xf.fb701e22987fbe68852ee2bc897p-4, 0xc.143e153b0701e800f9b8a47b75b8p-8), zml.cf128.init(0x0p+0, -0x2p+64) },
-    // .{ zml.cf128.init(0xd.bc4832122ae9c442e6aea322857p+68, 0xa.f35fc6babe7fd6fb2acbde63a738p+68), zml.cf128.init(0x3.2p+4, 0x8p+124) },
+    .{ zml.cf128.init(0xd.bc4832122ae9c442e6aea322857p+68, 0xa.f35fc6babe7fd6fb2acbde63a738p+68), zml.cf128.init(0x3.2p+4, 0x8p+124) },
     .{ zml.cf128.init(0xf.431dd7a36cf37de5c74544f6b438p-4, -0x4.cd7e86c4077bf0debc87d70d196p-4), zml.cf128.init(0x0p+0, 0x2.1e19e4p+72) },
     .{ zml.cf128.init(0xa.dd6f6bacd20654c1404f52cde16p-4, -0xb.becc47ab1b8c70793712c4ff2bcp-4), zml.cf128.init(0x0p+0, 0x2.1e19ep+72) },
     .{ zml.cf128.init(0x8.5f167780e479c9a5c86ffce7615p-4, -0xd.a29d5bb5f9cb87d14de41dc991fp-4), zml.cf128.init(0x0p+0, 0x2.1e19e0c9bab24p+72) },
     .{ zml.cf128.init(0xd.a5f963cdefe6d529f6b6009fb2fp-4, -0x8.599b32844aba906cee446be04998p-4), zml.cf128.init(0x0p+0, 0xf.fffffp+124) },
     .{ zml.cf128.init(-0xd.38cf9361195f50b10fac29dd9038p-4, 0x9.0292465edbaff2d2e64a2845e558p-4), zml.cf128.init(0x0p+0, 0x8p+1020) },
-    // .{ zml.cf128.init(0x2.2bb44f145617f434b0b6dacfc608p+720, -0x1.53fa90b97c5f314384c5dcbe454bp+720), zml.cf128.init(0x1.f4p+8, 0xf.fffffp+124) },
+    .{ zml.cf128.init(0x2.2bb44f145617f434b0b6dacfc608p+720, -0x1.53fa90b97c5f314384c5dcbe454bp+720), zml.cf128.init(0x1.f4p+8, 0xf.fffffp+124) },
     .{ zml.cf128.init(-0x2.1a57a00f46ca0104a4a8debe272cp+720, 0x1.6eda2234d2fb783c9b2dfe363655p+720), zml.cf128.init(0x1.f4p+8, 0x8p+1020) },
     .{ zml.cf128.init(0xd.a5f963cdefe6d529f6b6009fb2fp-4, -0x8.599b32844aba906cee446be04998p-4), zml.cf128.init(0x0p+0, 0xf.fffffp+124) },
     .{ zml.cf128.init(-0xf.fff31767d5ba9e038d934070f138p-4, 0x1.452fc98b34e96b61139b09a7c84ap-8), zml.cf128.init(0x0p+0, 0xf.ffffffffffff8p+1020) },
     .{ zml.cf128.init(0xe.bcc2fc82ae39ebf8da5d687bf36p-4, 0x6.3ad4b2136cc6881f0ca607c7946p-4), zml.cf128.init(0x0p+0, 0x8p+16380) },
     .{ zml.cf128.init(-0x5.b773d971a848e75c230605526978p-4, -0xe.f1a3e1dc468a921dddb4e37fbe6p-4), zml.cf128.init(0x0p+0, 0xf.ffffffffffffbffffffffffffcp+1020) },
-    // .{ zml.cf128.init(0x1.c4053e6f86ae06fa87507d1789ep-14428, -0x1.148b929412b0629b094c40cf114dp-14428), zml.cf128.init(-0x2.71p+12, 0xf.fffffp+124) },
-    // .{ zml.cf128.init(-0x2.11e61ef928e7d0efbe7438c4fcc4p-14428, 0x2.a11e2ecfaecac192b6a0e262eb98p-14436), zml.cf128.init(-0x2.71p+12, 0xf.ffffffffffff8p+1020) },
-    // .{ zml.cf128.init(0x1.e8166e7f3558751c32b0e3dea10dp-14428, 0xc.e535876597146d43011c92edfep-14432), zml.cf128.init(-0x2.71p+12, 0x8p+16380) },
-    // .{ zml.cf128.init(-0xb.d543737097bf3314fbbe8e859c68p-14432, -0x1.eeedb82a3f993d2142211659ef2ap-14428), zml.cf128.init(-0x2.71p+12, 0xf.ffffffffffffbffffffffffffcp+1020) },
-    // .{ zml.cf128.init(0xc.0783a6d3e5c3237fe2c102f4ba08p+124, 0xb.34dd5592f15a8d637411b4ac57e8p+124), zml.cf128.init(0x5.8cp+4, 0xcp-4) },
+    .{ zml.cf128.init(0x1.c4053e6f86ae06fa87507d1789ep-14428, -0x1.148b929412b0629b094c40cf114dp-14428), zml.cf128.init(-0x2.71p+12, 0xf.fffffp+124) },
+    .{ zml.cf128.init(-0x2.11e61ef928e7d0efbe7438c4fcc4p-14428, 0x2.a11e2ecfaecac192b6a0e262eb98p-14436), zml.cf128.init(-0x2.71p+12, 0xf.ffffffffffff8p+1020) },
+    .{ zml.cf128.init(0x1.e8166e7f3558751c32b0e3dea10dp-14428, 0xc.e535876597146d43011c92edfep-14432), zml.cf128.init(-0x2.71p+12, 0x8p+16380) },
+    .{ zml.cf128.init(-0xb.d543737097bf3314fbbe8e859c68p-14432, -0x1.eeedb82a3f993d2142211659ef2ap-14428), zml.cf128.init(-0x2.71p+12, 0xf.ffffffffffffbffffffffffffcp+1020) },
+    .{ zml.cf128.init(0xc.0783a6d3e5c3237fe2c102f4ba08p+124, 0xb.34dd5592f15a8d637411b4ac57e8p+124), zml.cf128.init(0x5.8cp+4, 0xcp-4) },
     .{ zml.cf128.init(0x5.a16b1470bfb7dfdbbfbeddb710d8p-140, 0x5.3ed1f6801e8aae3c0059585ef1e8p-140), zml.cf128.init(-0x5.fp+4, 0xcp-4) },
-    // .{ zml.cf128.init(0xc.0f9cc448d42c9e187ae50ff49e1p+1020, 0xb.3c68a413f4464ce19f9dc01a8ce8p+1020), zml.cf128.init(0x2.c5dp+8, 0xcp-4) },
-    // .{ zml.cf128.init(0x1.c078b9f17de705030eb7be1c38bep-1040, 0x1.a1cb672cfaaa50edd9f9bf2df7e3p-1040), zml.cf128.init(-0x2.dp+8, 0xcp-4) },
+    .{ zml.cf128.init(0xc.0f9cc448d42c9e187ae50ff49e1p+1020, 0xb.3c68a413f4464ce19f9dc01a8ce8p+1020), zml.cf128.init(0x2.c5dp+8, 0xcp-4) },
+    .{ zml.cf128.init(0x1.c078b9f17de705030eb7be1c38bep-1040, 0x1.a1cb672cfaaa50edd9f9bf2df7e3p-1040), zml.cf128.init(-0x2.dp+8, 0xcp-4) },
     .{ zml.cf128.init(0xc.2c7b4ebbdc07f2895c5da23f1578p+16380, 0xb.574da480ee945213770f41b94b9p+16380), zml.cf128.init(0x2.c5c9p+12, 0xcp-4) },
     .{ zml.cf128.init(0x1.13a6153b6bd9627c65c9a3p-16404, 0x1.00cb1cf14f92cea76ffbfc4p-16404), zml.cf128.init(-0x2.c6ap+12, 0xcp-4) },
     .{ zml.cf128.init(0xc.dcd1958ec442a6e599f65fac79e8p+256, 0x6.6e68cac762215372ccfb2fd63cf4p+108), zml.cf128.init(0xb.4p+4, 0x8p-152) },
@@ -239,7 +240,7 @@ const data_cf128: [107]struct { zml.cf128, zml.cf128 } = .{
     .{ zml.cf128.init(std.math.inf(f128), std.math.inf(f128)), zml.cf128.init(0x5.8cap+12, 0x8p-152) },
     .{ zml.cf128.init(std.math.inf(f128), 0x0p+0), zml.cf128.init(0x5.8cap+12, 0x0p+0) },
     .{ zml.cf128.init(std.math.inf(f128), std.math.inf(f128)), zml.cf128.init(0x5.8cap+12, 0x4p-1076) },
-    // .{ zml.cf128.init(std.math.inf(f128), 0x5.7ee03dfa85911cfdf85fbeeecbf8p+16356), zml.cf128.init(0x5.8cap+12, 0x4p-16436) },
+    .{ zml.cf128.init(std.math.inf(f128), 0x5.7ee03dfa85911cfdf85fbeeecbf8p+16356), zml.cf128.init(0x5.8cap+12, 0x4p-16436) },
     .{ zml.cf128.init(std.math.inf(f128), 0x0p+0), zml.cf128.init(0xf.424p+16, 0x0p+0) },
     .{ zml.cf128.init(std.math.inf(f128), std.math.inf(f128)), zml.cf128.init(0xf.424p+16, 0x4p-128) },
     .{ zml.cf128.init(std.math.inf(f128), std.math.inf(f128)), zml.cf128.init(0xf.424p+16, 0x4p-1024) },
@@ -324,19 +325,36 @@ const data_cf128: [107]struct { zml.cf128, zml.cf128 } = .{
 };
 
 test exp {
-    for (data_cf32) |test_case| {
-        try std.testing.expectEqual(test_case[0], exp(test_case[1]));
+    var results_cf32: [data_cf32.len]zml.cf32 = undefined;
+    var results_cf64: [data_cf64.len]zml.cf64 = undefined;
+    var results_cf80: [data_cf80.len]zml.cf80 = undefined;
+    var results_cf128: [data_cf128.len]zml.cf128 = undefined;
+
+    for (0..data_cf32.len) |i| {
+        results_cf32[i] = exp(data_cf32[i][1]);
     }
 
-    for (data_cf64) |test_case| {
-        try std.testing.expectEqual(test_case[0], exp(test_case[1]));
+    for (0..data_cf64.len) |i| {
+        results_cf64[i] = exp(data_cf64[i][1]);
     }
 
-    for (data_cf80) |test_case| {
-        try std.testing.expectEqual(test_case[0], exp(test_case[1]));
+    for (0..data_cf80.len) |i| {
+        results_cf80[i] = exp(data_cf80[i][1]);
     }
 
-    for (data_cf128) |test_case| {
-        try std.testing.expectEqual(test_case[0], exp(test_case[1]));
+    for (0..data_cf128.len) |i| {
+        results_cf128[i] = exp(data_cf128[i][1]);
     }
+
+    tzml.cfloat.printReport(
+        "cfloat.exp",
+        data_cf32,
+        results_cf32,
+        data_cf64,
+        results_cf64,
+        data_cf80,
+        results_cf80,
+        data_cf128,
+        results_cf128,
+    );
 }
