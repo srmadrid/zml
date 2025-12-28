@@ -8,6 +8,8 @@ pub const Diag = types.Diag;
 
 pub const int = @import("int.zig");
 pub const float = @import("float.zig");
+pub const dyadic = @import("dyadic.zig");
+pub const Dyadic = dyadic.Dyadic;
 pub const cfloat = @import("cfloat.zig");
 pub const cf16 = cfloat.cf16;
 pub const cf32 = cfloat.cf32;

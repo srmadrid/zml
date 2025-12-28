@@ -164,7 +164,7 @@ test {
     _ = @import("cfloat/abs.zig");
     _ = @import("cfloat/exp.zig");
     _ = @import("cfloat/log.zig");
-    // _ = @import("cfloat/pow.zig");
+    _ = @import("cfloat/pow.zig");
     _ = @import("cfloat/sqrt.zig");
     _ = @import("cfloat/sin.zig");
     _ = @import("cfloat/cos.zig");
@@ -172,10 +172,10 @@ test {
     _ = @import("cfloat/asin.zig");
     _ = @import("cfloat/acos.zig");
     _ = @import("cfloat/atan.zig");
-    // _ = @import("cfloat/sinh.zig");
-    // _ = @import("cfloat/cosh.zig");
-    // _ = @import("cfloat/tanh.zig");
-    // _ = @import("cfloat/asinh.zig");
-    // _ = @import("cfloat/acosh.zig");
-    // _ = @import("cfloat/atanh.zig");
+    _ = @import("cfloat/sinh.zig");
+    _ = @import("cfloat/cosh.zig");
+    _ = @import("cfloat/tanh.zig");
+    _ = @import("cfloat/asinh.zig");
+    _ = @import("cfloat/acosh.zig");
+    _ = @import("cfloat/atanh.zig");
 }

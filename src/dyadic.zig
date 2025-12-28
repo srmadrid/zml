@@ -8,8 +8,7 @@ const rational = @import("rational.zig");
 const _real = @import("real.zig");
 
 /// Arbitrary-precision (chosen at compile time)
-/// dyadic type, represented as two arbitrary-precision
-/// rational (`Rational`) or real (`Real`) numbers.
+/// dyadic type.
 pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
     if (mantissa_bits == 0 or exponent_bits == 0)
         @compileError("Dyadic requires both mantissa_bits and exponent_bits to be non-zero");

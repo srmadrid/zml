@@ -564,6 +564,8 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     //const a = gpa.allocator();
 
+    std.debug.print("Size of f64 as dyadic: {d} bytes\n", .{@sizeOf(zml.Dyadic(53, 11))});
+
     var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
     const rand = prng.random();
 
