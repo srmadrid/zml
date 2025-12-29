@@ -29,6 +29,14 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         cols: u32,
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_sparse = {};
+        pub const is_triangular = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty = Sparse(T, uplo, diag, order){
             .data = &.{},
             .idx = &.{},

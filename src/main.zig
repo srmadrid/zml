@@ -558,30 +558,25 @@ fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u3
     }
 }
 
+fn testCheckParameter(x: anytype) void {
+    comptime zml.types.checkParameterType(
+        "matrix.symmetric(@real) !matrix.dense",
+        @TypeOf(x),
+        "testCheckParameter",
+        "x",
+    );
+}
+
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     //const a = gpa.allocator();
 
-    std.debug.print("Size of f64 as dyadic: {d} bytes\n", .{@sizeOf(zml.Dyadic(53, 11))});
+    const x: zml.matrix.symmetric.Sparse(zml.cf64, .upper, .col_major) = undefined;
+    testCheckParameter(x);
 
-    var prng = std.Random.DefaultPrng.init(@bitCast(std.time.timestamp()));
-    const rand = prng.random();
-
-    const a: zml.cf64 = .init(rand.float(f64), rand.float(f64));
-    const b: zml.cf64 = .init(rand.float(f64), rand.float(f64));
-    const c: zml.cf64 = .init(rand.float(f64), rand.float(f64));
-
-    std.debug.print("a = {}\n", .{a});
-    std.debug.print("b = {}\n", .{b});
-    std.debug.print("c = {}\n", .{c});
-
-    const d_direct: zml.cf64 = zml.cfloat.add(zml.cfloat.mul(a, b), c);
-    const d_fma: zml.cf64 = zml.cfloat.fma(a, b, c);
-    std.debug.print("Direct (a*b)+c = {}\n", .{d_direct});
-    std.debug.print("FMA fma(a,b,c) = {}\n", .{d_fma});
-    std.debug.print("Difference = {}\n", .{zml.cfloat.abs(zml.cfloat.sub(d_direct, d_fma))});
+    std.debug.print("isvector: {}\n", .{zml.types.isVector(zml.vector.Sparse(zml.Dyadic(1000, 732)))});
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;

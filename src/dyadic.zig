@@ -28,6 +28,9 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         }),
         positive: bool,
 
+        /// Type signature
+        pub const is_dyadic = {};
+
         /// Initializes a new `Dyadic` with the specified value.
         ///
         /// Signature

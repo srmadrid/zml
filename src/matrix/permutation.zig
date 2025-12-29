@@ -36,16 +36,19 @@ pub fn Permutation(T: type) type {
         direction: Direction = .forward,
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_permutation = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty: Permutation(T) = .{
             .data = &.{},
             .size = 0,
             .direction = .forward,
             .flags = .{ .owns_data = false },
         };
-
-        pub fn tp() type {
-            return T;
-        }
 
         /// Initializes a new matrix with the specified size.
         ///

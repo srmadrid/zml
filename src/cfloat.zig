@@ -21,12 +21,18 @@ pub const cf128 = Cfloat(f128);
 pub const comptime_cfloat = Cfloat(comptime_float);
 
 pub fn Cfloat(comptime T: type) type {
-    if (types.numericType(T) != .float)
+    if (types.numericType(T) != .float and types.numericType(T) != .dyadic)
         @compileError("Unsupported type for Cfloat: " ++ @typeName(T));
 
     return struct {
         re: T,
         im: T,
+
+        /// Type signature
+        pub const is_cfloat = {};
+
+        /// Scalar type
+        pub const Scalar = T;
 
         pub fn init(re: T, im: T) Cfloat(T) {
             return .{

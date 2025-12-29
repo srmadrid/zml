@@ -1,15 +1,15 @@
 const std = @import("std");
 
-const types = @import("../types.zig");
+const types = @import("../../types.zig");
 const Order = types.Order;
-const ops = @import("../ops.zig");
-const constants = @import("../constants.zig");
-const int = @import("../int.zig");
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
 
-const matrix = @import("../matrix.zig");
+const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../array.zig");
+const array = @import("../../array.zig");
 
 /// Banded matrix type, represented as a contiguous array of
 /// `n × (lower + upper + 1)` elements of type `T`, stored in either
@@ -28,6 +28,14 @@ pub fn Banded(T: type, order: Order) type {
         lower: u32,
         upper: u32,
         flags: Flags = .{},
+
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_banded = {};
+        pub const is_general = {};
+
+        /// Numeric type
+        pub const Numeric = T;
 
         pub const empty: Banded(T, order) = .{
             .data = &.{},

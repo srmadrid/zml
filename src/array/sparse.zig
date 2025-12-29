@@ -27,6 +27,13 @@ pub fn Sparse(T: type, order: Order) type {
     return struct {
         nnz: usize,
 
+        /// Type signatures
+        pub const is_array = {};
+        pub const is_sparse = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty: Dense(T, order) = .{
             .nnz = 0,
         };

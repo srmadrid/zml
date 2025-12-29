@@ -25,6 +25,13 @@ pub fn Sparse(T: type) type {
         _ilen: u32, // allocated length of idx
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_vector = {};
+        pub const is_sparse = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty = Sparse(T){
             .data = &.{},
             .idx = &.{},

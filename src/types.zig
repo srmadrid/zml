@@ -8,7 +8,10 @@ pub const default_uint = u32;
 pub const default_int = i32;
 pub const default_float = f64;
 
+const dyadic = @import("dyadic.zig");
+const Dyadic = dyadic.Dyadic;
 const cfloat = @import("cfloat.zig");
+const Cfloat = cfloat.Cfloat;
 const cf16 = @import("cfloat.zig").cf16;
 const cf32 = @import("cfloat.zig").cf32;
 const cf64 = @import("cfloat.zig").cf64;
@@ -180,7 +183,9 @@ pub const IterationOrder = enum {
 /// - `float`: Represents floating-point types:
 ///   - `f16`, `f32`, `f64`, `f80`, `f128`
 ///   - `comptime_float`
+/// - `dyadic`: Represents dyadic rational types (`Dyadic`).
 /// - `cfloat`: Represents complex floating-point types:
+///   - `Cfloat(Dyadic(...))`
 ///   - `cf16`, `cf32`, `cf64`, `cf80`, `cf128`
 ///   - `comptime_cfloat`
 /// - `integer`: Represents arbitrary precision integer type (`Integer`).
@@ -194,11 +199,122 @@ pub const NumericType = enum {
     bool,
     int,
     float,
+    dyadic,
     cfloat,
     integer,
     rational,
     real,
     complex,
+
+    pub fn lt(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) < @intFromEnum(other);
+    }
+
+    pub fn le(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) <= @intFromEnum(other);
+    }
+
+    pub fn gt(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) > @intFromEnum(other);
+    }
+
+    pub fn ge(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) >= @intFromEnum(other);
+    }
+
+    pub fn match(comptime self: NumericType) fn (type) bool {
+        return switch (self) {
+            .bool => {
+                const tmp = struct {
+                    fn isBool(comptime T: type) bool {
+                        switch (@typeInfo(T)) {
+                            .bool => return true,
+                            else => return false,
+                        }
+                    }
+                };
+                return tmp.isBool;
+            },
+            .int => {
+                const tmp = struct {
+                    fn isInt(comptime T: type) bool {
+                        switch (@typeInfo(T)) {
+                            .int, .comptime_int => return true,
+                            else => return false,
+                        }
+                    }
+                };
+                return tmp.isInt;
+            },
+            .float => {
+                const tmp = struct {
+                    fn isFloat(comptime T: type) bool {
+                        switch (@typeInfo(T)) {
+                            .float, .comptime_float => return true,
+                            else => return false,
+                        }
+                    }
+                };
+                return tmp.isFloat;
+            },
+            .dyadic => {
+                const tmp = struct {
+                    fn isDyadic(comptime T: type) bool {
+                        return @hasDecl(T, "is_dyadic");
+                    }
+                };
+                return tmp.isDyadic;
+            },
+            .cfloat => {
+                const tmp = struct {
+                    fn isCfloat(comptime T: type) bool {
+                        if ((@hasDecl(T, "is_cfloat")) or
+                            T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
+                            T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
+                            return true;
+
+                        return false;
+                    }
+                };
+                return tmp.isCfloat;
+            },
+            .integer => {
+                const tmp = struct {
+                    fn isInteger(comptime T: type) bool {
+                        return T == Integer;
+                    }
+                };
+                return tmp.isInteger;
+            },
+            .rational => {
+                const tmp = struct {
+                    fn isRational(comptime T: type) bool {
+                        return T == Rational;
+                    }
+                };
+                return tmp.isRational;
+            },
+            .real => {
+                const tmp = struct {
+                    fn isReal(comptime T: type) bool {
+                        return T == Real;
+                    }
+                };
+                return tmp.isReal;
+            },
+            .complex => {
+                const tmp = struct {
+                    fn isComplex(comptime T: type) bool {
+                        if (@hasDecl(T, "is_complex"))
+                            return true;
+
+                        return false;
+                    }
+                };
+                return tmp.isComplex;
+            },
+        };
+    }
 };
 
 const supported_numeric_types: [33]type = .{
@@ -233,6 +349,14 @@ pub const VectorType = enum {
     dense,
     sparse,
     numeric, // Fallback for numeric types that are not vectors
+
+    pub fn match(comptime self: VectorType) fn (type) bool {
+        return switch (self) {
+            .dense => isDenseVector,
+            .sparse => isSparseVector,
+            .numeric => unreachable,
+        };
+    }
 };
 
 pub const MatrixType = enum {
@@ -240,6 +364,12 @@ pub const MatrixType = enum {
     dense_symmetric,
     dense_hermitian,
     dense_triangular,
+    banded_general,
+    banded_symmetric,
+    banded_hermitian,
+    tridiagonal_general,
+    tridiagonal_symmetric,
+    tridiagonal_hermitian,
     sparse_general,
     sparse_symmetric,
     sparse_hermitian,
@@ -248,10 +378,71 @@ pub const MatrixType = enum {
     block_symmetric,
     block_hermitian,
     diagonal,
-    banded,
-    tridiagonal,
     permutation,
     numeric, // Fallback for numeric types that are not matrices
+
+    pub fn match(comptime self: MatrixType) fn (type) bool {
+        return switch (self) {
+            .dense_general => isGeneralDenseMatrix,
+            .dense_symmetric => isSymmetricDenseMatrix,
+            .dense_hermitian => isHermitianDenseMatrix,
+            .dense_triangular => isTriangularDenseMatrix,
+            .banded_general => isGeneralBandedMatrix,
+            .banded_symmetric => isSymmetricBandedMatrix,
+            .banded_hermitian => isHermitianBandedMatrix,
+            .tridiagonal_general => isGeneralTridiagonalMatrix,
+            .tridiagonal_symmetric => isSymmetricTridiagonalMatrix,
+            .tridiagonal_hermitian => isHermitianTridiagonalMatrix,
+            .sparse_general => isGeneralSparseMatrix,
+            .sparse_symmetric => isSymmetricSparseMatrix,
+            .sparse_hermitian => isHermitianSparseMatrix,
+            .sparse_triangular => isTriangularSparseMatrix,
+            .block_general => isGeneralBlockMatrix,
+            .block_symmetric => isSymmetricBlockMatrix,
+            .block_hermitian => isHermitianBlockMatrix,
+            .diagonal => isDiagonalMatrix,
+            .permutation => isPermutationMatrix,
+            .numeric => unreachable,
+        };
+    }
+};
+
+pub const MatrixKind = enum {
+    general,
+    symmetric,
+    hermitian,
+    triangular,
+    diagonal,
+    permutation,
+
+    pub fn match(comptime self: MatrixKind) fn (type) bool {
+        return switch (self) {
+            .general => isGeneralMatrix,
+            .symmetric => isSymmetricMatrix,
+            .hermitian => isHermitianMatrix,
+            .triangular => isTriangularMatrix,
+            .diagonal => isDiagonalMatrix,
+            .permutation => isPermutationMatrix,
+        };
+    }
+};
+
+pub const MatrixStorage = enum {
+    dense,
+    banded,
+    tridiagonal,
+    sparse,
+    block,
+
+    pub fn match(comptime self: MatrixStorage) fn (type) bool {
+        return switch (self) {
+            .dense => isDenseMatrix,
+            .banded => isBandedMatrix,
+            .tridiagonal => isTridiagonalMatrix,
+            .sparse => isSparseMatrix,
+            .block => isBlockMatrix,
+        };
+    }
 };
 
 pub const ArrayType = enum {
@@ -259,6 +450,15 @@ pub const ArrayType = enum {
     strided,
     sparse,
     numeric, // Fallback for numeric types that are not arrays
+
+    pub fn match(comptime self: ArrayType) fn (type) bool {
+        return switch (self) {
+            .dense => isDenseArray,
+            .strided => isStridedArray,
+            .sparse => isSparseArray,
+            .numeric => unreachable,
+        };
+    }
 };
 
 pub const Domain = enum {
@@ -267,8 +467,29 @@ pub const Domain = enum {
     matrix,
     array,
     expression,
+
+    pub fn match(comptime self: Domain) fn (type) bool {
+        return switch (self) {
+            .numeric => isNumeric,
+            .vector => isVector,
+            .matrix => isMatrix,
+            .array => isArray,
+            .expression => isExpression,
+        };
+    }
+
+    pub fn toString(self: Domain) []const u8 {
+        return switch (self) {
+            .numeric => "numeric",
+            .vector => "vector",
+            .matrix => "matrix",
+            .array => "array",
+            .expression => "expression",
+        };
+    }
 };
 
+/// A useless allocator that does nothing, always signalling allocation failure.
 pub const useless_allocator: std.mem.Allocator = .{
     .ptr = undefined,
     .vtable = &vtable,
@@ -319,7 +540,7 @@ fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usi
     return;
 }
 
-/// Checks the the input type `T` and returns the corresponding `NumericType`.
+/// Checks the the input type `N` and returns the corresponding `NumericType`.
 ///
 /// Checks that the input type is a supported numeric type and returns the
 /// corresponding `NumericType` enum value. If the type is not supported, it
@@ -327,139 +548,175 @@ fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usi
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check.
+/// comptime N (`type`): The type to check.
 ///
 /// Returns
 /// -------
 /// `NumericType`: The corresponding `NumericType` enum value.
-pub inline fn numericType(comptime T: type) NumericType {
+pub inline fn numericType(comptime N: type) NumericType {
     // Without inline functions calling this fail miserably. I have no idea why.
 
     @setEvalBranchQuota(10000000);
 
-    switch (@typeInfo(T)) {
+    switch (@typeInfo(N)) {
         .bool => return .bool,
-        .int, .comptime_int => {
-            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != c_uint and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != c_int and T != comptime_int)
-                @compileError("Unsupported integer type: " ++ @typeName(T));
-
-            return .int;
-        },
+        .int, .comptime_int => return .int,
         .float, .comptime_float => return .float,
         else => {
-            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_cfloat or
-                T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
-                T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
-            {
+            if (@hasDecl(N, "is_dyadic"))
+                return .dyadic;
+
+            if ((@hasDecl(N, "is_cfloat")) or
+                N == std.math.Complex(f16) or N == std.math.Complex(f32) or N == std.math.Complex(f64) or
+                N == std.math.Complex(f80) or N == std.math.Complex(f128) or N == std.math.Complex(comptime_float))
                 return .cfloat;
-            } else if (T == Integer) {
+
+            if (N == Integer)
                 return .integer;
-            } else if (T == Rational) {
+
+            if (N == Rational)
                 return .rational;
-            } else if (T == Real) {
+
+            if (N == Real)
                 return .real;
-            } else if (T == Complex(Rational) or T == Complex(Real)) {
+
+            if (@hasDecl(N, "is_complex"))
                 return .complex;
-            } else {
-                @compileError("Unsupported numeric type: " ++ @typeName(T));
-            }
+
+            @compileError("Unsupported numeric type: " ++ @typeName(N));
         },
     }
 }
 
-pub fn isNumeric(comptime T: type) bool {
+/// Checks if the input type `N` is a supported numeric type, but does not
+/// return the corresponding `NumericType` or raise a compile error if not.
+///
+/// Parameters
+/// ----------
+/// comptime N (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a supported numeric type, `false` otherwise.
+pub fn isNumeric(comptime N: type) bool {
     @setEvalBranchQuota(10000000);
 
-    switch (@typeInfo(T)) {
+    switch (@typeInfo(N)) {
         .bool => return true,
-        .int, .comptime_int => {
-            if (T != u8 and T != u16 and T != u32 and T != u64 and T != u128 and T != usize and T != c_uint and T != i8 and T != i16 and T != i32 and T != i64 and T != i128 and T != isize and T != c_int and T != comptime_int)
-                return false;
-
-            return true;
-        },
+        .int, .comptime_int => return true,
         .float, .comptime_float => return true,
         else => {
-            if (T == cf16 or T == cf32 or T == cf64 or T == cf80 or T == cf128 or T == comptime_cfloat or
-                T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
-                T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
-            {
+            if (@hasDecl(N, "is_dyadic"))
                 return true;
-            } else if (T == Integer) {
+
+            if ((@hasDecl(N, "is_cfloat")) or
+                N == std.math.Complex(f16) or N == std.math.Complex(f32) or N == std.math.Complex(f64) or
+                N == std.math.Complex(f80) or N == std.math.Complex(f128) or N == std.math.Complex(comptime_float))
                 return true;
-            } else if (T == Rational) {
+
+            if (N == Integer)
                 return true;
-            } else if (T == Real) {
+
+            if (N == Rational)
                 return true;
-            } else if (T == Complex(Rational) or T == Complex(Real)) {
+
+            if (N == Real)
                 return true;
-            } else {
-                return false;
-            }
+
+            if (@hasDecl(N, "is_complex"))
+                return true;
+
+            return false;
         },
     }
 }
 
-pub inline fn vectorType(comptime T: type) VectorType {
+pub inline fn vectorType(comptime V: type) VectorType {
     @setEvalBranchQuota(10000);
 
-    if (isDenseVector(T)) {
+    if (isDenseVector(V))
         return .dense;
-    } else if (isSparseVector(T)) {
+
+    if (isSparseVector(V))
         return .sparse;
-    }
 
     return .numeric; // Fallback for numeric types that are not vectors
 }
 
-pub inline fn matrixType(comptime T: type) MatrixType {
+pub inline fn matrixType(comptime M: type) MatrixType {
     @setEvalBranchQuota(10000);
 
-    if (isGeneralDenseMatrix(T)) {
+    if (isGeneralDenseMatrix(M))
         return .dense_general;
-    } else if (isSymmetricDenseMatrix(T)) {
+
+    if (isSymmetricDenseMatrix(M))
         return .dense_symmetric;
-    } else if (isHermitianDenseMatrix(T)) {
+
+    if (isHermitianDenseMatrix(M))
         return .dense_hermitian;
-    } else if (isTriangularDenseMatrix(T)) {
+
+    if (isTriangularDenseMatrix(M))
         return .dense_triangular;
-    } else if (isGeneralSparseMatrix(T)) {
+
+    if (isGeneralBandedMatrix(M))
+        return .banded_general;
+
+    if (isSymmetricBandedMatrix(M))
+        return .banded_symmetric;
+
+    if (isHermitianBandedMatrix(M))
+        return .banded_hermitian;
+
+    if (isGeneralTridiagonalMatrix(M))
+        return .tridiagonal_general;
+
+    if (isSymmetricTridiagonalMatrix(M))
+        return .tridiagonal_symmetric;
+
+    if (isHermitianTridiagonalMatrix(M))
+        return .tridiagonal_hermitian;
+
+    if (isGeneralSparseMatrix(M))
         return .sparse_general;
-    } else if (isSymmetricSparseMatrix(T)) {
+
+    if (isSymmetricSparseMatrix(M))
         return .sparse_symmetric;
-    } else if (isHermitianSparseMatrix(T)) {
+
+    if (isHermitianSparseMatrix(M))
         return .sparse_hermitian;
-    } else if (isTriangularSparseMatrix(T)) {
+
+    if (isTriangularSparseMatrix(M))
         return .sparse_triangular;
-    } else if (isGeneralBlockMatrix(T)) {
+
+    if (isGeneralBlockMatrix(M))
         return .block_general;
-    } else if (isSymmetricBlockMatrix(T)) {
+
+    if (isSymmetricBlockMatrix(M))
         return .block_symmetric;
-    } else if (isHermitianBlockMatrix(T)) {
+
+    if (isHermitianBlockMatrix(M))
         return .block_hermitian;
-    } else if (isDiagonalMatrix(T)) {
+
+    if (isDiagonalMatrix(M))
         return .diagonal;
-    } else if (isBandedMatrix(T)) {
-        return .banded;
-    } else if (isTridiagonalMatrix(T)) {
-        return .tridiagonal;
-    } else if (isPermutationMatrix(T)) {
+
+    if (isPermutationMatrix(M))
         return .permutation;
-    }
 
     return .numeric; // Fallback for numeric types that are not matrices
 }
 
-pub inline fn arrayType(comptime T: type) ArrayType {
+pub inline fn arrayType(comptime A: type) ArrayType {
     @setEvalBranchQuota(10000);
 
-    if (isDenseArray(T)) {
+    if (isDenseArray(A))
         return .dense;
-    } else if (isStridedArray(T)) {
+
+    if (isStridedArray(A))
         return .strided;
-    } else if (isSparseArray(T)) {
+
+    if (isSparseArray(A))
         return .sparse;
-    }
 
     return .numeric; // Fallback for numeric types that are not arrays
 }
@@ -467,19 +724,43 @@ pub inline fn arrayType(comptime T: type) ArrayType {
 pub inline fn domainType(comptime T: type) Domain {
     @setEvalBranchQuota(10000);
 
-    if (comptime isNumeric(T)) {
+    if (comptime isNumeric(T))
         return .numeric;
-    } else if (comptime isVector(T)) {
+
+    if (comptime isVector(T))
         return .vector;
-    } else if (comptime isMatrix(T)) {
+
+    if (comptime isMatrix(T))
         return .matrix;
-    } else if (comptime isArray(T)) {
+
+    if (comptime isArray(T))
         return .array;
-    } else if (comptime isExpression(T)) {
+
+    if (comptime isExpression(T))
         return .expression;
-    }
 
     @compileError("Unsupported type for domainType: " ++ @typeName(T));
+}
+
+/// Checks if the input type is a supported type (numeric, vector, matrix,
+/// array, or expression).
+pub fn isSupportedType(comptime T: type) bool {
+    if (comptime isNumeric(T))
+        return true;
+
+    if (comptime isVector(T))
+        return true;
+
+    if (comptime isMatrix(T))
+        return true;
+
+    if (comptime isArray(T))
+        return true;
+
+    if (comptime isExpression(T))
+        return true;
+
+    return false;
 }
 
 /// Checks if the input type is a one-item pointer.
@@ -594,56 +875,26 @@ pub fn isSimdVector(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is a vector, `false` otherwise.
 pub fn isVector(comptime T: type) bool {
-    @setEvalBranchQuota(10000);
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == vector.Dense(numeric_type) or
-                    T == vector.Sparse(numeric_type)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_vector"),
         else => return false,
     }
 }
 
+/// Checks if the input type is an instance of a dense vector.
+///
+/// Parameters
+/// ----------
 pub fn isDenseVector(comptime T: type) bool {
-    @setEvalBranchQuota(10000);
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == vector.Dense(numeric_type)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_vector") and @hasDecl(T, "is_dense"),
         else => return false,
     }
 }
 
 pub fn isSparseVector(comptime T: type) bool {
-    @setEvalBranchQuota(10000);
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == vector.Sparse(numeric_type)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_vector") and @hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -661,138 +912,16 @@ pub fn isSparseVector(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is a matrix, `false` otherwise.
 pub fn isMatrix(comptime T: type) bool {
-    @setEvalBranchQuota(100000);
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                const matrix_types: [if (isComplex(numeric_type)) 61 else 45]type = if (comptime isComplex(numeric_type)) .{
-                    matrix.general.Dense(numeric_type, .col_major),
-                    matrix.general.Dense(numeric_type, .row_major),
-                    matrix.general.Sparse(numeric_type, .col_major),
-                    matrix.general.Sparse(numeric_type, .row_major),
-                    matrix.general.Block(numeric_type, .col_major, .col_major),
-                    matrix.general.Block(numeric_type, .row_major, .col_major),
-                    matrix.general.Block(numeric_type, .col_major, .row_major),
-                    matrix.general.Block(numeric_type, .row_major, .row_major),
-                    matrix.symmetric.Dense(numeric_type, .upper, .col_major),
-                    matrix.symmetric.Dense(numeric_type, .lower, .col_major),
-                    matrix.symmetric.Dense(numeric_type, .upper, .row_major),
-                    matrix.symmetric.Dense(numeric_type, .lower, .row_major),
-                    matrix.symmetric.Sparse(numeric_type, .upper, .col_major),
-                    matrix.symmetric.Sparse(numeric_type, .lower, .col_major),
-                    matrix.symmetric.Sparse(numeric_type, .upper, .row_major),
-                    matrix.symmetric.Sparse(numeric_type, .lower, .row_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .row_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .row_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .row_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .row_major),
-                    matrix.hermitian.Dense(numeric_type, .upper, .col_major),
-                    matrix.hermitian.Dense(numeric_type, .lower, .col_major),
-                    matrix.hermitian.Dense(numeric_type, .upper, .row_major),
-                    matrix.hermitian.Dense(numeric_type, .lower, .row_major),
-                    matrix.hermitian.Sparse(numeric_type, .upper, .col_major),
-                    matrix.hermitian.Sparse(numeric_type, .lower, .col_major),
-                    matrix.hermitian.Sparse(numeric_type, .upper, .row_major),
-                    matrix.hermitian.Sparse(numeric_type, .lower, .row_major),
-                    matrix.hermitian.Block(numeric_type, .upper, .col_major, .col_major),
-                    matrix.hermitian.Block(numeric_type, .lower, .col_major, .col_major),
-                    matrix.hermitian.Block(numeric_type, .upper, .row_major, .col_major),
-                    matrix.hermitian.Block(numeric_type, .lower, .row_major, .col_major),
-                    matrix.hermitian.Block(numeric_type, .upper, .col_major, .row_major),
-                    matrix.hermitian.Block(numeric_type, .lower, .col_major, .row_major),
-                    matrix.hermitian.Block(numeric_type, .upper, .row_major, .row_major),
-                    matrix.hermitian.Block(numeric_type, .lower, .row_major, .row_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .non_unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .non_unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .non_unit, .row_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .unit, .row_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .non_unit, .row_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .non_unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .non_unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .non_unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .non_unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .unit, .row_major),
-                    matrix.Diagonal(numeric_type),
-                    matrix.Banded(numeric_type, .col_major),
-                    matrix.Banded(numeric_type, .row_major),
-                    matrix.Tridiagonal(numeric_type),
-                    matrix.Permutation(numeric_type),
-                } else .{
-                    matrix.general.Dense(numeric_type, .col_major),
-                    matrix.general.Dense(numeric_type, .row_major),
-                    matrix.general.Sparse(numeric_type, .col_major),
-                    matrix.general.Sparse(numeric_type, .row_major),
-                    matrix.general.Block(numeric_type, .col_major, .col_major),
-                    matrix.general.Block(numeric_type, .row_major, .col_major),
-                    matrix.general.Block(numeric_type, .col_major, .row_major),
-                    matrix.general.Block(numeric_type, .row_major, .row_major),
-                    matrix.symmetric.Dense(numeric_type, .upper, .col_major),
-                    matrix.symmetric.Dense(numeric_type, .lower, .col_major),
-                    matrix.symmetric.Dense(numeric_type, .upper, .row_major),
-                    matrix.symmetric.Dense(numeric_type, .lower, .row_major),
-                    matrix.symmetric.Sparse(numeric_type, .upper, .col_major),
-                    matrix.symmetric.Sparse(numeric_type, .lower, .col_major),
-                    matrix.symmetric.Sparse(numeric_type, .upper, .row_major),
-                    matrix.symmetric.Sparse(numeric_type, .lower, .row_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .col_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .col_major, .row_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .col_major, .row_major),
-                    matrix.symmetric.Block(numeric_type, .upper, .row_major, .row_major),
-                    matrix.symmetric.Block(numeric_type, .lower, .row_major, .row_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .non_unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .non_unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .unit, .col_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .non_unit, .row_major),
-                    matrix.triangular.Dense(numeric_type, .upper, .unit, .row_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .non_unit, .row_major),
-                    matrix.triangular.Dense(numeric_type, .lower, .unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .non_unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .non_unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .unit, .col_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .non_unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .upper, .unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .non_unit, .row_major),
-                    matrix.triangular.Sparse(numeric_type, .lower, .unit, .row_major),
-                    matrix.Diagonal(numeric_type),
-                    matrix.Banded(numeric_type, .col_major),
-                    matrix.Banded(numeric_type, .row_major),
-                    matrix.Tridiagonal(numeric_type),
-                    matrix.Permutation(numeric_type),
-                };
-
-                inline for (matrix_types) |matrix_type| {
-                    if (T == matrix_type) return true;
-                }
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_matrix"),
         else => return false,
     }
 }
 
 pub fn isSquareMatrix(comptime T: type) bool {
     return isSymmetricDenseMatrix(T) or isHermitianDenseMatrix(T) or
-        isTridiagonalMatrix(T) or isSymmetricSparseMatrix(T) or
+        isGeneralTridiagonalMatrix(T) or isSymmetricTridiagonalMatrix(T) or
+        isHermitianTridiagonalMatrix(T) or isSymmetricSparseMatrix(T) or
         isHermitianSparseMatrix(T) or isSymmetricBlockMatrix(T) or
         isHermitianBlockMatrix(T) or isPermutationMatrix(T);
 }
@@ -808,18 +937,7 @@ pub fn isSquareMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.general.Dense`, `false` otherwise.
 pub fn isGeneralDenseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.general.Dense(numeric_type, .col_major) or
-                    T == matrix.general.Dense(numeric_type, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_dense"),
         else => return false,
     }
 }
@@ -835,20 +953,7 @@ pub fn isGeneralDenseMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.symmetric.Dense`, `false` otherwise.
 pub fn isSymmetricDenseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.symmetric.Dense(numeric_type, .upper, .col_major) or
-                    T == matrix.symmetric.Dense(numeric_type, .lower, .col_major) or
-                    T == matrix.symmetric.Dense(numeric_type, .upper, .row_major) or
-                    T == matrix.symmetric.Dense(numeric_type, .lower, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_dense"),
         else => return false,
     }
 }
@@ -864,20 +969,7 @@ pub fn isSymmetricDenseMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.hermitian.Dense`, `false` otherwise.
 pub fn isHermitianDenseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_complex_types) |numeric_type| {
-                if (T == matrix.hermitian.Dense(numeric_type, .upper, .col_major) or
-                    T == matrix.hermitian.Dense(numeric_type, .lower, .col_major) or
-                    T == matrix.hermitian.Dense(numeric_type, .upper, .row_major) or
-                    T == matrix.hermitian.Dense(numeric_type, .lower, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_dense"),
         else => return false,
     }
 }
@@ -893,29 +985,12 @@ pub fn isHermitianDenseMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.triangular.Dense`, `false` otherwise.
 pub fn isTriangularDenseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.triangular.Dense(numeric_type, .upper, .non_unit, .col_major) or
-                    T == matrix.triangular.Dense(numeric_type, .upper, .unit, .col_major) or
-                    T == matrix.triangular.Dense(numeric_type, .lower, .non_unit, .col_major) or
-                    T == matrix.triangular.Dense(numeric_type, .lower, .unit, .col_major) or
-                    T == matrix.triangular.Dense(numeric_type, .upper, .non_unit, .row_major) or
-                    T == matrix.triangular.Dense(numeric_type, .upper, .unit, .row_major) or
-                    T == matrix.triangular.Dense(numeric_type, .lower, .non_unit, .row_major) or
-                    T == matrix.triangular.Dense(numeric_type, .lower, .unit, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular") and @hasDecl(T, "is_dense"),
         else => return false,
     }
 }
 
-/// Checks if the input type is an instance of a `matrix.Diagonal`.
+/// Checks if the input type is an instance of a `matrix.general.Banded`.
 ///
 /// Parameters
 /// ----------
@@ -923,25 +998,15 @@ pub fn isTriangularDenseMatrix(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `matrix.Diagonal`, `false` otherwise.
-pub fn isDiagonalMatrix(comptime T: type) bool {
+/// `bool`: `true` if the type is a `matrix.general.Banded`, `false` otherwise.
+pub fn isGeneralBandedMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Diagonal(numeric_type)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_banded"),
         else => return false,
     }
 }
 
-/// Checks if the input type is an instance of a `matrix.Banded`.
+/// Checks if the input type is an instance of a `matrix.symmetric.Banded`.
 ///
 /// Parameters
 /// ----------
@@ -949,26 +1014,15 @@ pub fn isDiagonalMatrix(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `matrix.Banded`, `false` otherwise.
-pub fn isBandedMatrix(comptime T: type) bool {
+/// `bool`: `true` if the type is a `matrix.symmetric.Banded`, `false` otherwise.
+pub fn isSymmetricBandedMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Banded(numeric_type, .col_major) or
-                    T == matrix.Banded(numeric_type, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_banded"),
         else => return false,
     }
 }
 
-/// Checks if the input type is an instance of a `matrix.Tridiagonal`.
+/// Checks if the input type is an instance of a `matrix.hermitian.Banded`.
 ///
 /// Parameters
 /// ----------
@@ -976,20 +1030,58 @@ pub fn isBandedMatrix(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `matrix.Tridiagonal`, `false` otherwise.
-pub fn isTridiagonalMatrix(comptime T: type) bool {
+/// `bool`: `true` if the type is a `matrix.hermitian.Banded`, `false` otherwise.
+pub fn isHermitianBandedMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_banded"),
+        else => return false,
+    }
+}
 
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Tridiagonal(numeric_type)) return true;
-            }
+/// Checks if the input type is an instance of a `matrix.general.Tridiagonal`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.general.Tridiagonal`, `false` otherwise.
+pub fn isGeneralTridiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_tridiagonal"),
+        else => return false,
+    }
+}
 
-            return false;
-        },
+/// Checks if the input type is an instance of a `matrix.symmetric.Tridiagonal`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.symmetric.Tridiagonal`, `false` otherwise.
+pub fn isSymmetricTridiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_tridiagonal"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a `matrix.hermitian.Tridiagonal`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.hermitian.Tridiagonal`, `false` otherwise.
+pub fn isHermitianTridiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_tridiagonal"),
         else => return false,
     }
 }
@@ -1005,18 +1097,7 @@ pub fn isTridiagonalMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.general.Sparse`, `false` otherwise.
 pub fn isGeneralSparseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.general.Sparse(numeric_type, .col_major) or
-                    T == matrix.general.Sparse(numeric_type, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -1032,20 +1113,7 @@ pub fn isGeneralSparseMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.symmetric.Sparse`, `false` otherwise.
 pub fn isSymmetricSparseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.symmetric.Sparse(numeric_type, .upper, .col_major) or
-                    T == matrix.symmetric.Sparse(numeric_type, .lower, .col_major) or
-                    T == matrix.symmetric.Sparse(numeric_type, .upper, .row_major) or
-                    T == matrix.symmetric.Sparse(numeric_type, .lower, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -1061,20 +1129,7 @@ pub fn isSymmetricSparseMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.hermitian.Sparse`, `false` otherwise.
 pub fn isHermitianSparseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_complex_types) |numeric_type| {
-                if (T == matrix.hermitian.Sparse(numeric_type, .upper, .col_major) or
-                    T == matrix.hermitian.Sparse(numeric_type, .lower, .col_major) or
-                    T == matrix.hermitian.Sparse(numeric_type, .upper, .row_major) or
-                    T == matrix.hermitian.Sparse(numeric_type, .lower, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -1090,24 +1145,7 @@ pub fn isHermitianSparseMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.triangular.Sparse`, `false` otherwise.
 pub fn isTriangularSparseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.triangular.Sparse(numeric_type, .upper, .non_unit, .col_major) or
-                    T == matrix.triangular.Sparse(numeric_type, .upper, .unit, .col_major) or
-                    T == matrix.triangular.Sparse(numeric_type, .lower, .non_unit, .col_major) or
-                    T == matrix.triangular.Sparse(numeric_type, .lower, .unit, .col_major) or
-                    T == matrix.triangular.Sparse(numeric_type, .upper, .non_unit, .row_major) or
-                    T == matrix.triangular.Sparse(numeric_type, .upper, .unit, .row_major) or
-                    T == matrix.triangular.Sparse(numeric_type, .lower, .non_unit, .row_major) or
-                    T == matrix.triangular.Sparse(numeric_type, .lower, .unit, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular") and @hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -1123,21 +1161,7 @@ pub fn isTriangularSparseMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.general.Block`, `false` otherwise.
 pub fn isGeneralBlockMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.general.Block(numeric_type, .col_major, .col_major) or
-                    T == matrix.general.Block(numeric_type, .row_major, .col_major) or
-                    T == matrix.general.Block(numeric_type, .col_major, .row_major) or
-                    T == matrix.general.Block(numeric_type, .row_major, .row_major))
-                    return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_block"),
         else => return false,
     }
 }
@@ -1153,24 +1177,7 @@ pub fn isGeneralBlockMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.symmetric.Block`, `false` otherwise.
 pub fn isSymmetricBlockMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.symmetric.Block(numeric_type, .upper, .col_major, .col_major) or
-                    T == matrix.symmetric.Block(numeric_type, .lower, .col_major, .col_major) or
-                    T == matrix.symmetric.Block(numeric_type, .upper, .row_major, .col_major) or
-                    T == matrix.symmetric.Block(numeric_type, .lower, .row_major, .col_major) or
-                    T == matrix.symmetric.Block(numeric_type, .upper, .col_major, .row_major) or
-                    T == matrix.symmetric.Block(numeric_type, .lower, .col_major, .row_major) or
-                    T == matrix.symmetric.Block(numeric_type, .upper, .row_major, .row_major) or
-                    T == matrix.symmetric.Block(numeric_type, .lower, .row_major, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_block"),
         else => return false,
     }
 }
@@ -1186,24 +1193,23 @@ pub fn isSymmetricBlockMatrix(comptime T: type) bool {
 /// `bool`: `true` if the type is a `matrix.hermitian.Block`, `false` otherwise.
 pub fn isHermitianBlockMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_block"),
+        else => return false,
+    }
+}
 
-            inline for (supported_complex_types) |numeric_type| {
-                if (T == matrix.hermitian.Block(numeric_type, .upper, .col_major, .col_major) or
-                    T == matrix.hermitian.Block(numeric_type, .lower, .col_major, .col_major) or
-                    T == matrix.hermitian.Block(numeric_type, .upper, .row_major, .col_major) or
-                    T == matrix.hermitian.Block(numeric_type, .lower, .row_major, .col_major) or
-                    T == matrix.hermitian.Block(numeric_type, .upper, .col_major, .row_major) or
-                    T == matrix.hermitian.Block(numeric_type, .lower, .col_major, .row_major) or
-                    T == matrix.hermitian.Block(numeric_type, .upper, .row_major, .row_major) or
-                    T == matrix.hermitian.Block(numeric_type, .lower, .row_major, .row_major)) return true;
-            }
-
-            return false;
-        },
+/// Checks if the input type is an instance of a `matrix.Diagonal`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a `matrix.Diagonal`, `false` otherwise.
+pub fn isDiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_diagonal"),
         else => return false,
     }
 }
@@ -1218,20 +1224,72 @@ pub fn isHermitianBlockMatrix(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is a `matrix.Permutation`, `false` otherwise.
 pub fn isPermutationMatrix(comptime T: type) bool {
-    @setEvalBranchQuota(10000);
-
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_permutation"),
+        else => return false,
+    }
+}
 
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == matrix.Permutation(numeric_type)) return true;
-            }
+/// Checks if the input type is an instance of a general matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a general matrix, `false` otherwise.
+pub fn isGeneralMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general"),
+        else => return false,
+    }
+}
 
-            return false;
-        },
+/// Checks if the input type is an instance of a symmetric matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a symmetric matrix, `false` otherwise.
+pub fn isSymmetricMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a hermitian matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a hermitian matrix, `false` otherwise.
+pub fn isHermitianMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a triangular matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a triangular matrix, `false` otherwise.
+pub fn isTriangularMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular"),
         else => return false,
     }
 }
@@ -1246,10 +1304,42 @@ pub fn isPermutationMatrix(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is a dense matrix, `false` otherwise.
 pub fn isDenseMatrix(comptime T: type) bool {
-    return isGeneralDenseMatrix(T) or
-        isSymmetricDenseMatrix(T) or
-        isHermitianDenseMatrix(T) or
-        isTriangularDenseMatrix(T);
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_dense"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is a banded matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a banded matrix, `false` otherwise.
+pub fn isBandedMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_banded"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is a tridiagonal matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a tridiagonal matrix, `false` otherwise.
+pub fn isTridiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_tridiagonal"),
+        else => return false,
+    }
 }
 
 /// Checks if the input type is a sparse matrix.
@@ -1262,13 +1352,26 @@ pub fn isDenseMatrix(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is a sparse matrix, `false` otherwise.
 pub fn isSparseMatrix(comptime T: type) bool {
-    return isGeneralSparseMatrix(T) or
-        isSymmetricSparseMatrix(T) or
-        isHermitianSparseMatrix(T) or
-        isTriangularSparseMatrix(T) or
-        isGeneralBlockMatrix(T) or
-        isSymmetricBlockMatrix(T) or
-        isHermitianBlockMatrix(T);
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_sparse"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is a block matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a block matrix, `false` otherwise.
+pub fn isBlockMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_block"),
+        else => return false,
+    }
 }
 
 /// Checks if the input type is an instance of an array, i.e., an instance of a
@@ -1282,30 +1385,8 @@ pub fn isSparseMatrix(comptime T: type) bool {
 /// -------
 /// `bool`: `true` if the type is an array, `false` otherwise.
 pub fn isArray(comptime T: type) bool {
-    @setEvalBranchQuota(10000);
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                const array_types: [6]type = .{
-                    array.Dense(numeric_type, .col_major),
-                    array.Dense(numeric_type, .row_major),
-                    array.Strided(numeric_type, .col_major),
-                    array.Strided(numeric_type, .row_major),
-                    array.Sparse(numeric_type, .col_major),
-                    array.Sparse(numeric_type, .row_major),
-                };
-
-                inline for (array_types) |array_type| {
-                    if (T == array_type) return true;
-                }
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_array"),
         else => return false,
     }
 }
@@ -1321,18 +1402,7 @@ pub fn isArray(comptime T: type) bool {
 /// `bool`: `true` if the type is a `array.Dense`, `false` otherwise.
 pub fn isDenseArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == array.Dense(numeric_type, .col_major) or
-                    T == array.Dense(numeric_type, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_array") and @hasDecl(T, "is_dense"),
         else => return false,
     }
 }
@@ -1348,18 +1418,7 @@ pub fn isDenseArray(comptime T: type) bool {
 /// `bool`: `true` if the type is a `array.Strided`, `false` otherwise.
 pub fn isStridedArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == array.Strided(numeric_type, .col_major) or
-                    T == array.Strided(numeric_type, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_array") and @hasDecl(T, "is_strided"),
         else => return false,
     }
 }
@@ -1375,18 +1434,7 @@ pub fn isStridedArray(comptime T: type) bool {
 /// `bool`: `true` if the type is a `array.Sparse`, `false` otherwise.
 pub fn isSparseArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
-        .@"struct" => |tinfo| {
-            if (tinfo.layout == .@"extern" or tinfo.layout == .@"packed") {
-                return false;
-            }
-
-            inline for (supported_numeric_types) |numeric_type| {
-                if (T == array.Sparse(numeric_type, .col_major) or
-                    T == array.Sparse(numeric_type, .row_major)) return true;
-            }
-
-            return false;
-        },
+        .@"struct" => return @hasDecl(T, "is_array") and @hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -1414,6 +1462,7 @@ pub fn isFixedPrecision(comptime T: type) bool {
         .bool => return true,
         .int => return true,
         .float => return true,
+        .dyadic => return true,
         .cfloat => return true,
         else => return false,
     }
@@ -1442,6 +1491,65 @@ pub fn isArbitraryPrecision(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is integral.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is integral, `false` otherwise.
+pub fn isIntegral(comptime T: type) bool {
+    switch (numericType(T)) {
+        .bool => return true,
+        .int => return true,
+        .integer => return true,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is non-integral.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is non-integral, `false` otherwise.
+pub fn isNonIntegral(comptime T: type) bool {
+    switch (numericType(T)) {
+        .float => return true,
+        .dyadic => return true,
+        .cfloat => return true,
+        .rational => return true,
+        .real => return true,
+        .complex => return true,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is real.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is real, `false` otherwise.
+pub fn isReal(comptime T: type) bool {
+    switch (numericType(T)) {
+        .float => return true,
+        .dyadic => return true,
+        .integer => return true,
+        .rational => return true,
+        .real => return true,
+        else => return false,
+    }
+}
+
 /// Checks if the input type is complex.
 ///
 /// This function checks if the input type is a complex numeric type, which
@@ -1461,6 +1569,1234 @@ pub fn isComplex(comptime T: type) bool {
         else => return false,
     }
 }
+
+/// Checks if the input type is signed.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is signed, `false` otherwise.
+pub fn isSigned(comptime T: type) bool {
+    switch (numericType(T)) {
+        .int => {
+            switch (@typeInfo(T)) {
+                .int => |info| return info.signedness == .signed,
+                .comptime_int => return true,
+                else => unreachable,
+            }
+        },
+        .float => return true,
+        .dyadic => return true,
+        .cfloat => return true,
+        .integer => return true,
+        .rational => return true,
+        .real => return true,
+        .complex => return true,
+        else => return false,
+    }
+}
+
+/// Checks if the input type is unsigned.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is unsigned, `false` otherwise.
+pub fn isUnsigned(comptime T: type) bool {
+    switch (numericType(T)) {
+        .bool => return true,
+        .int => {
+            switch (@typeInfo(T)) {
+                .int => |info| return info.signedness == .unsigned,
+                .comptime_int => return false,
+                else => unreachable,
+            }
+        },
+        else => return false,
+    }
+}
+
+const CheckedDomain = struct {
+    first_level: FirstLevel, // The first level type (domain, numeric, vector, matrix_kind, matrix_storage, matrix, array)
+    element_type: ?[]const u8, // The element type expression, if any (e.g., "float" in "matrix.dense(float)")
+
+    const FirstLevel = union(enum) {
+        domain: Domain,
+        numeric: []const u8, // The numeric type expression as a string since we allow more complex expressions here
+        vector: VectorType,
+        matrix_kind: MatrixKind,
+        matrix_storage: MatrixStorage,
+        matrix: MatrixType,
+        array: ArrayType,
+
+        pub fn fromAny(comptime s: anytype) FirstLevel {
+            return switch (@TypeOf(s)) {
+                Domain => .{ .domain = s },
+                NumericType => .{ .numeric = s },
+                VectorType => .{ .vector = s },
+                MatrixKind => .{ .matrix_kind = s },
+                MatrixStorage => .{ .matrix_storage = s },
+                MatrixType => .{ .matrix = s },
+                ArrayType => .{ .array = s },
+                else => unreachable,
+            };
+        }
+    };
+};
+
+fn mixSubdomains(comptime base: Domain, kind: anytype, storage: anytype) switch (base) {
+    .matrix => MatrixType,
+    else => unreachable,
+} {
+    switch (base) {
+        .matrix => {
+            const K = @TypeOf(kind);
+            const S = @TypeOf(storage);
+
+            if (K != MatrixKind or S != MatrixStorage) {
+                @compileError("For base domain 'matrix', kind and storage must be of types MatrixKind and MatrixStorage, respectively.");
+            }
+
+            switch (kind) {
+                .general => switch (storage) {
+                    .dense => return .dense_general,
+                    .banded => return .banded_general,
+                    .tridiagonal => return .tridiagonal_general,
+                    .sparse => return .sparse_general,
+                    .block => return .block_general,
+                },
+                .symmetric => switch (storage) {
+                    .dense => return .dense_symmetric,
+                    .banded => return .banded_symmetric,
+                    .tridiagonal => return .tridiagonal_symmetric,
+                    .sparse => return .sparse_symmetric,
+                    .block => return .block_symmetric,
+                },
+                .hermitian => switch (storage) {
+                    .dense => return .dense_hermitian,
+                    .banded => return .banded_hermitian,
+                    .tridiagonal => return .tridiagonal_hermitian,
+                    .sparse => return .sparse_hermitian,
+                    .block => return .block_hermitian,
+                },
+                .triangular => switch (storage) {
+                    .dense => return .dense_triangular,
+                    .banded => unreachable,
+                    .tridiagonal => unreachable,
+                    .sparse => return .sparse_triangular,
+                    .block => unreachable,
+                },
+                .diagonal => return .diagonal,
+                .permutation => return .permutation,
+            }
+        },
+        else => unreachable,
+    }
+}
+
+const CategoryOperator = enum {
+    /// bool, int, integer
+    integral,
+    /// float, dyadic, cfloat, rational, real, complex
+    nonintegral,
+    /// bool, int, float, dyadic, cfloat
+    fixed,
+    /// integer, rational, real, complex
+    arbitrary,
+    /// bool, int, float, dyadic, integer, rational, real
+    real,
+    /// cfloat, complex
+    complex,
+    /// signed int, float, dyadic, cfloat, integer, rational, real, complex
+    signed,
+    /// bool, unsigned int
+    unsigned,
+
+    pub fn match(self: CategoryOperator) fn (type) bool {
+        return switch (self) {
+            .integral => return isIntegral,
+            .nonintegral => return isNonIntegral,
+            .fixed => return isFixedPrecision,
+            .arbitrary => return isArbitraryPrecision,
+            .real => return isReal,
+            .complex => return isComplex,
+            .signed => return isSigned,
+            .unsigned => return isUnsigned,
+        };
+    }
+};
+
+/// Given a type signature (as a string) and a type, checks whether the type
+/// matches the signature, triggering a compile-time error if not.
+///
+/// Parameters
+/// ----------
+/// comptime type_signature (`[]const u8`): The type signature to check against.
+/// The type signature must start with:
+///
+/// - "": pass by value
+/// - "*": mutable one-item pointer
+/// - "* const": constant one-item pointer
+/// - "[*]": mutable many-item pointer
+/// - "[*] const": constant many-item pointer
+/// - "[]": mutable slice
+/// - "[] const": constant slice
+///
+/// Then, it must specify the type:
+///
+/// - "numeric": any supported numeric type. For specific numeric types, use the
+///   names defined in the `NumericType` enum.
+/// - "vector": any vector type. For specific vector types, use "vector.<storage>",
+///   where `<storage>` is one of:
+///
+///     - "dense": dense vector
+///     - "sparse": sparse vector
+///
+/// - "matrix": any matrix type. For specific matrix types, use "matrix.<kind>.<storage>",
+///   where `<kind>` is one of:
+///
+///     - "general": general matrix
+///     - "symmetric": symmetric matrix
+///     - "hermitian": hermitian matrix
+///     - "triangular": triangular matrix
+///     - "diagonal": diagonal matrix (<storage> is ignored)
+///     - "permutation": permutation matrix (<storage> is ignored)
+///
+///   and `<storage>` is one of:
+///
+///     - "dense": dense matrix
+///     - "banded": banded matrix
+///     - "tridiagonal": tridiagonal matrix
+///     - "sparse": sparse matrix
+///     - "block": block sparse matrix
+///   Setting only the kind (e.g., "matrix.symmetric") or only the storage
+///   (e.g., "matrix.sparse") is also accepted, allowing for more general checks,
+///   otherwise the order must be `<kind>.<storage>`.
+/// - "array": any array type. For specific array types, use "array.<storage>",
+///   where `<storage>` is one of:
+///     - "dense": dense array
+///     - "strided": strided array
+///     - "sparse": sparse array
+/// - "expression": just use `Expression` as the type, why are you even checking this?
+/// - "any": any type is accepted
+///
+/// In any container type (vector, matrix, array, etc.), after the type name and
+/// without spaces, you can add a numeric type expression in angle brackets to
+/// specify the element type. For example, "matrix.dense(float)" specifies a
+/// dense matrix with float elements. If no element type is specified, any
+/// element type is accepted. Inside the angle brackets, the same rules as for
+/// numeric types apply, including the more granular constraints described below.
+/// For more granular control over numeric types, constraint operators can be
+/// used. Any operator <op> must be placed immediately before the type it
+/// applies to, and with no spaces, like <op><type>. We define three kinds of
+/// operators, principal operators (which can only be used once or twice at the
+/// beginning of the numeric type expression), additional operators (which can
+/// be used multiple times and in any order after the principal operators), and
+/// final operators (which must be at the end of the expression and apply to
+/// everything before them). The principal operators are:
+///
+/// - Ordering operators (only for numeric types, following the order in the
+///   `NumericType` enum):
+///     - "<": only for numeric types, accepts types lower than the specified type.
+///     - "<=": only for numeric types, accepts types lower than or equal to the
+///     specified type.
+///     - ">": only for numeric types, accepts types higher than the specified type.
+///     - ">=": only for numeric types, accepts types higher than or equal to the
+///     specified type.
+/// - "=": accepts only the specified type. It is equivalent to not using any operator
+///
+/// but may speed up compilation in some cases.
+/// If two ordering operators are used, the first must be a lower bound ("<" or "<=")
+/// and the second an upper bound (">" or ">="). For example, "<=dyadic >=int" accepts
+/// any numeric type between int and float, inclusive (in this case, ints, floats and
+/// dyadics). The additional operators can also be used for different domains. However,
+/// if used in this way and a numeric type is specified as a base type (not inside a container),
+/// the numeric part must be at the end of the signature. For example,
+/// "matrix.sparse(@real) <op> matrix.block(@fixed @real) <op> >=int <=dyadic" is valid,
+/// but ">=int <=dyadic <op> matrix.sparse(@real) <op> matrix.block(@fixed @real)" is not.
+/// The additional operators are:
+///
+/// - "!": exclusion operator, for excluding types. For example, "numeric !float !complex"
+/// accepts any numeric type except float and complex types. The principal part
+/// must be "numeric" or a range when using exclusion operators on numeric types, or
+/// "any" or a general container type (vector, matrix, array) when excluding container types,
+/// for example, "matrix !matrix.sparse" accepts any matrix type except sparse matrices, or
+/// "any !numeric" accepts any type except numeric types.
+/// - "|": inclusion operator, for including only specific types. The principal
+/// part must be a specific type or a range when using inclusion operators.
+/// For instance, ">=integer |int" accepts anything from integer upwards, but
+/// also int (which is below integer). For container types this works similarly,
+/// e.g., "matrix |vector" accepts any matrix or vector type.
+///
+/// The final operators are all category operators, and are prefixed with "@":
+///
+/// - "@integral": accepts only integral types (bool, int, and integer).
+/// - "@nonintegral": accepts only non-integral types (rational, real, float, dyadic, cfloat, complex, and expression).
+/// - "@fixed": accepts only fixed precision types (bool, int, float, dyadic, and cfloat).
+/// - "@arbitrary": accepts only arbitrary precision types (integer, rational,
+/// real, and complex).
+/// - "@real": accepts only real types (bool, int, integer, rational, real, float).
+/// - "@complex": accepts only complex types (cfloat, complex).
+/// - "@signed": accepts only signed types (int, integer, rational, real, float, cfloat,
+/// complex).
+/// - "@unsigned": accepts only unsigned types (bool and uint).
+///
+/// Final operators can be combined. For example, "numeric @fixed @real" accepts
+/// any fixed precision real type (bool, int, float, dyadic). They also do not need
+/// the principal part, so "@real" alone is valid and accepts any real numeric type.
+/// However, ain important constraint is that final operators apply to everything else
+/// within the same numeric type expression. For example, "@real !float |complex"
+/// still excludes complex types, because the category operator is applied last.
+/// The type signature is case-insensitive and ignores repeated spaces. Below are
+/// examples of valid type signatures. We divide by the nature of the examples:
+///
+/// - Basic signatures (pointer prefixes):
+///     - "numeric": any numeric type
+///     - "* numeric": mutable one-item pointer to any numeric type
+///     - "* const numeric": constant one-item pointer to any numeric type
+///     - "[] numeric": mutable slice of any numeric type
+/// - Basic numeric expressions:
+///     - "=float": only float, equivalent to just "float"
+///     - ">=int": int or any type higher than int
+///     - ">=int <=dyadic": any type between int and dyadic, inclusive
+///     - "numeric !float !complex": any numeric type except float and complex types
+///     - ">=integer |int": anything from integer upwards, but also int
+///     - "numeric @real": any real numeric type (not cfloat or complex)
+///     - ">=int @signed": any signed type equal to or higher than int
+///     - "numeric @fixed @real": any fixed precision real type (bool, int, float, dyadic)
+/// - Basic container types:
+///     - "vector": any vector type holding any element type
+///     - "matrix.symmetric.": any symmetric matrix type holding any element type
+///     - "matrix.general.dense": a `matrix.general.Dense` holding any element type
+/// - Container types with numeric expressions:
+///     - "vector(float)": any vector type holding float elements
+///     - "matrix(@complex)": any matrix type holding complex element types
+/// - Complex combinations:
+///     - "[] matrix.sparse(@real)": mutable slice of sparse matrices holding real element types
+///     - "* const matrix.symmetric(rational |integer)": constant one-item pointer to symmetric matrices
+///     holding rational or integer element types
+///     - "matrix.general.dense<numeric !float @signed>": a `matrix.general.Dense`
+///     holding any signed numeric element type except float
+///     - "matrix |vector": any matrix or vector type holding any element type
+///
+/// comptime T (`type`): The type to check against the signature.
+///
+/// comptime fn_name (`[]const u8`): The name of the function from which this
+/// check is being called. Used for error messages.
+///
+/// comptime param_name (`[]const u8`): The name of the parameter being checked.
+/// Used for error messages.
+///
+/// Returns
+/// -------
+/// `void`
+pub fn checkParameterType(
+    comptime type_signature: []const u8,
+    comptime T: type,
+    comptime fn_name: []const u8,
+    comptime param_name: []const u8,
+) void {
+    comptime var VT: type = T;
+
+    // Preprocess type signature: lowercase and trim leading spaces
+    comptime var signature_array: [type_signature.len + 1]u8 = undefined;
+    for (type_signature, 0..) |c, i|
+        signature_array[i] = std.ascii.toLower(c);
+    signature_array[type_signature.len] = 0;
+    comptime var signature: []const u8 = signature_array[0..signature_array.len];
+
+    // Pointer or slice prefix matching
+    signature = std.mem.trimStart(u8, signature, " ");
+
+    comptime var pointer: ?std.builtin.Type.Pointer.Size = null;
+    comptime var constant: bool = false;
+    switch (signature[0]) {
+        '*' => {
+            pointer = .one;
+
+            if (signature.len >= 7 and
+                std.mem.eql(u8, signature[1..7], " const"))
+            {
+                // constant one-item pointer
+                if (!isPointer(VT)) // any non-const pointer can be coerced to const
+                    @compileError(
+                        std.fmt.comptimePrint(
+                            "{s} requires parameter '{s}' to be a one-item pointer, but got '{s}'.",
+                            .{ fn_name, param_name, @typeName(T) },
+                        ),
+                    );
+
+                constant = true;
+                VT = Child(VT);
+                signature = signature[7..];
+            } else {
+                // mutable one-item pointer
+                if (!isPointer(VT) or isConstPointer(VT))
+                    @compileError(
+                        std.fmt.comptimePrint(
+                            "{s} requires parameter '{s}' to be a mutable one-item pointer, but got '{s}'.",
+                            .{ fn_name, param_name, @typeName(T) },
+                        ),
+                    );
+
+                VT = Child(VT);
+                signature = signature[1..];
+            }
+        },
+        '[' => {
+            switch (signature[1]) {
+                '*' => {
+                    pointer = .many;
+
+                    if (signature.len >= 8 and
+                        std.mem.eql(u8, signature[2..8], "] const"))
+                    {
+                        // constant many-item pointer
+                        if (!isManyPointer(VT)) // any non-const pointer can be coerced to const
+                            @compileError(
+                                std.fmt.comptimePrint(
+                                    "{s} requires parameter '{s}' to be a many-item pointer, but got '{s}'.",
+                                    .{ fn_name, param_name, @typeName(T) },
+                                ),
+                            );
+
+                        VT = Child(VT);
+                        signature = signature[8..];
+                    } else {
+                        // mutable many-item pointer
+                        if (!isManyPointer(VT) or isConstPointer(VT))
+                            @compileError(
+                                std.fmt.comptimePrint(
+                                    "{s} requires parameter '{s}' to be a mutable many-item pointer, but got '{s}'.",
+                                    .{ fn_name, param_name, @typeName(T) },
+                                ),
+                            );
+
+                        VT = Child(VT);
+                        signature = signature[2..];
+                    }
+                },
+                ']' => {
+                    pointer = .slice;
+
+                    if (signature.len >= 7 and
+                        std.mem.eql(u8, signature[2..7], " const"))
+                    {
+                        // constant slice
+                        if (!isSlice(VT))
+                            @compileError(
+                                std.fmt.comptimePrint(
+                                    "{s} requires parameter '{s}' to be a slice, but got '{s}'.",
+                                    .{ fn_name, param_name, @typeName(T) },
+                                ),
+                            );
+
+                        VT = Child(VT);
+                        signature = signature[7..];
+                    } else {
+                        // mutable slice
+                        if (!isSlice(VT) or isConstPointer(VT))
+                            @compileError(
+                                std.fmt.comptimePrint(
+                                    "{s} requires parameter '{s}' to be a mutable slice, but got '{s}'.",
+                                    .{ fn_name, param_name, @typeName(T) },
+                                ),
+                            );
+
+                        VT = Child(VT);
+                        signature = signature[2..];
+                    }
+                },
+                else => @compileError(
+                    std.fmt.comptimePrint(
+                        "Unrecognized pointer type in type signature '{s}' in parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                ),
+            }
+        },
+        else => {},
+    }
+
+    signature = std.mem.trimStart(u8, signature, " ");
+
+    // Actual type checking
+    comptime var matched_any_positive = false; // Must match at least one positive type ("" or "|")
+    comptime var matched_any_negative = false; // Must not match any negative type ("!")
+    comptime var finished = false;
+    comptime var checked = 0; // Number of principal checks done
+    comptime var domains_checked: [32]?CheckedDomain = .{null} ** 32; // For compilation error messages
+    while (!finished) : (checked += 1) {
+        signature = std.mem.trimStart(u8, signature, " ");
+
+        if (signature.len == 0 or signature[0] == 0) {
+            finished = true;
+            break;
+        }
+
+        // Check for "|" and "!" operators
+        comptime var positive_operator = true;
+        if (signature.len >= 1 and signature[0] == '|') {
+            if (checked == 0) {
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "The '|' operator cannot be used as the first operator in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                );
+            }
+
+            positive_operator = true;
+            signature = signature[1..];
+        } else if (signature.len >= 1 and signature[0] == '!') {
+            if (checked == 0) {
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "The '!' operator cannot be used as the first operator in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                );
+            }
+
+            positive_operator = false;
+            signature = signature[1..];
+        }
+
+        // Check for "any". Only valid if nothing else has been checked yet
+        if (std.mem.eql(u8, signature[0..3], "any")) {
+            if (checked == 0) {
+                // "any" matches everything supported by the library, ignore rest of signature
+                if (!isSupportedType(VT))
+                    @compileError(
+                        std.fmt.comptimePrint(
+                            "{s} requires parameter '{s}' to be any supported type, but got '{s}'.",
+                            .{ fn_name, param_name, @typeName(T) },
+                        ),
+                    )
+                else
+                    return; // Matched anything, ignore rest of signature
+            } else {
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "The 'any' type can only be used as the first principal type, in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                );
+            }
+        }
+
+        comptime var matched_domain: Domain = .numeric;
+
+        // Check for domain types
+        inline for (std.meta.fields(Domain)) |domain| {
+            if (domain.name.len <= signature.len and
+                std.mem.eql(u8, signature[0..domain.name.len], domain.name))
+            {
+                matched_domain = @enumFromInt(domain.value);
+
+                if (matched_domain == .numeric) {
+                    // Numeric types are handled later
+                    continue;
+                }
+
+                // Consume matched part
+                domains_checked[checked] = .{ .first_level = .{ .domain = matched_domain }, .element_type = null };
+                signature = signature[domain.name.len..];
+
+                break;
+            }
+        }
+
+        if (matched_domain == .numeric) {
+            // If numeric domain, either we matched numeric or nothing yet
+            const numeric_constraint = checkNumericConstraints(
+                type_signature,
+                signature,
+                T,
+                fn_name,
+                param_name,
+                &domains_checked[checked],
+            );
+
+            if (positive_operator)
+                matched_any_positive = matched_any_positive or numeric_constraint
+            else
+                matched_any_negative = matched_any_negative or numeric_constraint;
+
+            // Numeric domain must be the only one or the last one
+            finished = true;
+        } else {
+            // Need to validate domain match
+
+            // Domain refinement
+            switch (matched_domain) {
+                .vector => {
+                    // Vector type refinement, can only have one level
+                    const one_level_check = oneLevelCheck(
+                        type_signature,
+                        &signature,
+                        VT,
+                        fn_name,
+                        param_name,
+                        .vector,
+                        VectorType,
+                        &domains_checked[checked],
+                    );
+
+                    if (positive_operator)
+                        matched_any_positive = matched_any_positive or one_level_check
+                    else
+                        matched_any_negative = matched_any_negative or one_level_check;
+                },
+                .matrix => {
+                    // Matrix type refinement
+                    const two_level_check = twoLevelCheck(
+                        type_signature,
+                        &signature,
+                        VT,
+                        fn_name,
+                        param_name,
+                        .matrix,
+                        MatrixKind,
+                        MatrixStorage,
+                        &domains_checked[checked],
+                    );
+
+                    if (positive_operator)
+                        matched_any_positive = matched_any_positive or two_level_check
+                    else
+                        matched_any_negative = matched_any_negative or two_level_check;
+                },
+                .array => {
+                    // Array type refinement, can only have one level
+                    const one_level_check = oneLevelCheck(
+                        type_signature,
+                        &signature,
+                        VT,
+                        fn_name,
+                        param_name,
+                        .array,
+                        ArrayType,
+                        &domains_checked[checked],
+                    );
+
+                    if (positive_operator)
+                        matched_any_positive = matched_any_positive or one_level_check
+                    else
+                        matched_any_negative = matched_any_negative or one_level_check;
+                },
+                else => unreachable,
+            }
+        }
+    }
+
+    if (!matched_any_positive or matched_any_negative) {
+        // Build error message
+        // Domains with | are separated by " or "
+        // Domains with ! are like any except ...
+        // Numerics are put with the string expression directly
+
+        // For now, just print the type signature
+        const error_message = std.fmt.comptimePrint(
+            "{s} requires parameter '{s}' to be of type '{s}', but got '{s}'.",
+            .{ fn_name, param_name, type_signature, @typeName(T) },
+        );
+
+        @compileError(error_message);
+    }
+}
+
+fn oneLevelCheck(
+    comptime type_signature: []const u8,
+    comptime signature: *[]const u8,
+    comptime T: type,
+    comptime fn_name: []const u8,
+    comptime param_name: []const u8,
+    comptime domain: Domain,
+    comptime DomainType: type,
+    comptime checked_domain: *?CheckedDomain,
+) bool {
+    comptime var type_base_name: [32:0]u8 = .{0} ** 32;
+    @memcpy(type_base_name[0..domain.toString().len], domain.toString());
+    comptime var filled_length = domain.toString().len;
+
+    comptime var matched_subtype: ?DomainType = null;
+    if (signature.*[0] == '.') {
+        signature.* = signature.*[1..]; // Consume "."
+        inline for (std.meta.fields(DomainType)) |subtype| {
+            if (subtype.name.len <= signature.len and
+                std.mem.eql(u8, signature.*[0..subtype.name.len], subtype.name))
+            {
+                // Consume matched part
+                signature.* = signature.*[subtype.name.len..];
+                matched_subtype = @enumFromInt(subtype.value);
+
+                break;
+            }
+        }
+
+        if (matched_subtype == null)
+            @compileError(
+                std.fmt.comptimePrint(
+                    "Unrecognized {s} type in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                    .{ std.mem.span(@as([*:0]const u8, @ptrCast(&type_base_name))), type_signature, param_name, fn_name },
+                ),
+            );
+
+        type_base_name[filled_length] = '.';
+        const tag_name = @tagName(matched_subtype.?);
+        type_base_name[filled_length + 1] = std.ascii.toUpper(tag_name[0]);
+        filled_length += 2;
+        @memcpy(type_base_name[filled_length .. filled_length + tag_name.len - 1], tag_name[1..]);
+        filled_length += tag_name.len - 1;
+    }
+
+    // Check for element type specification
+    comptime var element_type_specified: bool = false;
+    comptime var correct_element_type: bool = true; // Default to true for no specification
+    comptime var element_type_signature: []const u8 = "";
+    if (signature.len > 0 and signature.*[0] == '(') {
+        const closing_paren_index = std.mem.indexOfScalar(u8, signature.*, ')');
+        if (closing_paren_index == null) {
+            @compileError(
+                std.fmt.comptimePrint(
+                    "Unmatched '(' in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                    .{ type_signature, param_name, fn_name },
+                ),
+            );
+        }
+
+        element_type_specified = true;
+        element_type_signature = signature.*[1..closing_paren_index.?];
+
+        // Check element type
+        correct_element_type = checkNumericConstraints(
+            type_signature,
+            element_type_signature,
+            Numeric(T),
+            fn_name,
+            param_name,
+            checked_domain,
+        );
+
+        // Consume element type part, including parentheses
+        signature.* = signature.*[closing_paren_index.? + 1 ..];
+
+        checked_domain.*.?.element_type = element_type_signature;
+    }
+
+    // Validate type match
+    comptime var correct_subdomain_type: bool = false;
+    if (matched_subtype) |subtype| {
+        checked_domain.*.?.first_level = CheckedDomain.FirstLevel.fromAny(subtype);
+        correct_subdomain_type = subtype.match()(T);
+    } else {
+        checked_domain.*.?.first_level = .{ .domain = domain };
+        correct_subdomain_type = domain.match()(T);
+    }
+
+    return correct_subdomain_type and correct_element_type;
+}
+
+fn twoLevelCheck(
+    comptime type_signature: []const u8,
+    comptime signature: *[]const u8,
+    comptime T: type,
+    comptime fn_name: []const u8,
+    comptime param_name: []const u8,
+    comptime domain: Domain,
+    comptime DomainType1: type, // Can be skipped if only one level is present
+    comptime DomainType2: type,
+    comptime checked_domain: *?CheckedDomain,
+) bool {
+    comptime var type_base_name: [32:0]u8 = .{0} ** 32;
+    @memcpy(type_base_name[0..domain.toString().len], domain.toString());
+    comptime var filled_length = domain.toString().len;
+
+    comptime var matched_subtype1: ?DomainType1 = null;
+    comptime var matched_subtype2: ?DomainType2 = null;
+
+    // First subtype
+    if (signature.*[0] == '.') {
+        signature.* = signature.*[1..]; // Consume "."
+
+        // Test first DomainType1
+        inline for (std.meta.fields(DomainType1)) |subtype1| {
+            if (subtype1.name.len <= signature.len and
+                std.mem.eql(u8, signature.*[0..subtype1.name.len], subtype1.name))
+            {
+                // Consume matched part
+                signature.* = signature.*[subtype1.name.len..];
+                matched_subtype1 = @enumFromInt(subtype1.value);
+
+                break;
+            }
+        }
+
+        if (matched_subtype1 == null) {
+            // Test second DomainType2 if first failed
+            inline for (std.meta.fields(DomainType2)) |subtype2| {
+                if (subtype2.name.len <= signature.len and
+                    std.mem.eql(u8, signature.*[0..subtype2.name.len], subtype2.name))
+                {
+                    // Consume matched part
+                    signature.* = signature.*[subtype2.name.len..];
+                    matched_subtype2 = @enumFromInt(subtype2.value);
+
+                    break;
+                }
+            }
+
+            if (matched_subtype2 == null)
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "Unrecognized {s} type in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ std.mem.span(@as([*:0]const u8, @ptrCast(&type_base_name))), type_signature, param_name, fn_name },
+                    ),
+                );
+
+            type_base_name[filled_length] = '.';
+            const tag_name2 = @tagName(matched_subtype2.?);
+            filled_length += 1;
+            @memcpy(type_base_name[filled_length .. filled_length + tag_name2.len], tag_name2);
+            filled_length += tag_name2.len;
+        } else {
+            type_base_name[filled_length] = '.';
+            const tag_name1 = @tagName(matched_subtype1.?);
+            filled_length += 1;
+            @memcpy(type_base_name[filled_length .. filled_length + tag_name1.len], tag_name1);
+            filled_length += tag_name1.len;
+        }
+    }
+
+    // Second subtype
+    if (matched_subtype2 == null) {
+        if (signature.len > 0 and signature.*[0] == '.') {
+            signature.* = signature.*[1..]; // Consume "."
+
+            // Second is always DomainType2
+            inline for (std.meta.fields(DomainType2)) |subtype2| {
+                if (subtype2.name.len <= signature.len and
+                    std.mem.eql(u8, signature.*[0..subtype2.name.len], subtype2.name))
+                {
+                    // Consume matched part
+                    signature.* = signature.*[subtype2.name.len..];
+                    matched_subtype2 = @enumFromInt(subtype2.value);
+
+                    break;
+                }
+            }
+
+            if (matched_subtype2 == null)
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "Unrecognized {s} type in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ std.mem.span(@as([*:0]const u8, @ptrCast(&type_base_name))), type_signature, param_name, fn_name },
+                    ),
+                );
+
+            type_base_name[filled_length] = '.';
+            const tag_name2 = @tagName(matched_subtype2.?);
+            type_base_name[filled_length + 1] = std.ascii.toUpper(tag_name2[0]);
+            filled_length += 2;
+            @memcpy(type_base_name[filled_length .. filled_length + tag_name2.len - 1], tag_name2[1..]);
+            filled_length += tag_name2.len - 1;
+        }
+    } else if (signature.len > 0 and signature.*[0] == '.') {
+        @compileError(
+            std.fmt.comptimePrint(
+                "Found unexpected second {s} type in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                .{ std.mem.span(@as([*:0]const u8, @ptrCast(&type_base_name))), type_signature, param_name, fn_name },
+            ),
+        );
+    }
+
+    // Check for element type specification
+    comptime var element_type_specified: bool = false;
+    comptime var correct_element_type: bool = true; // Default to true for no specification
+    comptime var element_type_signature: []const u8 = "";
+    if (signature.len > 0 and signature.*[0] == '(') {
+        const closing_paren_index = std.mem.indexOfScalar(u8, signature.*, ')');
+        if (closing_paren_index == null) {
+            @compileError(
+                std.fmt.comptimePrint(
+                    "Unmatched '(' in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                    .{ type_signature, param_name, fn_name },
+                ),
+            );
+        }
+
+        element_type_specified = true;
+        element_type_signature = signature.*[1..closing_paren_index.?];
+
+        // Check element type
+        correct_element_type = checkNumericConstraints(
+            type_signature,
+            element_type_signature,
+            Numeric(T),
+            fn_name,
+            param_name,
+            checked_domain,
+        );
+
+        // Consume element type part, including parentheses
+        signature.* = signature.*[closing_paren_index.? + 1 ..];
+    }
+
+    // Validate type match
+    comptime var correct_subdomain_type: bool = false;
+    if (matched_subtype1 != null and matched_subtype2 != null) {
+        // Both active
+        checked_domain.*.?.first_level = CheckedDomain.FirstLevel.fromAny(mixSubdomains(domain, matched_subtype1.?, matched_subtype2.?));
+        correct_subdomain_type = matched_subtype1.?.match()(T) and matched_subtype2.?.match()(T);
+    } else if (matched_subtype1) |subtype1| {
+        // Only matched_subtype1 active
+        checked_domain.*.?.first_level = CheckedDomain.FirstLevel.fromAny(subtype1);
+        correct_subdomain_type = subtype1.match()(T);
+    } else if (matched_subtype2) |subtype2| {
+        // Only matched_subtype2 active
+        checked_domain.*.?.first_level = CheckedDomain.FirstLevel.fromAny(subtype2);
+        correct_subdomain_type = subtype2.match()(T);
+    } else {
+        checked_domain.*.?.first_level = .{ .domain = domain };
+        correct_subdomain_type = domain.match()(T);
+    }
+
+    return correct_subdomain_type and correct_element_type;
+}
+
+/// Given a numeric type signature (as a string) and a numeric type, checks
+/// whether the type matches the signature, returning `true` if it does,
+/// `false` otherwise. Does not trigger compile-time errors.
+///
+/// Parameters
+/// ----------
+/// comptime signature (`[]const u8`): The numeric type signature to check against.
+/// See the documentation of `checkParameterType` for the format of type signatures.
+///
+/// comptime T (`type`): The numeric type to check against the signature.
+/// Must be a supported numeric type.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type matches the signature, `false` otherwise.
+fn checkNumericConstraints(
+    comptime type_signature: []const u8,
+    comptime numeric_signature: []const u8,
+    comptime T: type,
+    comptime fn_name: []const u8,
+    comptime param_name: []const u8,
+    comptime checked_domain: *?CheckedDomain, // Is null if called from numeric domain, else only element_type is null
+) bool {
+    // First check T is numeric
+    const is_numeric = isNumeric(T);
+
+    _ = checked_domain; // Currently unused
+    comptime var signature: []const u8 = std.mem.trimStart(u8, numeric_signature, " ");
+    const actual_type: ?NumericType = if (is_numeric) numericType(T) else null;
+
+    // Remove trailing 0 (implicit null terminator in string literals)
+    signature = std.mem.trimEnd(u8, signature, &.{0});
+
+    // If signature is only one word "numeric", accept any numeric type
+    if (7 <= signature.len and
+        std.mem.eql(u8, signature, "numeric"))
+        return true and is_numeric;
+
+    // Test principal operators
+    // "=" means the same as no operator, but can only have one numeric type category, or all of them ("numeric")
+    if (std.mem.startsWith(u8, signature, "=")) {
+        signature = signature[1..];
+
+        if (7 == signature.len and
+            std.mem.eql(u8, signature, "numeric"))
+            return true and is_numeric;
+
+        // Exact match
+        comptime var matched_type: ?NumericType = null;
+        inline for (std.meta.fields(NumericType)) |num_type| {
+            if (num_type.name.len <= signature.len and
+                std.mem.eql(u8, signature[0..num_type.name.len], num_type.name))
+            {
+                // Consume matched part
+                signature = signature[num_type.name.len..];
+                matched_type = @enumFromInt(num_type.value);
+
+                break;
+            }
+        }
+
+        if (matched_type == null)
+            return false and is_numeric;
+
+        return is_numeric and matched_type.? == actual_type.?;
+    }
+
+    // Other principal operators: "<", "<=", ">", ">="
+    comptime var lower_bound: ?NumericType = null;
+    comptime var lower_inclusive: bool = false;
+    comptime var upper_bound: ?NumericType = null;
+    comptime var upper_inclusive: bool = false;
+    comptime var finish_principal = false;
+    while (!finish_principal) {
+        signature = std.mem.trimStart(u8, signature, " ");
+
+        if (std.mem.indexOfScalar(u8, signature, '<') == null and
+            std.mem.indexOfScalar(u8, signature, '>') == null)
+        {
+            // Must be at the beginning, so no more principal operators
+            finish_principal = true;
+            break;
+        }
+
+        // If not <= or <, must be >= or >
+        const is_lower = std.mem.startsWith(u8, signature, ">");
+        signature = signature[1..]; // Consume "<" or ">"
+        const is_inclusive = std.mem.startsWith(u8, signature, "=");
+        signature = if (is_inclusive) signature[1..] else signature;
+
+        // Match numeric type
+        comptime var matched_type: ?NumericType = null;
+        inline for (std.meta.fields(NumericType)) |num_type| {
+            if (num_type.name.len <= signature.len and
+                std.mem.eql(u8, signature[0..num_type.name.len], num_type.name))
+            {
+                // Consume matched part
+                signature = signature[num_type.name.len..];
+                matched_type = @enumFromInt(num_type.value);
+
+                break;
+            }
+        }
+
+        if (matched_type == null)
+            return false and is_numeric;
+
+        if (is_lower) {
+            if (lower_bound != null)
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "Multiple lower bound operators in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                );
+
+            lower_bound = matched_type;
+            lower_inclusive = is_inclusive;
+        } else {
+            upper_bound = matched_type;
+            upper_inclusive = is_inclusive;
+        }
+    }
+
+    // Now check if actual_type matches the bounds, if they were specified, or the principal type
+    comptime var matched_all_bounds = true;
+    comptime var checked = 0;
+    if (is_numeric) { // Ensure actual_type is not null
+        if (lower_bound != null and upper_bound != null) {
+            // Both bounds present
+            if (lower_inclusive)
+                matched_all_bounds = matched_all_bounds and actual_type.?.ge(lower_bound.?)
+            else
+                matched_all_bounds = matched_all_bounds and actual_type.?.gt(lower_bound.?);
+
+            if (upper_inclusive)
+                matched_all_bounds = matched_all_bounds and actual_type.?.le(upper_bound.?)
+            else
+                matched_all_bounds = matched_all_bounds and actual_type.?.lt(upper_bound.?);
+
+            checked += 2;
+        } else if (lower_bound != null) {
+            // Only lower bound present
+            if (lower_inclusive)
+                matched_all_bounds = matched_all_bounds and actual_type.?.ge(lower_bound.?)
+            else
+                matched_all_bounds = matched_all_bounds and actual_type.?.gt(lower_bound.?);
+
+            checked += 1;
+        } else if (upper_bound != null) {
+            // Only upper bound present
+            if (upper_inclusive)
+                matched_all_bounds = matched_all_bounds and actual_type.?.le(upper_bound.?)
+            else
+                matched_all_bounds = matched_all_bounds and actual_type.?.lt(upper_bound.?);
+
+            checked += 1;
+        } // No bounds present -> either we have a standalone principal, or a category as the principal
+    }
+
+    // Now check remaining signature for positive/negative types and categories ("@")
+    comptime var matched_any_positive = false; // Must match at least one positive type ("" or "|")
+    comptime var matched_any_negative = false; // Must not match any negative type ("!")
+    comptime var matched_all_categories = true; // All categories must match
+    comptime var finished = false;
+    while (!finished) : (checked += 1) {
+        signature = std.mem.trimStart(u8, signature, " ");
+        if (signature.len == 0 or signature[0] == 0) {
+            // No more types to check
+            finished = true;
+            break;
+        }
+
+        // Check for "|" and "!" operators. Invalid if checked == 0
+        if (signature[0] == '|' or signature[0] == '!') {
+            comptime var positive_operator = true;
+            if (signature[0] == '|') {
+                if (checked == 0) {
+                    @compileError(
+                        std.fmt.comptimePrint(
+                            "Operator '|' cannot be used before any principal numeric type or bound in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                            .{ type_signature, param_name, fn_name },
+                        ),
+                    );
+                }
+
+                positive_operator = true;
+                signature = signature[1..];
+            } else if (signature[0] == '!') {
+                if (checked == 0) {
+                    @compileError(
+                        std.fmt.comptimePrint(
+                            "Operator '!' cannot be used before any principal numeric type or bound in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                            .{ type_signature, param_name, fn_name },
+                        ),
+                    );
+                }
+
+                positive_operator = false;
+                signature = signature[1..];
+            }
+
+            // Update checked count
+            checked += 1;
+
+            // Match numeric type
+            comptime var matched_type: ?NumericType = null;
+            inline for (std.meta.fields(NumericType)) |num_type| {
+                if (num_type.name.len <= signature.len and
+                    std.mem.eql(u8, signature[0..num_type.name.len], num_type.name))
+                {
+                    // Consume matched part
+                    signature = signature[num_type.name.len..];
+                    matched_type = @enumFromInt(num_type.value);
+                    break;
+                }
+            }
+
+            if (matched_type == null)
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "Unrecognized numeric type in numeric type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                );
+
+            if (positive_operator) {
+                if (is_numeric and matched_type.? == actual_type.?)
+                    matched_any_positive = true;
+            } else {
+                if (is_numeric and matched_type.? == actual_type.?)
+                    matched_any_negative = true;
+            }
+
+            continue;
+        } else if (signature[0] == '@') {
+            // Check for "@" category operator. Valid for any checked value
+            signature = signature[1..]; // Consume "@"
+
+            // Match numeric category
+            comptime var matched_category: ?CategoryOperator = null;
+            inline for (std.meta.fields(CategoryOperator)) |num_cat| {
+                if (num_cat.name.len <= signature.len and
+                    std.mem.eql(u8, signature[0..num_cat.name.len], num_cat.name))
+                {
+                    // Consume matched part
+                    signature = signature[num_cat.name.len..];
+                    matched_category = @enumFromInt(num_cat.value);
+
+                    break;
+                }
+            }
+
+            if (matched_category == null)
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "Unrecognized numeric category in type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                );
+
+            // Check category match
+            const category_match = matched_category.?.match()(T);
+            matched_all_categories = matched_all_categories and category_match;
+            matched_any_positive = matched_any_positive or category_match;
+
+            continue;
+        }
+
+        // Check for no operator. Only valid if checked == 0
+        if (checked == 0) {
+            // Match numeric type
+            comptime var matched_type: ?NumericType = null;
+            inline for (std.meta.fields(NumericType)) |num_type| {
+                if (num_type.name.len <= signature.len and
+                    std.mem.eql(u8, signature[0..num_type.name.len], num_type.name))
+                {
+                    // Consume matched part
+                    signature = signature[num_type.name.len..];
+                    matched_type = @enumFromInt(num_type.value);
+
+                    break;
+                }
+            }
+
+            if (matched_type == null)
+                @compileError(
+                    std.fmt.comptimePrint(
+                        "Unrecognized numeric type in numeric type signature '{s}' for parameter '{s}' of function '{s}'.",
+                        .{ type_signature, param_name, fn_name },
+                    ),
+                );
+
+            if (is_numeric and matched_type.? == actual_type.?)
+                matched_any_positive = true;
+        } else {
+            @compileError(
+                std.fmt.comptimePrint(
+                    "Missing operator in numeric type signature '{s}' for parameter '{s}' of function '{s}'.",
+                    .{ type_signature, param_name, fn_name },
+                ),
+            );
+        }
+    }
+
+    return matched_all_bounds and matched_any_positive and !matched_any_negative and matched_all_categories and is_numeric;
+}
+
+/// Checks if the input types match the corresponding type signatures,
+/// triggering compile-time errors if not. Also checks the relationships
+/// between the types according to the provided type rules.
+///
+/// Parameters
+/// ----------
+/// comptime type_signatures (`[][]const u8`): The type signatures to check against.
+/// See the documentation of `checkParameterType` for the format of type signatures.
+/// If only one type signature is provided, it is used for all types.
+///
+/// comptime type_rules (`[][]const u8`): The type rules to check between the types.
+// pub fn checkParameterTypes(
+//     comptime type_signatures: [][]const u8,
+//     comptime type_rules: [][]const u8,
+//     comptime Ts: []type,
+//     comptime fn_name: []const u8,
+//     comptime param_names: [][]const u8,
+// ) void {}
 
 /// Coerces the input types to the smallest type that can represent both types.
 ///
@@ -3272,14 +4608,8 @@ pub fn Numeric(comptime T: type) type {
     if (isExpression(T))
         return Expression;
 
-    if (isArray(T) or isMatrix(T) or isVector(T)) {
-        if (isPermutationMatrix(T)) {
-            return T.tp();
-        } else {
-            const t: T = .empty;
-            return @typeInfo(@TypeOf(@field(t, "data"))).pointer.child;
-        }
-    }
+    if (isArray(T) or isMatrix(T) or isVector(T))
+        return T.Numeric;
 
     if (!isNumeric(T)) {
         @compileError("Expected a numeric type, but got " ++ @typeName(T));

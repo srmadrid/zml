@@ -29,6 +29,14 @@ pub fn Dense(T: type, order: Order) type {
         ld: u32, // leading dimension
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_dense = {};
+        pub const is_general = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty: Dense(T, order) = .{
             .data = &.{},
             .rows = 0,

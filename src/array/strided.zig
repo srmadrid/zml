@@ -32,6 +32,13 @@ pub fn Strided(T: type, base_order: Order) type {
         offset: u32,
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_array = {};
+        pub const is_strided = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty: Strided(T, base_order) = .{
             .data = &.{},
             .ndim = 0,

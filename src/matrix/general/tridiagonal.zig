@@ -1,15 +1,15 @@
 const std = @import("std");
 
-const types = @import("../types.zig");
+const types = @import("../../types.zig");
 const Order = types.Order;
-const ops = @import("../ops.zig");
-const constants = @import("../constants.zig");
-const int = @import("../int.zig");
+const ops = @import("../../ops.zig");
+const constants = @import("../../constants.zig");
+const int = @import("../../int.zig");
 
-const matrix = @import("../matrix.zig");
+const matrix = @import("../../matrix.zig");
 const Flags = matrix.Flags;
 
-const array = @import("../array.zig");
+const array = @import("../../array.zig");
 
 /// Tridiagonal matrix type, represented as a contiguous array of `3 × size - 2`
 /// elements of type `T`. This array contains the subdiagonal, diagonal, and
@@ -25,6 +25,14 @@ pub fn Tridiagonal(T: type) type {
         offset: u32,
         sdoffset: u32,
         flags: Flags = .{},
+
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_tridiagonal = {};
+        pub const is_general = {};
+
+        /// Numeric type
+        pub const Numeric = T;
 
         pub const empty: Tridiagonal(T) = .{
             .data = &.{},

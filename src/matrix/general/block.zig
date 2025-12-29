@@ -34,6 +34,14 @@ pub fn Block(T: type, border: Order, order: Order) type {
         cols: u32,
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_block = {};
+        pub const is_general = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty = Block(T, border, order){
             .data = &.{},
             .idx = &.{},

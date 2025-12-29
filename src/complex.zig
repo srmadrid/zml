@@ -18,6 +18,12 @@ pub fn Complex(comptime T: type) type {
         im: T,
         flags: Flags,
 
+        /// Type signature
+        pub const is_complex = {};
+
+        /// Scalar type
+        pub const Scalar = T;
+
         pub const empty: Complex(T) = .{
             .re = .empty,
             .im = .empty,

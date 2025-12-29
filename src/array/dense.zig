@@ -39,6 +39,13 @@ pub fn Dense(T: type, order: Order) type {
         size: u64,
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_array = {};
+        pub const is_dense = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty: Dense(T, order) = .{
             .data = &.{},
             .ndim = 0,

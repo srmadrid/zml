@@ -22,6 +22,13 @@ pub fn Dense(T: type) type {
         inc: i32,
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_vector = {};
+        pub const is_dense = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty = Dense(T){
             .data = &.{},
             .len = 0,

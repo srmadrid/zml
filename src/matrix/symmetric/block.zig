@@ -37,6 +37,14 @@ pub fn Block(T: type, uplo: Uplo, border: Order, order: Order) type {
         _plen: u32, // allocated length of ptr
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_block = {};
+        pub const is_symmetric = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty = Block(T, uplo, border, order){
             .data = &.{},
             .idx = &.{},

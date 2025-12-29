@@ -23,6 +23,13 @@ pub fn Diagonal(T: type) type {
         cols: u32,
         flags: Flags = .{},
 
+        /// Type signatures
+        pub const is_matrix = {};
+        pub const is_diagonal = {};
+
+        /// Numeric type
+        pub const Numeric = T;
+
         pub const empty: Diagonal(T) = .{
             .data = &.{},
             .rows = 0,
