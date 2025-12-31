@@ -558,12 +558,17 @@ fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u3
     }
 }
 
-fn testCheckParameter(x: anytype) void {
-    comptime zml.types.checkParameterType(
-        "matrix.symmetric(@real) !matrix.dense",
-        @TypeOf(x),
+fn testCheckParameter(x: anytype, y: anytype, z: anytype) void {
+    comptime zml.types.checkParameterTypes(
+        &.{
+            "none.numeric is 'matrix.symmetric(@real) !matrix.dense | float | cfloat'",
+        },
+        .{
+            .x = @TypeOf(x),
+            .y = @TypeOf(y),
+            .z = @TypeOf(z),
+        },
         "testCheckParameter",
-        "x",
     );
 }
 
@@ -573,10 +578,10 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     //const a = gpa.allocator();
 
-    const x: zml.matrix.symmetric.Sparse(zml.cf64, .upper, .col_major) = undefined;
-    testCheckParameter(x);
-
-    std.debug.print("isvector: {}\n", .{zml.types.isVector(zml.vector.Sparse(zml.Dyadic(1000, 732)))});
+    const x: i64 = undefined;
+    const y: zml.matrix.symmetric.Dense(f64, .upper, .col_major) = undefined;
+    const z: f64 = undefined;
+    testCheckParameter(x, y, z);
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;
@@ -865,7 +870,7 @@ fn random_matrix_t(
     cols: u32,
 ) !T {
     switch (comptime zml.types.matrixType(T)) {
-        .dense_general => {
+        .general_dense => {
             var result: T = try .init(allocator, rows, cols);
 
             var i: u32 = 0;
@@ -901,7 +906,7 @@ fn random_matrix_t(
 
             return result;
         },
-        .dense_symmetric, .dense_hermitian => {
+        .symmetric_dense, .hermitian_dense => {
             var result: T = try .init(allocator, rows);
 
             if (comptime zml.types.uploOf(T) == .upper) {
@@ -1000,7 +1005,7 @@ fn random_matrix_t(
 
             return result;
         },
-        .dense_triangular => {
+        .triangular_dense => {
             var result: T = try T.init(allocator, rows, cols);
 
             if (comptime zml.types.uploOf(T) == .upper) {
@@ -1294,7 +1299,7 @@ fn random_matrix_t(
 
             return result;
         },
-        .sparse_general => {
+        .general_sparse => {
             const nnz: u32 = rand.intRangeAtMost(u32, zml.int.max(rows, cols), rows * cols / 2);
 
             var builder: zml.matrix.builder.Sparse(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, cols, nnz);
@@ -1340,7 +1345,7 @@ fn random_matrix_t(
 
             return try builder.compile(allocator);
         },
-        .sparse_symmetric, .sparse_hermitian => {
+        .symmetric_sparse, .hermitian_sparse => {
             const nnz: u32 = rand.intRangeAtMost(u32, zml.int.max(rows, rows) / 2, (rows * rows / 2) / 2);
 
             var builder: zml.matrix.builder.Sparse(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, rows, nnz);
@@ -1393,7 +1398,7 @@ fn random_matrix_t(
             else
                 try builder.compileHermitian(allocator, zml.types.uploOf(T), .{ .element_allocator = allocator });
         },
-        .sparse_triangular => {
+        .triangular_sparse => {
             const nnz: u32 = rand.intRangeAtMost(u32, zml.int.max(rows, cols) / 2, (rows * cols / 2) / 2);
             var builder: zml.matrix.builder.Sparse(zml.types.Numeric(T), zml.types.orderOf(T)) = try .init(allocator, rows, cols, nnz);
             errdefer builder.deinit(allocator);
@@ -1448,7 +1453,7 @@ fn random_matrix_t(
 
             return try builder.compileTriangular(allocator, zml.types.uploOf(T), zml.types.diagOf(T), .{ .element_allocator = allocator });
         },
-        .block_general => {
+        .general_block => {
             var bsize: u32 = if (rows < 4 or cols < 4) 1 else rand.intRangeAtMost(u32, 2, zml.int.min(rows, cols) / 2);
             while (rows % bsize != 0 or cols % bsize != 0) : (bsize = rand.intRangeAtMost(u32, 2, zml.int.min(rows, cols) / 2)) {}
             const nnzb: u32 = rand.intRangeAtMost(u32, (rows / bsize + cols / bsize) / 2, (rows / bsize) * (cols / bsize) / 2);

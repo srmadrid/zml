@@ -32,39 +32,39 @@ pub fn apply2(
 
     if (comptime !types.isMatrix(X)) {
         switch (comptime types.matrixType(Y)) {
-            .dense_general => return @import("apply2/dge.zig").apply2(allocator, x, y, op, ctx),
-            .dense_symmetric => return @import("apply2/dsy.zig").apply2(allocator, x, y, op, ctx),
-            .dense_hermitian => return @import("apply2/dhe.zig").apply2(allocator, x, y, op, ctx),
-            .dense_triangular => return @import("apply2/dtr.zig").apply2(allocator, x, y, op, ctx),
+            .general_dense => return @import("apply2/dge.zig").apply2(allocator, x, y, op, ctx),
+            .symmetric_dense => return @import("apply2/dsy.zig").apply2(allocator, x, y, op, ctx),
+            .hermitian_dense => return @import("apply2/dhe.zig").apply2(allocator, x, y, op, ctx),
+            .triangular_dense => return @import("apply2/dtr.zig").apply2(allocator, x, y, op, ctx),
             .diagonal => return @import("apply2/ddi.zig").apply2(allocator, x, y, op, ctx),
             .banded => return @import("apply2/dba.zig").apply2(allocator, x, y, op, ctx),
             .tridiagonal => return @import("apply2/dgt.zig").apply2(allocator, x, y, op, ctx),
-            .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-            .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-            .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-            .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+            .general_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .symmetric_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .hermitian_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .triangular_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .general_block => @compileError("apply2 not implemented for sparse matrices yet"),
+            .symmetric_block => @compileError("apply2 not implemented for sparse matrices yet"),
+            .hermitian_block => @compileError("apply2 not implemented for sparse matrices yet"),
             .permutation => @compileError("apply2 not implemented for permutation matrices yet"),
             .numeric => unreachable,
         }
     } else if (comptime !types.isMatrix(Y)) {
         switch (comptime types.matrixType(X)) {
-            .dense_general => return @import("apply2/dge.zig").apply2(allocator, x, y, op, ctx),
-            .dense_symmetric => return @import("apply2/dsy.zig").apply2(allocator, x, y, op, ctx),
-            .dense_hermitian => return @import("apply2/dhe.zig").apply2(allocator, x, y, op, ctx),
-            .dense_triangular => return @import("apply2/dtr.zig").apply2(allocator, x, y, op, ctx),
+            .general_dense => return @import("apply2/dge.zig").apply2(allocator, x, y, op, ctx),
+            .symmetric_dense => return @import("apply2/dsy.zig").apply2(allocator, x, y, op, ctx),
+            .hermitian_dense => return @import("apply2/dhe.zig").apply2(allocator, x, y, op, ctx),
+            .triangular_dense => return @import("apply2/dtr.zig").apply2(allocator, x, y, op, ctx),
             .diagonal => return @import("apply2/ddi.zig").apply2(allocator, x, y, op, ctx),
             .banded => return @import("apply2/dba.zig").apply2(allocator, x, y, op, ctx),
             .tridiagonal => return @import("apply2/dgt.zig").apply2(allocator, x, y, op, ctx),
-            .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-            .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-            .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-            .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-            .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+            .general_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .symmetric_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .hermitian_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .triangular_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+            .general_block => @compileError("apply2 not implemented for sparse matrices yet"),
+            .symmetric_block => @compileError("apply2 not implemented for sparse matrices yet"),
+            .hermitian_block => @compileError("apply2 not implemented for sparse matrices yet"),
             .permutation => @compileError("apply2 not implemented for permutation matrices yet"),
             .numeric => unreachable,
         }
@@ -79,12 +79,12 @@ pub fn apply2(
             return matrix.Error.DimensionMismatch;
 
         switch (comptime types.matrixType(X)) {
-            .dense_general => switch (comptime types.matrixType(Y)) {
-                .dense_general => return @import("apply2/dge.zig").apply2(allocator, x, y, op, ctx),
-                .dense_symmetric => return @import("apply2/dgedsy.zig").apply2(allocator, x, y, op, ctx),
-                .dense_hermitian => return @import("apply2/dgedhe.zig").apply2(allocator, x, y, op, ctx),
-                .dense_triangular => return @import("apply2/dgedtr.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => {
+            .general_dense => switch (comptime types.matrixType(Y)) {
+                .general_dense => return @import("apply2/dge.zig").apply2(allocator, x, y, op, ctx),
+                .symmetric_dense => return @import("apply2/dgedsy.zig").apply2(allocator, x, y, op, ctx),
+                .hermitian_dense => return @import("apply2/dgedhe.zig").apply2(allocator, x, y, op, ctx),
+                .triangular_dense => return @import("apply2/dgedtr.zig").apply2(allocator, x, y, op, ctx),
+                .general_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -92,7 +92,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -100,7 +100,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -108,7 +108,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -116,7 +116,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -124,7 +124,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -132,7 +132,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -146,8 +146,8 @@ pub fn apply2(
                 .permutation => return @import("apply2/dgepe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
-            .dense_symmetric => switch (comptime types.matrixType(Y)) {
-                .dense_general => {
+            .symmetric_dense => switch (comptime types.matrixType(Y)) {
+                .general_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -155,10 +155,10 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_symmetric => return @import("apply2/dsy.zig").apply2(allocator, x, y, op, ctx),
-                .dense_hermitian => return @import("apply2/dsydhe.zig").apply2(allocator, x, y, op, ctx),
-                .dense_triangular => return @import("apply2/dsydtr.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => {
+                .symmetric_dense => return @import("apply2/dsy.zig").apply2(allocator, x, y, op, ctx),
+                .hermitian_dense => return @import("apply2/dsydhe.zig").apply2(allocator, x, y, op, ctx),
+                .triangular_dense => return @import("apply2/dsydtr.zig").apply2(allocator, x, y, op, ctx),
+                .general_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -166,7 +166,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.symmetric.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
@@ -174,7 +174,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     if (comptime !types.isComplex(Numeric(X))) {
                         var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
@@ -191,7 +191,7 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -199,7 +199,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -207,7 +207,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.symmetric.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
@@ -215,7 +215,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     if (comptime !types.isComplex(Numeric(X))) {
                         var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
@@ -238,8 +238,8 @@ pub fn apply2(
                 .permutation => return @import("apply2/dsype.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
-            .dense_hermitian => switch (comptime types.matrixType(Y)) {
-                .dense_general => {
+            .hermitian_dense => switch (comptime types.matrixType(Y)) {
+                .general_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -247,10 +247,10 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_symmetric => return @import("apply2/dhedsy.zig").apply2(allocator, x, y, op, ctx),
-                .dense_hermitian => return @import("apply2/dhe.zig").apply2(allocator, x, y, op, ctx),
-                .dense_triangular => return @import("apply2/dhedtr.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => {
+                .symmetric_dense => return @import("apply2/dhedsy.zig").apply2(allocator, x, y, op, ctx),
+                .hermitian_dense => return @import("apply2/dhe.zig").apply2(allocator, x, y, op, ctx),
+                .triangular_dense => return @import("apply2/dhedtr.zig").apply2(allocator, x, y, op, ctx),
+                .general_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -258,7 +258,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     if (comptime !types.isComplex(Numeric(Y))) {
                         var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
@@ -275,7 +275,7 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
@@ -283,7 +283,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -291,7 +291,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -299,7 +299,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     if (comptime !types.isComplex(Numeric(Y))) {
                         var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
@@ -316,7 +316,7 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.hermitian.Dense(R, types.uploOf(X), types.orderOf(X)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
@@ -330,8 +330,8 @@ pub fn apply2(
                 .permutation => return @import("apply2/dhepe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
-            .dense_triangular => switch (comptime types.matrixType(Y)) {
-                .dense_general => {
+            .triangular_dense => switch (comptime types.matrixType(Y)) {
+                .general_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -339,7 +339,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_symmetric => {
+                .symmetric_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -347,7 +347,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_hermitian => {
+                .hermitian_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -355,8 +355,8 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_triangular => return @import("apply2/dtr.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => {
+                .triangular_dense => return @import("apply2/dtr.zig").apply2(allocator, x, y, op, ctx),
+                .general_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -364,7 +364,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -372,7 +372,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -380,7 +380,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     if (comptime types.uploOf(X) == types.uploOf(Y)) {
                         var result: matrix.triangular.Dense(R, types.uploOf(X), .non_unit, types.orderOf(X)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
@@ -397,7 +397,7 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -405,7 +405,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -413,7 +413,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -440,8 +440,8 @@ pub fn apply2(
                 .permutation => return @import("apply2/dtrpe.zig").apply2(allocator, x, y, op, ctx),
                 .numeric => unreachable,
             },
-            .sparse_general => switch (comptime types.matrixType(Y)) {
-                .dense_general => {
+            .general_sparse => switch (comptime types.matrixType(Y)) {
+                .general_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -449,7 +449,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_symmetric => {
+                .symmetric_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -457,7 +457,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_hermitian => {
+                .hermitian_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -465,7 +465,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_triangular => {
+                .triangular_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -473,7 +473,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_general => {
+                .general_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -481,7 +481,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + 2 * y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -489,7 +489,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + 2 * y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -497,7 +497,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz + (if (comptime types.diagOf(Y) == .unit) int.min(m, n) else 0));
                     errdefer result.deinit(allocator);
 
@@ -505,7 +505,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -513,7 +513,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -521,7 +521,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -563,8 +563,8 @@ pub fn apply2(
                 },
                 .numeric => unreachable,
             },
-            .sparse_symmetric => switch (comptime types.matrixType(Y)) {
-                .dense_general => {
+            .symmetric_sparse => switch (comptime types.matrixType(Y)) {
+                .general_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -572,7 +572,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_symmetric => {
+                .symmetric_dense => {
                     var result: matrix.symmetric.Dense(R, types.uploOf(Y), types.orderOf(Y)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
@@ -580,7 +580,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_hermitian => {
+                .hermitian_dense => {
                     if (comptime !types.isComplex(Numeric(X))) {
                         var result: matrix.hermitian.Dense(R, types.uploOf(Y), types.orderOf(Y)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
@@ -597,7 +597,7 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .dense_triangular => {
+                .triangular_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -605,7 +605,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_general => {
+                .general_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 2 * x.nnz + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -613,7 +613,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -621,7 +621,7 @@ pub fn apply2(
 
                     return try result.compileSymmetric(allocator, types.uploOf(X));
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     if (comptime !types.isComplex(Numeric(X))) {
                         var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
                         errdefer result.deinit(allocator);
@@ -638,7 +638,7 @@ pub fn apply2(
                         return try result.compile(allocator);
                     }
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 2 * x.nnz + y.nnz + (if (comptime types.diagOf(Y) == .unit) int.min(m, n) else 0));
                     errdefer result.deinit(allocator);
 
@@ -646,7 +646,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 2 * x.nnz + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -654,7 +654,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -662,7 +662,7 @@ pub fn apply2(
 
                     return try result.compileSymmetric(allocator, types.uploOf(X));
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     if (comptime !types.isComplex(Numeric(X))) {
                         var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + y.nnzb * y.bsize * y.bsize);
                         errdefer result.deinit(allocator);
@@ -713,8 +713,8 @@ pub fn apply2(
                 },
                 .numeric => unreachable,
             },
-            .sparse_hermitian => switch (comptime types.matrixType(Y)) {
-                .dense_general => {
+            .hermitian_sparse => switch (comptime types.matrixType(Y)) {
+                .general_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -722,7 +722,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_symmetric => {
+                .symmetric_dense => {
                     if (comptime !types.isComplex(Numeric(Y))) {
                         var result: matrix.hermitian.Dense(R, types.uploOf(Y), types.orderOf(Y)) = try .init(allocator, n);
                         errdefer result.deinit(allocator);
@@ -739,7 +739,7 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .dense_hermitian => {
+                .hermitian_dense => {
                     var result: matrix.hermitian.Dense(R, types.uploOf(Y), types.orderOf(Y)) = try .init(allocator, n);
                     errdefer result.deinit(allocator);
 
@@ -747,7 +747,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_triangular => {
+                .triangular_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -755,7 +755,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_general => {
+                .general_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 2 * x.nnz + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -763,7 +763,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     if (comptime !types.isComplex(Numeric(Y))) {
                         var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
                         errdefer result.deinit(allocator);
@@ -780,7 +780,7 @@ pub fn apply2(
                         return try result.compile(allocator);
                     }
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, x.nnz + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -788,7 +788,7 @@ pub fn apply2(
 
                     return try result.compileHermitian(allocator, types.uploOf(X));
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(X)) = try .init(allocator, m, n, 2 * x.nnz + y.nnz + (if (comptime types.diagOf(Y) == .unit) int.min(m, n) else 0));
                     errdefer result.deinit(allocator);
 
@@ -796,7 +796,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 2 * x.nnz + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -804,7 +804,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     if (comptime !types.isComplex(Numeric(Y))) {
                         var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + y.nnzb * y.bsize * y.bsize);
                         errdefer result.deinit(allocator);
@@ -821,7 +821,7 @@ pub fn apply2(
                         return try result.compile(allocator);
                     }
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -872,8 +872,8 @@ pub fn apply2(
                 },
                 .numeric => unreachable,
             },
-            .sparse_triangular => switch (comptime types.matrixType(Y)) {
-                .dense_general => {
+            .triangular_sparse => switch (comptime types.matrixType(Y)) {
+                .general_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -881,7 +881,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_symmetric => {
+                .symmetric_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -889,7 +889,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_hermitian => {
+                .hermitian_dense => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -897,7 +897,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .dense_triangular => {
+                .triangular_dense => {
                     if (comptime types.uploOf(X) == types.uploOf(Y)) {
                         var result: matrix.triangular.Dense(R, types.uploOf(Y), .non_unit, types.orderOf(Y)) = try .init(allocator, m, n);
                         errdefer result.deinit(allocator);
@@ -914,7 +914,7 @@ pub fn apply2(
                         return result;
                     }
                 },
-                .sparse_general => {
+                .general_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + (if (comptime types.diagOf(X) == .unit) int.min(m, n) else 0) + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -922,7 +922,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + (if (comptime types.diagOf(X) == .unit) int.min(m, n) else 0) + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -930,7 +930,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + (if (comptime types.diagOf(X) == .unit) int.min(m, n) else 0) + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -938,8 +938,8 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_general => {
+                .triangular_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .general_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + (if (comptime types.diagOf(X) == .unit) int.min(m, n) else 0) + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -947,7 +947,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + (if (comptime types.diagOf(X) == .unit) int.min(m, n) else 0) + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -955,7 +955,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, x.nnz + (if (comptime types.diagOf(X) == .unit) int.min(m, n) else 0) + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -969,54 +969,54 @@ pub fn apply2(
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
-            .block_general => switch (comptime types.matrixType(Y)) {
-                .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+            .general_block => switch (comptime types.matrixType(Y)) {
+                .general_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .triangular_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .general_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .triangular_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .general_block => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_block => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_block => @compileError("apply2 not implemented for sparse matrices yet"),
                 .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .banded => @compileError("apply2 not implemented for sparse matrices yet"),
                 .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
-            .block_symmetric => switch (comptime types.matrixType(Y)) {
-                .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+            .symmetric_block => switch (comptime types.matrixType(Y)) {
+                .general_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .triangular_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .general_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .triangular_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .general_block => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_block => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_block => @compileError("apply2 not implemented for sparse matrices yet"),
                 .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .banded => @compileError("apply2 not implemented for sparse matrices yet"),
                 .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .permutation => @compileError("apply2 not implemented for sparse matrices yet"),
                 .numeric => unreachable,
             },
-            .block_hermitian => switch (comptime types.matrixType(Y)) {
-                .dense_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .dense_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
-                .sparse_triangular => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_general => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_symmetric => @compileError("apply2 not implemented for sparse matrices yet"),
-                .block_hermitian => @compileError("apply2 not implemented for sparse matrices yet"),
+            .hermitian_block => switch (comptime types.matrixType(Y)) {
+                .general_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .triangular_dense => @compileError("apply2 not implemented for sparse matrices yet"),
+                .general_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .triangular_sparse => @compileError("apply2 not implemented for sparse matrices yet"),
+                .general_block => @compileError("apply2 not implemented for sparse matrices yet"),
+                .symmetric_block => @compileError("apply2 not implemented for sparse matrices yet"),
+                .hermitian_block => @compileError("apply2 not implemented for sparse matrices yet"),
                 .diagonal => @compileError("apply2 not implemented for sparse matrices yet"),
                 .banded => @compileError("apply2 not implemented for sparse matrices yet"),
                 .tridiagonal => @compileError("apply2 not implemented for sparse matrices yet"),
@@ -1024,11 +1024,11 @@ pub fn apply2(
                 .numeric => unreachable,
             },
             .diagonal => switch (comptime types.matrixType(Y)) {
-                .dense_general => return @import("apply2/ddidge.zig").apply2(allocator, x, y, op, ctx),
-                .dense_symmetric => return @import("apply2/ddidsy.zig").apply2(allocator, x, y, op, ctx),
-                .dense_hermitian => return @import("apply2/ddidhe.zig").apply2(allocator, x, y, op, ctx),
-                .dense_triangular => return @import("apply2/ddidtr.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => {
+                .general_dense => return @import("apply2/ddidge.zig").apply2(allocator, x, y, op, ctx),
+                .symmetric_dense => return @import("apply2/ddidsy.zig").apply2(allocator, x, y, op, ctx),
+                .hermitian_dense => return @import("apply2/ddidhe.zig").apply2(allocator, x, y, op, ctx),
+                .triangular_dense => return @import("apply2/ddidtr.zig").apply2(allocator, x, y, op, ctx),
+                .general_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1036,7 +1036,7 @@ pub fn apply2(
 
                     return result.compile(allocator);
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1044,7 +1044,7 @@ pub fn apply2(
 
                     return result.compileSymmetric(allocator, types.uploOf(Y));
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     if (comptime !types.isComplex(Numeric(X))) {
                         var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnz);
                         errdefer result.deinit(allocator);
@@ -1061,7 +1061,7 @@ pub fn apply2(
                         return result.compile(allocator);
                     }
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, (if (comptime types.diagOf(Y) == .unit) 0 else int.min(m, n)) + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1069,7 +1069,7 @@ pub fn apply2(
 
                     return result.compileTriangular(allocator, types.uploOf(Y), .non_unit);
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -1077,7 +1077,7 @@ pub fn apply2(
 
                     return result.compile(allocator);
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -1085,7 +1085,7 @@ pub fn apply2(
 
                     return result.compileSymmetric(allocator, types.uploOf(Y));
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     if (comptime !types.isComplex(Numeric(X))) {
                         var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, int.min(m, n) + y.nnzb * y.bsize * y.bsize);
                         errdefer result.deinit(allocator);
@@ -1116,10 +1116,10 @@ pub fn apply2(
                 .numeric => unreachable,
             },
             .banded => switch (comptime types.matrixType(Y)) {
-                .dense_general => return @import("apply2/dbadge.zig").apply2(allocator, x, y, op, ctx),
-                .dense_symmetric => return @import("apply2/dbadsy.zig").apply2(allocator, x, y, op, ctx),
-                .dense_hermitian => return @import("apply2/dbadhe.zig").apply2(allocator, x, y, op, ctx),
-                .dense_triangular => {
+                .general_dense => return @import("apply2/dbadge.zig").apply2(allocator, x, y, op, ctx),
+                .symmetric_dense => return @import("apply2/dbadsy.zig").apply2(allocator, x, y, op, ctx),
+                .hermitian_dense => return @import("apply2/dbadhe.zig").apply2(allocator, x, y, op, ctx),
+                .triangular_dense => {
                     var result: matrix.Banded(R, types.orderOf(Y)) = try .init(
                         allocator,
                         m,
@@ -1133,7 +1133,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_general => {
+                .general_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -1141,7 +1141,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -1149,7 +1149,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.general.Dense(R, types.orderOf(Y)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -1157,7 +1157,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.Banded(R, types.orderOf(Y)) = try .init(
                         allocator,
                         m,
@@ -1171,7 +1171,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -1179,7 +1179,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -1187,7 +1187,7 @@ pub fn apply2(
 
                     return result;
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.general.Dense(R, types.orderOf(X)) = try .init(allocator, m, n);
                     errdefer result.deinit(allocator);
 
@@ -1202,11 +1202,11 @@ pub fn apply2(
                 .numeric => unreachable,
             },
             .tridiagonal => switch (comptime types.matrixType(Y)) {
-                .dense_general => return @import("apply2/dgtdge.zig").apply2(allocator, x, y, op, ctx),
-                .dense_symmetric => return @import("apply2/dgtdsy.zig").apply2(allocator, x, y, op, ctx),
-                .dense_hermitian => return @import("apply2/dgtdhe.zig").apply2(allocator, x, y, op, ctx),
-                .dense_triangular => return @import("apply2/dgtdtr.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => {
+                .general_dense => return @import("apply2/dgtdge.zig").apply2(allocator, x, y, op, ctx),
+                .symmetric_dense => return @import("apply2/dgtdsy.zig").apply2(allocator, x, y, op, ctx),
+                .hermitian_dense => return @import("apply2/dgtdhe.zig").apply2(allocator, x, y, op, ctx),
+                .triangular_dense => return @import("apply2/dgtdtr.zig").apply2(allocator, x, y, op, ctx),
+                .general_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 3 * m - 2 + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1214,7 +1214,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 3 * m - 2 + 2 * y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1222,7 +1222,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 3 * m - 2 + 2 * y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1230,7 +1230,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, (if (comptime types.diagOf(Y) == .unit) 2 else 3) * m - 2 + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1238,7 +1238,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 3 * m - 2 + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -1246,7 +1246,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 3 * m - 2 + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -1254,7 +1254,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, 3 * m - 2 + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -1276,11 +1276,11 @@ pub fn apply2(
                 .numeric => unreachable,
             },
             .permutation => switch (comptime types.matrixType(Y)) {
-                .dense_general => return @import("apply2/pedge.zig").apply2(allocator, x, y, op, ctx),
-                .dense_symmetric => return @import("apply2/pedsy.zig").apply2(allocator, x, y, op, ctx),
-                .dense_hermitian => return @import("apply2/pedhe.zig").apply2(allocator, x, y, op, ctx),
-                .dense_triangular => return @import("apply2/pedtr.zig").apply2(allocator, x, y, op, ctx),
-                .sparse_general => {
+                .general_dense => return @import("apply2/pedge.zig").apply2(allocator, x, y, op, ctx),
+                .symmetric_dense => return @import("apply2/pedsy.zig").apply2(allocator, x, y, op, ctx),
+                .hermitian_dense => return @import("apply2/pedhe.zig").apply2(allocator, x, y, op, ctx),
+                .triangular_dense => return @import("apply2/pedtr.zig").apply2(allocator, x, y, op, ctx),
+                .general_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, n + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1288,7 +1288,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_symmetric => {
+                .symmetric_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, n + 2 * y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1296,7 +1296,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_hermitian => {
+                .hermitian_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, n + 2 * y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1304,7 +1304,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .sparse_triangular => {
+                .triangular_sparse => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, n + y.nnz);
                     errdefer result.deinit(allocator);
 
@@ -1312,7 +1312,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_general => {
+                .general_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, n + y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -1320,7 +1320,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_symmetric => {
+                .symmetric_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, n + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
@@ -1328,7 +1328,7 @@ pub fn apply2(
 
                     return try result.compile(allocator);
                 },
-                .block_hermitian => {
+                .hermitian_block => {
                     var result: matrix.builder.Sparse(R, types.orderOf(Y)) = try .init(allocator, m, n, n + 2 * y.nnzb * y.bsize * y.bsize);
                     errdefer result.deinit(allocator);
 
