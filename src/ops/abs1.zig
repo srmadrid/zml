@@ -12,7 +12,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `abs1` routine for an input of type `X`.
 pub fn Abs1(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Abs1(types.Numeric(X))),
         .matrix => @compileError("zml.Abs1 not defined for " ++ @typeName(X)),
@@ -73,7 +73,7 @@ pub inline fn abs1(
 ) !Abs1(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.abs1 for " ++ @typeName(X) ++ " not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

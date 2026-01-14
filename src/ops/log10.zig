@@ -13,7 +13,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `log10` routine for an input of type `X`.
 pub fn Log10(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Log10(types.Numeric(X))),
         .matrix => @compileError("zml.Log10 not implemented for matrices yet"),
@@ -67,7 +67,7 @@ pub inline fn log10(
 ) !Log10(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.log10 not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

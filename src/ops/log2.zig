@@ -13,7 +13,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `log2` routine for an input of type `X`.
 pub fn Log2(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Log2(types.Numeric(X))),
         .matrix => @compileError("zml.Log2 not implemented for matrices yet"),
@@ -67,7 +67,7 @@ pub inline fn log2(
 ) !Log2(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.log2 not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

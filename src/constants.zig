@@ -1,12 +1,5 @@
 const std = @import("std");
 const types = @import("types.zig");
-const cast = types.cast;
-const Scalar = types.Scalar;
-const Coerce = types.Coerce;
-const CoerceToArray = types.CoerceToArray;
-const Child = types.Child;
-const isArbitraryPrecision = types.isArbitraryPrecision;
-const validateContext = types.validateContext;
 
 const int = @import("int.zig");
 const float = @import("float.zig");
@@ -26,12 +19,12 @@ pub inline fn zero(
 ) !T {
     switch (types.numericType(T)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return false;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 0;
         },

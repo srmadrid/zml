@@ -27,9 +27,9 @@ pub inline fn min(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.min not implemented for expression types yet"),
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.min not implemented for expression types yet"),
             .array, .numeric => { // min(array, array), min(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
@@ -68,7 +68,7 @@ pub inline fn min(
             },
             else => @compileError("zml.min not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.min not implemented for expression types yet"),
             .array => { // min(numeric, array)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {

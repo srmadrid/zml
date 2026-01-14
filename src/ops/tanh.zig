@@ -10,7 +10,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `tanh` routine for an input of type `X`.
 pub fn Tanh(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Tanh(types.Numeric(X))),
         .matrix => @compileError("zml.Tanh not implemented for matrices yet"),
@@ -64,7 +64,7 @@ pub inline fn tanh(
 ) !Tanh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.tanh not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

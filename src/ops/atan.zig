@@ -13,7 +13,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `atan` routine for an input of type `X`.
 pub fn Atan(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Atan(types.Numeric(X))),
         .matrix => @compileError("zml.Atan not implemented for matrices yet"),
@@ -67,7 +67,7 @@ pub inline fn atan(
 ) !Atan(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.atan not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

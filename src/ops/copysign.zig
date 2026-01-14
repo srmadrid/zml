@@ -27,8 +27,8 @@ pub inline fn copysign(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
-        .array => switch (comptime types.domainType(Y)) {
+    switch (comptime types.domain(X)) {
+        .array => switch (comptime types.domain(Y)) {
             .array, .numeric => { // copysign(array, array), copysign(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
                     types.validateContext(
@@ -56,7 +56,7 @@ pub inline fn copysign(
             },
             else => @compileError("zml.copysign not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .numeric => { // copysign(numeric, numeric)
                 switch (comptime types.numericType(C)) {
                     .bool => @compileError("zml.copysign not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),

@@ -13,7 +13,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `gt` routine for inputs of types `X` and `Y`.
 pub fn Gt(X: type, Y: type) type {
-    return switch (comptime types.domainType(types.Coerce(X, Y))) {
+    return switch (comptime types.domain(types.Coerce(X, Y))) {
         .expression => bool,
         .array => types.EnsureArray(types.Coerce(X, Y), bool),
         .matrix => bool,
@@ -33,9 +33,9 @@ pub inline fn gt(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.gt not implemented for expressions yet"),
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.gt not implemented for expressions yet"),
             .array, .numeric => { // array > array, array > numeric
                 comptime types.validateContext(
@@ -53,7 +53,7 @@ pub inline fn gt(
             },
             else => @compileError("zml.gt not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.gt not implemented for expressions yet"),
             .array => { // numeric > array
                 comptime types.validateContext(

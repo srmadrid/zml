@@ -13,7 +13,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `neg` routine for an input of type `X`.
 pub fn Neg(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, types.Numeric(X)),
         .matrix => X,
@@ -73,7 +73,7 @@ pub inline fn neg(
 ) !Neg(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.neg for " ++ @typeName(X) ++ " not implemented yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

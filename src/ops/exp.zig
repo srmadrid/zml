@@ -13,7 +13,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `exp` routine for an input of type `X`.
 pub fn Exp(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Exp(types.Numeric(X))),
         .matrix => @compileError("zml.Exp not implemented for matrices yet"),
@@ -67,7 +67,7 @@ pub inline fn exp(
 ) !Exp(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.exp not implemented for " ++ @typeName(X) ++ " yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

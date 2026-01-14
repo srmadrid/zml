@@ -106,10 +106,10 @@ pub inline fn mul_(
 
     const C: type = types.Coerce(O, types.Coerce(X, Y));
 
-    switch (comptime types.domainType(O)) {
+    switch (comptime types.domain(O)) {
         .expression => @compileError("zml.mul_ not implemented yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
-        .array => switch (comptime types.domainType(X)) {
-            .array, .numeric => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(X)) {
+            .array, .numeric => switch (comptime types.domain(Y)) {
                 .array, .numeric => { // array = array * array, array = numeric * array, array = array * numeric
                     comptime if (types.isNumeric(X) and types.isNumeric(Y))
                         @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
@@ -161,37 +161,37 @@ pub inline fn mul_(
             },
             else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .matrix => switch (comptime types.domainType(X)) {
-            .matrix => switch (comptime types.domainType(Y)) {
+        .matrix => switch (comptime types.domain(X)) {
+            .matrix => switch (comptime types.domain(Y)) {
                 .matrix => @compileError("matrix.mul_ not implemented yet"),
                 .numeric => @compileError("matrix.mul_ not implemented yet"),
                 else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
             },
-            .numeric => switch (comptime types.domainType(Y)) {
+            .numeric => switch (comptime types.domain(Y)) {
                 .matrix => @compileError("matrix.mul_ not implemented yet"),
                 else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
             },
             else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .vector => switch (comptime types.domainType(X)) {
-            .vector => switch (comptime types.domainType(Y)) {
+        .vector => switch (comptime types.domain(X)) {
+            .vector => switch (comptime types.domain(Y)) {
                 .matrix => @compileError("vector.mul_ not implemented yet"),
                 .numeric => @compileError("vector.mul_ not implemented yet"),
                 else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
             },
-            .numeric => switch (comptime types.domainType(Y)) {
+            .numeric => switch (comptime types.domain(Y)) {
                 .matrix => @compileError("vector.mul_ not implemented yet"),
                 .vector => @compileError("vector.mul_ not implemented yet"),
                 else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
             },
             else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .numeric => switch (comptime types.domainType(X)) {
-            .vector => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(X)) {
+            .vector => switch (comptime types.domain(Y)) {
                 .vector => @compileError("vector.mul_ not implemented yet"),
                 else => @compileError("zml.mul_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
             },
-            .numeric => switch (comptime types.domainType(Y)) {
+            .numeric => switch (comptime types.domain(Y)) {
                 .numeric => { // numeric = numeric * numeric
                     switch (comptime types.numericType(O)) {
                         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {

@@ -81,8 +81,8 @@ pub inline fn asin_(
         !types.isNumeric(O) and !types.isNumeric(X))
         @compileError("zml.asin_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X));
 
-    switch (comptime types.domainType(O)) {
-        .array => switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(O)) {
+        .array => switch (comptime types.domain(X)) {
             .array => { // array = acos(array)
                 comptime switch (types.numericType(types.Numeric(O))) {
                     .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(X))) {
@@ -103,7 +103,7 @@ pub inline fn asin_(
             },
             else => @compileError("zml.asin_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
         },
-        .numeric => switch (comptime types.domainType(X)) {
+        .numeric => switch (comptime types.domain(X)) {
             .numeric => { // numeric = acos(numeric)
                 switch (comptime types.numericType(O)) {
                     .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {

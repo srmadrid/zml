@@ -13,15 +13,15 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `atan2` routine for inputs of types `X` and `Y`.
 pub fn Atan2(X: type, Y: type) type {
-    return switch (comptime types.domainType(X)) {
-        .expression => switch (comptime types.domainType(Y)) {
+    return switch (comptime types.domain(X)) {
+        .expression => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => expression.Expression,
             .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .numeric => expression.Expression,
         },
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => types.EnsureArray(Y, Atan2(types.Numeric(X), types.Numeric(Y))),
             .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -30,7 +30,7 @@ pub fn Atan2(X: type, Y: type) type {
         },
         .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         .vector => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => types.EnsureArray(Y, Atan2(X, types.Numeric(Y))),
             .matrix => @compileError("zml.Atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -102,9 +102,9 @@ pub inline fn atan2(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.atan2 not implemented yet for expression types"),
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.atan2 not implemented yet for expression types"),
             .array, .numeric => { // atan2(array, array), atan2(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
@@ -133,7 +133,7 @@ pub inline fn atan2(
             },
             else => @compileError("zml.atan2 not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.atan2 not implemented yet for expression types"),
             .array => { // atan2(numeric, array)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {

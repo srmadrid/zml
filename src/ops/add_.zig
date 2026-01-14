@@ -99,10 +99,10 @@ pub inline fn add_(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(O)) {
+    switch (comptime types.domain(O)) {
         .expression => @compileError("zml.add_ not implemented yet for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
-        .array => switch (comptime types.domainType(X)) {
-            .array, .numeric => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(X)) {
+            .array, .numeric => switch (comptime types.domain(Y)) {
                 .array, .numeric => { // array = array + array, array = numeric + array, array = array + numeric
                     comptime if (types.isNumeric(X) and types.isNumeric(Y))
                         @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types");
@@ -154,8 +154,8 @@ pub inline fn add_(
             },
             else => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .matrix => switch (comptime types.domainType(X)) {
-            .matrix => switch (comptime types.domainType(Y)) {
+        .matrix => switch (comptime types.domain(X)) {
+            .matrix => switch (comptime types.domain(Y)) {
                 .matrix => { // matrix = matrix + matrix
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
@@ -205,8 +205,8 @@ pub inline fn add_(
             },
             else => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .vector => switch (comptime types.domainType(X)) {
-            .vector => switch (comptime types.domainType(Y)) {
+        .vector => switch (comptime types.domain(X)) {
+            .vector => switch (comptime types.domain(Y)) {
                 .vector => { // vector = vector + vector
                     comptime switch (types.numericType(types.Numeric(O))) {
                         .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(C))) {
@@ -256,8 +256,8 @@ pub inline fn add_(
             },
             else => @compileError("zml.add_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .numeric => switch (comptime types.domainType(X)) {
-            .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(X)) {
+            .numeric => switch (comptime types.domain(Y)) {
                 .numeric => { // numeric = numeric + numeric
                     switch (comptime types.numericType(O)) {
                         .bool, .int, .float, .cfloat => switch (comptime types.numericType(C)) {

@@ -31,6 +31,14 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         /// Type signature
         pub const is_dyadic = {};
 
+        pub fn mantissaBits() u16 {
+            return mantissa_bits;
+        }
+
+        pub fn exponentBits() u16 {
+            return exponent_bits;
+        }
+
         /// Initializes a new `Dyadic` with the specified value.
         ///
         /// Signature

@@ -82,9 +82,9 @@ pub inline fn abs_(
         !types.isNumeric(O) and !types.isNumeric(X))
         @compileError("zml.abs_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X));
 
-    switch (comptime types.domainType(O)) {
+    switch (comptime types.domain(O)) {
         .expression => @compileError("zml.abs_ between " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " not implemented yet"),
-        .array => switch (comptime types.domainType(X)) {
+        .array => switch (comptime types.domain(X)) {
             .array => { // array = abs(array)
                 comptime switch (types.numericType(types.Numeric(O))) {
                     .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(X))) {
@@ -146,7 +146,7 @@ pub inline fn abs_(
             else => @compileError("zml.abs_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
         },
         .matrix => @compileError("zml.abs_ between " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " not implemented yet"),
-        .numeric => switch (comptime types.domainType(X)) {
+        .numeric => switch (comptime types.domain(X)) {
             .numeric => { // numeric = abs(numeric)
                 switch (comptime types.numericType(O)) {
                     .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {

@@ -93,9 +93,9 @@ pub inline fn sub(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array, .numeric => { // array - array, array - numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
@@ -128,7 +128,7 @@ pub inline fn sub(
             },
             else => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .matrix => switch (comptime types.domainType(Y)) {
+        .matrix => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .matrix => { // matrix - matrix
                 comptime switch (types.numericType(types.Numeric(C))) {
@@ -161,7 +161,7 @@ pub inline fn sub(
             },
             else => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .vector => switch (comptime types.domainType(Y)) {
+        .vector => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .vector => { // vector - vector
                 comptime switch (types.numericType(types.Numeric(C))) {
@@ -194,7 +194,7 @@ pub inline fn sub(
             },
             else => @compileError("zml.sub not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.sub between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array => { // numeric - array
                 comptime switch (types.numericType(types.Numeric(C))) {

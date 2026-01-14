@@ -35,9 +35,9 @@ pub inline fn min_(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(O)) {
-        .array => switch (comptime types.domainType(X)) {
-            .array, .numeric => switch (comptime types.domainType(Y)) {
+    switch (comptime types.domain(O)) {
+        .array => switch (comptime types.domain(X)) {
+            .array, .numeric => switch (comptime types.domain(Y)) {
                 .array, .numeric => { // array = min(array, array), array = min(numeric, array), array = min(array, numeric), array = min(numeric, numeric)
                     comptime if (types.isArbitraryPrecision(types.Numeric(O))) {
                         types.validateContext(
@@ -61,8 +61,8 @@ pub inline fn min_(
             },
             else => @compileError("zml.min_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .numeric => switch (comptime types.domainType(X)) {
-            .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(X)) {
+            .numeric => switch (comptime types.domain(Y)) {
                 .numeric => { // numeric = min(numeric, numeric)
                     switch (comptime types.numericType(C)) {
                         .bool => @compileError("zml.min_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

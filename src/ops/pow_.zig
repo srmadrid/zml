@@ -33,9 +33,9 @@ pub inline fn pow_(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(O)) {
-        .array => switch (comptime types.domainType(X)) {
-            .array, .numeric => switch (comptime types.domainType(Y)) {
+    switch (comptime types.domain(O)) {
+        .array => switch (comptime types.domain(X)) {
+            .array, .numeric => switch (comptime types.domain(Y)) {
                 .array, .numeric => { // array = array^array, array = numeric^array, array = array^numeric, array = numeric^numeric
                     comptime if (types.isArbitraryPrecision(types.Numeric(O))) {
                         if (types.isArbitraryPrecision(types.Numeric(C))) {
@@ -96,8 +96,8 @@ pub inline fn pow_(
             },
             else => @compileError("zml.pow_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .numeric => switch (comptime types.domainType(X)) {
-            .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(X)) {
+            .numeric => switch (comptime types.domain(Y)) {
                 .numeric => { // numeric = numeric^numeric
                     switch (comptime types.numericType(C)) {
                         .bool => @compileError("zml.pow_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

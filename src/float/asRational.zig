@@ -117,6 +117,7 @@ pub fn asRational(x: anytype) !t: {
     const sign_bit: bool = (uvalue >> (bits - 1)) != 0;
     const raw_exp: U = (uvalue >> finfo.int.bits) & exp_mask;
     var mantissa: U = uvalue & frac_mask;
+    mantissa |= (@as(U, 1) << finfo.int.bits); // implicit leading one
 
     var exponent: E = @as(E, @intCast(raw_exp)) - exp_bias;
 

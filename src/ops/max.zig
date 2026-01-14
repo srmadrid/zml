@@ -27,9 +27,9 @@ pub inline fn max(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.max not implemented for expression types yet"),
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.max not implemented for expression types yet"),
             .array, .numeric => { // max(array, array), max(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
@@ -68,7 +68,7 @@ pub inline fn max(
             },
             else => @compileError("zml.max not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.max not implemented for expression types yet"),
             .array => { // max(numeric, array)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {

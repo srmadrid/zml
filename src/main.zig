@@ -561,7 +561,8 @@ fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u3
 fn testCheckParameter(x: anytype, y: anytype, z: anytype) void {
     comptime zml.types.checkParameterTypes(
         &.{
-            "none.numeric is 'matrix.symmetric(@real) !matrix.dense | float | cfloat'",
+            "all.numeric is '<=float'",
+            "any.numeric is 'float'",
         },
         .{
             .x = @TypeOf(x),
@@ -579,8 +580,8 @@ pub fn main() !void {
     //const a = gpa.allocator();
 
     const x: i64 = undefined;
-    const y: zml.matrix.symmetric.Dense(f64, .upper, .col_major) = undefined;
-    const z: f64 = undefined;
+    const y: i32 = undefined;
+    const z: zml.vector.Dense(f64) = undefined;
     testCheckParameter(x, y, z);
 
     // const a: u64 = 1000;

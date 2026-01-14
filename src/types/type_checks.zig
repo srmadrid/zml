@@ -179,11 +179,10 @@ pub fn isMatrix(comptime T: type) bool {
 }
 
 pub fn isSquareMatrix(comptime T: type) bool {
-    return isSymmetricDenseMatrix(T) or isHermitianDenseMatrix(T) or
-        isGeneralTridiagonalMatrix(T) or isSymmetricTridiagonalMatrix(T) or
-        isHermitianTridiagonalMatrix(T) or isSymmetricSparseMatrix(T) or
-        isHermitianSparseMatrix(T) or isSymmetricBlockMatrix(T) or
-        isHermitianBlockMatrix(T) or isPermutationMatrix(T);
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_symmetric") or @hasDecl(T, "is_hermitian"),
+        else => return false,
+    }
 }
 
 /// Checks if the input type is an instance of a `matrix.general.Dense`.
@@ -250,102 +249,6 @@ pub fn isTriangularDenseMatrix(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of a `matrix.general.Banded`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.general.Banded`, `false` otherwise.
-pub fn isGeneralBandedMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_banded"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.symmetric.Banded`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.symmetric.Banded`, `false` otherwise.
-pub fn isSymmetricBandedMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_banded"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.hermitian.Banded`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.hermitian.Banded`, `false` otherwise.
-pub fn isHermitianBandedMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_banded"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.general.Tridiagonal`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.general.Tridiagonal`, `false` otherwise.
-pub fn isGeneralTridiagonalMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_tridiagonal"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.symmetric.Tridiagonal`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.symmetric.Tridiagonal`, `false` otherwise.
-pub fn isSymmetricTridiagonalMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_tridiagonal"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.hermitian.Tridiagonal`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.hermitian.Tridiagonal`, `false` otherwise.
-pub fn isHermitianTridiagonalMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_tridiagonal"),
-        else => return false,
-    }
-}
-
 /// Checks if the input type is an instance of a `matrix.general.Sparse`.
 ///
 /// Parameters
@@ -406,54 +309,6 @@ pub fn isHermitianSparseMatrix(comptime T: type) bool {
 pub fn isTriangularSparseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular") and @hasDecl(T, "is_sparse"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.general.Block`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.general.Block`, `false` otherwise.
-pub fn isGeneralBlockMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_block"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.symmetric.Block`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.symmetric.Block`, `false` otherwise.
-pub fn isSymmetricBlockMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_block"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.hermitian.Block`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.hermitian.Block`, `false` otherwise.
-pub fn isHermitianBlockMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_block"),
         else => return false,
     }
 }
@@ -570,38 +425,6 @@ pub fn isDenseMatrix(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is a banded matrix.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a banded matrix, `false` otherwise.
-pub fn isBandedMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_banded"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is a tridiagonal matrix.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a tridiagonal matrix, `false` otherwise.
-pub fn isTridiagonalMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_tridiagonal"),
-        else => return false,
-    }
-}
-
 /// Checks if the input type is a sparse matrix.
 ///
 /// Parameters
@@ -614,22 +437,6 @@ pub fn isTridiagonalMatrix(comptime T: type) bool {
 pub fn isSparseMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_sparse"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is a block matrix.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a block matrix, `false` otherwise.
-pub fn isBlockMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_block"),
         else => return false,
     }
 }

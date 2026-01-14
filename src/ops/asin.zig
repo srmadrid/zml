@@ -13,7 +13,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `asin` routine for an input of type `X`.
 pub fn Asin(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Asin(types.Numeric(X))),
         .matrix => @compileError("zml.Asin not implemented for matrices yet"),
@@ -67,7 +67,7 @@ pub inline fn asin(
 ) !Asin(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.asin not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

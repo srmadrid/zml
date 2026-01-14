@@ -84,9 +84,9 @@ pub inline fn conj_(
         !types.isNumeric(O) and !types.isNumeric(X))
         @compileError("zml.conj_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X));
 
-    switch (comptime types.domainType(O)) {
+    switch (comptime types.domain(O)) {
         .expression => @compileError("zml.conj_ between " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " not implemented yet"),
-        .array => switch (comptime types.domainType(X)) {
+        .array => switch (comptime types.domain(X)) {
             .array => { // array = conj(array)
                 comptime switch (types.numericType(types.Numeric(O))) {
                     .bool, .int, .float, .cfloat => switch (types.numericType(types.Numeric(X))) {
@@ -177,7 +177,7 @@ pub inline fn conj_(
             else => @compileError("zml.conj_ not defined for " ++ @typeName(O) ++ " and " ++ @typeName(X)),
         },
         .matrix => @compileError("zml.conj_ between " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " not implemented yet"),
-        .numeric => switch (comptime types.domainType(X)) {
+        .numeric => switch (comptime types.domain(X)) {
             .numeric => { // numeric = conj(numeric)
                 switch (comptime types.numericType(O)) {
                     .bool, .int, .float, .cfloat => switch (comptime types.numericType(X)) {

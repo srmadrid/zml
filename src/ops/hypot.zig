@@ -13,16 +13,16 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `hypot` routine for inputs of types `X` and `Y`.
 pub fn Hypot(X: type, Y: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => types.EnsureArray(Y, Hypot(types.Numeric(X), types.Numeric(Y))),
             .matrix => @compileError("zml.Hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .numeric => types.EnsureArray(Y, Hypot(types.Numeric(X), Y)),
         },
-        .matrix => switch (comptime types.domainType(Y)) {
+        .matrix => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => @compileError("zml.Hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .matrix => @compileError("zml.Hypot not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
@@ -30,7 +30,7 @@ pub fn Hypot(X: type, Y: type) type {
             .numeric => @compileError("zml.Hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
         .vector => @compileError("zml.Hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .array => types.EnsureArray(Y, Hypot(X, types.Numeric(Y))),
             .matrix => @compileError("zml.Hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -104,9 +104,9 @@ pub inline fn hypot(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.hypot not implemented for expressions yet"),
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.hypot not implemented for expressions yet"),
             .array, .numeric => { // hypot(array, array), hypot(array, numeric)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {
@@ -135,7 +135,7 @@ pub inline fn hypot(
             },
             else => @compileError("zml.hypot not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.hypot not implemented for expressions yet"),
             .array => { // hypot(numeric, array)
                 comptime if (types.isArbitraryPrecision(types.Numeric(C))) {

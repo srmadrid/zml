@@ -91,9 +91,9 @@ pub inline fn div(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array, .numeric => { // array/array, array/numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
@@ -126,7 +126,7 @@ pub inline fn div(
             },
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .matrix => switch (comptime types.domainType(Y)) {
+        .matrix => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .numeric => { // matrix/numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
@@ -159,7 +159,7 @@ pub inline fn div(
             },
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .vector => switch (comptime types.domainType(Y)) {
+        .vector => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .numeric => { // vector/numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
@@ -192,7 +192,7 @@ pub inline fn div(
             },
             else => @compileError("zml.div not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.div between " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " not implemented yet"),
             .array => { // numeric/array
                 comptime switch (types.numericType(types.Numeric(C))) {

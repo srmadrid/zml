@@ -10,7 +10,7 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `sinh` routine for an input of type `X`.
 pub fn Sinh(X: type) type {
-    return switch (comptime types.domainType(X)) {
+    return switch (comptime types.domain(X)) {
         .expression => expression.Expression,
         .array => types.EnsureArray(X, Sinh(types.Numeric(X))),
         .matrix => @compileError("zml.Sinh not implemented for matrices yet"),
@@ -64,7 +64,7 @@ pub inline fn sinh(
 ) !Sinh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    switch (comptime types.domainType(X)) {
+    switch (comptime types.domain(X)) {
         .expression => @compileError("zml.sinh not implemented for expressions yet"),
         .array => {
             comptime switch (types.numericType(types.Numeric(X))) {

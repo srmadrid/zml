@@ -33,9 +33,9 @@ pub inline fn hypot_(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(O)) {
-        .array => switch (comptime types.domainType(X)) {
-            .array, .numeric => switch (comptime types.domainType(Y)) {
+    switch (comptime types.domain(O)) {
+        .array => switch (comptime types.domain(X)) {
+            .array, .numeric => switch (comptime types.domain(Y)) {
                 .array, .numeric => { // array = hypot(array, array), array = hypot(numeric, array), array = hypot(array, numeric), array = hypot(numeric, numeric)
                     comptime if (types.isArbitraryPrecision(types.Numeric(O))) {
                         if (types.isArbitraryPrecision(types.Numeric(C))) {
@@ -77,8 +77,8 @@ pub inline fn hypot_(
             },
             else => @compileError("zml.hypot_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),
         },
-        .numeric => switch (comptime types.domainType(X)) {
-            .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(X)) {
+            .numeric => switch (comptime types.domain(Y)) {
                 .numeric => { // numeric = hypot(numeric, numeric)
                     switch (comptime types.numericType(C)) {
                         .bool => @compileError("zml.hypot_ not defined for " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " types"),

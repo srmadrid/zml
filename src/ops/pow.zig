@@ -13,21 +13,21 @@ const expression = @import("../expression.zig");
 
 /// The return type of the `pow` routine for inputs of types `X` and `Y`.
 pub fn Pow(X: type, Y: type) type {
-    return switch (comptime types.domainType(X)) {
-        .expression => switch (comptime types.domainType(Y)) {
+    return switch (comptime types.domain(X)) {
+        .expression => switch (comptime types.domain(Y)) {
             .array => expression.Expression,
             .matrix => @compileError("zml.Pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
             .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .numeric => types.EnsureArray(Y, Pow(types.Numeric(X), Y)),
         },
-        .array => switch (comptime types.domainType(Y)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => types.EnsureArray(Y, Pow(types.Numeric(X), types.Numeric(Y))),
             .matrix => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .numeric => types.EnsureArray(Y, Pow(types.Numeric(X), Y)),
         },
-        .matrix => switch (comptime types.domainType(Y)) {
+        .matrix => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
             .matrix => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
@@ -35,7 +35,7 @@ pub fn Pow(X: type, Y: type) type {
             .numeric => @compileError("zml.Pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
         },
         .vector => @compileError("zml.Pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => expression.Expression,
             .array => types.EnsureArray(Y, Pow(X, types.Numeric(Y))),
             .matrix => @compileError("zml.Pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
@@ -112,8 +112,8 @@ pub inline fn pow(
 
     const C: type = types.Coerce(X, Y);
 
-    switch (comptime types.domainType(X)) {
-        .array => switch (comptime types.domainType(Y)) {
+    switch (comptime types.domain(X)) {
+        .array => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
             .array, .numeric => { // array^array, array^numeric
                 comptime switch (types.numericType(types.Numeric(C))) {
@@ -146,7 +146,7 @@ pub inline fn pow(
             },
             else => @compileError("zml.pow not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
         },
-        .numeric => switch (comptime types.domainType(Y)) {
+        .numeric => switch (comptime types.domain(Y)) {
             .expression => @compileError("zml.pow not implemented for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ " yet"),
             .array => { // numeric^array
                 comptime switch (types.numericType(types.Numeric(C))) {
