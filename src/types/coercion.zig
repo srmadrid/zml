@@ -31,10 +31,10 @@ const Expression = expression.Expression;
 /// The bit-width of the result is either the larger of the two bit-widths (if
 /// the signed type is larger) or the larger of the two bit-widths plus one (if
 /// the unsigned type is larger). If both ints are "standard" (see
-/// `types.standard_integer_types`), the result is the next larger standard type
-/// if needed.
+/// `types.standard_integer_types`), the result is the next larger standard
+/// type that can hold both values.
 ///
-/// For two matrices, the coerced type will use the order of the denser operand.
+/// For two matrices, the coerced type uses the order of the denser operand.
 /// Density is ranked (most to least) as:
 ///   `general.Dense`, `symmetric.Dense`/`hermitian.Dense`, `triangular.Dense`,
 ///   `general.Sparse`, `symmetric.Sparse`/`hermitian.Sparse`,
@@ -49,21 +49,23 @@ const Expression = expression.Expression;
 /// Parameters
 /// ----------
 /// comptime X (`type`): The first type to coerce. Must be a supported numeric
-/// type, a vector, a matrix, or an array.
+/// type, a vector, a matrix, an array, or an expression.
 ///
 /// comptime Y (`type`): The second type to coerce. Must be a supported numeric
-/// type, a vector, a matrix, or an array.
+/// type, a vector, a matrix, an array, or an expression.
 ///
 /// Returns
 /// -------
 /// `type`: The coerced type that can represent both `X` and `Y`.
 pub fn Coerce(comptime X: type, comptime Y: type) type {
-    if (comptime X == Y and !types.isTriangularDenseMatrix(X) and !types.isPermutationMatrix(X))
+    if (comptime X == Y and
+        !types.isTriangularDenseMatrix(X) and
+        !types.isPermutationMatrix(X))
         return X;
 
     switch (comptime types.domain(X)) {
         .numeric => switch (comptime types.domain(Y)) {
-            .numeric => {},
+            .numeric => {}, // Dealt with later
             .vector => switch (comptime types.vectorType(Y)) {
                 .dense => return vector.Dense(Coerce(X, types.Numeric(Y))), // numeric + dense vector
                 .sparse => return vector.Sparse(Coerce(X, types.Numeric(Y))), // numeric + sparse vector
@@ -562,8 +564,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                 const xinfo = @typeInfo(X);
 
                 return Dyadic(
-                    int.max(xinfo.int.bits, Y.mantissaBits()),
-                    Y.exponentBits(),
+                    int.max(xinfo.int.bits, @typeInfo(Y.Mantissa).int.bits),
+                    @typeInfo(Y.Exponent).int.bits,
                 );
             },
             .cfloat => {
@@ -595,8 +597,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
                     const x_exponent_bits = std.math.floatExponentBits(X);
 
                     return Dyadic(
-                        int.max(x_mantissa_bits, Y.mantissaBits()),
-                        int.max(x_exponent_bits, Y.exponentBits()),
+                        int.max(x_mantissa_bits, @typeInfo(Y.Mantissa).int.bits),
+                        int.max(x_exponent_bits, @typeInfo(Y.Exponent).int.bits),
                     );
                 },
                 .cfloat => {
@@ -611,8 +613,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             .float => return Coerce(Y, X),
             .dyadic => {
                 return Dyadic(
-                    int.max(X.mantissaBits(), Y.mantissaBits()),
-                    int.max(X.exponentBits(), Y.exponentBits()),
+                    int.max(@typeInfo(X.Mantissa).int.bits, @typeInfo(Y.Mantissa).int.bits),
+                    int.max(@typeInfo(X.Exponent).int.bits, @typeInfo(Y.Exponent).int.bits),
                 );
             },
             .cfloat => {

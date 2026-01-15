@@ -14,30 +14,25 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         @compileError("Dyadic requires both mantissa_bits and exponent_bits to be non-zero");
 
     return packed struct {
-        mantissa: @Type(.{
-            .int = .{
-                .signedness = .unsigned,
-                .bits = mantissa_bits,
-            },
-        }),
-        exponent: @Type(.{
-            .int = .{
-                .signedness = .signed,
-                .bits = exponent_bits,
-            },
-        }),
+        mantissa: Mantissa,
+        exponent: Exponent,
         positive: bool,
 
         /// Type signature
         pub const is_dyadic = {};
 
-        pub fn mantissaBits() u16 {
-            return mantissa_bits;
-        }
-
-        pub fn exponentBits() u16 {
-            return exponent_bits;
-        }
+        pub const Mantissa = @Type(.{
+            .int = .{
+                .signedness = .unsigned,
+                .bits = mantissa_bits,
+            },
+        });
+        pub const Exponent = @Type(.{
+            .int = .{
+                .signedness = .signed,
+                .bits = exponent_bits,
+            },
+        });
 
         /// Initializes a new `Dyadic` with the specified value.
         ///

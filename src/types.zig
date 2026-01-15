@@ -187,22 +187,22 @@ pub const IterationOrder = enum {
 /// - `int`: Represents integer types:
 ///   - `usize`, `u8`, `u16`, `u32`, `u64`, `u128`
 ///   - `isize`, `i8`, `i16`, `i32`, `i64`, `i128`
+///   - `uX`, `iX` (where X is any bit size)
 ///   - `comptime_int`
 /// - `float`: Represents floating-point types:
 ///   - `f16`, `f32`, `f64`, `f80`, `f128`
 ///   - `comptime_float`
 /// - `dyadic`: Represents dyadic rational types (`Dyadic`).
 /// - `cfloat`: Represents complex floating-point types:
-///   - `Cfloat(Dyadic(...))`
 ///   - `cf16`, `cf32`, `cf64`, `cf80`, `cf128`
+///   - `Cfloat(Dyadic(...))`
 ///   - `comptime_cfloat`
-/// - `integer`: Represents arbitrary precision integer type (`Integer`).
-/// - `rational`: Represents arbitrary precision rational type (`Rational`).
-/// - `real`: Represents arbitrary precision real type (`Real`).
+/// - `integer`: Represents the arbitrary precision integer type (`Integer`).
+/// - `rational`: Represents the arbitrary precision rational type (`Rational`).
+/// - `real`: Represents the arbitrary precision real type (`Real`).
 /// - `complex`: Represents complex arbitrary precision types:
 ///   - `Complex(Rational)`
 ///   - `Complex(Real)`
-/// - `expression`: Represents symbolic expressions (Expression).
 pub const NumericType = enum {
     bool,
     int,
@@ -213,166 +213,12 @@ pub const NumericType = enum {
     rational,
     real,
     complex,
-
-    pub fn lt(self: NumericType, other: NumericType) bool {
-        return @intFromEnum(self) < @intFromEnum(other);
-    }
-
-    pub fn le(self: NumericType, other: NumericType) bool {
-        return @intFromEnum(self) <= @intFromEnum(other);
-    }
-
-    pub fn gt(self: NumericType, other: NumericType) bool {
-        return @intFromEnum(self) > @intFromEnum(other);
-    }
-
-    pub fn ge(self: NumericType, other: NumericType) bool {
-        return @intFromEnum(self) >= @intFromEnum(other);
-    }
-
-    pub fn match(comptime self: NumericType) fn (type) bool {
-        return switch (self) {
-            .bool => {
-                const tmp = struct {
-                    fn isBool(comptime T: type) bool {
-                        switch (@typeInfo(T)) {
-                            .bool => return true,
-                            else => return false,
-                        }
-                    }
-                };
-                return tmp.isBool;
-            },
-            .int => {
-                const tmp = struct {
-                    fn isInt(comptime T: type) bool {
-                        switch (@typeInfo(T)) {
-                            .int, .comptime_int => return true,
-                            else => return false,
-                        }
-                    }
-                };
-                return tmp.isInt;
-            },
-            .float => {
-                const tmp = struct {
-                    fn isFloat(comptime T: type) bool {
-                        switch (@typeInfo(T)) {
-                            .float, .comptime_float => return true,
-                            else => return false,
-                        }
-                    }
-                };
-                return tmp.isFloat;
-            },
-            .dyadic => {
-                const tmp = struct {
-                    fn isDyadic(comptime T: type) bool {
-                        return @hasDecl(T, "is_dyadic");
-                    }
-                };
-                return tmp.isDyadic;
-            },
-            .cfloat => {
-                const tmp = struct {
-                    fn isCfloat(comptime T: type) bool {
-                        if ((@hasDecl(T, "is_cfloat")) or
-                            T == std.math.Complex(f16) or T == std.math.Complex(f32) or T == std.math.Complex(f64) or
-                            T == std.math.Complex(f80) or T == std.math.Complex(f128) or T == std.math.Complex(comptime_float))
-                            return true;
-
-                        return false;
-                    }
-                };
-                return tmp.isCfloat;
-            },
-            .integer => {
-                const tmp = struct {
-                    fn isInteger(comptime T: type) bool {
-                        return T == Integer;
-                    }
-                };
-                return tmp.isInteger;
-            },
-            .rational => {
-                const tmp = struct {
-                    fn isRational(comptime T: type) bool {
-                        return T == Rational;
-                    }
-                };
-                return tmp.isRational;
-            },
-            .real => {
-                const tmp = struct {
-                    fn isReal(comptime T: type) bool {
-                        return T == Real;
-                    }
-                };
-                return tmp.isReal;
-            },
-            .complex => {
-                const tmp = struct {
-                    fn isComplex(comptime T: type) bool {
-                        if (@hasDecl(T, "is_complex"))
-                            return true;
-
-                        return false;
-                    }
-                };
-                return tmp.isComplex;
-            },
-        };
-    }
-};
-
-const supported_numeric_types: [33]type = .{
-    bool,    u8,
-    u16,     u32,
-    u64,     u128,
-    usize,   c_uint,
-    i8,      i16,
-    i32,     i64,
-    i128,    isize,
-    c_int,   comptime_int,
-    f16,     f32,
-    f64,     f80,
-    f128,    comptime_float,
-    cf16,    cf32,
-    cf64,    cf80,
-    cf128,   comptime_cfloat,
-    Integer, Rational,
-    Real,    Complex(Rational),
-    Complex(Real),
-    // Expression,
-};
-
-const supported_complex_types: [8]type = .{
-    cf16,  cf32,
-    cf64,  cf80,
-    cf128, comptime_cfloat,
-    Complex(Rational), Complex(Real), // Expression,
 };
 
 pub const VectorType = enum {
     dense,
     sparse,
     numeric, // Fallback for numeric types that are not vectors
-
-    pub fn match(comptime self: VectorType) fn (type) bool {
-        return switch (self) {
-            .dense => isDenseVector,
-            .sparse => isSparseVector,
-            .numeric => unreachable,
-        };
-    }
-
-    pub fn toString(self: VectorType) []const u8 {
-        return switch (self) {
-            .dense => "vector.Dense",
-            .sparse => "vector.Sparse",
-            .numeric => unreachable,
-        };
-    }
 };
 
 pub const MatrixType = enum {
@@ -387,38 +233,6 @@ pub const MatrixType = enum {
     diagonal,
     permutation,
     numeric, // Fallback for numeric types that are not matrices
-
-    pub fn match(comptime self: MatrixType) fn (type) bool {
-        return switch (self) {
-            .general_dense => isGeneralDenseMatrix,
-            .general_sparse => isGeneralSparseMatrix,
-            .symmetric_dense => isSymmetricDenseMatrix,
-            .symmetric_sparse => isSymmetricSparseMatrix,
-            .hermitian_dense => isHermitianDenseMatrix,
-            .hermitian_sparse => isHermitianSparseMatrix,
-            .triangular_dense => isTriangularDenseMatrix,
-            .triangular_sparse => isTriangularSparseMatrix,
-            .diagonal => isDiagonalMatrix,
-            .permutation => isPermutationMatrix,
-            .numeric => unreachable,
-        };
-    }
-
-    pub fn toString(self: MatrixType) []const u8 {
-        return switch (self) {
-            .general_dense => "matrix.general.Dense",
-            .general_sparse => "matrix.general.Sparse",
-            .symmetric_dense => "matrix.symmetric.Dense",
-            .symmetric_sparse => "matrix.symmetric.Sparse",
-            .hermitian_dense => "matrix.hermitian.Dense",
-            .hermitian_sparse => "matrix.hermitian.Sparse",
-            .triangular_dense => "matrix.triangular.Dense",
-            .triangular_sparse => "matrix.triangular.Sparse",
-            .diagonal => "matrix.Diagonal",
-            .permutation => "matrix.Permutation",
-            .numeric => unreachable,
-        };
-    }
 };
 
 pub const MatrixKind = enum {
@@ -428,47 +242,11 @@ pub const MatrixKind = enum {
     triangular,
     diagonal,
     permutation,
-
-    pub fn match(comptime self: MatrixKind) fn (type) bool {
-        return switch (self) {
-            .general => isGeneralMatrix,
-            .symmetric => isSymmetricMatrix,
-            .hermitian => isHermitianMatrix,
-            .triangular => isTriangularMatrix,
-            .diagonal => isDiagonalMatrix,
-            .permutation => isPermutationMatrix,
-        };
-    }
-
-    pub fn toString(self: MatrixKind) []const u8 {
-        return switch (self) {
-            .general => "general matrix",
-            .symmetric => "symmetric matrix",
-            .hermitian => "hermitian matrix",
-            .triangular => "triangular matrix",
-            .diagonal => "diagonal matrix",
-            .permutation => "permutation matrix",
-        };
-    }
 };
 
 pub const MatrixStorage = enum {
     dense,
     sparse,
-
-    pub fn match(comptime self: MatrixStorage) fn (type) bool {
-        return switch (self) {
-            .dense => isDenseMatrix,
-            .sparse => isSparseMatrix,
-        };
-    }
-
-    pub fn toString(self: MatrixStorage) []const u8 {
-        return switch (self) {
-            .dense => "dense matrix",
-            .sparse => "sparse matrix",
-        };
-    }
 };
 
 pub const ArrayType = enum {
@@ -476,24 +254,6 @@ pub const ArrayType = enum {
     strided,
     sparse,
     numeric, // Fallback for numeric types that are not arrays
-
-    pub fn match(comptime self: ArrayType) fn (type) bool {
-        return switch (self) {
-            .dense => isDenseArray,
-            .strided => isStridedArray,
-            .sparse => isSparseArray,
-            .numeric => unreachable,
-        };
-    }
-
-    pub fn toString(self: ArrayType) []const u8 {
-        return switch (self) {
-            .dense => "array.Dense",
-            .strided => "array.Strided",
-            .sparse => "array.Sparse",
-            .numeric => unreachable,
-        };
-    }
 };
 
 pub const Domain = enum {
@@ -502,26 +262,6 @@ pub const Domain = enum {
     matrix,
     array,
     expression,
-
-    pub fn match(comptime self: Domain) fn (type) bool {
-        return switch (self) {
-            .numeric => isNumeric,
-            .vector => isVector,
-            .matrix => isMatrix,
-            .array => isArray,
-            .expression => isExpression,
-        };
-    }
-
-    pub fn toString(self: Domain) []const u8 {
-        return switch (self) {
-            .numeric => "numeric",
-            .vector => "vector",
-            .matrix => "matrix",
-            .array => "array",
-            .expression => "expression",
-        };
-    }
 };
 
 /// A useless allocator that does nothing, always signalling allocation failure.
@@ -530,7 +270,7 @@ pub const useless_allocator: std.mem.Allocator = .{
     .vtable = &vtable,
 };
 
-pub const vtable: std.mem.Allocator.VTable = .{
+const vtable: std.mem.Allocator.VTable = .{
     .alloc = alloc,
     .resize = resize,
     .remap = remap,
@@ -589,10 +329,7 @@ fn free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ra: usi
 /// -------
 /// `NumericType`: The corresponding `NumericType` enum value.
 pub inline fn numericType(comptime N: type) NumericType {
-    // Without inline functions calling this fail miserably. I have no idea why.
-
-    @setEvalBranchQuota(10000000);
-
+    // Without inline, functions calling this fail miserably. I have no idea why.
     switch (@typeInfo(N)) {
         .bool => return .bool,
         .int, .comptime_int => return .int,
@@ -618,7 +355,7 @@ pub inline fn numericType(comptime N: type) NumericType {
             if (@hasDecl(N, "is_complex"))
                 return .complex;
 
-            @compileError("Unsupported numeric type: " ++ @typeName(N));
+            @compileError("zml.types.numericType: " ++ @typeName(N) ++ " is not a supported numeric type");
         },
     }
 }
@@ -634,8 +371,6 @@ pub inline fn numericType(comptime N: type) NumericType {
 /// -------
 /// `bool`: `true` if the type is a supported numeric type, `false` otherwise.
 pub fn isNumeric(comptime N: type) bool {
-    @setEvalBranchQuota(10000000);
-
     switch (@typeInfo(N)) {
         .bool => return true,
         .int, .comptime_int => return true,
@@ -666,9 +401,16 @@ pub fn isNumeric(comptime N: type) bool {
     }
 }
 
+/// Determines the vector type of the input type `V`.
+///
+/// Parameters
+/// ----------
+/// comptime V (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `VectorType`: The corresponding `VectorType` enum value.
 pub inline fn vectorType(comptime V: type) VectorType {
-    @setEvalBranchQuota(10000);
-
     if (isDenseVector(V))
         return .dense;
 
@@ -678,9 +420,16 @@ pub inline fn vectorType(comptime V: type) VectorType {
     return .numeric; // Fallback for numeric types that are not vectors
 }
 
+/// Determines the matrix type of the input type `M`.
+///
+/// Parameters
+/// ----------
+/// comptime M (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `MatrixType`: The corresponding `MatrixType` enum value.
 pub inline fn matrixType(comptime M: type) MatrixType {
-    @setEvalBranchQuota(10000);
-
     if (isGeneralDenseMatrix(M))
         return .general_dense;
 
@@ -714,6 +463,15 @@ pub inline fn matrixType(comptime M: type) MatrixType {
     return .numeric; // Fallback for numeric types that are not matrices
 }
 
+/// Determines the array type of the input type `A`.
+///
+/// Parameters
+/// ----------
+/// comptime A (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `ArrayType`: The corresponding `ArrayType` enum value.
 pub inline fn arrayType(comptime A: type) ArrayType {
     @setEvalBranchQuota(10000);
 
@@ -729,9 +487,16 @@ pub inline fn arrayType(comptime A: type) ArrayType {
     return .numeric; // Fallback for numeric types that are not arrays
 }
 
+/// Determines the domain of the input type `T`.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `Domain`: The corresponding `Domain` enum value.
 pub inline fn domain(comptime T: type) Domain {
-    @setEvalBranchQuota(10000);
-
     if (comptime isNumeric(T))
         return .numeric;
 
@@ -747,7 +512,7 @@ pub inline fn domain(comptime T: type) Domain {
     if (comptime isExpression(T))
         return .expression;
 
-    @compileError(@typeName(T) ++ " does not belong to any supported domain");
+    @compileError("zml.types.domain: " ++ @typeName(T) ++ " does not belong to any supported domain");
 }
 
 const type_checks = @import("types/type_checks.zig");
@@ -800,6 +565,7 @@ pub const EnsureDomain = coercion.EnsureDomain;
 pub const EnsureVector = coercion.EnsureVector;
 pub const EnsureMatrix = coercion.EnsureMatrix;
 pub const EnsureArray = coercion.EnsureArray;
+pub const EnsureFloat = coercion.EnsureFloat;
 
 const casting = @import("types/casting.zig");
 pub const scast = casting.scast;
@@ -822,37 +588,33 @@ pub const cast = casting.cast;
 /// -------
 /// `type`: The scalar type of the input type.
 pub fn Scalar(comptime T: type) type {
-    if (isArray(T) or isMatrix(T) or isVector(T)) {
-        return Numeric(T);
-    }
-
-    switch (comptime numericType(T)) {
-        .bool => return T,
-        .int => return T,
-        .float => return T,
-        .cfloat => switch (T) {
-            cf16 => return f16,
-            cf32 => return f32,
-            cf64 => return f64,
-            cf80 => return f80,
-            cf128 => return f128,
-            comptime_cfloat => return comptime_float,
-            std.math.Complex(f16) => return f16,
-            std.math.Complex(f32) => return f32,
-            std.math.Complex(f64) => return f64,
-            std.math.Complex(f80) => return f80,
-            std.math.Complex(f128) => return f128,
-            std.math.Complex(comptime_float) => return comptime_float,
-            else => unreachable,
+    switch (comptime domain(T)) {
+        .numeric => switch (comptime numericType(T)) {
+            .bool => return T,
+            .int => return T,
+            .float => return T,
+            .cfloat => switch (T) {
+                std.math.Complex(f16) => return f16,
+                std.math.Complex(f32) => return f32,
+                std.math.Complex(f64) => return f64,
+                std.math.Complex(f80) => return f80,
+                std.math.Complex(f128) => return f128,
+                std.math.Complex(comptime_float) => return comptime_float,
+                else => return T.Scalar,
+            },
+            .integer => return Integer,
+            .rational => return Rational,
+            .real => return Real,
+            .complex => switch (T) {
+                Complex(Rational) => return Rational,
+                Complex(Real) => return Real,
+                else => unreachable,
+            },
         },
-        .integer => return Integer,
-        .rational => return Rational,
-        .real => return Real,
-        .complex => switch (T) {
-            Complex(Rational) => return Rational,
-            Complex(Real) => return Real,
-            else => unreachable,
-        },
+        .vector => return Numeric(T),
+        .matrix => return Numeric(T),
+        .array => return Numeric(T),
+        .expression => return Expression,
     }
 }
 
@@ -873,113 +635,113 @@ pub fn Scalar(comptime T: type) type {
 /// -------
 /// `type`: The underlying numeric type of the input type.
 pub fn Numeric(comptime T: type) type {
-    if (isExpression(T))
-        return Expression;
-
-    if (isArray(T) or isMatrix(T) or isVector(T))
-        return T.Numeric;
-
-    if (!isNumeric(T)) {
-        @compileError("Expected a numeric type, but got " ++ @typeName(T));
+    switch (comptime domain(T)) {
+        .numeric => return T,
+        .vector => return T.Numeric,
+        .matrix => return T.Numeric,
+        .array => return T.Numeric,
+        .expression => return Expression,
     }
-
-    return T;
 }
 
 pub fn orderOf(comptime T: type) Order {
-    if (comptime isArray(T)) {
-        if (T == array.Dense(Numeric(T), .row_major) or
-            T == array.Strided(Numeric(T), .row_major) or
-            T == array.Sparse(Numeric(T), .row_major))
-            return .row_major
-        else
-            return .col_major;
-    } else if (comptime isMatrix(T)) {
-        if (comptime isComplex(Numeric(T))) {
-            if (T == matrix.general.Dense(Numeric(T), .row_major) or
-                T == matrix.general.Sparse(Numeric(T), .row_major) or
-                T == matrix.symmetric.Dense(Numeric(T), .upper, .row_major) or
-                T == matrix.symmetric.Dense(Numeric(T), .lower, .row_major) or
-                T == matrix.symmetric.Sparse(Numeric(T), .upper, .row_major) or
-                T == matrix.symmetric.Sparse(Numeric(T), .lower, .row_major) or
-                T == matrix.hermitian.Dense(Numeric(T), .upper, .row_major) or
-                T == matrix.hermitian.Dense(Numeric(T), .lower, .row_major) or
-                T == matrix.hermitian.Sparse(Numeric(T), .upper, .row_major) or
-                T == matrix.hermitian.Sparse(Numeric(T), .lower, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .upper, .non_unit, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .upper, .unit, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .upper, .non_unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .upper, .unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, .row_major))
+    switch (comptime domain(T)) {
+        .matrix => {
+            if (comptime isComplex(Numeric(T))) {
+                if (T == matrix.general.Dense(Numeric(T), .row_major) or
+                    T == matrix.general.Sparse(Numeric(T), .row_major) or
+                    T == matrix.symmetric.Dense(Numeric(T), .upper, .row_major) or
+                    T == matrix.symmetric.Dense(Numeric(T), .lower, .row_major) or
+                    T == matrix.symmetric.Sparse(Numeric(T), .upper, .row_major) or
+                    T == matrix.symmetric.Sparse(Numeric(T), .lower, .row_major) or
+                    T == matrix.hermitian.Dense(Numeric(T), .upper, .row_major) or
+                    T == matrix.hermitian.Dense(Numeric(T), .lower, .row_major) or
+                    T == matrix.hermitian.Sparse(Numeric(T), .upper, .row_major) or
+                    T == matrix.hermitian.Sparse(Numeric(T), .lower, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .upper, .non_unit, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .upper, .unit, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .upper, .non_unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .upper, .unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, .row_major))
+                    return .row_major
+                else
+                    return .col_major;
+            } else {
+                if (T == matrix.general.Dense(Numeric(T), .row_major) or
+                    T == matrix.general.Sparse(Numeric(T), .row_major) or
+                    T == matrix.symmetric.Dense(Numeric(T), .upper, .row_major) or
+                    T == matrix.symmetric.Dense(Numeric(T), .lower, .row_major) or
+                    T == matrix.symmetric.Sparse(Numeric(T), .upper, .row_major) or
+                    T == matrix.symmetric.Sparse(Numeric(T), .lower, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .upper, .non_unit, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .upper, .unit, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, .row_major) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .upper, .non_unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .upper, .unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, .row_major) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, .row_major))
+                    return .row_major
+                else
+                    return .col_major;
+            }
+        },
+        .array => {
+            if (T == array.Dense(Numeric(T), .row_major) or
+                T == array.Strided(Numeric(T), .row_major) or
+                T == array.Sparse(Numeric(T), .row_major))
                 return .row_major
             else
                 return .col_major;
-        } else {
-            if (T == matrix.general.Dense(Numeric(T), .row_major) or
-                T == matrix.general.Sparse(Numeric(T), .row_major) or
-                T == matrix.symmetric.Dense(Numeric(T), .upper, .row_major) or
-                T == matrix.symmetric.Dense(Numeric(T), .lower, .row_major) or
-                T == matrix.symmetric.Sparse(Numeric(T), .upper, .row_major) or
-                T == matrix.symmetric.Sparse(Numeric(T), .lower, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .upper, .non_unit, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .upper, .unit, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, .row_major) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .upper, .non_unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .upper, .unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, .row_major) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, .row_major))
-                return .row_major
-            else
-                return .col_major;
-        }
-    } else {
-        @compileError("Use `orderOf` only with matrix or array types.");
+        },
+        else => @compileError("zml.types.orderOf: T must be a matrix or array type, got " ++ @typeName(T)),
     }
 }
 
 pub fn uploOf(comptime T: type) Uplo {
-    if (comptime isMatrix(T)) {
-        if (comptime isComplex(Numeric(T))) {
-            if (T == matrix.symmetric.Dense(Numeric(T), .lower, orderOf(T)) or
-                T == matrix.symmetric.Sparse(Numeric(T), .lower, orderOf(T)) or
-                T == matrix.hermitian.Dense(Numeric(T), .lower, orderOf(T)) or
-                T == matrix.hermitian.Sparse(Numeric(T), .lower, orderOf(T)) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .unit, orderOf(T)) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, orderOf(T)) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, orderOf(T)) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, orderOf(T)))
-                return .lower
-            else
-                return .upper;
-        } else {
-            if (T == matrix.symmetric.Dense(Numeric(T), .lower, orderOf(T)) or
-                T == matrix.symmetric.Sparse(Numeric(T), .lower, orderOf(T)) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .unit, orderOf(T)) or
-                T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, orderOf(T)) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, orderOf(T)) or
-                T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, orderOf(T)))
-                return .lower
-            else
-                return .upper;
-        }
-    } else {
-        @compileError("Use `uploOf` only with matrix types.");
+    switch (comptime domain(T)) {
+        .matrix => {
+            if (comptime isComplex(Numeric(T))) {
+                if (T == matrix.symmetric.Dense(Numeric(T), .lower, orderOf(T)) or
+                    T == matrix.symmetric.Sparse(Numeric(T), .lower, orderOf(T)) or
+                    T == matrix.hermitian.Dense(Numeric(T), .lower, orderOf(T)) or
+                    T == matrix.hermitian.Sparse(Numeric(T), .lower, orderOf(T)) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .unit, orderOf(T)) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, orderOf(T)) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, orderOf(T)) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, orderOf(T)))
+                    return .lower
+                else
+                    return .upper;
+            } else {
+                if (T == matrix.symmetric.Dense(Numeric(T), .lower, orderOf(T)) or
+                    T == matrix.symmetric.Sparse(Numeric(T), .lower, orderOf(T)) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .unit, orderOf(T)) or
+                    T == matrix.triangular.Dense(Numeric(T), .lower, .non_unit, orderOf(T)) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .unit, orderOf(T)) or
+                    T == matrix.triangular.Sparse(Numeric(T), .lower, .non_unit, orderOf(T)))
+                    return .lower
+                else
+                    return .upper;
+            }
+        },
+        else => @compileError("zml.types.uploOf: T must be a matrix type, got " ++ @typeName(T)),
     }
 }
 
 pub fn diagOf(comptime T: type) Diag {
-    if (comptime isMatrix(T)) {
-        if (T == matrix.triangular.Dense(Numeric(T), uploOf(T), .unit, orderOf(T)) or
-            T == matrix.triangular.Sparse(Numeric(T), uploOf(T), .unit, orderOf(T)))
-            return .unit
-        else
-            return .non_unit;
-    } else {
-        @compileError("Use `diagOf` only with matrix types.");
+    switch (comptime domain(T)) {
+        .matrix => {
+            if (T == matrix.triangular.Dense(Numeric(T), uploOf(T), .unit, orderOf(T)) or
+                T == matrix.triangular.Sparse(Numeric(T), uploOf(T), .unit, orderOf(T)))
+                return .unit
+            else
+                return .non_unit;
+        },
+        else => @compileError("zml.types.diagOf: T must be a matrix type, got " ++ @typeName(T)),
     }
 }
 
@@ -1003,80 +765,6 @@ pub fn Child(comptime T: type) type {
             return info.child;
         },
         else => return T,
-    }
-}
-
-/// Returns the return type of a function with one parameter when called with a
-/// value of type `X`.
-///
-/// This function is useful when the return type of the function depends on
-/// the type of the parameter passed to it. The function may have a second
-/// parameter that is a context struct.
-pub fn ReturnType1(comptime op: anytype, comptime X: type) type {
-    const opinfo = @typeInfo(@TypeOf(op));
-
-    comptime if (opinfo.@"fn".params.len != 1 and opinfo.@"fn".params.len != 2)
-        @compileError("ReturnType1: op must be a function with one parameter, or two if the second is an context struct");
-
-    const val: X = if (isArbitraryPrecision(X))
-        .empty
-    else if (isComplex(X))
-        .{ .re = 1, .im = 1 }
-    else
-        1;
-
-    const result_type: type = if (opinfo.@"fn".params.len == 1)
-        @TypeOf(op(val))
-    else // We must pass an allocator, although it is not used
-        if (isArbitraryPrecision(X))
-            @TypeOf(op(val, .{ .allocator = useless_allocator }))
-        else
-            @TypeOf(op(val, .{}));
-
-    const resinfo = @typeInfo(result_type);
-    switch (resinfo) {
-        .error_union => return resinfo.error_union.payload,
-        else => return result_type,
-    }
-}
-
-/// Returns the return type of a function with two parameters when called with
-/// values of types `X` and `Y`.
-///
-/// This function is useful when the return type of the function depends on
-/// the types of the parameters passed to it. The function may have a third
-/// parameter that is a context struct.
-pub fn ReturnType2(comptime op: anytype, comptime X: type, comptime Y: type) type {
-    const opinfo = @typeInfo(@TypeOf(op));
-
-    comptime if (opinfo.@"fn".params.len != 2 and opinfo.@"fn".params.len != 3)
-        @compileError("ReturnType2: op must be a function with two parameters, or three if the third is an context struct");
-
-    const val1: X = if (isArbitraryPrecision(X))
-        .empty
-    else if (isComplex(X))
-        .{ .re = 1, .im = 1 }
-    else
-        1;
-    const val2: Y = if (isArbitraryPrecision(Y))
-        .empty
-    else if (isComplex(Y))
-        .{ .re = 1, .im = 1 }
-    else
-        1;
-
-    const result_type: type = if (opinfo.@"fn".params.len == 2)
-        @TypeOf(op(val1, val2))
-    else // We must pass an allocator, although it is not used
-        if (isArbitraryPrecision(X) or isArbitraryPrecision(Y))
-            @TypeOf(op(val1, val2, .{ .allocator = useless_allocator }))
-        else
-            @TypeOf(op(val1, val2, .{}));
-
-    const resinfo = @typeInfo(result_type);
-    switch (resinfo) {
-        .error_union => return resinfo.error_union.payload,
-        else => return result_type,
     }
 }
 

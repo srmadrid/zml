@@ -4,6 +4,14 @@ const types = @import("../types.zig");
 
 /// Checks if the input type is a supported type (numeric, vector, matrix,
 /// array, or expression).
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a supported type, `false` otherwise.
 pub fn isSupportedType(comptime T: type) bool {
     if (comptime types.isNumeric(T))
         return true;
@@ -145,6 +153,11 @@ pub fn isVector(comptime T: type) bool {
 ///
 /// Parameters
 /// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a dense vector, `false` otherwise.
 pub fn isDenseVector(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_vector") and @hasDecl(T, "is_dense"),
@@ -152,6 +165,15 @@ pub fn isDenseVector(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a sparse vector.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a sparse vector, `false` otherwise.
 pub fn isSparseVector(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_vector") and @hasDecl(T, "is_sparse"),
@@ -159,10 +181,7 @@ pub fn isSparseVector(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of a matrix, i.e., an instance of a
-/// `matrix.General`, `matrix.Symmetric`, `matrix.Hermitian`,
-/// `matrix.Triangular`, `matrix.Diagonal`, `matrix.Banded`,
-/// `matrix.Tridiagonal`, or `matrix.sparse` matrix.
+/// Checks if the input type is an instance of a matrix.
 ///
 /// Parameters
 /// ----------
@@ -178,169 +197,19 @@ pub fn isMatrix(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is a square matrix, i.e., a matrix type that is
+/// always square (symmetric or hermitian).
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a square matrix, `false` otherwise.
 pub fn isSquareMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_symmetric") or @hasDecl(T, "is_hermitian"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.general.Dense`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.general.Dense`, `false` otherwise.
-pub fn isGeneralDenseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_dense"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.symmetric.Dense`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.symmetric.Dense`, `false` otherwise.
-pub fn isSymmetricDenseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_dense"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.hermitian.Dense`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.hermitian.Dense`, `false` otherwise.
-pub fn isHermitianDenseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_dense"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.triangular.Dense`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.triangular.Dense`, `false` otherwise.
-pub fn isTriangularDenseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular") and @hasDecl(T, "is_dense"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.general.Sparse`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.general.Sparse`, `false` otherwise.
-pub fn isGeneralSparseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_sparse"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.symmetric.Sparse`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.symmetric.Sparse`, `false` otherwise.
-pub fn isSymmetricSparseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_sparse"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.hermitian.Sparse`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.hermitian.Sparse`, `false` otherwise.
-pub fn isHermitianSparseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_sparse"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.triangular.Sparse`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.triangular.Sparse`, `false` otherwise.
-pub fn isTriangularSparseMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular") and @hasDecl(T, "is_sparse"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.Diagonal`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.Diagonal`, `false` otherwise.
-pub fn isDiagonalMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_diagonal"),
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a `matrix.Permutation`.
-///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is a `matrix.Permutation`, `false` otherwise.
-pub fn isPermutationMatrix(comptime T: type) bool {
-    switch (@typeInfo(T)) {
-        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_permutation"),
         else => return false,
     }
 }
@@ -361,6 +230,38 @@ pub fn isGeneralMatrix(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a general dense matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a general dense matrix, `false` otherwise.
+pub fn isGeneralDenseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_dense"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a general sparse matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a general sparse matrix, `false` otherwise.
+pub fn isGeneralSparseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_general") and @hasDecl(T, "is_sparse"),
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a symmetric matrix.
 ///
 /// Parameters
@@ -373,6 +274,38 @@ pub fn isGeneralMatrix(comptime T: type) bool {
 pub fn isSymmetricMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a symmetric dense matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a symmetric dense matrix, `false` otherwise.
+pub fn isSymmetricDenseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_dense"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a symmetric sparse matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a symmetric sparse matrix, `false` otherwise.
+pub fn isSymmetricSparseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_symmetric") and @hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -393,6 +326,38 @@ pub fn isHermitianMatrix(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a hermitian dense matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a hermitian dense matrix, `false` otherwise.
+pub fn isHermitianDenseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_dense"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a hermitian sparse matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a hermitian sparse matrix, `false` otherwise.
+pub fn isHermitianSparseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_hermitian") and @hasDecl(T, "is_sparse"),
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a triangular matrix.
 ///
 /// Parameters
@@ -405,6 +370,70 @@ pub fn isHermitianMatrix(comptime T: type) bool {
 pub fn isTriangularMatrix(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a triangular dense matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a triangular dense matrix, `false` otherwise.
+pub fn isTriangularDenseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular") and @hasDecl(T, "is_dense"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a triangular sparse matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a triangular sparse matrix, `false` otherwise.
+pub fn isTriangularSparseMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_triangular") and @hasDecl(T, "is_sparse"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a diagonal matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a diagonal matrix, `false` otherwise.
+pub fn isDiagonalMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_diagonal"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a permutation matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a permutation matrix, `false` otherwise.
+pub fn isPermutationMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => @hasDecl(T, "is_matrix") and @hasDecl(T, "is_permutation"),
         else => return false,
     }
 }
@@ -441,8 +470,7 @@ pub fn isSparseMatrix(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of an array, i.e., an instance of a
-/// `array.Dense`, `array.Strided`, or `array.Sparse` array.
+/// Checks if the input type is an instance of an array.
 ///
 /// Parameters
 /// ----------
@@ -458,7 +486,7 @@ pub fn isArray(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of a `array.Dense`.
+/// Checks if the input type is an instance of a dense array.
 ///
 /// Parameters
 /// ----------
@@ -466,7 +494,7 @@ pub fn isArray(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `array.Dense`, `false` otherwise.
+/// `bool`: `true` if the type is a dense array, `false` otherwise.
 pub fn isDenseArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_array") and @hasDecl(T, "is_dense"),
@@ -474,7 +502,7 @@ pub fn isDenseArray(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of a `array.Strided`.
+/// Checks if the input type is an instance of a strided array.
 ///
 /// Parameters
 /// ----------
@@ -482,7 +510,7 @@ pub fn isDenseArray(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `array.Strided`, `false` otherwise.
+/// `bool`: `true` if the type is a strided array, `false` otherwise.
 pub fn isStridedArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_array") and @hasDecl(T, "is_strided"),
@@ -490,7 +518,7 @@ pub fn isStridedArray(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of a `array.Sparse`.
+/// Checks if the input type is an instance of a sparse array.
 ///
 /// Parameters
 /// ----------
@@ -498,7 +526,7 @@ pub fn isStridedArray(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is a `array.Sparse`, `false` otherwise.
+/// `bool`: `true` if the type is a sparse array, `false` otherwise.
 pub fn isSparseArray(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_array") and @hasDecl(T, "is_sparse"),
@@ -514,18 +542,21 @@ pub fn isExpression(comptime T: type) bool {
 
 /// Checks if the input numeric type is of fixed precision.
 ///
-/// This function checks if the input type is a fixed precision numeric type,
-/// which includes types labeled as `bool`, `int`, `float`, and `cfloat`.
+/// This function checks if the input numeric type is of fixed precision, which
+/// includes types labeled as `bool`, `int`, `float`, `dyadic` and `cfloat`.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check. Must be a supported numeric type.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is of fixed precision, `false` otherwise.
-pub fn isFixedPrecision(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isFixedPrecision(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isFixedPrecision: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
         .bool => return true,
         .int => return true,
         .float => return true,
@@ -537,19 +568,21 @@ pub fn isFixedPrecision(comptime T: type) bool {
 
 /// Checks if the input numeric type is of arbitrary precision.
 ///
-/// This function checks if the input type is an arbitrary precision numeric
-/// type, which includes types labeled as `integer`, `rational`, `real`,
-/// `complex`, and `expression`.
+/// This function checks if the input numeric type is of arbitrary precision,
+/// which includes types labeled as `integer`, `rational`, `real` and `complex`.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check. Must be a supported numeric type.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is of arbitrary precision, `false` otherwise.
-pub fn isArbitraryPrecision(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isArbitraryPrecision(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isArbitraryPrecision: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
         .integer => return true,
         .rational => return true,
         .real => return true,
@@ -558,17 +591,20 @@ pub fn isArbitraryPrecision(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is integral.
+/// Checks if the input numeric type is integral.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is integral, `false` otherwise.
-pub fn isIntegral(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isIntegral(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isIntegral: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
         .bool => return true,
         .int => return true,
         .integer => return true,
@@ -576,17 +612,20 @@ pub fn isIntegral(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is non-integral.
+/// Checks if the input numeric type is non-integral.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is non-integral, `false` otherwise.
-pub fn isNonIntegral(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isNonIntegral(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isNonIntegral: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
         .float => return true,
         .dyadic => return true,
         .cfloat => return true,
@@ -597,17 +636,22 @@ pub fn isNonIntegral(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is real.
+/// Checks if the input numeric type is real.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is real, `false` otherwise.
-pub fn isReal(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isReal(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isReal: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
+        .bool => return true,
+        .int => return true,
         .float => return true,
         .dyadic => return true,
         .integer => return true,
@@ -617,39 +661,42 @@ pub fn isReal(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is complex.
-///
-/// This function checks if the input type is a complex numeric type, which
-/// includes types labeled as `cfloat`, `complex`, and `expression`.
+/// Checks if the input numeric type is complex.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check. Must be a supported numeric type.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is complex, `false` otherwise.
-pub fn isComplex(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isComplex(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isComplex: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
         .cfloat => return true,
         .complex => return true,
         else => return false,
     }
 }
 
-/// Checks if the input type is signed.
+/// Checks if the input numeric type is signed.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is signed, `false` otherwise.
-pub fn isSigned(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isSigned(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isSigned: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
         .int => {
-            switch (@typeInfo(T)) {
+            switch (@typeInfo(N)) {
                 .int => |info| return info.signedness == .signed,
                 .comptime_int => return true,
                 else => unreachable,
@@ -666,20 +713,23 @@ pub fn isSigned(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is unsigned.
+/// Checks if the input numeric type is unsigned.
 ///
 /// Parameters
 /// ----------
-/// comptime T (`type`): The type to check.
+/// comptime N (`type`): The type to check. Must be a supported numeric type.
 ///
 /// Returns
 /// -------
 /// `bool`: `true` if the type is unsigned, `false` otherwise.
-pub fn isUnsigned(comptime T: type) bool {
-    switch (types.numericType(T)) {
+pub fn isUnsigned(comptime N: type) bool {
+    if (!types.isNumeric(N))
+        @compileError("zml.types.isUnsigned: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+    switch (types.numericType(N)) {
         .bool => return true,
         .int => {
-            switch (@typeInfo(T)) {
+            switch (@typeInfo(N)) {
                 .int => |info| return info.signedness == .unsigned,
                 .comptime_int => return false,
                 else => unreachable,
