@@ -1,21 +1,22 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
-const Coerce = types.Coerce;
 const float = @import("../float.zig");
 
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
-pub inline fn hypot(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(y), @TypeOf(x))) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.hypot: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Hypot(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.float) or !types.numericType(Y).le(.float))
+        @compileError("zml.float.hypot: x and y must be bools, ints or floats, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    comptime if (types.numericType(@TypeOf(y)) != .int and types.numericType(@TypeOf(y)) != .float)
-        @compileError("float.hypot: y must be an int or float, got " ++ @typeName(@TypeOf(y)));
+    return types.EnsureFloat(types.Coerce(X, Y));
+}
 
-    switch (EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y)))) {
+pub inline fn hypot(x: anytype, y: anytype) Hypot(@TypeOf(y), @TypeOf(x)) {
+    switch (Hypot(@TypeOf(x), @TypeOf(y))) {
         f16 => return types.scast(f16, hypot32(types.scast(f32, x), types.scast(f32, y))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_hypotf.c

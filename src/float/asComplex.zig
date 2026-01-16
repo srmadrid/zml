@@ -19,6 +19,10 @@ const complex = @import("../complex.zig");
 /// ```
 pub fn asComplex(x: anytype) !t: {
     const X: type = @TypeOf(x);
+
+    if (!types.isNumeric(X) or types.numericType(X) != .float)
+        @compileError("zml.float.asComplex: x must be a float, got \n\tx: " ++ @typeName(X) ++ "\n");
+
     var size = 0;
     if (X == comptime_float) {
         size = 512;

@@ -1,21 +1,22 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
-const Coerce = types.Coerce;
 const float = @import("../float.zig");
 
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
-pub inline fn atan2(x: anytype, y: anytype) EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y))) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.atan2: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Atan2(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.float) or !types.numericType(Y).le(.float))
+        @compileError("zml.float.atan2: x and y must be bools, ints or floats, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    comptime if (types.numericType(@TypeOf(y)) != .int and types.numericType(@TypeOf(y)) != .float)
-        @compileError("float.atan2: y must be an int or float, got " ++ @typeName(@TypeOf(y)));
+    return types.EnsureFloat(types.Coerce(X, Y));
+}
 
-    switch (EnsureFloat(Coerce(@TypeOf(x), @TypeOf(y)))) {
+pub inline fn atan2(x: anytype, y: anytype) Atan2(@TypeOf(x), @TypeOf(y)) {
+    switch (Atan2(@TypeOf(x), @TypeOf(y))) {
         f16 => return types.scast(f16, atan2_32(types.scast(f32, x), types.scast(f32, y))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_atan2f.c

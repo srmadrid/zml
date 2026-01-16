@@ -17,6 +17,10 @@ const rational = @import("../rational.zig");
 /// ```
 pub fn asRational(x: anytype) !t: {
     const X: type = @TypeOf(x);
+
+    if (!types.isNumeric(X) or types.numericType(X) != .float)
+        @compileError("zml.float.asRational: x must be a float, got \n\tx: " ++ @typeName(X) ++ "\n");
+
     var size = 0;
     if (X == comptime_float) {
         size = 512;
@@ -35,13 +39,10 @@ pub fn asRational(x: anytype) !t: {
 } {
     const X: type = @TypeOf(x);
 
-    comptime if (types.numericType(X) != .float)
-        @compileError("float.asRational requires x to be a float type, got " ++ @typeName(X));
-
     const v: if (X == comptime_float) f128 else X = x;
 
     if (!std.math.isFinite(v))
-        return integer.Error.NotFinite;
+        return float.Error.NotFinite;
 
     const bits: u16 = @typeInfo(@TypeOf(v)).float.bits;
     const size: u32 = switch (bits) {
@@ -159,7 +160,7 @@ pub fn asRational(x: anytype) !t: {
         // Remaining partial bits (0..31)
         if (shift > 0) {
             var extra: u32 = 0;
-            const carry = @import("../integer//div_.zig").shiftLeftInPlace(nlimbs[0..nsize], &extra, @intCast(shift & 31));
+            const carry = @import("../integer/div_.zig").shiftLeftInPlace(nlimbs[0..nsize], &extra, @intCast(shift & 31));
             if (carry) {
                 nlimbs[nsize] = extra;
                 nsize += 1;

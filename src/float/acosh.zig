@@ -1,17 +1,20 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
 const float = @import("../float.zig");
 
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
-pub inline fn acosh(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.acosh: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Acosh(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !types.numericType(X).le(.float))
+        @compileError("zml.float.acosh: x must be a bool, an int or a float, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    switch (EnsureFloat(@TypeOf(x))) {
+    return types.EnsureFloat(X);
+}
+
+pub inline fn acosh(x: anytype) Acosh(@TypeOf(x)) {
+    switch (Acosh(@TypeOf(x))) {
         f16 => return types.scast(f16, acosh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_acoshf.c

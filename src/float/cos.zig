@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
 const float = @import("../float.zig");
 
 const sin = @import("sin.zig");
@@ -16,11 +15,15 @@ const rem_pio2_128 = rem_pio2.rem_pio2_128;
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
-pub inline fn cos(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.cos: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Cos(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !types.numericType(X).le(.float))
+        @compileError("zml.float.cos: x must be a bool, an int or a float, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    switch (EnsureFloat(@TypeOf(x))) {
+    return types.EnsureFloat(X);
+}
+
+pub inline fn cos(x: anytype) Cos(@TypeOf(x)) {
+    switch (Cos(@TypeOf(x))) {
         f16 => return types.scast(f16, cos32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_cosf.c

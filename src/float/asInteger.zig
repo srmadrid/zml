@@ -15,6 +15,10 @@ const integer = @import("../integer.zig");
 /// ```
 pub fn asInteger(x: anytype) !t: {
     const X: type = @TypeOf(x);
+
+    if (!types.isNumeric(X) or types.numericType(X) != .float)
+        @compileError("zml.float.asInteger: x must be a float, got \n\tx: " ++ @typeName(X) ++ "\n");
+
     var size = 0;
     if (X == comptime_float) {
         if (x == 0)
@@ -37,9 +41,6 @@ pub fn asInteger(x: anytype) !t: {
 } {
     const X: type = @TypeOf(x);
 
-    comptime if (types.numericType(X) != .float)
-        @compileError("float.asInteger requires x to be a float type, got " ++ @typeName(X));
-
     const v: X = float.trunc(x);
 
     if (comptime X == comptime_float) {
@@ -60,7 +61,7 @@ pub fn asInteger(x: anytype) !t: {
     }
 
     if (!std.math.isFinite(v))
-        return integer.Error.NotFinite;
+        return float.Error.NotFinite;
 
     const bits: u16 = @typeInfo(X).float.bits;
     const size: u32 = switch (bits) {

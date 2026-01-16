@@ -7,11 +7,15 @@ const float = @import("../float.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
-pub inline fn frexp(x: anytype, e: *i32) EnsureFloat(@TypeOf(x)) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.frexp: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Frexp(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !types.numericType(X).le(.float))
+        @compileError("zml.float.frexp: x must be a bool, an int or a float, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    switch (@TypeOf(x)) {
+    return types.EnsureFloat(X);
+}
+
+pub inline fn frexp(x: anytype, e: *i32) Frexp(@TypeOf(x)) {
+    switch (Frexp(@TypeOf(x))) {
         f16 => return types.scast(f16, frexp32(types.scast(f32, x), e)),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_frexpf.c

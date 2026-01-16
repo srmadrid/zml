@@ -1,17 +1,20 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
 const float = @import("../float.zig");
 
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
-pub inline fn tanh(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.tanh: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Tanh(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !types.numericType(X).le(.float))
+        @compileError("zml.float.tanh: x must be a bool, an int or a float, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    switch (EnsureFloat(@TypeOf(x))) {
+    return types.EnsureFloat(X);
+}
+
+pub inline fn tanh(x: anytype) Tanh(@TypeOf(x)) {
+    switch (Tanh(@TypeOf(x))) {
         f16 => return types.scast(f16, tanh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_tanhf.c

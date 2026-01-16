@@ -562,13 +562,7 @@ pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
-    //const a = gpa.allocator();
-
-    const x: u32 = 1;
-    const y: bool = true;
-    const z = zml.int.add(x, y);
-    std.debug.print("{}\n", .{z});
-    std.debug.print("@TypeOf(z) = {s}\n", .{@typeName(@TypeOf(z))});
+    const a = gpa.allocator();
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;
@@ -603,7 +597,7 @@ pub fn main() !void {
 
     // try matrixTesting(a);
 
-    // try bigintTesting(a);
+    try bigintTesting(a);
 }
 
 fn ask_user(default: u32) !u32 {

@@ -1,8 +1,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
-const Coerce = types.Coerce;
 const float = @import("../float.zig");
 
 const rem_pio2 = @import("rem_pio2.zig");
@@ -11,11 +9,18 @@ const rem_pio2_64 = rem_pio2.rem_pio2_64;
 
 const dbl64 = @import("dbl64.zig");
 
-pub inline fn sincos(x: anytype) struct { sinx: EnsureFloat(@TypeOf(x)), cosx: EnsureFloat(@TypeOf(x)) } {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.sincos: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Sincos(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !types.numericType(X).le(.float))
+        @compileError("zml.float.scalbn: x must be a bool, an int or a float, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    switch (@TypeOf(x)) {
+    return struct {
+        sinx: types.EnsureFloat(X),
+        cosx: types.EnsureFloat(X),
+    };
+}
+
+pub inline fn sincos(x: anytype) Sincos(@TypeOf(x)) {
+    switch (types.EnsureFloat(@TypeOf(x))) {
         f16 => {
             var s: f32 = undefined;
             var c: f32 = undefined;

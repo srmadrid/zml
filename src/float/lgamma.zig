@@ -1,7 +1,6 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
 const float = @import("../float.zig");
 
 const lgamma_data = @import("lgamma_data.zig");
@@ -10,12 +9,16 @@ const erf_data = @import("erf_data.zig");
 const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
-pub fn lgamma(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.lgamma: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Lgamma(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !types.numericType(X).le(.float))
+        @compileError("zml.float.lgamma: x must be a bool, an int or a float, got \n\tx: " ++ @typeName(X) ++ "\n");
 
+    return types.EnsureFloat(X);
+}
+
+pub fn lgamma(x: anytype) Lgamma(@TypeOf(x)) {
     var local_signgam: i32 = undefined;
-    switch (EnsureFloat(@TypeOf(x))) {
+    switch (Lgamma(@TypeOf(x))) {
         f16 => return types.scast(f16, lgamma_r32(types.scast(f32, x), &local_signgam)),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_lgammaf_r.c

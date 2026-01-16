@@ -8,8 +8,10 @@ const dbl64 = @import("dbl64.zig");
 const ldbl128 = @import("ldbl128.zig");
 
 pub inline fn rint(x: anytype) @TypeOf(x) {
-    comptime if (types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.rint: x must be a float, got " ++ @typeName(@TypeOf(x)));
+    const X: type = @TypeOf(x);
+
+    comptime if (!types.isNumeric(X) or types.numericType(X) != .float)
+        @compileError("zml.float.rint: x must be a float, got \n\tx: " ++ @typeName(@TypeOf(x)) ++ "\n");
 
     switch (@TypeOf(x)) {
         f16 => return types.cast(f16, rint32(types.cast(f32, x))),

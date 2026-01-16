@@ -1,16 +1,19 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
 const float = @import("../float.zig");
 
 const dbl64 = @import("dbl64.zig");
 
-pub inline fn exp(x: anytype) EnsureFloat(@TypeOf(x)) {
-    comptime if (types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(x)) != .float)
-        @compileError("float.exp: x must be an int or float, got " ++ @typeName(@TypeOf(x)));
+pub fn Exp(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !types.numericType(X).le(.float))
+        @compileError("zml.float.exp: x must be a bool, an int or a float, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    switch (EnsureFloat(@TypeOf(x))) {
+    return types.EnsureFloat(X);
+}
+
+pub inline fn exp(x: anytype) Exp(@TypeOf(x)) {
+    switch (Exp(@TypeOf(x))) {
         f16 => return types.scast(f16, exp32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_expf.c
