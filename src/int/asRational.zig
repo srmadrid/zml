@@ -16,6 +16,10 @@ const rational = @import("../rational.zig");
 /// ```
 pub fn asRational(x: anytype) t: {
     const X: type = @TypeOf(x);
+
+    if (!types.isNumeric(X) or types.numericType(X) != .int)
+        @compileError("zml.int.asRational: x must be an int, got \n\tx: " ++ @typeName(X) ++ "\n");
+
     var size = 0;
     if (X == comptime_int) {
         if (x == 0)
@@ -23,21 +27,11 @@ pub fn asRational(x: anytype) t: {
         else
             size = std.math.log2(int.abs(x)) / 32 + 1;
     } else {
-        switch (@typeInfo(X).int.bits) {
-            8, 16, 32 => size = 1,
-            64 => size = 2,
-            128 => size = 4,
-            else => unreachable,
-        }
+        size = int.max(1, @typeInfo(X).int.bits / 32);
     }
 
     break :t struct { rational.Rational, [size]u32 };
 } {
-    const X: type = @TypeOf(x);
-
-    comptime if (types.numericType(X) != .int)
-        @compileError("int.asRational requires x to be an int type, got " ++ @typeName(X));
-
     const num = @import("asInteger.zig").asInteger(x);
 
     return .{

@@ -558,31 +558,17 @@ fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u3
     }
 }
 
-fn testCheckParameter(x: anytype, y: anytype, z: anytype) void {
-    comptime zml.types.checkParameterTypes(
-        &.{
-            "all.numeric is '<=float'",
-            "any.numeric is 'float'",
-        },
-        .{
-            .x = @TypeOf(x),
-            .y = @TypeOf(y),
-            .z = @TypeOf(z),
-        },
-        "testCheckParameter",
-    );
-}
-
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
     var gpa: std.heap.DebugAllocator(.{}) = .init;
     defer _ = gpa.deinit();
     //const a = gpa.allocator();
 
-    const x: i64 = undefined;
-    const y: i32 = undefined;
-    const z: zml.vector.Dense(f64) = undefined;
-    testCheckParameter(x, y, z);
+    const x: u32 = 1;
+    const y: bool = true;
+    const z = zml.int.add(x, y);
+    std.debug.print("{}\n", .{z});
+    std.debug.print("@TypeOf(z) = {s}\n", .{@typeName(@TypeOf(z))});
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;

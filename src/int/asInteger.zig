@@ -14,6 +14,10 @@ const integer = @import("../integer.zig");
 /// ```
 pub fn asInteger(x: anytype) t: {
     const X: type = @TypeOf(x);
+
+    if (!types.isNumeric(X) or types.numericType(X) != .int)
+        @compileError("zml.int.asInteger: x must be an int, got \n\tx: " ++ @typeName(X) ++ "\n");
+
     var size = 0;
     if (X == comptime_int) {
         if (x == 0)
@@ -21,20 +25,12 @@ pub fn asInteger(x: anytype) t: {
         else
             size = std.math.log2(int.abs(x)) / 32 + 1;
     } else {
-        switch (@typeInfo(X).int.bits) {
-            8, 16, 32 => size = 1,
-            64 => size = 2,
-            128 => size = 4,
-            else => unreachable,
-        }
+        size = int.max(1, @typeInfo(X).int.bits / 32);
     }
 
     break :t struct { integer.Integer, [size]u32 };
 } {
     const X: type = @TypeOf(x);
-
-    comptime if (types.numericType(X) != .int)
-        @compileError("int.asInteger requires x to be an int type, got " ++ @typeName(X));
 
     if (comptime X == comptime_int) {
         if (x == 0) {
@@ -57,11 +53,9 @@ pub fn asInteger(x: anytype) t: {
 
         comptime var i: u32 = 0;
         inline while (uvalue != 0) : (i += 1) {
-            limbs[i] = @truncate(uvalue & 0xFFFFFFFF);
+            limbs[i] = @truncate(uvalue & 0xffffffff);
             uvalue >>= 32;
         }
-
-        //std.debug.print("limbs = {any}\n", .{limbs[0..size]});
 
         return .{
             .{
@@ -76,41 +70,43 @@ pub fn asInteger(x: anytype) t: {
     }
 
     const bits: u16 = @typeInfo(X).int.bits;
-    const size: u32 = if (bits <= 32) 1 else bits / 32;
+    const size: u32 = int.max(1, bits / 32);
 
     var limbs: [size]u32 = undefined;
 
-    const uvalue: std.meta.Int(.unsigned, bits) = types.scast(std.meta.Int(.unsigned, bits), int.abs(x));
+    var uvalue: std.meta.Int(.unsigned, bits) = types.scast(std.meta.Int(.unsigned, bits), int.abs(x));
 
     var actual_size: u32 = 0;
-    switch (bits) {
-        8, 16, 32 => {
-            if (uvalue != 0) {
-                limbs[0] = uvalue;
-                actual_size = 1;
+    if (bits <= 32) {
+        if (uvalue != 0) {
+            limbs[0] = uvalue;
+            actual_size = 1;
+        }
+    } else {
+        if (x != 0) {
+            var chunks: [size]u32 = undefined;
+            while (uvalue != 0) {
+                chunks[actual_size] = @truncate(uvalue & 0xffffffff);
+                uvalue >>= 32;
+                actual_size += 1;
             }
-        },
-        64, 128 => {
-            if (x != 0) {
-                var chunks: [bits / 32]u32 = @bitCast(uvalue);
-                if (comptime builtin.cpu.arch.endian() == .big) {
-                    // Reverse
-                    var i: u32 = 0;
-                    while (i < (bits / 32) / 2) : (i += 1) {
-                        const temp: u32 = chunks[i];
-                        chunks[i] = chunks[bits / 32 - 1 - i];
-                        chunks[bits / 32 - 1 - i] = temp;
-                    }
-                }
 
+            if (comptime builtin.cpu.arch.endian() == .big) {
+                // Reverse
                 var i: u32 = 0;
-                while (i < bits / 32 and chunks[i] != 0) : (i += 1) {
-                    limbs[i] = chunks[i];
-                    actual_size += 1;
+                while (i < size / 2) : (i += 1) {
+                    const temp: u32 = chunks[i];
+                    chunks[i] = chunks[size - 1 - i];
+                    chunks[size - 1 - i] = temp;
                 }
             }
-        },
-        else => unreachable,
+
+            var i: u32 = 0;
+            while (i < size and chunks[i] != 0) : (i += 1) {
+                limbs[i] = chunks[i];
+                actual_size += 1;
+            }
+        }
     }
 
     return .{

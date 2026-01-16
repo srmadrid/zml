@@ -213,6 +213,22 @@ pub const NumericType = enum {
     rational,
     real,
     complex,
+
+    pub fn lt(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) < @intFromEnum(other);
+    }
+
+    pub fn le(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) <= @intFromEnum(other);
+    }
+
+    pub fn gt(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) > @intFromEnum(other);
+    }
+
+    pub fn ge(self: NumericType, other: NumericType) bool {
+        return @intFromEnum(self) >= @intFromEnum(other);
+    }
 };
 
 pub const VectorType = enum {
@@ -375,7 +391,7 @@ pub fn isNumeric(comptime N: type) bool {
         .bool => return true,
         .int, .comptime_int => return true,
         .float, .comptime_float => return true,
-        else => {
+        .@"struct" => {
             if (@hasDecl(N, "is_dyadic"))
                 return true;
 
@@ -398,6 +414,7 @@ pub fn isNumeric(comptime N: type) bool {
 
             return false;
         },
+        else => return false,
     }
 }
 

@@ -2,23 +2,24 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const int = @import("../int.zig");
-const Coerce = types.Coerce;
 
-pub inline fn pow(x: anytype, y: anytype) !Coerce(@TypeOf(x), @TypeOf(y)) {
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = types.Coerce(X, Y);
+pub fn Pow(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.int) or !types.numericType(Y).le(.int) or
+        (types.numericType(X) != .int and types.numericType(Y) != .int))
+        @compileError("zml.int.pow: at least one of x or y to be an int, the other must be a bool or an int, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    comptime if (!(types.numericType(@TypeOf(x)) != .bool and types.numericType(@TypeOf(y)) != .int) and
-        !(types.numericType(@TypeOf(x)) != .int and types.numericType(@TypeOf(y)) != .bool) and
-        !(types.numericType(@TypeOf(x)) == .int and types.numericType(@TypeOf(y)) == .int))
-        @compileError("int.pow requires at least one of x or y to be an int, the other must be a bool or an int, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    return types.Coerce(X, Y);
+}
 
-    if (comptime C == comptime_int) {
-        comptime var result: C = 1;
-        comptime var base: C = types.scast(C, x);
-        comptime var exponent: C = types.scast(C, y);
+pub inline fn pow(x: anytype, y: anytype) !Pow(@TypeOf(x), @TypeOf(y)) {
+    const R: type = types.Coerce(@TypeOf(x), @TypeOf(y));
+
+    if (comptime R == comptime_int) {
+        comptime var result: R = 1;
+        comptime var base: R = types.scast(R, x);
+        comptime var exponent: R = types.scast(R, y);
 
         if (exponent < 0)
             return error.NegativeExponent;
@@ -32,9 +33,9 @@ pub inline fn pow(x: anytype, y: anytype) !Coerce(@TypeOf(x), @TypeOf(y)) {
 
         return result;
     } else {
-        var result: C = 1;
-        var base: C = types.scast(C, x);
-        var exponent: C = types.scast(C, y);
+        var result: R = 1;
+        var base: R = types.scast(R, x);
+        var exponent: R = types.scast(R, y);
 
         if (exponent < 0)
             return error.NegativeExponent;

@@ -21,18 +21,8 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         /// Type signature
         pub const is_dyadic = {};
 
-        pub const Mantissa = @Type(.{
-            .int = .{
-                .signedness = .unsigned,
-                .bits = mantissa_bits,
-            },
-        });
-        pub const Exponent = @Type(.{
-            .int = .{
-                .signedness = .signed,
-                .bits = exponent_bits,
-            },
-        });
+        pub const Mantissa = std.meta.Int(.unsigned, mantissa_bits);
+        pub const Exponent = std.meta.Int(.signed, exponent_bits);
 
         /// Initializes a new `Dyadic` with the specified value.
         ///

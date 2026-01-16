@@ -29,12 +29,12 @@ pub inline fn zero(
             return 0;
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 0.0;
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return .{ .re = 0.0, .im = 0.0 };
         },
@@ -44,7 +44,7 @@ pub inline fn zero(
                     .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                 };
 
-            comptime validateContext(@TypeOf(ctx), spec);
+            comptime types.validateContext(@TypeOf(ctx), spec);
 
             if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 return .init(allocator, 2);
@@ -64,7 +64,7 @@ pub inline fn zero(
                     .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                 };
 
-            comptime validateContext(@TypeOf(ctx), spec);
+            comptime types.validateContext(@TypeOf(ctx), spec);
 
             if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var num: integer.Integer = try .init(allocator, 2);
@@ -97,22 +97,22 @@ pub inline fn one(
 ) !T {
     switch (comptime types.numericType(T)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return true;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 1;
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 1.0;
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return .{ .re = 1.0, .im = 0.0 };
         },
@@ -122,7 +122,7 @@ pub inline fn one(
                     .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                 };
 
-            comptime validateContext(@TypeOf(ctx), spec);
+            comptime types.validateContext(@TypeOf(ctx), spec);
 
             if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var result: integer.Integer = try .init(allocator, 2);
@@ -145,7 +145,7 @@ pub inline fn one(
                     .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                 };
 
-            comptime validateContext(@TypeOf(ctx), spec);
+            comptime types.validateContext(@TypeOf(ctx), spec);
 
             if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var num: integer.Integer = try .init(allocator, 2);
@@ -180,22 +180,22 @@ pub inline fn two(
 ) !T {
     switch (comptime types.numericType(T)) {
         .bool => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return true;
         },
         .int => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 2;
         },
         .float => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return 2.0;
         },
         .cfloat => {
-            comptime validateContext(@TypeOf(ctx), .{});
+            comptime types.validateContext(@TypeOf(ctx), .{});
 
             return .{ .re = 2.0, .im = 0.0 };
         },
@@ -205,7 +205,7 @@ pub inline fn two(
                     .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                 };
 
-            comptime validateContext(@TypeOf(ctx), spec);
+            comptime types.validateContext(@TypeOf(ctx), spec);
 
             if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var result: integer.Integer = try .init(allocator, 2);
@@ -228,7 +228,7 @@ pub inline fn two(
                     .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
                 };
 
-            comptime validateContext(@TypeOf(ctx), spec);
+            comptime types.validateContext(@TypeOf(ctx), spec);
 
             if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
                 var num: integer.Integer = try .init(allocator, 2);
@@ -262,12 +262,12 @@ pub inline fn pi(
     ctx: anytype,
 ) !T {
     comptime if (types.isArbitraryPrecision(T)) {
-        validateContext(
+        types.validateContext(
             @TypeOf(ctx),
             .{ .allocator = .{ .type = std.mem.Allocator, .required = true } },
         );
     } else {
-        validateContext(@TypeOf(ctx), .{});
+        types.validateContext(@TypeOf(ctx), .{});
     };
 
     switch (types.numericType(T)) {

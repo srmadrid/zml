@@ -12,8 +12,9 @@ This library is in the early stages of development and might return incorrect re
   - Math:
     - Accurate math functions for all floating point types
   - Types:
+    - Dyadic rationals
     - Complex floats
-    - Arbitrary precision integers, rationals, reals, and complex numbers: not implemented yet
+    - Arbitrary precision integers, rationals, reals, and complex numbers: reals not implemented yet
 - Vectors (`vector`):
   - Two storage formats:
     - `Dense`
