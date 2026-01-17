@@ -2,10 +2,8 @@
 
 const std = @import("std");
 const types = @import("types.zig");
-const float = @import("float.zig");
-const Coerce = types.Coerce;
-const Scalar = types.Scalar;
-const scast = types.scast;
+const ops = @import("ops.zig");
+const constants = @import("constants.zig");
 
 /// Fixed precision complex type, represented as two 16-bit floats.
 pub const cf16 = Cfloat(f16);
@@ -21,8 +19,8 @@ pub const cf128 = Cfloat(f128);
 pub const comptime_cfloat = Cfloat(comptime_float);
 
 pub fn Cfloat(comptime T: type) type {
-    if (types.numericType(T) != .float and types.numericType(T) != .dyadic)
-        @compileError("Unsupported type for Cfloat: " ++ @typeName(T));
+    if (!types.isNumeric(T) or (types.numericType(T) != .float and types.numericType(T) != .dyadic))
+        @compileError("zml.Cfloat: T must be a float or dyadic type, got \n\tT: " ++ @typeName(T) ++ "\n");
 
     return struct {
         re: T,
@@ -44,34 +42,54 @@ pub fn Cfloat(comptime T: type) type {
         pub fn initReal(re: T) Cfloat(T) {
             return .{
                 .re = re,
-                .im = 0,
+                .im = constants.zero(T, .{}) catch unreachable,
             };
         }
 
         pub fn initImag(im: T) Cfloat(T) {
             return .{
-                .re = 0,
+                .re = constants.zero(T, .{}) catch unreachable,
                 .im = im,
             };
         }
 
         pub fn initPolar(r: T, theta: T) Cfloat(T) {
             return .{
-                .re = r * float.cos(theta),
-                .im = r * float.sin(theta),
+                .re = ops.mul(
+                    r,
+                    ops.cos(theta, .{}) catch unreachable,
+                    .{},
+                ) catch unreachable,
+                .im = ops.mul(
+                    r,
+                    ops.sin(theta, .{}) catch unreachable,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn add(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
             return .{
-                .re = x.re + y.re,
-                .im = x.im + y.im,
+                .re = ops.add(
+                    x.re,
+                    y.re,
+                    .{},
+                ) catch unreachable,
+                .im = ops.add(
+                    x.im,
+                    y.im,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn addReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = x.re + y,
+                .re = ops.add(
+                    x.re,
+                    y,
+                    .{},
+                ) catch unreachable,
                 .im = x.im,
             };
         }
@@ -79,20 +97,36 @@ pub fn Cfloat(comptime T: type) type {
         pub fn addImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
                 .re = x.re,
-                .im = x.im + y,
+                .im = ops.add(
+                    x.im,
+                    y,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn sub(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
             return .{
-                .re = x.re - y.re,
-                .im = x.im - y.im,
+                .re = ops.sub(
+                    x.re,
+                    y.re,
+                    .{},
+                ) catch unreachable,
+                .im = ops.sub(
+                    x.im,
+                    y.im,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn subReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = x.re - y,
+                .re = ops.sub(
+                    x.re,
+                    y,
+                    .{},
+                ) catch unreachable,
                 .im = x.im,
             };
         }
@@ -100,215 +134,330 @@ pub fn Cfloat(comptime T: type) type {
         pub fn subImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
                 .re = x.re,
-                .im = x.im - y,
+                .im = ops.sub(
+                    x.im,
+                    y,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn mul(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
             return .{
-                .re = @mulAdd(T, x.re, y.re, -x.im * y.im),
-                .im = @mulAdd(T, x.re, y.im, x.im * y.re),
+                .re = ops.fma(
+                    T,
+                    x.re,
+                    y.re,
+                    ops.mul(
+                        ops.neg(x.im, .{}) catch unreachable,
+                        y.im,
+                        .{},
+                    ) catch unreachable,
+                    .{},
+                ) catch unreachable,
+                .im = ops.fma(
+                    T,
+                    x.re,
+                    y.im,
+                    ops.mul(
+                        x.im,
+                        y.re,
+                        .{},
+                    ) catch unreachable,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn mulReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = x.re * y,
-                .im = x.im * y,
+                .re = ops.mul(
+                    x.re,
+                    y,
+                    .{},
+                ) catch unreachable,
+                .im = ops.mul(
+                    x.im,
+                    y,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn mulImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = -x.im * y,
-                .im = x.re * y,
+                .re = ops.mul(
+                    ops.neg(x.im, .{}) catch unreachable,
+                    y,
+                    .{},
+                ) catch unreachable,
+                .im = ops.mul(
+                    x.re,
+                    y,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn div(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
-            if (float.abs(y.im) < float.abs(y.re)) {
-                const tmp1 = y.im / y.re;
-                const tmp2 = 1 / (y.re + tmp1 * y.im);
+            if (ops.lt(
+                ops.abs(y.im, .{}) catch unreachable,
+                ops.abs(y.re, .{}) catch unreachable,
+                .{},
+            ) catch unreachable) {
+                const tmp1 = ops.div(
+                    y.im,
+                    y.re,
+                    .{},
+                ) catch unreachable;
+                const tmp2 = ops.div(
+                    1,
+                    ops.fma(
+                        tmp1,
+                        y.im,
+                        y.re,
+                        .{},
+                    ) catch unreachable,
+                    .{},
+                ) catch unreachable;
+
                 return .{
-                    .re = (x.re + x.im * tmp1) * tmp2,
-                    .im = (x.im - x.re * tmp1) * tmp2,
+                    .re = ops.mul(
+                        ops.fma(
+                            x.im,
+                            tmp1,
+                            x.re,
+                            .{},
+                        ) catch unreachable,
+                        tmp2,
+                        .{},
+                    ) catch unreachable,
+                    .im = ops.mul(
+                        ops.fma(
+                            ops.neg(x.re, .{}) catch unreachable,
+                            tmp1,
+                            x.im,
+                            .{},
+                        ) catch unreachable,
+                        tmp2,
+                        .{},
+                    ) catch unreachable,
                 };
             } else {
-                const tmp1 = y.re / y.im;
-                const tmp2 = 1 / (y.im + tmp1 * y.re);
+                const tmp1 = ops.div(
+                    y.re,
+                    y.im,
+                    .{},
+                ) catch unreachable;
+                const tmp2 = ops.div(
+                    1,
+                    ops.fma(
+                        tmp1,
+                        y.re,
+                        y.im,
+                        .{},
+                    ) catch unreachable,
+                    .{},
+                ) catch unreachable;
+
                 return .{
-                    .re = (x.re * tmp1 + x.im) * tmp2,
-                    .im = (x.im * tmp1 - x.re) * tmp2,
+                    .re = ops.mul(
+                        ops.fma(
+                            x.re,
+                            tmp1,
+                            x.im,
+                            .{},
+                        ) catch unreachable,
+                        tmp2,
+                        .{},
+                    ) catch unreachable,
+                    .im = ops.mul(
+                        ops.fma(
+                            x.im,
+                            tmp1,
+                            ops.neg(x.re, .{}) catch unreachable,
+                            .{},
+                        ) catch unreachable,
+                        tmp2,
+                        .{},
+                    ) catch unreachable,
                 };
             }
         }
 
         pub fn divReal(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = x.re / y,
-                .im = x.im / y,
+                .re = ops.div(
+                    x.re,
+                    y,
+                    .{},
+                ) catch unreachable,
+                .im = ops.div(
+                    x.im,
+                    y,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn divImag(x: Cfloat(T), y: T) Cfloat(T) {
             return .{
-                .re = x.im / y,
-                .im = -x.re / y,
+                .re = ops.div(
+                    x.im,
+                    y,
+                    .{},
+                ) catch unreachable,
+                .im = ops.div(
+                    ops.neg(x.re, .{}) catch unreachable,
+                    y,
+                    .{},
+                ) catch unreachable,
             };
         }
 
         pub fn conj(self: Cfloat(T)) Cfloat(T) {
             return .{
                 .re = self.re,
-                .im = -self.im,
+                .im = ops.neg(self.im, .{}) catch unreachable,
             };
         }
 
-        pub fn negative(self: Cfloat(T)) Cfloat(T) {
+        pub fn neg(self: Cfloat(T)) Cfloat(T) {
             return .{
-                .re = -self.re,
-                .im = -self.im,
+                .re = ops.neg(self.re, .{}) catch unreachable,
+                .im = ops.neg(self.im, .{}) catch unreachable,
             };
         }
 
         pub fn inverse(self: Cfloat(T)) Cfloat(T) {
-            const s = 1 / float.hypot(self.re, self.im);
+            const s = ops.div(
+                1,
+                ops.hypot(self.re, self.im, .{}) catch unreachable,
+                .{},
+            ) catch unreachable;
+            const s2 = ops.mul(
+                s,
+                s,
+                .{},
+            ) catch unreachable;
+
             return .{
-                .re = self.re * s * s,
-                .im = -self.im * s * s,
+                .re = ops.mul(
+                    self.re,
+                    s2,
+                    .{},
+                ) catch unreachable,
+                .im = ops.mul(
+                    ops.neg(self.im, .{}) catch unreachable,
+                    s2,
+                    .{},
+                ) catch unreachable,
             };
         }
     };
 }
 
+pub fn Add(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
+        (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("zml.cfloat.add: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return types.Coerce(X, Y);
+}
+
 pub inline fn add(
     x: anytype,
     y: anytype,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+) Add(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
-
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("cfloat.add requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    const R: type = Add(X, Y);
 
     switch (types.numericType(X)) {
-        .bool, .int, .float => {
+        .bool, .int, .float, .dyadic => {
             switch (types.numericType(Y)) {
-                .cfloat => {
-                    return .{
-                        .re = scast(Scalar(C), x) + scast(Scalar(C), y.re),
-                        .im = scast(Scalar(C), y.im),
-                    };
-                },
+                .cfloat => return types.scast(R, y).addReal(types.scast(types.Scalar(R), x)),
                 else => unreachable,
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
-                .bool, .int, .float => {
-                    return .{
-                        .re = scast(Scalar(C), x.re) + scast(Scalar(C), y),
-                        .im = scast(Scalar(C), x.im),
-                    };
-                },
-                .cfloat => {
-                    return .{
-                        .re = scast(Scalar(C), x.re) + scast(Scalar(C), y.re),
-                        .im = scast(Scalar(C), x.im) + scast(Scalar(C), y.im),
-                    };
-                },
+                .bool, .int, .float, .dyadic => return types.scast(R, x).addReal(types.scast(types.Scalar(R), y)),
+                .cfloat => return types.scast(R, x).add(types.scast(R, y)),
                 else => unreachable,
             }
         },
         else => unreachable,
     }
+}
+
+pub fn Sub(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
+        (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("zml.cfloat.sub: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return types.Coerce(X, Y);
 }
 
 pub inline fn sub(
     x: anytype,
     y: anytype,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+) Sub(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
-
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("cfloat.sub requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    const R: type = Sub(X, Y);
 
     switch (types.numericType(X)) {
-        .bool, .int, .float => {
+        .bool, .int, .float, .dyadic => {
             switch (types.numericType(Y)) {
-                .cfloat => {
-                    return .{
-                        .re = scast(Scalar(C), x) - scast(Scalar(C), y.re),
-                        .im = -scast(Scalar(C), y.im),
-                    };
-                },
+                .cfloat => return types.scast(R, y).neg().addReal(types.scast(types.Scalar(R), x)),
                 else => unreachable,
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
-                .bool, .int, .float => {
-                    return .{
-                        .re = scast(Scalar(C), x.re) - scast(Scalar(C), y),
-                        .im = scast(Scalar(C), x.im),
-                    };
-                },
-                .cfloat => {
-                    return .{
-                        .re = scast(Scalar(C), x.re) - scast(Scalar(C), y.re),
-                        .im = scast(Scalar(C), x.im) - scast(Scalar(C), y.im),
-                    };
-                },
+                .bool, .int, .float, .dyadic => return types.scast(R, x).subReal(types.scast(types.Scalar(R), y)),
+                .cfloat => return types.scast(R, x).sub(types.scast(R, y)),
                 else => unreachable,
             }
         },
         else => unreachable,
     }
+}
+
+pub fn Mul(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
+        (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("zml.cfloat.mul: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return types.Coerce(X, Y);
 }
 
 pub inline fn mul(
     x: anytype,
     y: anytype,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+) Mul(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
-
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("cfloat.mul requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    const R: type = Mul(X, Y);
 
     switch (types.numericType(X)) {
-        .bool, .int, .float => {
+        .bool, .int, .float, .dyadic => {
             switch (types.numericType(Y)) {
-                .cfloat => {
-                    return .{
-                        .re = scast(Scalar(C), x) * scast(Scalar(C), y.re),
-                        .im = scast(Scalar(C), x) * scast(Scalar(C), y.im),
-                    };
-                },
+                .cfloat => return types.scast(R, y).mulReal(types.scast(types.Scalar(R), x)),
                 else => unreachable,
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
-                .bool, .int, .float => {
-                    return .{
-                        .re = scast(Scalar(C), x.re) * scast(Scalar(C), y),
-                        .im = scast(Scalar(C), x.im) * scast(Scalar(C), y),
-                    };
-                },
-                .cfloat => {
-                    return scast(C, x).mul(scast(C, y));
-                },
+                .bool, .int, .float, .dyadic => return types.scast(R, x).mulReal(types.scast(types.Scalar(R), y)),
+                .cfloat => return types.scast(R, x).mul(types.scast(R, y)),
                 else => unreachable,
             }
         },
@@ -316,36 +465,35 @@ pub inline fn mul(
     }
 }
 
+pub fn Div(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
+        (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("zml.cfloat.div: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return types.Coerce(X, Y);
+}
+
 pub inline fn div(
     x: anytype,
     y: anytype,
-) Coerce(@TypeOf(x), @TypeOf(y)) {
+) Div(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
-
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("cfloat.div requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    const R: type = Div(X, Y);
 
     switch (types.numericType(X)) {
-        .bool, .int, .float => {
+        .bool, .int, .float, .dyadic => {
             switch (types.numericType(Y)) {
-                .cfloat => {
-                    return scast(C, y).inverse().mulReal(scast(Scalar(C), x));
-                },
+                .cfloat => return types.scast(R, y).divReal(types.scast(types.Scalar(R), x)),
                 else => unreachable,
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
-                .bool, .int, .float => {
-                    return scast(C, x).divReal(scast(Scalar(C), y));
-                },
-                .cfloat => {
-                    return scast(C, x).div(scast(C, y));
-                },
+                .bool, .int, .float, .dyadic => return types.scast(R, x).divReal(types.scast(types.Scalar(R), y)),
+                .cfloat => return types.scast(R, x).div(types.scast(R, y)),
                 else => unreachable,
             }
         },
@@ -359,29 +507,32 @@ pub inline fn eq(
 ) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const C: type = Coerce(X, Y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("cfloat.eq requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
+        (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("zml.cfloat.eq: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     switch (types.numericType(X)) {
-        .bool, .int, .float => {
+        .bool, .int, .float, .dyadic => {
             switch (types.numericType(Y)) {
                 .cfloat => {
-                    return y.im == 0 and scast(Scalar(C), x) == scast(Scalar(C), y.re);
+                    return ops.eq(x, y.re, .{}) catch unreachable and
+                        ops.eq(0, y.im, .{}) catch unreachable;
                 },
                 else => unreachable,
             }
         },
         .cfloat => {
             switch (types.numericType(Y)) {
-                .bool, .int, .float => {
-                    return x.im == 0 and scast(Scalar(C), x.re) == scast(Scalar(C), y);
+                .bool, .int, .float, .dyadic => {
+                    return ops.eq(x.re, y, .{}) catch unreachable and
+                        ops.eq(x.im, 0, .{}) catch unreachable;
                 },
                 .cfloat => {
-                    return scast(C, x) == scast(C, y);
+                    return ops.eq(x.re, y.re, .{}) catch unreachable and
+                        ops.eq(x.im, y.im, .{}) catch unreachable;
                 },
                 else => unreachable,
             }
@@ -397,40 +548,63 @@ pub inline fn ne(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("cfloat.ne requires at least one of x or y to be an int, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
+        (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
+        @compileError("zml.cfloat.ne: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    return !eq(x, y);
+    switch (types.numericType(X)) {
+        .bool, .int, .float, .dyadic => {
+            switch (types.numericType(Y)) {
+                .cfloat => {
+                    return ops.ne(x, y.re, .{}) catch unreachable or
+                        ops.ne(0, y.im, .{}) catch unreachable;
+                },
+                else => unreachable,
+            }
+        },
+        .cfloat => {
+            switch (types.numericType(Y)) {
+                .bool, .int, .float, .dyadic => {
+                    return ops.ne(x.re, y, .{}) catch unreachable or
+                        ops.ne(x.im, 0, .{}) catch unreachable;
+                },
+                .cfloat => {
+                    return ops.ne(x.re, y.re, .{}) catch unreachable or
+                        ops.ne(x.im, y.im, .{}) catch unreachable;
+                },
+                else => unreachable,
+            }
+        },
+        else => unreachable,
+    }
 }
 
-pub inline fn abs1(
-    z: anytype,
-) Scalar(@TypeOf(z)) {
-    const Z: type = @TypeOf(z);
-
-    comptime if (types.numericType(Z) != .cfloat)
-        @compileError("cfloat.abs1 requires a cfloat argument, got " ++ @typeName(Z));
-
-    return float.abs(z.re) + float.abs(z.im);
-}
-
+pub const Fma = @import("cfloat/fma.zig").Fma;
 pub const fma = @import("cfloat/fma.zig").fma;
+pub const Arg = @import("cfloat/arg.zig").Arg;
 pub const arg = @import("cfloat/arg.zig").arg;
+pub const Abs = @import("cfloat/abs.zig").Abs;
 pub const abs = @import("cfloat/abs.zig").abs;
+pub const Abs1 = @import("cfloat/abs1.zig").Abs1;
+pub const abs1 = @import("cfloat/abs1.zig").abs1;
+pub const Abs2 = @import("cfloat/abs2.zig").Abs2;
 pub const abs2 = @import("cfloat/abs2.zig").abs2;
 pub const neg = @import("cfloat/neg.zig").neg;
 pub const exp = @import("cfloat/exp.zig").exp;
+pub const Log = @import("cfloat/log.zig").Log;
 pub const log = @import("cfloat/log.zig").log;
+pub const Pow = @import("cfloat/pow.zig").Pow;
 pub const pow = @import("cfloat/pow.zig").pow;
-pub const sqrt = @import("cfloat/sqrt.zig").sqrt;
+pub const Sqrt = @import("cfloat/sqrt.zig").Sqrt;
+pub const sqrt = @import("cfloat/sqrt.zig").sqrt; // Adapt to dyadics
 pub const sin = @import("cfloat/sin.zig").sin;
 pub const cos = @import("cfloat/cos.zig").cos;
-pub const tan = @import("cfloat/tan.zig").tan;
-pub const asin = @import("cfloat/asin.zig").asin;
-pub const acos = @import("cfloat/acos.zig").acos;
-pub const atan = @import("cfloat/atan.zig").atan;
+pub const tan = @import("cfloat/tan.zig").tan; // Adapt to dyadics
+pub const asin = @import("cfloat/asin.zig").asin; // Adapt to dyadics
+pub const acos = @import("cfloat/acos.zig").acos; // Adapt to dyadics
+pub const atan = @import("cfloat/atan.zig").atan; // Adapt to dyadics
 pub const sinh = @import("cfloat/sinh.zig").sinh;
 pub const cosh = @import("cfloat/cosh.zig").cosh;
 pub const tanh = @import("cfloat/tanh.zig").tanh;

@@ -1,16 +1,23 @@
-const std = @import("std");
-
 const types = @import("../types.zig");
-const float = @import("../float.zig");
-const cfloat = @import("../cfloat.zig");
+const ops = @import("../ops.zig");
 
 pub fn exp(z: anytype) @TypeOf(z) {
-    comptime if (types.numericType(@TypeOf(z)) != .cfloat)
-        @compileError("cfloat.acos: z must be a cfloat, got " ++ @typeName(@TypeOf(z)));
+    const Z = @TypeOf(z);
 
-    const r: @TypeOf(z.re) = float.exp(z.re);
+    comptime if (!types.isNumeric(Z) or !types.numericType(Z) != .cfloat)
+        @compileError("zml.cfloat.exp: z must be a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
+
+    const r: @TypeOf(z.re) = ops.exp(z.re, .{}) catch unreachable;
     return .{
-        .re = r * float.cos(z.im),
-        .im = r * float.sin(z.im),
+        .re = ops.mul(
+            r,
+            ops.cos(z.im, .{}) catch unreachable,
+            .{},
+        ) catch unreachable,
+        .im = ops.mul(
+            r,
+            ops.sin(z.im, .{}) catch unreachable,
+            .{},
+        ) catch unreachable,
     };
 }

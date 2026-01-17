@@ -4,8 +4,10 @@ const types = @import("../types.zig");
 const float = @import("../float.zig");
 
 pub fn atan(z: anytype) @TypeOf(z) {
-    comptime if (types.numericType(@TypeOf(z)) != .cfloat)
-        @compileError("cfloat.atan: z must be a cfloat, got " ++ @typeName(@TypeOf(z)));
+    const Z = @TypeOf(z);
+
+    comptime if (!types.isNumeric(Z) or !types.numericType(Z) != .cfloat)
+        @compileError("zml.cfloat.atan: z must be a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
     if (z.re == 0.0 and z.im > 1.0)
         return .{

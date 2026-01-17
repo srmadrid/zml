@@ -4,8 +4,10 @@ const types = @import("../types.zig");
 const float = @import("../float.zig");
 
 pub fn tan(z: anytype) @TypeOf(z) {
-    comptime if (types.numericType(@TypeOf(z)) != .cfloat)
-        @compileError("cfloat.tan: z must be a cfloat, got " ++ @typeName(@TypeOf(z)));
+    const Z = @TypeOf(z);
+
+    comptime if (!types.isNumeric(Z) or !types.numericType(Z) != .cfloat)
+        @compileError("zml.cfloat.tan: z must be a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
     var d: @TypeOf(z.re) = float.cos(2.0 * z.re) + float.cosh(2.0 * z.im);
 

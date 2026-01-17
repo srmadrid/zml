@@ -1,11 +1,11 @@
-const std = @import("std");
-
 const types = @import("../types.zig");
 const cfloat = @import("../cfloat.zig");
 
 pub fn acos(z: anytype) @TypeOf(z) {
-    comptime if (types.numericType(@TypeOf(z)) != .cfloat)
-        @compileError("cfloat.acos: z must be a cfloat, got " ++ @typeName(@TypeOf(z)));
+    const Z = @TypeOf(z);
+
+    comptime if (!types.isNumeric(Z) or !types.numericType(Z) != .cfloat)
+        @compileError("zml.cfloat.acos: z must be a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
     const w: @TypeOf(z) = cfloat.asin(z);
     return .{

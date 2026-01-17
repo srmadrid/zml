@@ -1,30 +1,33 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
-const Scalar = types.Scalar;
 const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
-const Cfloat = cfloat.Cfloat;
+const ops = @import("../ops.zig");
+const constants = @import("../constants.zig");
 
-pub fn sqrt(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("cfloat.sqrt: z must be a bool, int, float or cfloat, got " ++ @typeName(@TypeOf(z)));
+pub fn Sqrt(comptime Z: type) type {
+    comptime if (!types.isNumeric(Z) or !types.numericType(Z).le(.cfloat))
+        @compileError("zml.cfloat.sqrt: z must be a bool, an int, a float or a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
+    return cfloat.Cfloat(types.EnsureFloat(types.Scalar(Z)));
+}
+
+pub fn sqrt(z: anytype) Sqrt(@TypeOf(z)) {
     switch (comptime types.numericType(@TypeOf(z))) {
-        .int, .float => {
+        .int, .float, .dyadic => {
             if (z >= 0)
                 return .{
-                    .re = float.sqrt(z),
-                    .im = 0,
+                    .re = ops.sqrt(z, .{}) catch unreachable,
+                    .im = constants.zero(types.Scalar(Sqrt(@TypeOf(z))), .{}) catch unreachable,
                 }
             else
                 return .{
-                    .re = 0,
-                    .im = float.sqrt(-z),
+                    .re = constants.zero(types.Scalar(Sqrt(@TypeOf(z))), .{}) catch unreachable,
+                    .im = ops.sqrt(ops.neg(z, .{}) catch unreachable, .{}) catch unreachable,
                 };
         },
-        .cfloat => {
+        .cfloat => { // Adapt for dyadics
             if (z.re == 0.0 and z.im == 0.0)
                 return .{
                     .re = 0,

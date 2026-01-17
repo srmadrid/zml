@@ -121,7 +121,7 @@ pub inline fn fma(
 ) Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z)) {
     const R: type = Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z));
 
-    return types.scast(R, x) * types.scast(R, y) + types.scast(R, z);
+    return @mulAdd(R, types.scast(R, x), types.scast(R, y), types.scast(R, z));
 }
 
 pub fn Div(comptime X: type, comptime Y: type) type {

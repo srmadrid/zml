@@ -1,22 +1,21 @@
-const std = @import("std");
-
 const types = @import("../types.zig");
-const EnsureFloat = types.EnsureFloat;
-const Scalar = types.Scalar;
-const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
-const Cfloat = cfloat.Cfloat;
+const ops = @import("../ops.zig");
 
-pub fn log(z: anytype) Cfloat(EnsureFloat(Scalar(@TypeOf(z)))) {
-    comptime if (!types.isFixedPrecision(@TypeOf(z)))
-        @compileError("cfloat.log: z must be a bool, int, float or cfloat, got " ++ @typeName(@TypeOf(z)));
+pub fn Log(comptime Z: type) type {
+    comptime if (!types.isNumeric(Z) or !types.numericType(Z).le(.cfloat))
+        @compileError("zml.cfloat.log: z must be a bool, an int, a float or a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
-    const zz = types.scast(Cfloat(types.EnsureFloat(types.Scalar(@TypeOf(z)))), z);
+    return cfloat.Cfloat(types.EnsureFloat(types.Scalar(Z)));
+}
+
+pub fn log(z: anytype) Log(@TypeOf(z)) {
+    const zz = types.scast(Log(@TypeOf(z)), z);
 
     var p: types.Scalar(@TypeOf(zz)) = cfloat.abs(zz);
-    p = float.log(p);
+    p = ops.log(p, .{}) catch unreachable;
     return .{
         .re = p,
-        .im = float.atan2(zz.im, zz.re),
+        .im = ops.atan2(zz.im, zz.re, .{}) catch unreachable,
     };
 }

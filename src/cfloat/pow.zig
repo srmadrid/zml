@@ -1,39 +1,77 @@
 const types = @import("../types.zig");
-const float = @import("../float.zig");
 const cfloat = @import("../cfloat.zig");
-const Coerce = types.Coerce;
+const ops = @import("../ops.zig");
+const constants = @import("../constants.zig");
 
-pub fn pow(x: anytype, y: anytype) Coerce(@TypeOf(x), @TypeOf(y)) {
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = types.Coerce(X, Y);
-
-    comptime if ((types.numericType(X) != .bool and types.numericType(X) != .int and types.numericType(X) != .float and types.numericType(X) != .cfloat) or
-        (types.numericType(Y) != .bool and types.numericType(Y) != .int and types.numericType(Y) != .float and types.numericType(Y) != .cfloat) or
+pub fn Pow(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
         (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("cfloat.pow requires at least one of x or y to be a cfloat, the other must be a bool, int, float or cfloat, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.cfloat.pow: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    const xx: C = types.scast(C, x);
-    const yy: C = types.scast(C, y);
+    return types.Coerce(X, Y);
+}
+
+pub fn pow(x: anytype, y: anytype) Pow(@TypeOf(x), @TypeOf(y)) {
+    const R: type = Pow(@TypeOf(x), @TypeOf(y));
+
+    const xx: R = types.scast(R, x);
+    const yy: R = types.scast(R, y);
 
     const absx: @TypeOf(xx.re) = cfloat.abs(xx);
-    if (absx == 0.0)
+    if (ops.eq(absx, 0, .{}) catch unreachable)
         return .{
-            .re = 0.0,
-            .im = 0.0,
+            .re = constants.zero(@TypeOf(xx.re), .{}) catch unreachable,
+            .im = constants.zero(@TypeOf(xx.im), .{}) catch unreachable,
         };
 
     const argx: @TypeOf(xx.re) = cfloat.arg(xx);
-    var r: @TypeOf(xx.re) = float.pow(absx, yy.re);
-    var theta: @TypeOf(xx.re) = yy.re * argx;
-    if (yy.im != 0.0) {
-        r *= float.exp(-yy.im * argx);
-        theta += yy.im * float.log(absx);
+    var r: @TypeOf(xx.re) = ops.pow(
+        absx,
+        yy.re,
+        .{},
+    ) catch unreachable;
+    var theta: @TypeOf(xx.re) = ops.mul(
+        yy.re,
+        argx,
+        .{},
+    ) catch unreachable;
+    if (ops.ne(yy.im, 0, .{}) catch unreachable) {
+        r = ops.mul(
+            r,
+            ops.exp(
+                ops.mul(
+                    ops.neg(yy.im, .{}) catch unreachable,
+                    argx,
+                    .{},
+                ) catch unreachable,
+                .{},
+            ) catch unreachable,
+            .{},
+        ) catch unreachable;
+
+        theta = ops.add(
+            theta,
+            ops.mul(
+                yy.im,
+                ops.log(absx, .{}) catch unreachable,
+                .{},
+            ) catch unreachable,
+            .{},
+        ) catch unreachable;
     }
 
     return .{
-        .re = r * float.cos(theta),
-        .im = r * float.sin(theta),
+        .re = ops.mul(
+            r,
+            ops.cos(theta, .{}) catch unreachable,
+            .{},
+        ) catch unreachable,
+        .im = ops.mul(
+            r,
+            ops.sin(theta, .{}) catch unreachable,
+            .{},
+        ) catch unreachable,
     };
 }
