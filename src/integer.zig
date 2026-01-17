@@ -1,7 +1,6 @@
 //! Namespace for integer operations.
 
 const std = @import("std");
-const builtin = @import("builtin");
 
 const types = @import("types.zig");
 const constants = @import("constants.zig");
@@ -90,10 +89,11 @@ pub const Integer = struct {
     /// `std.mem.Allocator.Error.OutOfMemory`:
     /// If memory allocation fails.
     pub fn initSet(allocator: std.mem.Allocator, value: anytype) !Integer {
-        var integer = try Integer.init(allocator, 0);
+        var integer: Integer = try .init(allocator, 0);
         errdefer integer.deinit(allocator);
 
         try integer.set(allocator, value);
+
         return integer;
     }
 
@@ -115,10 +115,9 @@ pub const Integer = struct {
     /// Returns
     /// -------
     /// `void`
-    pub fn deinit(self: *Integer, allocator: ?std.mem.Allocator) void {
-        if (self.flags.owns_data) {
-            allocator.?.free(self.limbs[0..self._llen]);
-        }
+    pub fn deinit(self: *Integer, allocator: std.mem.Allocator) void {
+        if (self.flags.owns_data)
+            allocator.free(self.limbs[0..self._llen]);
 
         self.* = undefined;
     }
@@ -246,8 +245,14 @@ pub const Integer = struct {
     /// `integer.Error.NotWritable`:
     /// If the `Integer` is not writable.
     ///
-    /// `integer.Error.NotFinite`:
-    /// If the value is a float or complex number that is not finite.
+    /// `integer.Error.DataNotOwned`:
+    /// If the `Integer` does not own its data and resizing is needed.
+    ///
+    /// `dyadic.Error.NotFinite`:
+    /// If the value is a dyadic or cfloat number that is not finite.
+    ///
+    /// `float.Error.NotFinite`:
+    /// If the value is a float or cfloat number that is not finite.
     pub fn set(self: *Integer, allocator: std.mem.Allocator, value: anytype) !void {
         const V: type = @TypeOf(value);
 
@@ -278,20 +283,19 @@ pub const Integer = struct {
                     fvalue[0].limbs = &fvalue[1];
                     return self.set(allocator, fvalue[0]);
                 },
-                .cfloat => {
-                    return self.set(allocator, value.re);
-                },
+                .dyadic => @compileError("Dyadic types not supported yet"),
+                .cfloat => return self.set(allocator, value.re),
                 .integer => {
-                    if (self.flags.owns_data) {
-                        try self.reserve(allocator, value.size);
-                    } else if (self._llen < value.size) {
+                    if (self.flags.owns_data)
+                        try self.reserve(allocator, value.size)
+                    else if (self._llen < value.size)
                         return Error.DataNotOwned;
-                    }
 
                     var i: u32 = 0;
                     while (i < value.size) : (i += 1) {
                         self.limbs[i] = value.limbs[i];
                     }
+
                     self.size = value.size;
                     self.positive = value.positive;
 
@@ -305,9 +309,7 @@ pub const Integer = struct {
                     }
                 },
                 .real => @compileError("Real type not supported yet"),
-                .complex => {
-                    return self.set(allocator, value.re);
-                },
+                .complex => return self.set(allocator, value.re),
             }
         } else if (comptime V == []const u8 or V == []u8) {} else @compileError("Value must be a numeric type or a string");
     }

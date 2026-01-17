@@ -7,7 +7,7 @@ const cfloat = @import("../cfloat.zig");
 pub fn asin(z: anytype) @TypeOf(z) {
     const Z = @TypeOf(z);
 
-    comptime if (!types.isNumeric(Z) or !types.numericType(Z) != .cfloat)
+    comptime if (!types.isNumeric(Z) or types.numericType(Z) != .cfloat)
         @compileError("zml.cfloat.asin: z must be a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
     if (z.im == 0.0) {

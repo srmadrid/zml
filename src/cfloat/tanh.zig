@@ -4,7 +4,7 @@ const ops = @import("../ops.zig");
 pub fn tanh(z: anytype) @TypeOf(z) {
     const Z = @TypeOf(z);
 
-    comptime if (!types.isNumeric(Z) or !types.numericType(Z) != .cfloat)
+    comptime if (!types.isNumeric(Z) or types.numericType(Z) != .cfloat)
         @compileError("zml.cfloat.tanh: z must be a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
     const d: @TypeOf(z.re) = ops.add(

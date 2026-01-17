@@ -4,7 +4,7 @@ const ops = @import("../ops.zig");
 pub fn cos(z: anytype) @TypeOf(z) {
     const Z = @TypeOf(z);
 
-    comptime if (!types.isNumeric(Z) or !types.numericType(Z) != .cfloat)
+    comptime if (!types.isNumeric(Z) or types.numericType(Z) != .cfloat)
         @compileError("zml.cfloat.cos: z must be a cfloat, got \n\tz: " ++ @typeName(Z) ++ "\n");
 
     var s: @TypeOf(z.re) = undefined;
