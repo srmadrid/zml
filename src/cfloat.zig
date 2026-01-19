@@ -591,7 +591,6 @@ pub const Abs1 = @import("cfloat/abs1.zig").Abs1;
 pub const abs1 = @import("cfloat/abs1.zig").abs1;
 pub const Abs2 = @import("cfloat/abs2.zig").Abs2;
 pub const abs2 = @import("cfloat/abs2.zig").abs2;
-pub const neg = @import("cfloat/neg.zig").neg;
 pub const exp = @import("cfloat/exp.zig").exp;
 pub const Log = @import("cfloat/log.zig").Log;
 pub const log = @import("cfloat/log.zig").log;

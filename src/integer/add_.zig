@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const int = @import("../int.zig");
-const float = @import("../float.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 

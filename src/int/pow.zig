@@ -7,7 +7,7 @@ pub fn Pow(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.int) or !types.numericType(Y).le(.int) or
         (types.numericType(X) != .int and types.numericType(Y) != .int))
-        @compileError("zml.int.pow: at least one of x or y to be an int, the other must be a bool or an int, got\n\tx: " ++
+        @compileError("zml.int.pow: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);

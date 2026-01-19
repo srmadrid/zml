@@ -51,7 +51,7 @@ pub fn Add(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.add: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.add: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);
@@ -70,7 +70,7 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.sub: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.sub: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);
@@ -89,7 +89,7 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.mul: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.mul: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);
@@ -108,7 +108,7 @@ pub fn Fma(comptime X: type, comptime Y: type, comptime Z: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or !types.isNumeric(Z) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or !types.numericType(Z).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float and types.numericType(Z) != .float))
-        @compileError("zml.float.fma: at least one of x, y or z to be a float, the others must be bool, int or float, got\n\tx: " ++
+        @compileError("zml.float.fma: at least one of x, y or z must be a float, the others must be bool, int or float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tz: " ++ @typeName(Z) ++ "\n");
 
     return types.Coerce(X, types.Coerce(Y, Z));
@@ -128,7 +128,7 @@ pub fn Div(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.div: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.div: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);
@@ -153,7 +153,7 @@ pub inline fn cmp(
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.cmp: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.cmp: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = types.Coerce(X, Y);
@@ -173,7 +173,7 @@ pub inline fn eq(
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.eq: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.eq: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = types.Coerce(X, Y);
@@ -191,7 +191,7 @@ pub inline fn ne(
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.ne: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.ne: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = types.Coerce(X, Y);
@@ -209,7 +209,7 @@ pub inline fn lt(
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.lt: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.lt: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = types.Coerce(X, Y);
@@ -227,7 +227,7 @@ pub inline fn le(
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.le: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.le: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = types.Coerce(X, Y);
@@ -245,7 +245,7 @@ pub inline fn gt(
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.gt: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.gt: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = types.Coerce(X, Y);
@@ -263,7 +263,7 @@ pub inline fn ge(
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.ge: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.ge: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = types.Coerce(X, Y);
@@ -275,7 +275,7 @@ pub fn Max(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.max: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.max: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);
@@ -294,7 +294,7 @@ pub fn Min(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.float) or !types.numericType(Y).le(.float) or
         (types.numericType(X) != .float and types.numericType(Y) != .float))
-        @compileError("zml.float.min: at least one of x or y to be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zml.float.min: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);

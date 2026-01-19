@@ -47,6 +47,7 @@ pub const div = @import("ops/div.zig").div;
 pub const div_ = @import("ops/div_.zig").div_;
 
 // Comparison operations
+pub const cmp = @import("ops/cmp.zig").cmp;
 pub const Eq = @import("ops/eq.zig").Eq;
 pub const eq = @import("ops/eq.zig").eq;
 pub const eq_ = @import("ops/eq_.zig").eq_;
