@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const Order = types.Order;
+const Layout = types.Layout;
 const ops = @import("../ops.zig");
 const constants = @import("../constants.zig");
 const int = @import("../int.zig");
@@ -26,6 +26,9 @@ pub fn Diagonal(T: type) type {
         /// Type signatures
         pub const is_matrix = {};
         pub const is_diagonal = {};
+        pub const storage_layout = types.default_layout;
+        pub const storage_uplo = types.default_uplo;
+        pub const storage_diag = types.default_diag;
 
         /// Numeric type
         pub const Numeric = T;
@@ -499,9 +502,9 @@ pub fn Diagonal(T: type) type {
         pub fn copyToGeneralDenseMatrix(
             self: Diagonal(T),
             allocator: std.mem.Allocator,
-            comptime order: Order,
+            comptime layout: Layout,
             ctx: anytype,
-        ) !matrix.general.Dense(T, order) {
+        ) !matrix.general.Dense(T, layout) {
             comptime switch (types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     types.validateContext(@TypeOf(ctx), .{});
@@ -516,15 +519,15 @@ pub fn Diagonal(T: type) type {
                 },
             };
 
-            var mat: matrix.general.Dense(T, order) = try .init(allocator, self.rows, self.cols);
+            var mat: matrix.general.Dense(T, layout) = try .init(allocator, self.rows, self.cols);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(i, j, order, ctx);
+            errdefer mat._cleanup(i, j, layout, ctx);
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 while (j < mat.cols) : (j += 1) {
                     i = 0;
                     while (i < int.min(j, mat.rows)) : (i += 1) {
@@ -578,16 +581,16 @@ pub fn Diagonal(T: type) type {
         pub fn copyToDenseArray(
             self: *const Diagonal(T),
             allocator: std.mem.Allocator,
-            comptime order: Order,
+            comptime layout: Layout,
             ctx: anytype,
-        ) !array.Dense(T, order) {
-            var result: array.Dense(T, order) = try .init(allocator, &.{ self.rows, self.cols });
+        ) !array.Dense(T, layout) {
+            var result: array.Dense(T, layout) = try .init(allocator, &.{ self.rows, self.cols });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (comptime order == .col_major) {
+                if (comptime layout == .col_major) {
                     var j: u32 = 0;
                     while (j < self.cols) : (j += 1) {
                         var i: u32 = 0;

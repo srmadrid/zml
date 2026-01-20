@@ -39,6 +39,9 @@ pub fn Permutation(T: type) type {
         /// Type signatures
         pub const is_matrix = {};
         pub const is_permutation = {};
+        pub const storage_layout = types.default_layout;
+        pub const storage_uplo = types.default_uplo;
+        pub const storage_diag = types.default_diag;
 
         /// Numeric type
         pub const Numeric = T;

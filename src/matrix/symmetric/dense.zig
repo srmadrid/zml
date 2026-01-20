@@ -1,8 +1,9 @@
 const std = @import("std");
 
 const types = @import("../../types.zig");
-const Order = types.Order;
+const Layout = types.Layout;
 const Uplo = types.Uplo;
+const IterationOrder = types.IterationOrder;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 const int = @import("../../int.zig");
@@ -17,7 +18,7 @@ const array = @import("../../array.zig");
 /// row-major order with a specified leading dimension. Only the upper or lower
 /// triangular part of the matrix is accessed, depending on the `uplo`
 /// parameter.
-pub fn Dense(T: type, uplo: Uplo, order: Order) type {
+pub fn Dense(T: type, uplo: Uplo, layout: Layout) type {
     if (!types.isNumeric(T))
         @compileError("matrix.symmetric.Dense requires a numeric type, got " ++ @typeName(T));
 
@@ -31,11 +32,14 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         pub const is_matrix = {};
         pub const is_dense = {};
         pub const is_symmetric = {};
+        pub const storage_layout = layout;
+        pub const storage_uplo = uplo;
+        pub const storage_diag = types.default_diag;
 
         /// Numeric type
         pub const Numeric = T;
 
-        pub const empty: Dense(T, uplo, order) = .{
+        pub const empty: Dense(T, uplo, layout) = .{
             .data = &.{},
             .size = 0,
             .ld = 0,
@@ -71,7 +75,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         pub fn init(
             allocator: std.mem.Allocator,
             size: u32,
-        ) !Dense(T, uplo, order) {
+        ) !Dense(T, uplo, layout) {
             if (size == 0)
                 return matrix.Error.ZeroDimension;
 
@@ -126,7 +130,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
             size: u32,
             value: anytype,
             ctx: anytype,
-        ) !Dense(T, uplo, order) {
+        ) !Dense(T, uplo, layout) {
             comptime switch (types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     types.validateContext(@TypeOf(ctx), .{});
@@ -141,15 +145,15 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                 },
             };
 
-            var mat: Dense(T, uplo, order) = try .init(allocator, size);
+            var mat: Dense(T, uplo, layout) = try .init(allocator, size);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(i, j, order, ctx);
+            errdefer mat._cleanup(i, j, layout, ctx);
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 if (comptime uplo == .upper) { // cu
                     while (j < size) : (j += 1) {
                         i = 0;
@@ -255,7 +259,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
             allocator: std.mem.Allocator,
             size: u32,
             ctx: anytype,
-        ) !Dense(T, uplo, order) {
+        ) !Dense(T, uplo, layout) {
             comptime switch (types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     types.validateContext(@TypeOf(ctx), .{});
@@ -273,15 +277,15 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
             if (size == 0)
                 return matrix.Error.ZeroDimension;
 
-            var mat: Dense(T, uplo, order) = try .init(allocator, size);
+            var mat: Dense(T, uplo, layout) = try .init(allocator, size);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(i, j, order, ctx);
+            errdefer mat._cleanup(i, j, layout, ctx);
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 if (comptime uplo == .upper) { // cu
                     while (j < size) : (j += 1) {
                         i = 0;
@@ -372,7 +376,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// -----
         /// If the elements are of arbitrary precision type, `cleanup` must be
         /// called before `deinit` to properly deinitialize the elements.
-        pub fn deinit(self: *Dense(T, uplo, order), allocator: std.mem.Allocator) void {
+        pub fn deinit(self: *Dense(T, uplo, layout), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.free(self.data[0 .. self.size * self.size]);
             }
@@ -402,7 +406,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// ------
         /// `matrix.Error.PositionOutOfBounds`:
         /// If `r` or `c` is out of bounds.
-        pub fn get(self: *const Dense(T, uplo, order), r: u32, c: u32) !T {
+        pub fn get(self: *const Dense(T, uplo, layout), r: u32, c: u32) !T {
             if (r >= self.size or c >= self.size)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -444,7 +448,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// -------
         /// `T`:
         /// The element at the specified position.
-        pub inline fn at(self: *const Dense(T, uplo, order), r: u32, c: u32) T {
+        pub inline fn at(self: *const Dense(T, uplo, layout), r: u32, c: u32) T {
             return self.data[self._index(r, c)];
         }
 
@@ -479,7 +483,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// element at the position is not deinitialized. The user must ensure
         /// that no memory leaks occur. Additionally, the matrix takes ownership
         /// of `value`.
-        pub fn set(self: *Dense(T, uplo, order), row: u32, col: u32, value: T) !void {
+        pub fn set(self: *Dense(T, uplo, layout), row: u32, col: u32, value: T) !void {
             if (row >= self.size or col >= self.size)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -530,7 +534,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// element at the position is not deinitialized. The user must ensure
         /// that no memory leaks occur. Additionally, the matrix takes ownership
         /// of `value`.
-        pub inline fn put(self: *Dense(T, uplo, order), r: u32, c: u32, value: T) void {
+        pub inline fn put(self: *Dense(T, uplo, layout), r: u32, c: u32, value: T) void {
             self.data[self._index(r, c)] = value;
         }
 
@@ -565,7 +569,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// -----
         /// If the elements are of arbitrary precision type, they are deep
         /// copied.
-        pub fn copy(self: *const Dense(T, uplo, order), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, uplo, order) {
+        pub fn copy(self: *const Dense(T, uplo, layout), allocator: std.mem.Allocator, ctx: anytype) !Dense(T, uplo, layout) {
             comptime switch (types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     types.validateContext(@TypeOf(ctx), .{});
@@ -580,15 +584,15 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                 },
             };
 
-            var mat: Dense(T, uplo, order) = try .init(allocator, self.size);
+            var mat: Dense(T, uplo, layout) = try .init(allocator, self.size);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(i, j, order, ctx);
+            errdefer mat._cleanup(i, j, layout, ctx);
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 if (comptime uplo == .upper) { // cu
                     while (j < mat.size) : (j += 1) {
                         i = 0;
@@ -669,10 +673,10 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// If the elements are of arbitrary precision type, they are deep
         /// copied.
         pub fn copyInverseUplo(
-            self: *const Dense(T, uplo, order),
+            self: *const Dense(T, uplo, layout),
             allocator: std.mem.Allocator,
             ctx: anytype,
-        ) !Dense(T, uplo.invert(), order) {
+        ) !Dense(T, uplo.invert(), layout) {
             comptime switch (types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     types.validateContext(@TypeOf(ctx), .{});
@@ -687,15 +691,15 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                 },
             };
 
-            var mat: Dense(T, uplo.invert(), order) = try .init(allocator, self.size);
+            var mat: Dense(T, uplo.invert(), layout) = try .init(allocator, self.size);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(i, j, order, ctx);
+            errdefer mat._cleanup(i, j, layout, ctx);
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 if (comptime uplo.invert() == .upper) { // cl -> cu
                     while (j < mat.size) : (j += 1) {
                         i = 0;
@@ -755,7 +759,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// -------
         /// `matrix.general.Dense(T, uplo.invert(), order.invert())`:
         /// The transposed matrix.
-        pub fn transpose(self: Dense(T, uplo, order)) Dense(T, uplo.invert(), order.invert()) {
+        pub fn transpose(self: Dense(T, uplo, layout)) Dense(T, uplo.invert(), layout.invert()) {
             return .{
                 .data = self.data,
                 .size = self.size,
@@ -788,10 +792,10 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// `matrix.Error.InvalidRange`:
         /// If the specified range is invalid.
         pub fn submatrix(
-            self: *const Dense(T, uplo, order),
+            self: *const Dense(T, uplo, layout),
             start: u32,
             end: u32,
-        ) !Dense(T, uplo, order) {
+        ) !Dense(T, uplo, layout) {
             if (start >= self.size or end > self.size or start >= end)
                 return matrix.Error.InvalidRange;
 
@@ -837,10 +841,10 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// If the elements are of arbitrary precision type, they are deep
         /// copied.
         pub fn copyToGeneralDenseMatrix(
-            self: Dense(T, uplo, order),
+            self: Dense(T, uplo, layout),
             allocator: std.mem.Allocator,
             ctx: anytype,
-        ) !matrix.general.Dense(T, order) {
+        ) !matrix.general.Dense(T, layout) {
             comptime switch (types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     types.validateContext(@TypeOf(ctx), .{});
@@ -855,15 +859,15 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                 },
             };
 
-            var mat: matrix.general.Dense(T, order) = try .init(allocator, self.size, self.size);
+            var mat: matrix.general.Dense(T, layout) = try .init(allocator, self.size, self.size);
             errdefer mat.deinit(allocator);
 
             var i: u32 = 0;
             var j: u32 = 0;
 
-            errdefer mat._cleanup(i, j, order, ctx);
+            errdefer mat._cleanup(i, j, layout, ctx);
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 if (comptime uplo == .upper) { // cu
                     while (j < mat.cols) : (j += 1) {
                         i = 0;
@@ -953,17 +957,17 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         }
 
         pub fn copyToDenseArray(
-            self: *const Dense(T, uplo, order),
+            self: *const Dense(T, uplo, layout),
             allocator: std.mem.Allocator,
             ctx: anytype,
-        ) !array.Dense(T, order) {
-            var result: array.Dense(T, order) = try .init(allocator, &.{ self.size, self.size });
+        ) !array.Dense(T, layout) {
+            var result: array.Dense(T, layout) = try .init(allocator, &.{ self.size, self.size });
             errdefer result.deinit(allocator);
 
             if (comptime !types.isArbitraryPrecision(T)) {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                if (comptime order == .col_major) {
+                if (comptime layout == .col_major) {
                     if (comptime uplo == .upper) { // cu
                         var j: u32 = 0;
                         while (j < self.size) : (j += 1) {
@@ -1019,8 +1023,8 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
             return result;
         }
 
-        pub inline fn _index(self: *const Dense(T, uplo, order), r: u32, c: u32) u32 {
-            return if (comptime order == .col_major)
+        pub inline fn _index(self: *const Dense(T, uplo, layout), r: u32, c: u32) u32 {
+            return if (comptime layout == .col_major)
                 r + c * self.ld
             else
                 r * self.ld + c;
@@ -1049,8 +1053,8 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// -----
         /// This function must be called before `deinit` if the elements are of
         /// arbitrary precision type to properly deinitialize them.
-        pub fn cleanup(self: *Dense(T, uplo, order), ctx: anytype) void {
-            return self._cleanup(self.size, self.size, order, ctx);
+        pub fn cleanup(self: *Dense(T, uplo, layout), ctx: anytype) void {
+            return self._cleanup(self.size, self.size, layout, ctx);
         }
 
         /// Cleans up the elements of the matrix, deinitializing them if
@@ -1058,7 +1062,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
         /// In other words, if iter_order is column-major, all elements from
         /// (0, 0) to (i - 1, j) are cleaned up, and if iter_order is row-major,
         /// all elements from (0, 0) to (i, j - 1) are cleaned up.
-        pub fn _cleanup(self: *Dense(T, uplo, order), i: u32, j: u32, iter_order: Order, ctx: anytype) void {
+        pub fn _cleanup(self: *Dense(T, uplo, layout), i: u32, j: u32, iter_order: IterationOrder, ctx: anytype) void {
             switch (comptime types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     comptime types.validateContext(@TypeOf(ctx), .{});
@@ -1073,7 +1077,7 @@ pub fn Dense(T: type, uplo: Uplo, order: Order) type {
                         },
                     );
 
-                    if (iter_order == .col_major) {
+                    if (iter_order == .left_to_right) {
                         if (comptime uplo == .upper) {
                             var _j: u32 = 0;
                             while (_j <= int.min(j, self.size - 1)) : (_j += 1) {

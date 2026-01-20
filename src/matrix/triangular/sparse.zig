@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const types = @import("../../types.zig");
-const Order = types.Order;
+const Layout = types.Layout;
 const Uplo = types.Uplo;
 const Diag = types.Diag;
 const ops = @import("../../ops.zig");
@@ -16,7 +16,7 @@ const Flags = matrix.Flags;
 /// `uplo` parameter, and the diagonal can be either unit, meaning all diagonal
 /// elements are assumed to be 1 and not stored, or non-unit, meaning the
 /// diagonal elements are stored normally.
-pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
+pub fn Sparse(T: type, uplo: Uplo, diag: Diag, layout: Layout) type {
     if (!types.isNumeric(T))
         @compileError("T must be a numeric type");
 
@@ -33,11 +33,14 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         pub const is_matrix = {};
         pub const is_sparse = {};
         pub const is_triangular = {};
+        pub const storage_layout = layout;
+        pub const storage_uplo = uplo;
+        pub const storage_diag = diag;
 
         /// Numeric type
         pub const Numeric = T;
 
-        pub const empty = Sparse(T, uplo, diag, order){
+        pub const empty = Sparse(T, uplo, diag, layout){
             .data = &.{},
             .idx = &.{},
             .ptr = &.{},
@@ -67,11 +70,11 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         /// -----
         /// If the elements are of arbitrary precision type, `cleanup` must be
         /// called before `deinit` to properly deinitialize the elements.
-        pub fn deinit(self: *Sparse(T, uplo, diag, order), allocator: std.mem.Allocator) void {
+        pub fn deinit(self: *Sparse(T, uplo, diag, layout), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.free(self.data[0..self.nnz]);
                 allocator.free(self.idx[0..self.nnz]);
-                allocator.free(self.ptr[0..(if (comptime order == .col_major) self.cols + 1 else self.rows + 1)]);
+                allocator.free(self.ptr[0..(if (comptime layout == .col_major) self.cols + 1 else self.rows + 1)]);
             }
 
             self.* = undefined;
@@ -99,7 +102,7 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         /// ------
         /// `matrix.Error.PositionOutOfBounds`:
         /// If `r` or `c` is out of bounds.
-        pub fn get(self: *const Sparse(T, uplo, diag, order), r: u32, c: u32) !T {
+        pub fn get(self: *const Sparse(T, uplo, diag, layout), r: u32, c: u32) !T {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -116,7 +119,7 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
                     return constants.one(T, .{}) catch unreachable;
             }
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -164,8 +167,8 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         /// -------
         /// `T`:
         /// The element at the specified position.
-        pub fn at(self: *Sparse(T, uplo, diag, order), r: u32, c: u32) T {
-            if (comptime order == .col_major) {
+        pub fn at(self: *Sparse(T, uplo, diag, layout), r: u32, c: u32) T {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -228,7 +231,7 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         /// element at the position is not deinitialized. The user must ensure
         /// that no memory leaks occur. Additionally, the matrix takes ownership
         /// of `value`.
-        pub fn set(self: *Sparse(T, uplo, diag, order), r: u32, c: u32, value: T) !void {
+        pub fn set(self: *Sparse(T, uplo, diag, layout), r: u32, c: u32, value: T) !void {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
@@ -247,7 +250,7 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
 
             // Find the position to update. If the position does not exist,
             // we return an error.
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -308,8 +311,8 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         /// element at the position is not deinitialized. The user must ensure
         /// that no memory leaks occur. Additionally, the matrix takes ownership
         /// of `value`.
-        pub fn put(self: *Sparse(T, uplo, diag, order), r: u32, c: u32, value: T) void {
-            if (comptime order == .col_major) {
+        pub fn put(self: *Sparse(T, uplo, diag, layout), r: u32, c: u32, value: T) void {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -363,7 +366,7 @@ pub fn Sparse(T: type, uplo: Uplo, diag: Diag, order: Order) type {
         /// -----
         /// This function must be called before `deinit` if the elements are of
         /// arbitrary precision type to properly deinitialize them.
-        pub fn cleanup(self: *Sparse(T, uplo, diag, order), ctx: anytype) void {
+        pub fn cleanup(self: *Sparse(T, uplo, diag, layout), ctx: anytype) void {
             switch (comptime types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     comptime types.validateContext(@TypeOf(ctx), .{});

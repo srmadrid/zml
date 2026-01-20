@@ -6,13 +6,13 @@ const ReturnType2 = types.ReturnType2;
 const EnsureArray = types.EnsureArray;
 const Coerce = types.Coerce;
 const Numeric = types.Numeric;
-const orderOf = types.orderOf;
+const orderOf = types.layoutOf;
 
 const ops = @import("../ops.zig");
 const int = @import("../int.zig");
 
 const array = @import("../array.zig");
-const Order = types.Order;
+const Order = types.Layout;
 const Flags = array.Flags;
 const Range = array.Range;
 

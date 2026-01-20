@@ -21,6 +21,13 @@ pub const Integer = struct {
     positive: bool,
     flags: Flags,
 
+    /// Type signature
+    pub const is_integer = {};
+    pub const is_integral = {};
+    pub const is_real_type = {};
+    pub const is_signed = {};
+    pub const is_allocated = {};
+
     pub const empty: Integer = .{
         .limbs = &.{},
         .size = 0,

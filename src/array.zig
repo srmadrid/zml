@@ -3,7 +3,7 @@ const std = @import("std");
 const opts = @import("options");
 
 const types = @import("types.zig");
-const Order = types.Order;
+const Order = types.Layout;
 
 const ops = @import("ops.zig");
 

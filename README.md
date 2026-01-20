@@ -1,6 +1,6 @@
 # zml: zig mathematics library
 
-A Zig numerical and symbolic mathematics library.
+A generic numerical and symbolic mathematics library for Zig.
 
 ## Warning
 

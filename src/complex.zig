@@ -20,6 +20,9 @@ pub fn Complex(comptime T: type) type {
 
         /// Type signature
         pub const is_complex = {};
+        pub const is_complex_type = {};
+        pub const is_signed = {};
+        pub const is_allocated = {};
 
         /// Scalar type
         pub const Scalar = T;

@@ -1,5 +1,7 @@
 //! Namespace for type checking functions.
 
+const std = @import("std");
+
 const types = @import("../types.zig");
 
 /// Checks if the input type is a supported type (numeric, vector, matrix,
@@ -13,7 +15,7 @@ const types = @import("../types.zig");
 /// -------
 /// `bool`: `true` if the type is a supported type, `false` otherwise.
 pub fn isSupportedType(comptime T: type) bool {
-    if (comptime types.isNumeric(T))
+    if (comptime isNumeric(T))
         return true;
 
     if (comptime isVector(T))
@@ -133,6 +135,51 @@ pub fn isSimdVector(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type `N` is a supported numeric type, but does not
+/// return the corresponding `NumericType` or raise a compile error if not.
+///
+/// Parameters
+/// ----------
+/// comptime N (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a supported numeric type, `false` otherwise.
+pub fn isNumeric(comptime N: type) bool {
+    switch (@typeInfo(N)) {
+        .bool => return true,
+        .int, .comptime_int => return true,
+        .float, .comptime_float => return true,
+        .@"struct" => {
+            if (@hasDecl(N, "is_dyadic"))
+                return true;
+
+            if ((@hasDecl(N, "is_cfloat")) or
+                N == std.math.Complex(f16) or N == std.math.Complex(f32) or N == std.math.Complex(f64) or
+                N == std.math.Complex(f80) or N == std.math.Complex(f128) or N == std.math.Complex(comptime_float))
+                return true;
+
+            if (@hasDecl(N, "is_integer"))
+                return true;
+
+            if (@hasDecl(N, "is_rational"))
+                return true;
+
+            if (@hasDecl(N, "is_real"))
+                return true;
+
+            if (@hasDecl(N, "is_complex"))
+                return true;
+
+            if (@hasDecl(N, "is_numeric"))
+                return true;
+
+            return false;
+        },
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a vector.
 ///
 /// Parameters
@@ -177,6 +224,22 @@ pub fn isDenseVector(comptime T: type) bool {
 pub fn isSparseVector(comptime T: type) bool {
     switch (@typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_vector") and @hasDecl(T, "is_sparse"),
+        else => return false,
+    }
+}
+
+/// Checks if the input type is an instance of a custom vector.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a custom vector, `false` otherwise.
+pub fn isCustomVector(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_vector") and !@hasDecl(T, "is_dense") and !@hasDecl(T, "is_sparse"),
         else => return false,
     }
 }
@@ -470,6 +533,22 @@ pub fn isSparseMatrix(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a custom matrix.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a custom matrix, `false` otherwise.
+pub fn isCustomMatrix(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_matrix") and !@hasDecl(T, "is_dense") and !@hasDecl(T, "is_sparse"),
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of an array.
 ///
 /// Parameters
@@ -534,16 +613,29 @@ pub fn isSparseArray(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a custom array.
+///
+/// Parameters
+/// ----------
+/// comptime T (`type`): The type to check.
+///
+/// Returns
+/// -------
+/// `bool`: `true` if the type is a custom array, `false` otherwise.
+pub fn isCustomArray(comptime T: type) bool {
+    switch (@typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_array") and !@hasDecl(T, "is_dense") and !@hasDecl(T, "is_strided") and !@hasDecl(T, "is_sparse"),
+        else => return false,
+    }
+}
+
 pub fn isExpression(comptime T: type) bool {
     _ = T;
     return false;
     // return T == Expression;
 }
 
-/// Checks if the input numeric type is of fixed precision.
-///
-/// This function checks if the input numeric type is of fixed precision, which
-/// includes types labeled as `bool`, `int`, `float`, `dyadic` and `cfloat`.
+/// Checks if the input numeric type requires allocation.
 ///
 /// Parameters
 /// ----------
@@ -551,42 +643,13 @@ pub fn isExpression(comptime T: type) bool {
 ///
 /// Returns
 /// -------
-/// `bool`: `true` if the type is of fixed precision, `false` otherwise.
-pub fn isFixedPrecision(comptime N: type) bool {
+/// `bool`: `true` if the type requires allocation, `false` otherwise.
+pub fn isAllocated(comptime N: type) bool {
     if (!types.isNumeric(N))
-        @compileError("zml.types.isFixedPrecision: " ++ @typeName(N) ++ " is not a supported numeric type");
+        @compileError("zml.types.isAllocated: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    switch (types.numericType(N)) {
-        .bool => return true,
-        .int => return true,
-        .float => return true,
-        .dyadic => return true,
-        .cfloat => return true,
-        else => return false,
-    }
-}
-
-/// Checks if the input numeric type is of arbitrary precision.
-///
-/// This function checks if the input numeric type is of arbitrary precision,
-/// which includes types labeled as `integer`, `rational`, `real` and `complex`.
-///
-/// Parameters
-/// ----------
-/// comptime N (`type`): The type to check. Must be a supported numeric type.
-///
-/// Returns
-/// -------
-/// `bool`: `true` if the type is of arbitrary precision, `false` otherwise.
-pub fn isArbitraryPrecision(comptime N: type) bool {
-    if (!types.isNumeric(N))
-        @compileError("zml.types.isArbitraryPrecision: " ++ @typeName(N) ++ " is not a supported numeric type");
-
-    switch (types.numericType(N)) {
-        .integer => return true,
-        .rational => return true,
-        .real => return true,
-        .complex => return true,
+    switch (@typeInfo(N)) {
+        .@"struct" => return @hasDecl(N, "is_allocated"),
         else => return false,
     }
 }
@@ -607,8 +670,7 @@ pub fn isIntegral(comptime N: type) bool {
     switch (types.numericType(N)) {
         .bool => return true,
         .int => return true,
-        .integer => return true,
-        else => return false,
+        else => return @hasDecl(N, "is_integral"),
     }
 }
 
@@ -625,15 +687,7 @@ pub fn isNonIntegral(comptime N: type) bool {
     if (!types.isNumeric(N))
         @compileError("zml.types.isNonIntegral: " ++ @typeName(N) ++ " is not a supported numeric type");
 
-    switch (types.numericType(N)) {
-        .float => return true,
-        .dyadic => return true,
-        .cfloat => return true,
-        .rational => return true,
-        .real => return true,
-        .complex => return true,
-        else => return false,
-    }
+    return !isIntegral(N);
 }
 
 /// Checks if the input numeric type is real.
@@ -645,19 +699,15 @@ pub fn isNonIntegral(comptime N: type) bool {
 /// Returns
 /// -------
 /// `bool`: `true` if the type is real, `false` otherwise.
-pub fn isReal(comptime N: type) bool {
+pub fn isRealType(comptime N: type) bool {
     if (!types.isNumeric(N))
-        @compileError("zml.types.isReal: " ++ @typeName(N) ++ " is not a supported numeric type");
+        @compileError("zml.types.isRealType: " ++ @typeName(N) ++ " is not a supported numeric type");
 
     switch (types.numericType(N)) {
         .bool => return true,
         .int => return true,
         .float => return true,
-        .dyadic => return true,
-        .integer => return true,
-        .rational => return true,
-        .real => return true,
-        else => return false,
+        else => return @hasDecl(N, "is_real_type"),
     }
 }
 
@@ -670,14 +720,15 @@ pub fn isReal(comptime N: type) bool {
 /// Returns
 /// -------
 /// `bool`: `true` if the type is complex, `false` otherwise.
-pub fn isComplex(comptime N: type) bool {
+pub fn isComplexType(comptime N: type) bool {
     if (!types.isNumeric(N))
-        @compileError("zml.types.isComplex: " ++ @typeName(N) ++ " is not a supported numeric type");
+        @compileError("zml.types.isComplexType: " ++ @typeName(N) ++ " is not a supported numeric type");
 
     switch (types.numericType(N)) {
-        .cfloat => return true,
-        .complex => return true,
-        else => return false,
+        .bool => return false,
+        .int => return false,
+        .float => return false,
+        else => return @hasDecl(N, "is_complex_type"),
     }
 }
 
@@ -703,13 +754,7 @@ pub fn isSigned(comptime N: type) bool {
             }
         },
         .float => return true,
-        .dyadic => return true,
-        .cfloat => return true,
-        .integer => return true,
-        .rational => return true,
-        .real => return true,
-        .complex => return true,
-        else => return false,
+        else => return @hasDecl(N, "is_signed"),
     }
 }
 
@@ -735,6 +780,7 @@ pub fn isUnsigned(comptime N: type) bool {
                 else => unreachable,
             }
         },
-        else => return false,
+        .float => return false,
+        else => return @hasDecl(N, "is_unsigned"),
     }
 }

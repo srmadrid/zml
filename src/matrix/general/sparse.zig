@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const types = @import("../../types.zig");
-const Order = types.Order;
+const Layout = types.Layout;
 const ops = @import("../../ops.zig");
 const constants = @import("../../constants.zig");
 
@@ -10,7 +10,7 @@ const Flags = matrix.Flags;
 
 /// Sparse general matrix type, represented in either CSC or CSR format,
 /// depending on if `order` is column-major or row-major, respectively.
-pub fn Sparse(T: type, order: Order) type {
+pub fn Sparse(T: type, layout: Layout) type {
     if (!types.isNumeric(T))
         @compileError("matrix.general.Sparse requires a numeric type, got " ++ @typeName(T));
 
@@ -27,11 +27,14 @@ pub fn Sparse(T: type, order: Order) type {
         pub const is_matrix = {};
         pub const is_sparse = {};
         pub const is_general = {};
+        pub const storage_layout = layout;
+        pub const storage_uplo = types.default_uplo;
+        pub const storage_diag = types.default_diag;
 
         /// Numeric type
         pub const Numeric = T;
 
-        pub const empty = Sparse(T, order){
+        pub const empty = Sparse(T, layout){
             .data = &.{},
             .idx = &.{},
             .ptr = &.{},
@@ -61,11 +64,11 @@ pub fn Sparse(T: type, order: Order) type {
         /// -----
         /// If the elements are of arbitrary precision type, `cleanup` must be
         /// called before `deinit` to properly deinitialize the elements.
-        pub fn deinit(self: *Sparse(T, order), allocator: std.mem.Allocator) void {
+        pub fn deinit(self: *Sparse(T, layout), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 allocator.free(self.data[0..self.nnz]);
                 allocator.free(self.idx[0..self.nnz]);
-                allocator.free(self.ptr[0..(if (comptime order == .col_major) self.cols + 1 else self.rows + 1)]);
+                allocator.free(self.ptr[0..(if (comptime layout == .col_major) self.cols + 1 else self.rows + 1)]);
             }
 
             self.* = undefined;
@@ -93,11 +96,11 @@ pub fn Sparse(T: type, order: Order) type {
         /// ------
         /// `matrix.Error.PositionOutOfBounds`:
         /// If `r` or `c` is out of bounds.
-        pub fn get(self: *const Sparse(T, order), r: u32, c: u32) !T {
+        pub fn get(self: *const Sparse(T, layout), r: u32, c: u32) !T {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -141,8 +144,8 @@ pub fn Sparse(T: type, order: Order) type {
         /// -------
         /// `T`:
         /// The element at the specified position.
-        pub fn at(self: *Sparse(T, order), r: u32, c: u32) T {
-            if (comptime order == .col_major) {
+        pub fn at(self: *Sparse(T, layout), r: u32, c: u32) T {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -203,11 +206,11 @@ pub fn Sparse(T: type, order: Order) type {
         /// element at the position is not deinitialized. The user must ensure
         /// that no memory leaks occur. Additionally, the matrix takes ownership
         /// of `value`.
-        pub fn set(self: *Sparse(T, order), r: u32, c: u32, value: T) !void {
+        pub fn set(self: *Sparse(T, layout), r: u32, c: u32, value: T) !void {
             if (r >= self.rows or c >= self.cols)
                 return matrix.Error.PositionOutOfBounds;
 
-            if (comptime order == .col_major) {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -266,8 +269,8 @@ pub fn Sparse(T: type, order: Order) type {
         /// element at the position is not deinitialized. The user must ensure
         /// that no memory leaks occur. Additionally, the matrix takes ownership
         /// of `value`.
-        pub fn put(self: *Sparse(T, order), r: u32, c: u32, value: T) void {
-            if (comptime order == .col_major) {
+        pub fn put(self: *Sparse(T, layout), r: u32, c: u32, value: T) void {
+            if (comptime layout == .col_major) {
                 const col_start = self.ptr[c];
                 const col_end = self.ptr[c + 1];
 
@@ -321,7 +324,7 @@ pub fn Sparse(T: type, order: Order) type {
         /// -----
         /// This function must be called before `deinit` if the elements are of
         /// arbitrary precision type to properly deinitialize them.
-        pub fn cleanup(self: *Sparse(T, order), ctx: anytype) void {
+        pub fn cleanup(self: *Sparse(T, layout), ctx: anytype) void {
             switch (comptime types.numericType(T)) {
                 .bool, .int, .float, .cfloat => {
                     comptime types.validateContext(@TypeOf(ctx), .{});

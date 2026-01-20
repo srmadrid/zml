@@ -28,6 +28,8 @@ pub fn Cfloat(comptime T: type) type {
 
         /// Type signature
         pub const is_cfloat = {};
+        pub const is_complex_type = {};
+        pub const is_signed = {};
 
         /// Scalar type
         pub const Scalar = T;

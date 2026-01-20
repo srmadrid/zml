@@ -13,7 +13,7 @@ const int = @import("../int.zig");
 
 const array = @import("../array.zig");
 const max_dimensions = array.max_dimensions;
-const Order = types.Order;
+const Order = types.Layout;
 const Flags = array.Flags;
 const Range = array.Range;
 

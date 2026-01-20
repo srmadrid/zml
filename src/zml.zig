@@ -2,9 +2,10 @@ pub const types = @import("types.zig");
 pub const scast = types.scast;
 pub const cast = types.cast;
 pub const Cmp = types.Cmp;
-pub const Order = types.Order;
+pub const Layout = types.Layout;
 pub const Uplo = types.Uplo;
 pub const Diag = types.Diag;
+pub const IterationOrder = types.IterationOrder;
 
 pub const int = @import("int.zig");
 pub const float = @import("float.zig");

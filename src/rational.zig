@@ -22,6 +22,12 @@ pub const Rational = struct {
     den: Integer,
     flags: Flags,
 
+    /// Type signature
+    pub const is_rational = {};
+    pub const is_real_type = {};
+    pub const is_signed = {};
+    pub const is_allocated = {};
+
     pub const empty: Rational = .{
         .num = .empty,
         .den = .empty,
