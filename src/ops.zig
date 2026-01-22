@@ -422,7 +422,7 @@ pub inline fn deinit(
         @compileError("zml.deinit not implemented for matrices yet.");
 
     switch (comptime types.numericType(X)) {
-        .bool, .int, .float, .cfloat => {
+        .bool, .int, .float, .dyadic, .cfloat => {
             comptime types.validateContext(@TypeOf(ctx), .{});
 
             // No deinitialization needed for fixed precision types, this is a no-op.
@@ -457,6 +457,25 @@ pub inline fn deinit(
             );
 
             x.deinit(ctx.allocator);
+        },
+        .custom => {
+            if (comptime types.isAllocated(X)) {
+                if (comptime !types.hasMethod(X, "deinit", fn (*X) void, &.{}))
+                    @compileError("zml.deinit: custom numeric type " ++ @typeName(X) ++ " must have a `deinit` declaration");
+
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    },
+                );
+
+                x.deinit(ctx.allocator);
+            } else {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                // No deinitialization needed for non-allocated custom types, this is a no-op.
+            }
         },
     }
 }

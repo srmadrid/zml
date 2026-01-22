@@ -26,7 +26,7 @@ pub const Rational = struct {
     pub const is_rational = {};
     pub const is_real_type = {};
     pub const is_signed = {};
-    pub const is_allocated = {};
+    pub const is_allocated = true;
 
     pub const empty: Rational = .{
         .num = .empty,

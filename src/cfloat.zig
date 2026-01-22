@@ -363,7 +363,7 @@ pub fn Add(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.cfloat) or !types.numericType(Y).le(.cfloat) or
         (types.numericType(X) != .cfloat and types.numericType(Y) != .cfloat))
-        @compileError("zml.cfloat.add: at least one of x or y to be a cfloat, the other must be a bool, an int, a float or a cfloat, got\n\tx: " ++
+        @compileError("zml.cfloat.add: at least one of x or y must be a cfloat, the other must be a bool, an int, a float, a dyadic or a cfloat, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     return types.Coerce(X, Y);

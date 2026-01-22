@@ -11,39 +11,11 @@ pub inline fn pi(comptime T: type) T {
     return 3.1415926535897932384626433832795028841971;
 }
 
-pub inline fn pi_2(comptime T: type) T {
-    comptime if (!types.isNumeric(T) or types.numericType(T) != .float)
-        @compileError("zml.float.pi_2: T must be a float type, got \n\tT: " ++ @typeName(T) ++ "\n");
-
-    return 1.5707963267948966192313216916397514420985;
-}
-
-pub inline fn pi_4(comptime T: type) T {
-    comptime if (!types.isNumeric(T) or types.numericType(T) != .float)
-        @compileError("zml.float.pi_4: T must be a float type, got \n\tT: " ++ @typeName(T) ++ "\n");
-
-    return 0.7853981633974483096156608458198757212951;
-}
-
 pub inline fn e(comptime T: type) T {
     comptime if (!types.isNumeric(T) or types.numericType(T) != .float)
         @compileError("zml.float.e: T must be a float type, got \n\tT: " ++ @typeName(T) ++ "\n");
 
     return 2.7182818284590452353602874713526624977572;
-}
-
-pub inline fn ln2(comptime T: type) T {
-    comptime if (!types.isNumeric(T) or types.numericType(T) != .float)
-        @compileError("zml.float.ln2: T must be a float type, got \n\tT: " ++ @typeName(T) ++ "\n");
-
-    return 0.6931471805599453094172321214581765680755;
-}
-
-pub inline fn log10e(comptime T: type) T {
-    comptime if (!types.isNumeric(T) or types.numericType(T) != .float)
-        @compileError("zml.float.log10e: T must be a float type, got \n\tT: " ++ @typeName(T) ++ "\n");
-
-    return 0.4342944819032518276511289189166050822944;
 }
 
 // Basic functions

@@ -182,12 +182,14 @@ pub const ceil = ops.ceil;
 pub const ceil_ = ops.ceil_;
 
 pub const set = ops.set;
+pub const deinit = ops.deinit;
 
 pub const vector = @import("vector.zig");
 pub const matrix = @import("matrix.zig");
 pub const array = @import("array.zig");
 
 pub const linalg = @import("linalg.zig");
+pub const autodiff = @import("autodiff.zig");
 
 // Symbolic system.
 //pub const Expression = @import("expression/expression.zig").Expression;

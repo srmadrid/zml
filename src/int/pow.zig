@@ -42,9 +42,9 @@ pub inline fn pow(x: anytype, y: anytype) !Pow(@TypeOf(x), @TypeOf(y)) {
 
         while (exponent != 0) : (exponent >>= 1) {
             if ((exponent & 1) != 0)
-                result *= base;
+                result = int.mul(result, base);
 
-            base *= base;
+            base = int.mul(base, base);
         }
 
         return result;

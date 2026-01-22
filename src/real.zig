@@ -11,7 +11,7 @@ pub const Real = struct {
     pub const is_real = {};
     pub const is_real_type = {};
     pub const is_signed = {};
-    pub const is_allocated = {};
+    pub const is_allocated = true;
 
     pub const empty: Real = .{
         .rational = .empty,

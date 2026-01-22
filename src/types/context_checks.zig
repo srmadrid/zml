@@ -6,64 +6,54 @@ const types = @import("../types.zig");
 ///
 /// This function checks that the context struct matches the specification
 /// struct, ensuring that all required fields are present and have the correct
-/// types. It also checks for unexpected fields in the context struct.
+/// typesn, and no unexpected fields are present. If any discrepancies are
+/// found, a compile-time error is raised with a detailed message.
 ///
-/// Parameters
-/// ----------
-/// ctx (`anytype`): The context struct to validate. Must be a struct type.
-/// spec (`anytype`): The specification struct that defines the expected fields
-/// and their types. Must have the following structure:
-/// ```zig
-/// .{
-///     .field_name = .{ .type = type, .required = bool },
-///     ...
-/// }
-/// ```
-/// where `field_name` is the name of the field, `type` is the expected type of
-/// the field, and `required` is a boolean indicating whether the field is
-/// required or not. If `required` is `false`, then another field named
-/// `default` must be present, specifying the default value for the field.
+/// ## Arguments
+/// * `ctx` (`comptime type`): The type of the context struct to validate. Must
+///   be `void` or a struct type.
+/// * `spec` (`anytype`): The specification struct that defines the expected
+///   fields. Must have the following structure:
+///   ```zig
+///   .{
+///       .field_name1 = .{ .type = type1, .required = true },
+///       .field_name2 = .{ .type = type2, .required = false, .default = default_value },
+///       ...
+///   }
+///   ```
+///   where `field_name` is the name of the field, `type` is the expected type
+///   of the field, `required` is a boolean indicating whether the field is
+///   required or not, and `default` is the default value for optional fields.
+///   Additionally, a `description` field can be included for documentation
+///   purposes.
 ///
-/// Returns
-/// -------
-/// `void`: If the context struct is valid according to the specification.
-///
-/// Notes
-/// -----
-/// If the specification struct has no fields, the context struct is allowed to
-/// be `void`.
+/// ## Returns
+/// `void`
 pub fn validateContext(comptime Ctx: type, comptime spec: anytype) void {
     const ctxinfo = @typeInfo(Ctx);
-
     const SpecType = @TypeOf(spec);
     const specinfo = @typeInfo(SpecType);
 
-    if (specinfo.@"struct".fields.len == 0 and Ctx == void)
-        return; // No context needed, nothing to validate
+    if (comptime ctxinfo != .@"struct" and ctxinfo != .void)
+        @compileError("zml.types.validateContext: Ctx must be void or a struct, got\n\tCtx: " ++ @typeName(Ctx) ++ "\n");
 
-    if (ctxinfo != .@"struct")
-        @compileError("Expected struct for context, got " ++ @typeName(Ctx));
+    if (comptime specinfo.@"struct".fields.len == 0 and (Ctx == void or ctxinfo.@"struct".fields.len == 0))
+        return; // No context needed, nothing to validate
 
     // Check that all required fields exist and types match
     inline for (specinfo.@"struct".fields) |field| {
         const field_spec = @field(spec, field.name);
-        const required = @hasField(@TypeOf(field_spec), "required") and field_spec.required;
+        const required = field_spec.required;
         const expected_type = field_spec.type;
 
-        if (@hasField(Ctx, field.name)) {
+        if (comptime @hasField(Ctx, field.name)) {
             const actual_type = @FieldType(Ctx, field.name);
-            const type_info = @typeInfo(expected_type);
-            const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
-                break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
-            } else if (type_info == .optional)
-                actual_type == type_info.optional.child or actual_type == @TypeOf(null)
-            else
-                actual_type == expected_type;
 
-            if (!types_match)
+            if (comptime !typesMatch(actual_type, expected_type))
                 @compileError(formatSpecCtxMismatch(Ctx, spec));
-        } else if (required) {
-            @compileError(formatSpecCtxMismatch(Ctx, spec));
+        } else {
+            if (comptime required)
+                @compileError(formatSpecCtxMismatch(Ctx, spec));
         }
     }
 
@@ -79,8 +69,193 @@ fn formatSpecCtxMismatch(
     comptime Ctx: type,
     comptime spec: anytype,
 ) []const u8 {
-    const ctxinfo = @typeInfo(Ctx);
+    return std.fmt.comptimePrint(
+        "Context struct must have the following structure:\n{s}\nGot:\n{s}",
+        .{ formatSpec(spec), formatCtx(Ctx) },
+    );
+}
 
+/// Validates that a context struct contains at least the required fields
+/// defined in a specification struct.
+///
+/// This function differs from `validateContext` in that it only checks for the
+/// presence and types of required fields, and the types of present optional
+/// fields, allowing the context struct to have additional fields not specified
+/// in the spec. If any required fields are missing or have incorrect types, or
+/// if present optional fields have incorrect types, a compile-time error is
+/// raised with a detailed message.
+///
+/// ## Arguments
+/// * `ctx` (`comptime type`): The type of the context struct to validate. Must
+///   be `void` or a struct type.
+/// * `spec` (`anytype`): The specification struct that defines the expected
+///   fields. Must have the following structure:
+///   ```zig
+///   .{
+///       .field_name1 = .{ .type = type1, .required = true },
+///       .field_name2 = .{ .type = type2, .required = false, .default = default_value },
+///       ...
+///   }
+///   ```
+///   where `field_name` is the name of the field, `type` is the expected type
+///   of the field, `required` is a boolean indicating whether the field is
+///   required or not, and `default` is the default value for optional fields.
+///   Additionally, a `description` field can be included for documentation
+///   purposes.
+///
+/// ## Returns
+/// `void`
+pub fn partialValidateContext(comptime Ctx: type, comptime spec: anytype) void {
+    const ctxinfo = @typeInfo(Ctx);
+    const SpecType = @TypeOf(spec);
+    const specinfo = @typeInfo(SpecType);
+
+    if (comptime ctxinfo != .@"struct" and ctxinfo != .void)
+        @compileError("zml.types.partialValidateContext: Ctx must be void or a struct, got\n\tCtx: " ++ @typeName(Ctx) ++ "\n");
+
+    if (comptime specinfo.@"struct".fields.len == 0 and (Ctx == void or ctxinfo.@"struct".fields.len == 0))
+        return; // No context needed, nothing to validate
+
+    // Check that all required fields exist and types match
+    inline for (specinfo.@"struct".fields) |field| {
+        const field_spec = @field(spec, field.name);
+        const required = field_spec.required;
+        const expected_type = field_spec.type;
+
+        if (comptime @hasField(Ctx, field.name)) {
+            const actual_type = @FieldType(Ctx, field.name);
+
+            if (comptime !typesMatch(actual_type, expected_type))
+                @compileError(formatPartialSpecCtxMismatch(Ctx, spec));
+        } else {
+            if (comptime required)
+                @compileError(formatPartialSpecCtxMismatch(Ctx, spec));
+        }
+    }
+}
+
+fn formatPartialSpecCtxMismatch(
+    comptime Ctx: type,
+    comptime spec: anytype,
+) []const u8 {
+    return std.fmt.comptimePrint(
+        "Context struct must at least have the following structure (additional fields are allowed):\n{s}\nGot:\n{s}",
+        .{ formatSpec(spec), formatCtx(Ctx) },
+    );
+}
+
+pub fn ctxHasField(
+    comptime T: type,
+    comptime field_name: []const u8,
+    comptime FieldType: type,
+) bool {
+    if (@hasField(T, field_name)) {
+        if (comptime typesMatch(@FieldType(T, field_name), FieldType))
+            return true;
+    }
+
+    return false;
+}
+
+/// Retrieves a field from a context struct, or returns the default value from
+/// a specification struct if the field is not present.
+///
+/// ## Arguments
+/// * `ctx` (`anytype`): The context struct instance from which to retrieve the
+///   field.
+/// * `spec` (`anytype`): The specification struct that defines the expected
+///   fields. Must have the following structure:
+///   ```zig
+///   .{
+///       .field_name1 = .{ .type = type1, .required = true },
+///       .field_name2 = .{ .type = type2, .required = false, .default = default_value },
+///       ...
+///   }
+///   ```
+///   where `field_name` is the name of the field, `type` is the expected type
+///   of the field, `required` is a boolean indicating whether the field is
+///   required or not, and `default` is the default value for optional fields.
+///   Additionally, a `description` field can be included for documentation
+///   purposes.
+/// * field_name (`[]const u8`): The name of the field to retrieve.
+///
+/// ## Returns
+/// `@field(spec, field_name).type`: The value of the field from the context
+/// struct if it exists and has the correct type, or the default value from the
+/// specification struct otherwise.
+pub fn getFieldOrDefault(ctx: anytype, comptime spec: anytype, comptime field_name: []const u8) @field(spec, field_name).type {
+    const Ctx = @TypeOf(ctx);
+    const FieldType = @field(spec, field_name).type;
+
+    if (@hasField(Ctx, field_name)) {
+        const actual_type = @FieldType(Ctx, field_name);
+
+        if (comptime !typesMatch(actual_type, FieldType))
+            @compileError("zml.types.getFieldOrDefault: field '" ++ field_name ++ "' has type " ++ @typeName(@FieldType(Ctx, field_name)) ++ ", expected " ++ @typeName(FieldType));
+
+        return @field(ctx, field_name);
+    }
+
+    return @field(spec, field_name).default;
+}
+
+fn typesMatch(
+    comptime actual_type: type,
+    comptime expected_type: type,
+) bool {
+    const actual_info = @typeInfo(actual_type);
+    const expected_info = @typeInfo(expected_type);
+
+    if (expected_info == .@"fn") {
+        if (comptime actual_info != .@"fn")
+            return false;
+
+        // Compare function signatures
+        if (comptime actual_info.@"fn".params.len != expected_info.@"fn".params.len)
+            return false;
+
+        inline for (actual_info.@"fn".params, expected_info.@"fn".params) |actual_param, expected_param| {
+            if (comptime expected_param.is_generic)
+                continue;
+
+            if (comptime actual_param.type.? != expected_param.type.?)
+                return false;
+        }
+
+        // Compare return types
+        if (comptime actual_info.@"fn".return_type == null) // Cannot be resolved, assume match
+            return true;
+
+        const actual_ret_info = @typeInfo(actual_info.@"fn".return_type.?);
+        const expected_ret_info = @typeInfo(expected_info.@"fn".return_type.?);
+        if (comptime expected_ret_info == .error_union) {
+            if (comptime actual_ret_info != .error_union)
+                return false;
+
+            return actual_ret_info.error_union.payload == expected_ret_info.error_union.payload;
+        }
+
+        if (comptime actual_ret_info == .error_union)
+            return false;
+
+        return actual_info.@"fn".return_type.? == expected_info.@"fn".return_type.?;
+    }
+
+    if (comptime actual_type == @TypeOf(.enum_literal)) // Special case for enum literals
+        return expected_info == .@"enum" or (expected_info == .optional and @typeInfo(expected_info.optional.child) == .@"enum");
+
+    if (comptime expected_info == .optional) // Handle optional types
+        return if (comptime actual_info == .optional)
+            actual_info.optional.child == expected_info.optional.child or actual_type == @TypeOf(null)
+        else
+            actual_type == expected_info.optional.child or actual_type == @TypeOf(null);
+
+    return actual_type == expected_type;
+}
+
+fn formatSpec(
+    comptime spec: anytype,
+) []const u8 {
     const SpecType = @TypeOf(spec);
     const specinfo = @typeInfo(SpecType);
 
@@ -97,7 +272,18 @@ fn formatSpecCtxMismatch(
         }
 
         spec_str = spec_str ++ ".{\n";
-        inline for (specinfo.@"struct".fields) |field| {
+        inline for (specinfo.@"struct".fields, 0..) |field, i| {
+            // Check for description field
+            if (@hasField(@TypeOf(@field(spec, field.name)), "description")) {
+                if (i != 0)
+                    spec_str = spec_str ++ "\n";
+
+                spec_str = spec_str ++ std.fmt.comptimePrint(
+                    "    // {s}\n",
+                    .{@field(@field(spec, field.name), "description")},
+                );
+            }
+
             const field_type = @typeName(@field(@field(spec, field.name), "type"));
             const required = @hasField(@TypeOf(@field(spec, field.name)), "required") and @field(@field(spec, field.name), "required");
             spec_str = spec_str ++ std.fmt.comptimePrint(
@@ -128,135 +314,14 @@ fn formatSpecCtxMismatch(
         spec_str = spec_str ++ "}\n";
     }
 
-    comptime var ctx_str: []const u8 = "";
-    if (ctxinfo.@"struct".fields.len == 0) {
-        ctx_str = ".{}\n";
-    } else {
-        ctx_str = ctx_str ++ ".{\n";
-        inline for (ctxinfo.@"struct".fields) |field| {
-            const field_type = @typeName(@FieldType(Ctx, field.name));
-            ctx_str = ctx_str ++ std.fmt.comptimePrint(
-                "    .{s}: {s}\n",
-                .{
-                    field.name,
-                    field_type,
-                },
-            );
-        }
-        ctx_str = ctx_str ++ "}\n";
-    }
-
-    return std.fmt.comptimePrint(
-        "Context struct must have the following structure:\n{s}\nGot:\n{s}",
-        .{ spec_str, ctx_str },
-    );
+    return spec_str;
 }
 
-/// Validates that a context struct contains all required fields as defined
-/// by a specification struct.
-///
-/// This function differs from `validateContext` in that it does not raise
-/// a compile error if the context struct contains unexpected fields.
-///
-/// Parameters
-/// ----------
-/// ctx (`anytype`): The context struct to validate. Must be a struct type.
-///
-/// spec (`anytype`): The specification struct that defines the expected fields
-/// and their types. Must have the following structure:
-/// ```zig
-/// .{
-///     .field_name = .{ .type = type, .required = bool },
-///     ...
-/// }
-/// ```
-/// where `field_name` is the name of the field, `type` is the expected type of
-/// the field, and `required` is a boolean indicating whether the field is
-/// required or not.
-///
-/// Returns
-/// -------
-/// `void`: If the context struct is valid according to the specification.
-pub fn partialValidateContext(comptime Ctx: type, comptime spec: anytype) void {
-    const ctxinfo = @typeInfo(Ctx);
-
-    const SpecType = @TypeOf(spec);
-    const specinfo = @typeInfo(SpecType);
-
-    if (specinfo.@"struct".fields.len == 0 and Ctx == void)
-        return; // No context needed, nothing to validate
-
-    if (ctxinfo != .@"struct")
-        @compileError("Expected struct for context, got " ++ @typeName(Ctx));
-
-    // Check that all required fields exist and types match
-    inline for (specinfo.@"struct".fields) |field| {
-        const field_spec = @field(spec, field.name);
-        const required = @hasField(@TypeOf(field_spec), "required") and field_spec.required;
-        const expected_type = field_spec.type;
-
-        if (@hasField(Ctx, field.name)) {
-            const actual_type = @FieldType(Ctx, field.name);
-            const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
-                const type_info = @typeInfo(expected_type);
-                break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
-            } else actual_type == expected_type;
-
-            if (!types_match)
-                @compileError(formatCtxRequiredFields(Ctx, spec));
-        } else if (required) {
-            @compileError(formatCtxRequiredFields(Ctx, spec));
-        }
-    }
-}
-
-fn formatCtxRequiredFields(
+fn formatCtx(
     comptime Ctx: type,
-    comptime spec: anytype,
 ) []const u8 {
     const ctxinfo = @typeInfo(Ctx);
 
-    const SpecType = @TypeOf(spec);
-    const specinfo = @typeInfo(SpecType);
-
-    comptime var spec_str: []const u8 = "";
-    if (specinfo.@"struct".fields.len == 0) {
-        spec_str = ".{}\n";
-    } else {
-        comptime var max_name_len: usize = 0;
-        comptime var max_type_len: usize = 0;
-        inline for (specinfo.@"struct".fields) |field| {
-            const field_type = @typeName(@field(@field(spec, field.name), "type"));
-            if (field.name.len > max_name_len) max_name_len = field.name.len;
-            if (field_type.len > max_type_len) max_type_len = field_type.len;
-        }
-
-        spec_str = spec_str ++ ".{\n";
-        inline for (specinfo.@"struct".fields) |field| {
-            const field_type = @typeName(@field(@field(spec, field.name), "type"));
-            const required = @hasField(@TypeOf(@field(spec, field.name)), "required") and @field(@field(spec, field.name), "required");
-            spec_str = spec_str ++ std.fmt.comptimePrint(
-                "    .{s}: {s}",
-                .{
-                    field.name,
-                    field_type,
-                },
-            );
-
-            for (0..((max_name_len + max_type_len) - field.name.len - field_type.len)) |_| {
-                spec_str = spec_str ++ " ";
-            }
-
-            spec_str = spec_str ++ std.fmt.comptimePrint(
-                "    ({s})\n",
-                .{
-                    if (required) "required" else "optional",
-                },
-            );
-        }
-        spec_str = spec_str ++ "}\n";
-    }
-
     comptime var ctx_str: []const u8 = "";
     if (ctxinfo.@"struct".fields.len == 0) {
         ctx_str = ".{}\n";
@@ -275,66 +340,20 @@ fn formatCtxRequiredFields(
         ctx_str = ctx_str ++ "}\n";
     }
 
-    return std.fmt.comptimePrint(
-        "Context struct must contain at least the following fields:\n{s}\nGot:\n{s}",
-        .{ spec_str, ctx_str },
-    );
+    return ctx_str;
 }
 
-pub fn ctxHasField(
-    comptime T: type,
-    comptime field_name: []const u8,
-    comptime FieldType: type,
-) bool {
-    const has_field: bool = @hasField(T, field_name);
-
-    if (has_field) {
-        if (@FieldType(T, field_name) == FieldType or
-            (@FieldType(T, field_name) == @TypeOf(.enum_literal) and
-                (@typeInfo(FieldType) == .@"enum" or
-                    (@typeInfo(FieldType) == .optional and @typeInfo(@typeInfo(FieldType).optional.child) == .@"enum"))) or
-            (@FieldType(T, field_name) == @TypeOf(null) and
-                @typeInfo(FieldType) == .optional))
-            return true;
-    }
-
-    return false;
-}
-
-pub fn getFieldOrDefault(ctx: anytype, comptime spec: anytype, comptime field_name: []const u8) @field(spec, field_name).type {
-    const T = @TypeOf(ctx);
-    const FieldType = @field(spec, field_name).type;
-
-    if (@hasField(T, field_name)) {
-        const actual_type = @FieldType(T, field_name);
-        const type_info = @typeInfo(FieldType);
-        const expected_type = FieldType;
-        const types_match = if (actual_type == @TypeOf(.enum_literal)) blk: { // Special case for enum literals
-            break :blk type_info == .@"enum" or (type_info == .optional and @typeInfo(type_info.optional.child) == .@"enum");
-        } else if (type_info == .optional)
-            actual_type == type_info.optional.child or actual_type == @TypeOf(null)
-        else
-            actual_type == expected_type;
-
-        if (!types_match)
-            @compileError("Field '" ++ field_name ++ "' has type " ++ @typeName(@FieldType(T, field_name)) ++ ", expected " ++ @typeName(FieldType));
-
-        return @field(ctx, field_name);
-    }
-
-    return @field(spec, field_name).default;
-}
-
-pub fn MixStructs(comptime S1: type, comptime S2: type) type {
+pub fn MixStructFields(comptime S1: type, comptime S2: type) type {
     const info1 = @typeInfo(S1);
     const info2 = @typeInfo(S2);
 
     if (info1 != .@"struct" or info2 != .@"struct")
-        @compileError("MixStructs: both types must be structs");
+        @compileError("zml.types.MixStructFields: both S1 and S2 must be struct types, got\n\tS1: " ++
+            @typeName(S1) ++ "\n\tS2: " ++ @typeName(S2) ++ "\n");
 
     for (info1.@"struct".fields) |field| {
         if (@hasField(S2, field.name))
-            @compileError("Field '" ++ field.name ++ "' already exists in the second struct");
+            @compileError("zml.type.MixStructFields: field '" ++ field.name ++ "' already exists in the second struct");
     }
 
     return @Type(.{
@@ -347,7 +366,26 @@ pub fn MixStructs(comptime S1: type, comptime S2: type) type {
     });
 }
 
-pub fn mixStructs(s1: anytype, s2: anytype) MixStructs(@TypeOf(s1), @TypeOf(s2)) {
+/// Merges the fields of two struct instances into a new struct instance.
+/// Structs cannot have overlapping field names.
+///
+/// ## Arguments
+/// * `s1` (`anytype`): The first struct.
+/// * `s2` (`anytype`): The second struct.
+///
+/// ## Returns
+/// `types.MixStructFields(@TypeOf(s1), @TypeOf(s2))`: A new struct instance
+/// containing all fields from `s1` and `s2`.
+///
+/// ## Examples
+/// ```zig
+/// const s1 = .{ .a = 1, .b = 2 };
+/// const s2 = .{ .c = 3, .d = 4 };
+///
+/// const mixed = mixStructFields(s1, s2);
+/// // mixed is .{ .a = 1, .b = 2, .c = 3, .d = 4 }
+/// ```
+pub fn mixStructFields(s1: anytype, s2: anytype) MixStructFields(@TypeOf(s1), @TypeOf(s2)) {
     const S1 = @TypeOf(s1);
     const S2 = @TypeOf(s2);
 
@@ -355,15 +393,17 @@ pub fn mixStructs(s1: anytype, s2: anytype) MixStructs(@TypeOf(s1), @TypeOf(s2))
     const info2 = @typeInfo(S2);
 
     if (info1 != .@"struct" or info2 != .@"struct")
-        @compileError("mixStructs: both types must be structs");
+        @compileError("zml.types.mixStructFields: both s1 and s2 must be structs, got\n\ts1: " ++
+            @typeName(S1) ++ "\n\ts2: " ++ @typeName(S2) ++ "\n");
 
-    var result: MixStructs(S1, S2) = undefined;
+    var result: MixStructFields(S1, S2) = undefined;
     inline for (info1.@"struct".fields) |field| {
         if (@hasField(S2, field.name))
-            @compileError("Field '" ++ field.name ++ "' already exists in the second struct");
+            @compileError("zml.types.mixStructFields: field '" ++ field.name ++ "' already exists in the second struct");
 
         @field(result, field.name) = @field(s1, field.name);
     }
+
     inline for (info2.@"struct".fields) |field| {
         @field(result, field.name) = @field(s2, field.name);
     }
@@ -371,10 +411,10 @@ pub fn mixStructs(s1: anytype, s2: anytype) MixStructs(@TypeOf(s1), @TypeOf(s2))
     return result;
 }
 
-pub fn StripStruct(comptime S: type, comptime fields_to_remove: []const []const u8) type {
+pub fn StripStructFields(comptime S: type, comptime fields_to_remove: []const []const u8) type {
     const info = @typeInfo(S);
     if (info != .@"struct")
-        @compileError("Type must be a struct");
+        @compileError("zml.types.StripStructFields: S must be a struct type, got\n\tS: " ++ @typeName(S) ++ "\n");
 
     // Calculate how many fields will remain
     comptime var remaining_count: usize = 0;
@@ -418,13 +458,33 @@ pub fn StripStruct(comptime S: type, comptime fields_to_remove: []const []const 
     } });
 }
 
-pub fn stripStruct(s: anytype, comptime fields_to_remove: []const []const u8) StripStruct(@TypeOf(s), fields_to_remove) {
+/// Removes specified fields from a struct instance, returning a new struct
+/// instance without those fields.
+///
+/// ## Arguments
+/// * `s` (`anytype`): The struct instance from which to remove fields.
+/// * fields_to_remove (`[]const []const u8`): An array of field names to
+///   remove. If a specified field does not exist in `s`, it is ignored.
+///
+/// ## Returns
+/// `types.StripStructFields(@TypeOf(s), fields_to_remove)`: A new struct
+/// instance without the specified fields.
+///
+/// ## Examples
+/// ```zig
+/// const s = .{ .a = 1, .b = 2, .c = 3, .d = 4 };
+///
+/// const stripped = zml.types.stripStructFields(s, &.{ "b", "d" });
+/// // stripped is .{ .a = 1, .c = 3 }
+/// ```
+pub fn stripStructFields(s: anytype, comptime fields_to_remove: []const []const u8) StripStructFields(@TypeOf(s), fields_to_remove) {
     const S = @TypeOf(s);
     const info = @typeInfo(S);
-    if (info != .@"struct")
-        @compileError("Type must be a struct");
 
-    var result: StripStruct(S, fields_to_remove) = undefined;
+    if (info != .@"struct")
+        @compileError("zml.types.stripStructFields: s must be a struct, got\n\ts: " ++ @typeName(S) ++ "\n");
+
+    var result: StripStructFields(S, fields_to_remove) = undefined;
     inline for (@typeInfo(@TypeOf(result)).@"struct".fields) |field| {
         @field(result, field.name) = @field(s, field.name);
     }
@@ -435,18 +495,18 @@ pub fn stripStruct(s: anytype, comptime fields_to_remove: []const []const u8) St
 pub fn RenameStructFields(comptime S: type, comptime fields_to_rename: anytype) type {
     const info = @typeInfo(S);
     if (info != .@"struct")
-        @compileError("Type must be a struct");
+        @compileError("zml.types.RenameStructFields: S must be a struct type, got\n\tS: " ++ @typeName(S) ++ "\n");
 
     const F: type = @TypeOf(fields_to_rename);
     const finfo = @typeInfo(F);
 
     if (finfo != .@"struct")
-        @compileError("fields_to_rename must be a struct");
+        @compileError("zml.types.RenameStructFields: fields_to_rename must be a struct, got\n\tfields_to_rename: " ++ @typeName(F) ++ "\n");
 
     // Check that all new names do not exist in the original struct
     inline for (finfo.@"struct".fields) |field| {
         if (@hasField(S, @field(fields_to_rename, field.name)))
-            @compileError("Field '" ++ @field(fields_to_rename, field.name) ++ "' already exists in the struct");
+            @compileError("zml.types.RenameStructFields: new field name '" ++ @field(fields_to_rename, field.name) ++ "' already exists in the original struct");
     }
 
     // Create new fields array
@@ -482,37 +542,47 @@ pub fn RenameStructFields(comptime S: type, comptime fields_to_rename: anytype) 
     } });
 }
 
-/// Renames fields of a struct according to a mapping provided in another struct.
+/// Renames fields of a struct according to a mapping provided in another
+/// struct.
 ///
 /// If a field specified in `fields_to_rename` does not exist in `s`, it is
 /// ignored. Fields in `s` that are not specified in `fields_to_rename` retain
 /// their original names.
 ///
-/// Parameters
-/// ----------
-/// `s` (`anytype`): The struct instance whose fields are to be renamed.
-/// Must be a struct type.
+/// ## Arguments
+/// * `s` (`anytype`): The struct instance whose fields are to be renamed.
+/// * `fields_to_rename` (`anytype`): A struct instance that defines the mapping
+///   of old field names to new field names. Each field in this struct should
+///   have the name of the field to be renamed in `s`, and its value should be a
+///   string representing the new namen i.e.:
+///   ```zig
+///   .{
+///       .old_field_name1 = "new_field_name1",
+///       .old_field_name2 = "new_field_name2",
+///       ...
+///   }
+///   ```
 ///
-/// `fields_to_rename` (`anytype`): A struct instance that defines the mapping
-/// of old field names to new field names. Each field in this struct should
-/// have the name of the field to be renamed in `s`, and its value
-/// should be a string representing the new name. I.e.:
+/// ## Returns
+/// `types.RenameStructFields(@TypeOf(s), fields_to_rename)`: A new struct
+/// instance with the specified fields renamed.
+///
+/// ## Examples
 /// ```zig
-/// .{
-///     .old_field_name1 = "new_field_name1",
-///     .old_field_name2 = "new_field_name2",
-///     ...
-/// }
-/// ```
+/// const s = .{ .a = 1, .b = 2 };
+/// const fields_to_rename = .{
+///     .a = "alpha",
+///     .b = "beta",
+/// };
 ///
-/// Returns
-/// -------
-/// The new struct instance with fields renamed according to the mapping.
+/// const renamed = zml.types.renameStructFields(s, fields_to_rename);
+/// // renamed is .{ .alpha = 1, .beta = 2 }
+/// ```
 pub fn renameStructFields(s: anytype, comptime fields_to_rename: anytype) RenameStructFields(@TypeOf(s), fields_to_rename) {
     const S = @TypeOf(s);
     const info = @typeInfo(S);
     if (info != .@"struct")
-        @compileError("Type must be a struct");
+        @compileError("zml.types.renameStructFields: s must be a struct, got\n\ts: " ++ @typeName(S) ++ "\n");
 
     const F: type = @TypeOf(fields_to_rename);
     const finfo = @typeInfo(F);
@@ -539,7 +609,7 @@ pub fn renameStructFields(s: anytype, comptime fields_to_rename: anytype) Rename
 pub fn KeepStructFields(comptime S: type, comptime fields_to_keep: []const []const u8) type {
     const info = @typeInfo(S);
     if (info != .@"struct")
-        @compileError("Type must be a struct");
+        @compileError("zml.types.KeepStructFields: S must be a struct type, got\n\tS: " ++ @typeName(S) ++ "\n");
 
     // Create new fields array
     comptime var temp_new_fields: [fields_to_keep.len]std.builtin.Type.StructField = undefined;
@@ -572,25 +642,31 @@ pub fn KeepStructFields(comptime S: type, comptime fields_to_keep: []const []con
 /// Creates a new struct type by keeping only the specified fields from the
 /// original struct type.
 ///
-/// The fields specified in `fields_to_keep` need not exist in the original
-/// struct; any non-existing fields will simply be ignored.
+/// If a field specified in `fields_to_keep` does not exist in `s`, it is
+/// ignored. Only the fields listed in `fields_to_keep` will be present in the
+/// new struct type.
 ///
-/// Parameters
-/// ----------
-/// `s` (`anytype`): The struct instance from which to keep fields. Must be a
-/// struct type.
+/// ## Arguments
+/// * `s` (`anytype`): The struct instance from which to keep fields.
+/// * `fields_to_keep` (`[]const []const u8`): An array of field names to keep
+///   in the new struct type.
 ///
-/// `fields_to_keep` (`[]const []const u8`): An array of field names to keep
-/// in the new struct type.
+/// ## Returns
+/// `types.KeepStructFields(@TypeOf(s), fields_to_keep)`: A new struct instance
+/// containing only the specified fields.
 ///
-/// Returns
-/// -------
-/// The new struct instance containing only the specified fields.
+/// ## Examples
+/// ```zig
+/// const s = .{ .a = 1, .b = 2, .c = 3, .d = 4 };
+///
+/// const kept = zml.types.keepStructFields(s, &.{ "a", "c" });
+/// // kept is .{ .a = 1, .c = 3 }
+/// ```
 pub fn keepStructFields(s: anytype, comptime fields_to_keep: []const []const u8) KeepStructFields(@TypeOf(s), fields_to_keep) {
     const S = @TypeOf(s);
     const info = @typeInfo(S);
     if (info != .@"struct")
-        @compileError("Type must be a struct");
+        @compileError("zml.types.keepStructFields: s must be a struct, got\n\ts: " ++ @typeName(S) ++ "\n");
 
     var result: KeepStructFields(S, fields_to_keep) = undefined;
     inline for (@typeInfo(@TypeOf(result)).@"struct".fields) |field| {

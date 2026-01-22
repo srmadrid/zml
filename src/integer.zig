@@ -26,7 +26,7 @@ pub const Integer = struct {
     pub const is_integral = {};
     pub const is_real_type = {};
     pub const is_signed = {};
-    pub const is_allocated = {};
+    pub const is_allocated = true;
 
     pub const empty: Integer = .{
         .limbs = &.{},

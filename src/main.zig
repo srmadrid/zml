@@ -564,6 +564,10 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const a = gpa.allocator();
 
+    var zero = try zml.zero(zml.autodiff.Dual(zml.Integer), .{ .allocator = a });
+    defer zml.deinit(&zero, .{ .allocator = a });
+    std.debug.print("zero: {}\n", .{zero});
+
     // const a: u64 = 1000;
     // const b: f64 = 1000;
     // const c = zml.add(a, b, .{}) catch unreachable;
@@ -597,7 +601,7 @@ pub fn main() !void {
 
     // try matrixTesting(a);
 
-    try bigintTesting(a);
+    // try bigintTesting(a);
 }
 
 fn ask_user(default: u32) !u32 {

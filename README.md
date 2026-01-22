@@ -53,6 +53,8 @@ This library is in the early stages of development and might return incorrect re
     - QR (no pivoting (`qr`), column pivoting (`qrp`))
   - BLAS routines (`blas`)
   - Select LAPACK routines (`lapack`)
+- Automatic Differentiation (`autodiff`): currently only used for testing generic numeric type support
+  - Dual numbers
 - Symbolic System:
   - Nothing implemented yet
 
