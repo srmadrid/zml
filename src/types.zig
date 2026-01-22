@@ -184,28 +184,27 @@ pub const IterationOrder = enum {
 /// coercion between different numeric types, ensuring that operations are
 /// performed correctly and efficiently.
 ///
-/// Values
-/// ------
-/// - `bool`: Represents the boolean type (`bool`).
-/// - `int`: Represents integer types:
-///   - `usize`, `u8`, `u16`, `u32`, `u64`, `u128`
-///   - `isize`, `i8`, `i16`, `i32`, `i64`, `i128`
-///   - `uX`, `iX` (where X is any bit size)
-///   - `comptime_int`
-/// - `float`: Represents floating-point types:
-///   - `f16`, `f32`, `f64`, `f80`, `f128`
-///   - `comptime_float`
-/// - `dyadic`: Represents dyadic rational types (`Dyadic`).
-/// - `cfloat`: Represents complex floating-point types:
-///   - `cf16`, `cf32`, `cf64`, `cf80`, `cf128`
-///   - `Cfloat(Dyadic(...))`
-///   - `comptime_cfloat`
-/// - `integer`: Represents the arbitrary precision integer type (`Integer`).
-/// - `rational`: Represents the arbitrary precision rational type (`Rational`).
-/// - `real`: Represents the arbitrary precision real type (`Real`).
-/// - `complex`: Represents complex arbitrary precision types:
-///   - `Complex(Rational)`
-///   - `Complex(Real)`
+/// ## Values
+/// * `bool`: Represents the boolean type (`bool`).
+/// * `int`: Represents integer types:
+///   * `usize`, `u8`, `u16`, `u32`, `u64`, `u128`
+///   * `isize`, `i8`, `i16`, `i32`, `i64`, `i128`
+///   * `uX`, `iX` (where X is any bit size)
+///   * `comptime_int`
+/// * `float`: Represents floating*point types:
+///   * `f16`, `f32`, `f64`, `f80`, `f128`
+///   * `comptime_float`
+/// * `dyadic`: Represents dyadic rational types (`Dyadic`).
+/// * `cfloat`: Represents complex floating*point types:
+///   * `cf16`, `cf32`, `cf64`, `cf80`, `cf128`
+///   * `Cfloat(Dyadic(...))`
+///   * `comptime_cfloat`
+/// * `integer`: Represents the arbitrary precision integer type (`Integer`).
+/// * `rational`: Represents the arbitrary precision rational type (`Rational`).
+/// * `real`: Represents the arbitrary precision real type (`Real`).
+/// * `complex`: Represents complex arbitrary precision types:
+///   * `Complex(Rational)`
+///   * `Complex(Real)`
 pub const NumericType = enum {
     bool,
     int,
@@ -373,12 +372,10 @@ pub fn empty(comptime T: type) T {
 /// corresponding `NumericType` enum value. If the type is not supported, it
 /// will raise a compile error.
 ///
-/// Parameters
-/// ----------
-/// comptime N (`type`): The type to check.
+/// ## Arguments
+/// * `N` (`comptime type`): The type to check.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `NumericType`: The corresponding `NumericType` enum value.
 pub inline fn numericType(comptime N: type) NumericType {
     // Without inline, functions calling this fail miserably. I have no idea why.
@@ -417,12 +414,10 @@ pub inline fn numericType(comptime N: type) NumericType {
 
 /// Determines the vector type of the input type `V`.
 ///
-/// Parameters
-/// ----------
-/// comptime V (`type`): The type to check.
+/// ## Arguments
+/// * `V` (`comptime type`): The type to check.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `VectorType`: The corresponding `VectorType` enum value.
 pub inline fn vectorType(comptime V: type) VectorType {
     if (comptime isDenseVector(V))
@@ -439,12 +434,10 @@ pub inline fn vectorType(comptime V: type) VectorType {
 
 /// Determines the matrix type of the input type `M`.
 ///
-/// Parameters
-/// ----------
-/// comptime M (`type`): The type to check.
+/// ## Arguments
+/// * `M` (`comptime type`): The type to check.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `MatrixType`: The corresponding `MatrixType` enum value.
 pub inline fn matrixType(comptime M: type) MatrixType {
     if (comptime isGeneralDenseMatrix(M))
@@ -485,12 +478,10 @@ pub inline fn matrixType(comptime M: type) MatrixType {
 
 /// Determines the array type of the input type `A`.
 ///
-/// Parameters
-/// ----------
-/// comptime A (`type`): The type to check.
+/// ## Arguments
+/// * `A` (`comptime type`): The type to check.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `ArrayType`: The corresponding `ArrayType` enum value.
 pub inline fn arrayType(comptime A: type) ArrayType {
     if (comptime isDenseArray(A))
@@ -510,12 +501,10 @@ pub inline fn arrayType(comptime A: type) ArrayType {
 
 /// Determines the domain of the input type `T`.
 ///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `Domain`: The corresponding `Domain` enum value.
 pub inline fn domain(comptime T: type) Domain {
     if (comptime isNumeric(T))
@@ -597,12 +586,10 @@ pub const cast = casting.cast;
 
 /// Returns the input type as is, without any modifications.
 ///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to return.
+/// ## Arguments
+/// * `T` (`comptime type`): The type to return.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `type`: The input type `T`.
 pub fn Identity(comptime T: type) type {
     return T;
@@ -616,13 +603,11 @@ pub fn Identity(comptime T: type) type {
 /// numeric type, it returns the type itself, unless it is a complex type, in
 /// which case it returns the scalar type of the complex type.
 ///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to get the scalar type of. Must be a supported
-/// numeric type, vector, matrix, or array.
+/// ## Arguments
+/// * `T` (`comptime type`): The type to get the scalar type of. Must be a
+/// supported numeric type, vector, matrix, or array.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `type`: The scalar type of the input type.
 pub fn Scalar(comptime T: type) type {
     if (comptime !isSupportedType(T))
@@ -669,13 +654,11 @@ pub fn Scalar(comptime T: type) type {
 /// returns the element type. If the input type is a numeric type, it returns
 /// the type itself.
 ///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to get the numeric type of. Must be a
+/// ## Arguments
+/// * `T` (`comptime type`): The type to get the numeric type of. Must be a
 /// supported numeric type, vector, matrix, or array.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `type`: The underlying numeric type of the input type.
 pub fn Numeric(comptime T: type) type {
     if (comptime !isSupportedType(T))
@@ -828,13 +811,11 @@ pub fn diagOf(comptime T: type) Diag {
 /// Returns the pointer child type of a given pointer type, or the type itself
 /// if the input type is not a pointer.
 ///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to get the child type of. Must be a pointer
-/// type.
+/// ## Arguments
+/// * `T` (`comptime type`): The type to get the child type of. Must be a
+///   pointer type.
 ///
-/// Returns
-/// -------
+/// ## Returns
 /// `type`: The child type of the input pointer type.
 pub fn Child(comptime T: type) type {
     switch (comptime @typeInfo(T)) {
@@ -868,14 +849,14 @@ pub fn ReturnTypeFromInputs(
 ) type {
     comptime var inputs: std.meta.Tuple(input_types) = undefined;
 
-    for (input_types, 0..) |input_type, i| {
+    inline for (input_types, 0..) |input_type, i| {
         inputs[i] = if (input_type == std.mem.Allocator)
             useless_allocator
         else
             empty(input_type);
     }
 
-    switch (input_types.len) {
+    switch (comptime input_types.len) {
         0 => return @TypeOf(func()),
         1 => return @TypeOf(func(inputs[0])),
         2 => return @TypeOf(func(inputs[0], inputs[1])),
@@ -898,22 +879,18 @@ pub fn ReturnTypeFromInputs(
 /// If the method has no parameters (i.e., is a constant method), the allocator
 /// parameter must be optional.
 ///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to check.
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+/// * `method_name` (`comptime []const u8`): The name of the method to check.
+/// * `method_type` (`comptime type`): The expected type of the method,
+///   including parameters and return type. Must not include the allocator
+///   parameter for allocated types, and the return type must not be an error
+///   union.
+/// * `input_types` (`comptime []const type`): The types of the inputs to the
+///   method, used to determine the return type for methods with inferred return
+///   types.
 ///
-/// comptime method_name (`[]const u8`): The name of the method to check.
-///
-/// comptime method_type (`type`): The expected type of the method, including
-/// parameters and return type. Must not include the allocator parameter for
-/// allocated types, and the return type must not be an error union.
-///
-/// comptime input_types (`[]const type`): The types of the inputs to the
-/// method, used to determine the return type for methods with inferred return
-/// types.
-///
-/// Returns
-/// -------
+/// ## Returns
 /// `bool`: `true` if the method exists and has the correct type, `false`
 /// otherwise.
 pub fn hasMethod(
