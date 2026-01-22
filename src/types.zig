@@ -966,7 +966,7 @@ pub fn hasMethod(
 
             // Check parameter types
             inline for (spec_params, method_params) |spec_param, method_param| {
-                if (comptime method_param.is_generic)
+                if (comptime spec_param.is_generic or method_param.is_generic)
                     continue;
 
                 if (comptime spec_param.type.? != method_param.type.?)

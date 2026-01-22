@@ -15,6 +15,28 @@ pub fn Add(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
+/// Performs addition between two operands of int or bool types, where at least
+/// one operand must be of int type. The result type is determined by coercing
+/// the operand types, and the operation is performed by casting both operands
+/// to the result type, then adding them.
+///
+/// Depending on the global int operation mode set in `options.int_mode`,
+/// the addition will behave differently in case of over/underflow:
+/// - `.default`: Standard addition, which will panic on over/underflow.
+/// - `.wrap`: Addition with wrapping behavior on over/underflow.
+/// - `.saturate`: Addition with saturation behavior on over/underflow.
+///
+/// ## Signature
+/// ```zig
+/// fn add(x: X, y: Y) Add(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
 pub inline fn add(x: anytype, y: anytype) Add(@TypeOf(x), @TypeOf(y)) {
     const R: type = Add(@TypeOf(x), @TypeOf(y));
 
@@ -35,6 +57,28 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
+/// Performs subtraction between two operands of int or bool types, where at
+/// least one operand must be of int type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then subtracting them.
+///
+/// Depending on the global int operation mode set in `options.int_mode`,
+/// the subtraction will behave differently in case of over/underflow:
+/// - `.default`: Standard subtraction, which will panic on over/underflow.
+/// - `.wrap`: Subtraction with wrapping behavior on over/underflow.
+/// - `.saturate`: Subtraction with saturation behavior on over/underflow.
+///
+/// ## Signature
+/// ```zig
+/// fn sub(x: X, y: Y) Sub(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
 pub inline fn sub(x: anytype, y: anytype) Sub(@TypeOf(x), @TypeOf(y)) {
     const R: type = Sub(@TypeOf(x), @TypeOf(y));
 
@@ -55,6 +99,28 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
+/// Performs multiplication between two operands of int or bool types, where at
+/// least one operand must be of int type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then multiplying them.
+///
+/// Depending on the global int operation mode set in `options.int_mode`,
+/// the multiplication will behave differently in case of over/underflow:
+/// - `.default`: Standard multiplication, which will panic on over/underflow.
+/// - `.wrap`: Multiplication with wrapping behavior on over/underflow.
+/// - `.saturate`: Multiplication with saturation behavior on over/underflow.
+///
+/// ## Signature
+/// ```zig
+/// fn mul(x: X, y: Y) Mul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
 pub inline fn mul(x: anytype, y: anytype) Mul(@TypeOf(x), @TypeOf(y)) {
     const R: type = Mul(@TypeOf(x), @TypeOf(y));
 
@@ -75,12 +141,44 @@ pub fn Div(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
+/// Performs truncating division (rounding towards zero) between two operands of
+/// int or bool types, where at least one operand must be of int type. The
+/// result type is determined by coercing the operand types, and the operation
+/// is performed by casting both operands to the result type, then dividing
+/// them.
+///
+/// ## Signature
+/// ```zig
+/// fn div(x: X, y: Y) Div(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Div(@TypeOf(x), @TypeOf(y))`: The result of the division.
 pub inline fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
     const R: type = Div(@TypeOf(x), @TypeOf(y));
 
     return @divTrunc(types.scast(R, x), types.scast(R, y));
 }
 
+/// Compares two operands of int or bool types, where at least one operand must
+/// be of int type, for ordering. The operation is performed by casting both
+/// operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn cmp(x: X, y: Y) Cmp
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Cmp`: The result of the comparison.
 pub inline fn cmp(
     x: anytype,
     y: anytype,
@@ -101,6 +199,21 @@ pub inline fn cmp(
     return .eq;
 }
 
+/// Compares two operands of int or bool types, where at least one operand must
+/// be of int type, for equality. The operation is performed by casting both
+/// operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn eq(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if the operands are equal, `false` otherwise.
 pub inline fn eq(
     x: anytype,
     y: anytype,
@@ -119,6 +232,21 @@ pub inline fn eq(
     return types.scast(C, x) == types.scast(C, y);
 }
 
+/// Compares two operands of int or bool types, where at least one operand must
+/// be of int type, for inequality. The operation is performed by casting both
+/// operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn ne(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if the operands are not equal, `false` otherwise.
 pub inline fn ne(
     x: anytype,
     y: anytype,
@@ -137,6 +265,21 @@ pub inline fn ne(
     return types.scast(C, x) != types.scast(C, y);
 }
 
+/// Compares two operands of int or bool types, where at least one operand must
+/// be of int type, for less-than ordering. The operation is performed by
+/// casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn lt(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is less than `y`, `false` otherwise.
 pub inline fn lt(
     x: anytype,
     y: anytype,
@@ -155,6 +298,21 @@ pub inline fn lt(
     return types.scast(C, x) < types.scast(C, y);
 }
 
+/// Compares two operands of int or bool types, where at least one operand must
+/// be of int type, for less-than or equal ordering. The operation is performed
+/// by casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn le(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is less than or equal to `y`, `false` otherwise.
 pub inline fn le(
     x: anytype,
     y: anytype,
@@ -173,6 +331,21 @@ pub inline fn le(
     return types.scast(C, x) <= types.scast(C, y);
 }
 
+/// Compares two operands of int or bool types, where at least one operand must
+/// be of int type, for greater-than ordering. The operation is performed by
+/// casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn gt(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is greater than `y`, `false` otherwise.
 pub inline fn gt(
     x: anytype,
     y: anytype,
@@ -191,6 +364,21 @@ pub inline fn gt(
     return types.scast(C, x) > types.scast(C, y);
 }
 
+/// Compares two operands of int or bool types, where at least one operand must
+/// be of int type, for greater-than or equality ordering. The operation is
+/// performed by casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn ge(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is greater than or equal to `y`, `false` otherwise.
 pub inline fn ge(
     x: anytype,
     y: anytype,
@@ -222,6 +410,22 @@ pub fn Max(
     return types.Coerce(X, Y);
 }
 
+/// Returns the maximum of two operands of int or bool types, where at least
+/// one operand must be of int type. The result type is determined by coercing
+/// the operand types, and the operation is performed by casting both operands
+/// to the result type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn max(x: X, y: Y) Max(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Max(@TypeOf(x), @TypeOf(y))`: The maximum of the two operands.
 pub inline fn max(
     x: anytype,
     y: anytype,
@@ -244,6 +448,22 @@ pub fn Min(
     return types.Coerce(X, Y);
 }
 
+/// Returns the minimum of two operands of int or bool types, where at least
+/// one operand must be of int type. The result type is determined by coercing
+/// the operand types, and the operation is performed by casting both operands
+/// to the result type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// fn min(x: X, y: Y) Min(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Min(@TypeOf(x), @TypeOf(y))`: The minimum of the two operands.
 pub inline fn min(
     x: anytype,
     y: anytype,
@@ -253,6 +473,13 @@ pub inline fn min(
     return if (types.scast(R, x) < types.scast(R, y)) types.scast(R, x) else types.scast(R, y);
 }
 
+/// Returns the maximum representable value of the given int type `T`.
+///
+/// ## Arguments
+/// * `T` (`type`): The int type to get the maximum value for.
+///
+/// ## Returns
+/// `T`: The maximum representable value of type `T`.
 pub inline fn maxVal(comptime T: type) T {
     comptime if (!types.isNumeric(T) or types.numericType(T) != .int)
         @compileError("zml.int.maxVal: T must be an int type, got \n\tT: " ++ @typeName(T) ++ "\n");
@@ -262,6 +489,13 @@ pub inline fn maxVal(comptime T: type) T {
     return (1 << (bits - types.scast(@TypeOf(bits), info.int.signedness == .signed))) - 1;
 }
 
+/// Returns the minimum representable value of the given int type `T`.
+///
+/// ## Arguments
+/// * `T` (`type`): The int type to get the minimum value for.
+///
+/// ## Returns
+/// `T`: The minimum representable value of type `T`.
 pub inline fn minVal(comptime T: type) T {
     comptime if (!types.isNumeric(T) or types.numericType(T) != .int)
         @compileError("zml.int.minVal: T must be an int type, got \n\tT: " ++ @typeName(T) ++ "\n");

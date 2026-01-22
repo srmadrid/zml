@@ -13,8 +13,26 @@ pub fn Pow(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
+/// Performs exponentiation between two operands of int or bool types, where at
+/// least one operand must be of int type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then using exponentiation by squaring for
+/// efficient computation.
+///
+/// The operation to be performed is $x^y$.
+///
+/// ## Arguments
+/// * `x` (`anytype`): The base value.
+/// * `y` (`anytype`): The exponent value.
+///
+/// ## Returns
+/// `Pow(@TypeOf(x), @TypeOf(y))`: The result of raising `x` to the power of
+/// `y`.
+///
+/// ## Errors
+/// * `error.NegativeExponent`: If `y` is negative.
 pub inline fn pow(x: anytype, y: anytype) !Pow(@TypeOf(x), @TypeOf(y)) {
-    const R: type = types.Coerce(@TypeOf(x), @TypeOf(y));
+    const R: type = Pow(@TypeOf(x), @TypeOf(y));
 
     if (comptime R == comptime_int) {
         comptime var result: R = 1;

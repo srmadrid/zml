@@ -1,5 +1,12 @@
 const types = @import("../types.zig");
 
+/// Returns the absolute value of an int `x`.
+///
+/// ## Arguments
+/// * `x` (`anytype`): The int value to get the absolute value of.
+///
+/// ## Returns
+/// `@TypeOf(x)`: The absolute value of `x`.
 pub inline fn abs(x: anytype) @TypeOf(x) {
     const X: type = @TypeOf(x);
 
