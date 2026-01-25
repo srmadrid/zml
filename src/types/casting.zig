@@ -41,7 +41,7 @@ pub inline fn scast(
     const I: type = @TypeOf(value);
     const O: type = T;
 
-    comptime if (!types.isFixedPrecision(O))
+    comptime if (types.isAllocated(O))
         @compileError("Expected a fixed precision type, but got " ++ @typeName(O));
 
     if (comptime I == O)
@@ -137,6 +137,7 @@ pub inline fn scast(
             .cfloat => return value.toCFloat(O),
             else => unreachable,
         },
+        .custom => unreachable,
     }
 }
 

@@ -2,6 +2,11 @@ const types = @import("../types.zig");
 
 /// Returns the absolute value of an int `x`.
 ///
+/// ## Signature
+/// ```zig
+/// int.abs(x: X) X
+/// ```
+///
 /// ## Arguments
 /// * `x` (`anytype`): The int value to get the absolute value of.
 ///

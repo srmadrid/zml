@@ -1,5 +1,7 @@
 //! Namespace for int operations.
 
+const int = @This();
+
 const options = @import("options");
 
 const types = @import("types.zig");
@@ -28,7 +30,7 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 ///
 /// ## Signature
 /// ```zig
-/// fn add(x: X, y: Y) Add(X, Y)
+/// int.add(x: X, y: Y) int.Add(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -36,9 +38,9 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
-pub inline fn add(x: anytype, y: anytype) Add(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Add(@TypeOf(x), @TypeOf(y));
+/// `int.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
+pub inline fn add(x: anytype, y: anytype) int.Add(@TypeOf(x), @TypeOf(y)) {
+    const R: type = int.Add(@TypeOf(x), @TypeOf(y));
 
     switch (comptime options.int_mode) {
         .default => return types.scast(R, x) + types.scast(R, y),
@@ -70,7 +72,7 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
 ///
 /// ## Signature
 /// ```zig
-/// fn sub(x: X, y: Y) Sub(X, Y)
+/// int.sub(x: X, y: Y) int.Sub(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -78,9 +80,9 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
-pub inline fn sub(x: anytype, y: anytype) Sub(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Sub(@TypeOf(x), @TypeOf(y));
+/// `int.Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
+pub inline fn sub(x: anytype, y: anytype) int.Sub(@TypeOf(x), @TypeOf(y)) {
+    const R: type = int.Sub(@TypeOf(x), @TypeOf(y));
 
     switch (comptime options.int_mode) {
         .default => return types.scast(R, x) - types.scast(R, y),
@@ -112,7 +114,7 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 ///
 /// ## Signature
 /// ```zig
-/// fn mul(x: X, y: Y) Mul(X, Y)
+/// int.mul(x: X, y: Y) int.Mul(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -120,9 +122,9 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
-pub inline fn mul(x: anytype, y: anytype) Mul(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Mul(@TypeOf(x), @TypeOf(y));
+/// `int.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
+pub inline fn mul(x: anytype, y: anytype) int.Mul(@TypeOf(x), @TypeOf(y)) {
+    const R: type = int.Mul(@TypeOf(x), @TypeOf(y));
 
     switch (comptime options.int_mode) {
         .default => return types.scast(R, x) * types.scast(R, y),
@@ -149,7 +151,7 @@ pub fn Div(comptime X: type, comptime Y: type) type {
 ///
 /// ## Signature
 /// ```zig
-/// fn div(x: X, y: Y) Div(X, Y)
+/// int.div(x: X, y: Y) int.Div(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -157,9 +159,9 @@ pub fn Div(comptime X: type, comptime Y: type) type {
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Div(@TypeOf(x), @TypeOf(y))`: The result of the division.
-pub inline fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Div(@TypeOf(x), @TypeOf(y));
+/// `int.Div(@TypeOf(x), @TypeOf(y))`: The result of the division.
+pub inline fn div(x: anytype, y: anytype) int.Div(@TypeOf(x), @TypeOf(y)) {
+    const R: type = int.Div(@TypeOf(x), @TypeOf(y));
 
     return @divTrunc(types.scast(R, x), types.scast(R, y));
 }
@@ -170,7 +172,7 @@ pub inline fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
 ///
 /// ## Signature
 /// ```zig
-/// fn cmp(x: X, y: Y) Cmp
+/// int.cmp(x: X, y: Y) Cmp
 /// ```
 ///
 /// ## Arguments
@@ -179,10 +181,7 @@ pub inline fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
 ///
 /// ## Returns
 /// `Cmp`: The result of the comparison.
-pub inline fn cmp(
-    x: anytype,
-    y: anytype,
-) Cmp {
+pub inline fn cmp(x: anytype, y: anytype) Cmp {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -205,7 +204,7 @@ pub inline fn cmp(
 ///
 /// ## Signature
 /// ```zig
-/// fn eq(x: X, y: Y) bool
+/// int.eq(x: X, y: Y) bool
 /// ```
 ///
 /// ## Arguments
@@ -214,10 +213,7 @@ pub inline fn cmp(
 ///
 /// ## Returns
 /// `bool`: `true` if the operands are equal, `false` otherwise.
-pub inline fn eq(
-    x: anytype,
-    y: anytype,
-) bool {
+pub inline fn eq(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -238,7 +234,7 @@ pub inline fn eq(
 ///
 /// ## Signature
 /// ```zig
-/// fn ne(x: X, y: Y) bool
+/// int.ne(x: X, y: Y) bool
 /// ```
 ///
 /// ## Arguments
@@ -247,10 +243,7 @@ pub inline fn eq(
 ///
 /// ## Returns
 /// `bool`: `true` if the operands are not equal, `false` otherwise.
-pub inline fn ne(
-    x: anytype,
-    y: anytype,
-) bool {
+pub inline fn ne(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -271,7 +264,7 @@ pub inline fn ne(
 ///
 /// ## Signature
 /// ```zig
-/// fn lt(x: X, y: Y) bool
+/// int.lt(x: X, y: Y) bool
 /// ```
 ///
 /// ## Arguments
@@ -280,10 +273,7 @@ pub inline fn ne(
 ///
 /// ## Returns
 /// `bool`: `true` if `x` is less than `y`, `false` otherwise.
-pub inline fn lt(
-    x: anytype,
-    y: anytype,
-) bool {
+pub inline fn lt(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -304,7 +294,7 @@ pub inline fn lt(
 ///
 /// ## Signature
 /// ```zig
-/// fn le(x: X, y: Y) bool
+/// int.le(x: X, y: Y) bool
 /// ```
 ///
 /// ## Arguments
@@ -313,10 +303,7 @@ pub inline fn lt(
 ///
 /// ## Returns
 /// `bool`: `true` if `x` is less than or equal to `y`, `false` otherwise.
-pub inline fn le(
-    x: anytype,
-    y: anytype,
-) bool {
+pub inline fn le(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -337,7 +324,7 @@ pub inline fn le(
 ///
 /// ## Signature
 /// ```zig
-/// fn gt(x: X, y: Y) bool
+/// int.gt(x: X, y: Y) bool
 /// ```
 ///
 /// ## Arguments
@@ -346,10 +333,7 @@ pub inline fn le(
 ///
 /// ## Returns
 /// `bool`: `true` if `x` is greater than `y`, `false` otherwise.
-pub inline fn gt(
-    x: anytype,
-    y: anytype,
-) bool {
+pub inline fn gt(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -370,7 +354,7 @@ pub inline fn gt(
 ///
 /// ## Signature
 /// ```zig
-/// fn ge(x: X, y: Y) bool
+/// int.ge(x: X, y: Y) bool
 /// ```
 ///
 /// ## Arguments
@@ -379,10 +363,7 @@ pub inline fn gt(
 ///
 /// ## Returns
 /// `bool`: `true` if `x` is greater than or equal to `y`, `false` otherwise.
-pub inline fn ge(
-    x: anytype,
-    y: anytype,
-) bool {
+pub inline fn ge(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -397,10 +378,7 @@ pub inline fn ge(
     return types.scast(C, x) >= types.scast(C, y);
 }
 
-pub fn Max(
-    comptime X: type,
-    comptime Y: type,
-) type {
+pub fn Max(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.int) or !types.numericType(Y).le(.int) or
         (types.numericType(X) != .int and types.numericType(Y) != .int))
@@ -417,7 +395,7 @@ pub fn Max(
 ///
 /// ## Signature
 /// ```zig
-/// fn max(x: X, y: Y) Max(X, Y)
+/// int.max(x: X, y: Y) int.Max(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -425,20 +403,14 @@ pub fn Max(
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Max(@TypeOf(x), @TypeOf(y))`: The maximum of the two operands.
-pub inline fn max(
-    x: anytype,
-    y: anytype,
-) Max(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Max(@TypeOf(x), @TypeOf(y));
+/// `int.Max(@TypeOf(x), @TypeOf(y))`: The maximum of the two operands.
+pub inline fn max(x: anytype, y: anytype) int.Max(@TypeOf(x), @TypeOf(y)) {
+    const R: type = int.Max(@TypeOf(x), @TypeOf(y));
 
     return if (types.scast(R, x) > types.scast(R, y)) types.scast(R, x) else types.scast(R, y);
 }
 
-pub fn Min(
-    comptime X: type,
-    comptime Y: type,
-) type {
+pub fn Min(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
         !types.numericType(X).le(.int) or !types.numericType(Y).le(.int) or
         (types.numericType(X) != .int and types.numericType(Y) != .int))
@@ -455,7 +427,7 @@ pub fn Min(
 ///
 /// ## Signature
 /// ```zig
-/// fn min(x: X, y: Y) Min(X, Y)
+/// int.min(x: X, y: Y) int.Min(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -463,12 +435,9 @@ pub fn Min(
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Min(@TypeOf(x), @TypeOf(y))`: The minimum of the two operands.
-pub inline fn min(
-    x: anytype,
-    y: anytype,
-) Min(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Min(@TypeOf(x), @TypeOf(y));
+/// `int.Min(@TypeOf(x), @TypeOf(y))`: The minimum of the two operands.
+pub inline fn min(x: anytype, y: anytype) int.Min(@TypeOf(x), @TypeOf(y)) {
+    const R: type = int.Min(@TypeOf(x), @TypeOf(y));
 
     return if (types.scast(R, x) < types.scast(R, y)) types.scast(R, x) else types.scast(R, y);
 }

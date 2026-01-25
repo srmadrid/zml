@@ -674,6 +674,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             .real => return Coerce(Y, X),
             .complex => return Complex(Coerce(types.Scalar(X), types.Scalar(Y))),
         },
+        .custom => unreachable,
     }
 }
 

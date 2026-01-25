@@ -560,13 +560,15 @@ fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u3
 
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
-    var gpa: std.heap.DebugAllocator(.{}) = .init;
-    defer _ = gpa.deinit();
-    const a = gpa.allocator();
+    // var gpa: std.heap.DebugAllocator(.{}) = .init;
+    // defer _ = gpa.deinit();
+    // const a = gpa.allocator();
 
-    var zero = try zml.zero(zml.autodiff.Dual(zml.Integer), .{ .allocator = a });
-    defer zml.deinit(&zero, .{ .allocator = a });
-    std.debug.print("zero: {}\n", .{zero});
+    const aa: i32 = 1000;
+    const bb: u64 = 2000;
+    const cc = zml.int.add(aa, bb);
+    std.debug.print("{d} + {d} = {d}\n", .{ aa, bb, cc });
+    std.debug.print("@TypeOf(cc) = {s}\n", .{@typeName(@TypeOf(cc))});
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;

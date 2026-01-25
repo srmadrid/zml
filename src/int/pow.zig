@@ -21,18 +21,23 @@ pub fn Pow(comptime X: type, comptime Y: type) type {
 ///
 /// The operation to be performed is $x^y$.
 ///
+/// ## Signature
+/// ```zig
+/// int.pow(x: X, y: Y) int.Pow(X, Y)
+/// ```
+///
 /// ## Arguments
 /// * `x` (`anytype`): The base value.
 /// * `y` (`anytype`): The exponent value.
 ///
 /// ## Returns
-/// `Pow(@TypeOf(x), @TypeOf(y))`: The result of raising `x` to the power of
+/// `int.Pow(@TypeOf(x), @TypeOf(y))`: The result of raising `x` to the power of
 /// `y`.
 ///
 /// ## Errors
 /// * `error.NegativeExponent`: If `y` is negative.
-pub inline fn pow(x: anytype, y: anytype) !Pow(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Pow(@TypeOf(x), @TypeOf(y));
+pub inline fn pow(x: anytype, y: anytype) !int.Pow(@TypeOf(x), @TypeOf(y)) {
+    const R: type = int.Pow(@TypeOf(x), @TypeOf(y));
 
     if (comptime R == comptime_int) {
         comptime var result: R = 1;

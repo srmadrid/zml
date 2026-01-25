@@ -174,7 +174,7 @@ pub const IterationOrder = enum {
     right_to_left,
 };
 
-/// `NumericType` is an enum that represents the different numeric types
+/// `types.NumericType` is an enum that represents the different numeric types
 /// supported by the library. It is used to categorize types based on their
 /// properties and capabilities, such as whether they are integers, floats,
 /// complex numbers, etc.
@@ -366,17 +366,18 @@ pub fn empty(comptime T: type) T {
     }
 }
 
-/// Checks the the input type `N` and returns the corresponding `NumericType`.
+/// Checks the the input type `N` and returns the corresponding
+/// `types.NumericType`.
 ///
 /// Checks that the input type is a supported numeric type and returns the
-/// corresponding `NumericType` enum value. If the type is not supported, it
-/// will raise a compile error.
+/// corresponding `types.NumericType` enum value. If the type is not supported,
+/// it will raise a compile error.
 ///
 /// ## Arguments
 /// * `N` (`comptime type`): The type to check.
 ///
 /// ## Returns
-/// `NumericType`: The corresponding `NumericType` enum value.
+/// `types.NumericType`: The corresponding `types.NumericType` enum value.
 pub inline fn numericType(comptime N: type) NumericType {
     // Without inline, functions calling this fail miserably. I have no idea why.
     switch (comptime @typeInfo(N)) {
@@ -418,7 +419,7 @@ pub inline fn numericType(comptime N: type) NumericType {
 /// * `V` (`comptime type`): The type to check.
 ///
 /// ## Returns
-/// `VectorType`: The corresponding `VectorType` enum value.
+/// `types.VectorType`: The corresponding `types.VectorType` enum value.
 pub inline fn vectorType(comptime V: type) VectorType {
     if (comptime isDenseVector(V))
         return .dense;
@@ -438,7 +439,7 @@ pub inline fn vectorType(comptime V: type) VectorType {
 /// * `M` (`comptime type`): The type to check.
 ///
 /// ## Returns
-/// `MatrixType`: The corresponding `MatrixType` enum value.
+/// `types.MatrixType`: The corresponding `types.MatrixType` enum value.
 pub inline fn matrixType(comptime M: type) MatrixType {
     if (comptime isGeneralDenseMatrix(M))
         return .general_dense;
@@ -482,7 +483,7 @@ pub inline fn matrixType(comptime M: type) MatrixType {
 /// * `A` (`comptime type`): The type to check.
 ///
 /// ## Returns
-/// `ArrayType`: The corresponding `ArrayType` enum value.
+/// `types.ArrayType`: The corresponding `types.ArrayType` enum value.
 pub inline fn arrayType(comptime A: type) ArrayType {
     if (comptime isDenseArray(A))
         return .dense;
@@ -505,7 +506,7 @@ pub inline fn arrayType(comptime A: type) ArrayType {
 /// * `T` (`comptime type`): The type to check.
 ///
 /// ## Returns
-/// `Domain`: The corresponding `Domain` enum value.
+/// `types.Domain`: The corresponding `types.Domain` enum value.
 pub inline fn domain(comptime T: type) Domain {
     if (comptime isNumeric(T))
         return .numeric;
@@ -599,9 +600,9 @@ pub fn Identity(comptime T: type) type {
 ///
 /// This function returns the scalar type of a given numeric type, vector,
 /// matrix, or array. If the input type is a vector, a matrix or an array, it
-/// returns the element type (equivalent to `Numeric`). If the input type is a
-/// numeric type, it returns the type itself, unless it is a complex type, in
-/// which case it returns the scalar type of the complex type.
+/// returns the element type (equivalent to `types.Numeric`). If the input type
+/// is a numeric type, it returns the type itself, unless it is a complex type,
+/// in which case it returns the scalar type of the complex type.
 ///
 /// ## Arguments
 /// * `T` (`comptime type`): The type to get the scalar type of. Must be a

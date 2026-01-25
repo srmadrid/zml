@@ -1,5 +1,7 @@
 //! Namespace for float operations.
 
+const float = @This();
+
 const types = @import("types.zig");
 const Cmp = types.Cmp;
 
@@ -29,11 +31,24 @@ pub fn Add(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
-pub inline fn add(
-    x: anytype,
-    y: anytype,
-) Add(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Add(@TypeOf(x), @TypeOf(y));
+/// Performs addition between two operands of float, int or bool types, where at
+/// least one operand must be of float type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then adding them.
+///
+/// ## Signature
+/// ```zig
+/// float.add(x: X, y: Y) float.Add(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `float.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
+pub inline fn add(x: anytype, y: anytype) float.Add(@TypeOf(x), @TypeOf(y)) {
+    const R: type = float.Add(@TypeOf(x), @TypeOf(y));
 
     return types.scast(R, x) + types.scast(R, y);
 }
@@ -48,11 +63,24 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
-pub inline fn sub(
-    x: anytype,
-    y: anytype,
-) Sub(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Sub(@TypeOf(x), @TypeOf(y));
+/// Performs subtraction between two operands of float, int or bool types, where
+/// at least one operand must be of float type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then subtracting them.
+///
+/// ## Signature
+/// ```zig
+/// float.sub(x: X, y: Y) float.Sub(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `float.Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
+pub inline fn sub(x: anytype, y: anytype) float.Sub(@TypeOf(x), @TypeOf(y)) {
+    const R: type = float.Sub(@TypeOf(x), @TypeOf(y));
 
     return types.scast(R, x) - types.scast(R, y);
 }
@@ -67,11 +95,24 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
-pub inline fn mul(
-    x: anytype,
-    y: anytype,
-) Mul(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Mul(@TypeOf(x), @TypeOf(y));
+/// Performs multiplication between two operands of float, int or bool types,
+/// where at least one operand must be of float type. The result type is
+/// determined by coercing the operand types, and the operation is performed by
+/// casting both operands to the result type, then multiplying them.
+///
+/// ## Signature
+/// ```zig
+/// float.mul(x: X, y: Y) float.Mul(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `float.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
+pub inline fn mul(x: anytype, y: anytype) float.Mul(@TypeOf(x), @TypeOf(y)) {
+    const R: type = float.Mul(@TypeOf(x), @TypeOf(y));
 
     return types.scast(R, x) * types.scast(R, y);
 }
@@ -86,12 +127,27 @@ pub fn Fma(comptime X: type, comptime Y: type, comptime Z: type) type {
     return types.Coerce(X, types.Coerce(Y, Z));
 }
 
-pub inline fn fma(
-    x: anytype,
-    y: anytype,
-    z: anytype,
-) Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z)) {
-    const R: type = Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z));
+/// Performs fused multiplication and addition (x * y + z) between three
+/// operands of float, int or bool types, where at least one operand must be of
+/// float type. The result type is determined by coercing the operand types, and
+/// the operation is performed by casting all three operands to the result type,
+/// then performing the fused operation.
+///
+/// ## Signature
+/// ```zig
+/// float.fma(x: X, y: Y, z: Z) float.Fma(X, Y, Z)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left multiplication operand.
+/// * `y` (`anytype`): The right multiplication operand.
+/// * `z` (`anytype`): The addition operand.
+///
+/// ## Returns
+/// `float.Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z))`: The result of the fused
+/// multiplication and addition.
+pub inline fn fma(x: anytype, y: anytype, z: anytype) float.Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z)) {
+    const R: type = float.Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z));
 
     return @mulAdd(R, types.scast(R, x), types.scast(R, y), types.scast(R, z));
 }
@@ -106,19 +162,44 @@ pub fn Div(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
-pub inline fn div(
-    x: anytype,
-    y: anytype,
-) Div(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Div(@TypeOf(x), @TypeOf(y));
+/// Performs division between two operands of float, int or bool types, where at
+/// least one operand must be of float type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then dividing them.
+///
+/// ## Signature
+/// ```zig
+/// float.div(x: X, y: Y) float.Div(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `float.Div(@TypeOf(x), @TypeOf(y))`: The result of the division.
+pub inline fn div(x: anytype, y: anytype) float.Div(@TypeOf(x), @TypeOf(y)) {
+    const R: type = float.Div(@TypeOf(x), @TypeOf(y));
 
     return types.scast(R, x) / types.scast(R, y);
 }
 
-pub inline fn cmp(
-    x: anytype,
-    y: anytype,
-) Cmp {
+/// Compares two operands of float, int or bool types, where at least one
+/// operand must be of float type, for ordering. The operation is performed by
+/// casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.cmp(x: X, y: Y) Cmp
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `Cmp`: The result of the comparison.
+pub inline fn cmp(x: anytype, y: anytype) Cmp {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -135,10 +216,22 @@ pub inline fn cmp(
     return .eq;
 }
 
-pub inline fn eq(
-    x: anytype,
-    y: anytype,
-) bool {
+/// Compares two operands of float, int or bool types, where at least one
+/// operand must be of float type, for equality. The operation is performed by
+/// casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.eq(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if the operands are equal, `false` otherwise.
+pub inline fn eq(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -153,10 +246,22 @@ pub inline fn eq(
     return types.scast(C, x) == types.scast(C, y);
 }
 
-pub inline fn ne(
-    x: anytype,
-    y: anytype,
-) bool {
+/// Compares two operands of float, int or bool types, where at least one
+/// operand must be of float type, for inequality. The operation is performed by
+/// casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.ne(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if the operands are not equal, `false` otherwise.
+pub inline fn ne(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -171,10 +276,22 @@ pub inline fn ne(
     return types.scast(C, x) != types.scast(C, y);
 }
 
-pub inline fn lt(
-    x: anytype,
-    y: anytype,
-) bool {
+/// Compares two operands of float, int or bool types, where at least one
+/// operand must be of float type, for for less-than ordering. The operation is
+/// performed by casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.lt(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is less than `y`, `false` otherwise.
+pub inline fn lt(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -189,10 +306,23 @@ pub inline fn lt(
     return types.scast(C, x) < types.scast(C, y);
 }
 
-pub inline fn le(
-    x: anytype,
-    y: anytype,
-) bool {
+/// Compares two operands of float, int or bool types, where at least one
+/// operand must be of float type, for less-than or equal ordering. The
+/// operation is performed by casting both operands to the coerced type, then
+/// comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.le(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is less than or equal to `y`, `false` otherwise.
+pub inline fn le(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -207,10 +337,22 @@ pub inline fn le(
     return types.scast(C, x) <= types.scast(C, y);
 }
 
-pub inline fn gt(
-    x: anytype,
-    y: anytype,
-) bool {
+/// Compares two operands of float, int or bool types, where at least one
+/// operand must be of float type, for greater-than ordering. The operation is
+/// performed by casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.gt(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is greater than `y`, `false` otherwise.
+pub inline fn gt(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -225,10 +367,23 @@ pub inline fn gt(
     return types.scast(C, x) > types.scast(C, y);
 }
 
-pub inline fn ge(
-    x: anytype,
-    y: anytype,
-) bool {
+/// Compares two operands of float, int or bool types, where at least one
+/// operand must be of float type, for greater-than or equality ordering. The
+/// operation is performed by casting both operands to the coerced type, then
+/// comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.ge(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is greater than or equal to `y`, `false` otherwise.
+pub inline fn ge(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
@@ -253,11 +408,24 @@ pub fn Max(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
-pub inline fn max(
-    x: anytype,
-    y: anytype,
-) Max(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Max(@TypeOf(x), @TypeOf(y));
+/// Returns the maximum of two operands of float, int or bool types, where at
+/// least one operand must be of float type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.max(x: X, y: Y) float.Max(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `float.Max(@TypeOf(x), @TypeOf(y))`: The maximum of the two operands.
+pub inline fn max(x: anytype, y: anytype) float.Max(@TypeOf(x), @TypeOf(y)) {
+    const R: type = float.Max(@TypeOf(x), @TypeOf(y));
 
     return if (types.scast(R, x) > types.scast(R, y)) types.scast(R, x) else types.scast(R, y);
 }
@@ -272,11 +440,24 @@ pub fn Min(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
-pub inline fn min(
-    x: anytype,
-    y: anytype,
-) Min(@TypeOf(x), @TypeOf(y)) {
-    const R: type = Min(@TypeOf(x), @TypeOf(y));
+/// Returns the minimum of two operands of float, int or bool types, where at
+/// least one operand must be of float type. The result type is determined by
+/// coercing the operand types, and the operation is performed by casting both
+/// operands to the result type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// float.min(x: X, y: Y) float.Min(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `float.Min(@TypeOf(x), @TypeOf(y))`: The minimum of the two operands.
+pub inline fn min(x: anytype, y: anytype) float.Min(@TypeOf(x), @TypeOf(y)) {
+    const R: type = float.Min(@TypeOf(x), @TypeOf(y));
 
     return if (types.scast(R, x) < types.scast(R, y)) types.scast(R, x) else types.scast(R, y);
 }
