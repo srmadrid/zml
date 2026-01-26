@@ -13,8 +13,23 @@ pub fn Asinh(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn asinh(x: anytype) Asinh(@TypeOf(x)) {
-    switch (Asinh(@TypeOf(x))) {
+/// Returns the hyperbolic arcsine $\sinh^{-1}(x)$ of a float, int or bool
+/// operand. The result type is determined by coercing the operand type to a
+/// float, and the operation is performed by casting the operand to the result
+/// type, then computing its hyperbolic arcsine.
+///
+/// ## Signature
+/// ```zig
+/// float.asinh(x: X) float.Asinh(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the hyperbolic arcsine of.
+///
+/// ## Returns
+/// `float.Asinh(@TypeOf(x))`: The hyperbolic arcsine of `x`.
+pub inline fn asinh(x: anytype) float.Asinh(@TypeOf(x)) {
+    switch (float.Asinh(@TypeOf(x))) {
         f16 => return types.scast(f16, asinh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_asinhf.c

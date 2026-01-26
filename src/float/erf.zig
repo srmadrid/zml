@@ -15,8 +15,28 @@ pub fn Erf(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn erf(x: anytype) Erf(@TypeOf(x)) {
-    switch (Erf(@TypeOf(x))) {
+/// Returns the error function of a float, int or bool operand. The result type
+/// is determined by coercing the operand type to a float, and the operation is
+/// performed by casting the operand to the result type, then computing the
+/// error function at that value.
+///
+/// The error function is defined as:
+/// $$
+/// \mathrm{erf}(x) = \frac{2}{\sqrt{\pi}} \int_0^x e^{-t^2} \mathrm{d}t.
+/// $$
+///
+/// ## Signature
+/// ```zig
+/// float.erf(x: X) float.Erf(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the error function at.
+///
+/// ## Returns
+/// `float.Erf(@TypeOf(x))`: The error function at `x`.
+pub inline fn erf(x: anytype) float.Erf(@TypeOf(x)) {
+    switch (float.Erf(@TypeOf(x))) {
         f16 => return types.scast(f16, erf32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_erff.c

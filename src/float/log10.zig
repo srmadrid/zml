@@ -13,8 +13,23 @@ pub fn Log10(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn log10(x: anytype) Log10(@TypeOf(x)) {
-    switch (Log10(@TypeOf(x))) {
+/// Returns the base-10 logarithm $\log_{10}(x)$ of a float, int or bool
+/// operand. The result type is determined by coercing the operand type to a
+/// float, and the operation is performed by casting the operand to the result
+/// type, then computing its base-10 logarithm.
+///
+/// ## Signature
+/// ```zig
+/// float.log10(x: X) float.Log10(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the base-10 logarithm of.
+///
+/// ## Returns
+/// `float.Log10(@TypeOf(x))`: The base-10 logarithm of `x`.
+pub inline fn log10(x: anytype) float.Log10(@TypeOf(x)) {
+    switch (float.Log10(@TypeOf(x))) {
         f16 => return types.scast(f16, log10_32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_log10f.c

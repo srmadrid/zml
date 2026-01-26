@@ -22,8 +22,23 @@ pub fn Sin(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn sin(x: anytype) Sin(@TypeOf(x)) {
-    switch (Sin(@TypeOf(x))) {
+/// Returns the sine $\sin(x)$ of a float, int or bool operand. The result type
+/// is determined by coercing the operand type to a float, and the operation is
+/// performed by casting the operand to the result type, then computing its
+/// sine.
+///
+/// ## Signature
+/// ```zig
+/// float.sin(x: X) float.Sin(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the sine of.
+///
+/// ## Returns
+/// `float.Sin(@TypeOf(x))`: The sine of `x`.
+pub inline fn sin(x: anytype) float.Sin(@TypeOf(x)) {
+    switch (float.Sin(@TypeOf(x))) {
         f16 => return types.scast(f16, sin32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_sinf.c

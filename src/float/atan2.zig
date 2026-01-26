@@ -15,8 +15,25 @@ pub fn Atan2(comptime X: type, comptime Y: type) type {
     return types.EnsureFloat(types.Coerce(X, Y));
 }
 
-pub inline fn atan2(x: anytype, y: anytype) Atan2(@TypeOf(x), @TypeOf(y)) {
-    switch (Atan2(@TypeOf(x), @TypeOf(y))) {
+/// Calculates the arctangent $\tan^{-1}\left(\frac{y}{x})$ of the coordinates
+/// given by two operands of float, int or bool types. The result type is
+/// determined by coercing the operand types, and coercing the coerced type to
+/// float, and the operation is performed by casting both operands to the result
+/// type, then calculating the arctangent.
+///
+/// ## Signature
+/// ```zig
+/// float.atan2(x: X, y: Y) float.Atan2(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The `x` coordinate.
+/// * `y` (`anytype`): The `y` coordinate.
+///
+/// ## Returns
+/// `float.Atan2(@TypeOf(x), @TypeOf(y))`: The arctangent at `(x, y)`.
+pub inline fn atan2(x: anytype, y: anytype) float.Atan2(@TypeOf(x), @TypeOf(y)) {
+    switch (float.Atan2(@TypeOf(x), @TypeOf(y))) {
         f16 => return types.scast(f16, atan2_32(types.scast(f32, x), types.scast(f32, y))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_atan2f.c

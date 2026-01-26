@@ -13,8 +13,23 @@ pub fn Atanh(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn atanh(x: anytype) Atanh(@TypeOf(x)) {
-    switch (Atanh(@TypeOf(x))) {
+/// Returns the hyperbolic arctangent $\tanh^{-1}(x)$ of a float, int or bool
+/// operand. The result type is determined by coercing the operand type to a
+/// float, and the operation is performed by casting the operand to the result
+/// type, then computing its hyperbolic arctangent.
+///
+/// ## Signature
+/// ```zig
+/// float.atanh(x: X) float.Atanh(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the hyperbolic arctangent of.
+///
+/// ## Returns
+/// `float.Atanh(@TypeOf(x))`: The hyperbolic arctangent of `x`.
+pub inline fn atanh(x: anytype) float.Atanh(@TypeOf(x)) {
+    switch (float.Atanh(@TypeOf(x))) {
         f16 => return types.scast(f16, atanh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_atanhf.c

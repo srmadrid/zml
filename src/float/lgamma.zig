@@ -16,9 +16,29 @@ pub fn Lgamma(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub fn lgamma(x: anytype) Lgamma(@TypeOf(x)) {
+/// Returns the log-gamma function of a float, int or bool  operand. The result
+/// type is determined by coercing the operand type to a  float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing the log-gamma function at that value.
+///
+/// The log-gamma function is defined as:
+/// $$
+/// \log(\Gamma(x)) = \log\left(\int_0^\infty t^{x - 1} e^{-t} \mathrm{d}t\right)
+/// $$
+///
+/// ## Signature
+/// ```zig
+/// float.lgamma(x: X) float.Lgamma(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the log-gamma function at.
+///
+/// ## Returns
+/// `float.Lgamma(@TypeOf(x))`: The log-gamma function at `x`.
+pub fn lgamma(x: anytype) float.Lgamma(@TypeOf(x)) {
     var local_signgam: i32 = undefined;
-    switch (Lgamma(@TypeOf(x))) {
+    switch (float.Lgamma(@TypeOf(x))) {
         f16 => return types.scast(f16, lgamma_r32(types.scast(f32, x), &local_signgam)),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_lgammaf_r.c

@@ -13,8 +13,23 @@ pub fn Asin(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn asin(x: anytype) Asin(@TypeOf(x)) {
-    switch (Asin(@TypeOf(x))) {
+/// Returns the arcsine $\sin^{-1}(x)$ of a float, int or bool operand. The
+/// result type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its arcsine.
+///
+/// ## Signature
+/// ```zig
+/// float.asin(x: X) float.Asin(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the arcsine of.
+///
+/// ## Returns
+/// `float.Asin(@TypeOf(x))`: The arcsine of `x`.
+pub inline fn asin(x: anytype) float.Asin(@TypeOf(x)) {
+    switch (float.Asin(@TypeOf(x))) {
         f16 => return types.scast(f16, asin32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_asinf.c

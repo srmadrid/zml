@@ -13,8 +13,23 @@ pub fn Sqrt(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn sqrt(x: anytype) Sqrt(@TypeOf(x)) {
-    switch (Sqrt(@TypeOf(x))) {
+/// Returns the square root $\sqrt{x}$ of a float, int or bool operand. The
+/// result type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its square root.
+///
+/// ## Signature
+/// ```zig
+/// float.sqrt(x: X) float.Sqrt(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the square root of.
+///
+/// ## Returns
+/// `float.Sqrt(@TypeOf(x))`: The square root of `x`.
+pub inline fn sqrt(x: anytype) float.Sqrt(@TypeOf(x)) {
+    switch (float.Sqrt(@TypeOf(x))) {
         f16 => return types.scast(f16, sqrt32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_sqrtf.c

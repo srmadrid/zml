@@ -13,8 +13,23 @@ pub fn Expm1(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn expm1(x: anytype) Expm1(@TypeOf(x)) {
-    switch (Expm1(@TypeOf(x))) {
+/// Returns the exponential minus one $e^x - 1$ of a float, int or bool operand.
+/// The result type is determined by coercing the operand type to a float, and
+/// the operation is performed by casting the operand to the result type, then
+/// computing its exponential minus one.
+///
+/// ## Signature
+/// ```zig
+/// float.expm1(x: X) float.Expm1(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the exponential minus one of.
+///
+/// ## Returns
+/// `float.Expm1(@TypeOf(x))`: The exponential minus one of `x`.
+pub inline fn expm1(x: anytype) float.Expm1(@TypeOf(x)) {
+    switch (float.Expm1(@TypeOf(x))) {
         f16 => return types.scast(f16, expm1_32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_expm1f.c

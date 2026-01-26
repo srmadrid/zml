@@ -13,8 +13,23 @@ pub fn Atan(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn atan(x: anytype) Atan(@TypeOf(x)) {
-    switch (Atan(@TypeOf(x))) {
+/// Returns the arctangent $\tan^{-1}(x)$ of a float, int or bool operand. The
+/// result type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its arctangent.
+///
+/// ## Signature
+/// ```zig
+/// float.atan(x: X) float.Atan(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the arctangent of.
+///
+/// ## Returns
+/// `float.Atan(@TypeOf(x))`: The arctangent of `x`.
+pub inline fn atan(x: anytype) float.Atan(@TypeOf(x)) {
+    switch (float.Atan(@TypeOf(x))) {
         f16 => return types.scast(f16, atan32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_atanf.c

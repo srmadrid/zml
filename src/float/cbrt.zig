@@ -13,8 +13,23 @@ pub fn Cbrt(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn cbrt(x: anytype) Cbrt(@TypeOf(x)) {
-    switch (Cbrt(@TypeOf(x))) {
+/// Returns the cube root $\sqrt[3]{x}$ of a float, int or bool operand. The
+/// result type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its cube root.
+///
+/// ## Signature
+/// ```zig
+/// float.cbrt(x: X) float.Cbrt(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the cube root of.
+///
+/// ## Returns
+/// `float.Cbrt(@TypeOf(x))`: The cube root of `x`.
+pub inline fn cbrt(x: anytype) float.Cbrt(@TypeOf(x)) {
+    switch (float.Cbrt(@TypeOf(x))) {
         f16 => return types.scast(f16, cbrt32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_cbrtf.c

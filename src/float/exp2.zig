@@ -13,8 +13,23 @@ pub fn Exp2(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn exp2(x: anytype) Exp2(@TypeOf(x)) {
-    switch (Exp2(@TypeOf(x))) {
+/// Returns the base-2 exponential $2^x$ of a float, int or bool operand. The
+/// result type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its base-2 exponential.
+///
+/// ## Signature
+/// ```zig
+/// float.exp2(x: X) float.Exp2(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the base-2 exponential of.
+///
+/// ## Returns
+/// `float.Exp2(@TypeOf(x))`: The base-2 exponential of `x`.
+pub inline fn exp2(x: anytype) float.Exp2(@TypeOf(x)) {
+    switch (float.Exp2(@TypeOf(x))) {
         f16 => return types.scast(f16, exp2_32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_exp2f.c

@@ -15,8 +15,28 @@ pub fn Erfc(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn erfc(x: anytype) Erfc(@TypeOf(x)) {
-    switch (Erfc(@TypeOf(x))) {
+/// Returns the complementary error function of a float, int or bool operand.
+/// The result type is determined by coercing the operand type to a float, and
+/// the operation is performed by casting the operand to the result type, then
+/// computing the complementary error function at that value.
+///
+/// The complementary error function is defined as:
+/// $$
+/// \mathrm{erfc}(x) = 1 - \frac{2}{\sqrt{\pi}} \int_0^x e^{-t^2} \mathrm{d}t.
+/// $$
+///
+/// ## Signature
+/// ```zig
+/// float.erfc(x: X) float.Erfc(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the complementary error function at.
+///
+/// ## Returns
+/// `float.Erfc(@TypeOf(x))`: The complementary error function at `x`.
+pub inline fn erfc(x: anytype) float.Erfc(@TypeOf(x)) {
+    switch (float.Erfc(@TypeOf(x))) {
         f16 => return types.scast(f16, erfc32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_erff.c

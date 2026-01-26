@@ -13,8 +13,23 @@ pub fn Acosh(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn acosh(x: anytype) Acosh(@TypeOf(x)) {
-    switch (Acosh(@TypeOf(x))) {
+/// Returns the hyperbolic arccosine $\cosh^{-1}(x)$ of a float, int or bool
+/// operand. The result type is determined by coercing the operand type to a
+/// float, and the operation is performed by casting the operand to the result
+/// type, then computing its hyperbolic arccosine.
+///
+/// ## Signature
+/// ```zig
+/// float.acosh(x: X) float.Acosh(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the hyperbolic arccosine of.
+///
+/// ## Returns
+/// `float.Acosh(@TypeOf(x))`: The hyperbolic arccosine of `x`.
+pub inline fn acosh(x: anytype) float.Acosh(@TypeOf(x)) {
+    switch (float.Acosh(@TypeOf(x))) {
         f16 => return types.scast(f16, acosh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_acoshf.c

@@ -13,8 +13,23 @@ pub fn Log1p(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn log1p(x: anytype) Log1p(@TypeOf(x)) {
-    switch (Log1p(@TypeOf(x))) {
+/// Returns the natural logarithm $\log(x + 1)$ of a float, int or bool operand
+/// plus one. The result type is determined by coercing the operand type to a
+/// float, and the operation is performed by casting the operand to the result
+/// type, then computing its logarithm plus one.
+///
+/// ## Signature
+/// ```zig
+/// float.log1p(x: X) float.Log1p(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the logarithm plus one of.
+///
+/// ## Returns
+/// `float.Log1p(@TypeOf(x))`: The logarithm of `x + 1`.
+pub inline fn log1p(x: anytype) float.Log1p(@TypeOf(x)) {
+    switch (float.Log1p(@TypeOf(x))) {
         f16 => return types.scast(f16, log1p32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_log1pf.c

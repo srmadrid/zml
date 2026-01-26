@@ -13,8 +13,23 @@ pub fn Tanh(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn tanh(x: anytype) Tanh(@TypeOf(x)) {
-    switch (Tanh(@TypeOf(x))) {
+/// Returns the hyperbolic tangent $\tanh(x)$ of a float, int or bool operand.
+/// The result type is determined by coercing the operand type to a float, and
+/// the operation is performed by casting the operand to the result type, then
+/// computing its hyperbolic tangent.
+///
+/// ## Signature
+/// ```zig
+/// float.tanh(x: X) float.Tanh(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the hyperbolic tangent of.
+///
+/// ## Returns
+/// `float.Tanh(@TypeOf(x))`: The hyperbolic tangent of `x`.
+pub inline fn tanh(x: anytype) float.Tanh(@TypeOf(x)) {
+    switch (float.Tanh(@TypeOf(x))) {
         f16 => return types.scast(f16, tanh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_tanhf.c

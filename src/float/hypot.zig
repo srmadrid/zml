@@ -15,8 +15,24 @@ pub fn Hypot(comptime X: type, comptime Y: type) type {
     return types.EnsureFloat(types.Coerce(X, Y));
 }
 
-pub inline fn hypot(x: anytype, y: anytype) Hypot(@TypeOf(y), @TypeOf(x)) {
-    switch (Hypot(@TypeOf(x), @TypeOf(y))) {
+/// Calculates the hypotenuse $\sqrt{x^2 + y^2}$ of two operands of float, int
+/// or bool types. The result type is determined by coercing the operand types,
+/// and coercing the coerced type to float, and the operation is performed by
+/// casting both operands to the result type, then calculating the hypotenuse.
+///
+/// ## Signature
+/// ```zig
+/// float.hypot(x: X, y: Y) float.Hypot(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `float.Hypot(@TypeOf(x), @TypeOf(y))`: The hypotenuse of `x` and `y`.
+pub inline fn hypot(x: anytype, y: anytype) float.Hypot(@TypeOf(y), @TypeOf(x)) {
+    switch (float.Hypot(@TypeOf(x), @TypeOf(y))) {
         f16 => return types.scast(f16, hypot32(types.scast(f32, x), types.scast(f32, y))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_hypotf.c

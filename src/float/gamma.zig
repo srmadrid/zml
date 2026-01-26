@@ -15,8 +15,28 @@ pub fn Gamma(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn gamma(x: anytype) Gamma(@TypeOf(x)) {
-    switch (Gamma(@TypeOf(x))) {
+/// Returns the gamma function of a float, int or bool  operand. The result type
+/// is determined by coercing the operand type to a  float, and the operation is
+/// performed by casting the operand to the result type, then computing the
+/// gamma function at that value.
+///
+/// The gamma function is defined as:
+/// $$
+/// \Gamma(x) = \int_0^\infty t^{x - 1} e^{-t} \mathrm{d}t
+/// $$
+///
+/// ## Signature
+/// ```zig
+/// float.gamma(x: X) float.Gamma(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the gamma function at.
+///
+/// ## Returns
+/// `float.Gamma(@TypeOf(x))`: The gamma function at `x`.
+pub inline fn gamma(x: anytype) float.Gamma(@TypeOf(x)) {
+    switch (float.Gamma(@TypeOf(x))) {
         f16 => return types.scast(f16, gamma32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_tgammaf.c

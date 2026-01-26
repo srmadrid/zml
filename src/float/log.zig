@@ -13,8 +13,23 @@ pub fn Log(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn log(x: anytype) Log(@TypeOf(x)) {
-    switch (Log(@TypeOf(x))) {
+/// Returns the natural logarithm $\log(x)$ of a float, int or bool operand. The
+/// result type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its logarithm.
+///
+/// ## Signature
+/// ```zig
+/// float.log(x: X) float.Log(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the logarithm of.
+///
+/// ## Returns
+/// `float.Log(@TypeOf(x))`: The natural logarithm of `x`.
+pub inline fn log(x: anytype) float.Log(@TypeOf(x)) {
+    switch (float.Log(@TypeOf(x))) {
         f16 => return types.scast(f16, log32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_logf.c

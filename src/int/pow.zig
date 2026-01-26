@@ -13,13 +13,11 @@ pub fn Pow(comptime X: type, comptime Y: type) type {
     return types.Coerce(X, Y);
 }
 
-/// Performs exponentiation between two operands of int or bool types, where at
-/// least one operand must be of int type. The result type is determined by
-/// coercing the operand types, and the operation is performed by casting both
-/// operands to the result type, then using exponentiation by squaring for
-/// efficient computation.
-///
-/// The operation to be performed is $x^y$.
+/// Performs exponentiation $x^y$ between two operands of int or bool types,
+/// where at least one operand must be of int type. The result type is
+/// determined by coercing the operand types, and the operation is performed by
+/// casting both operands to the result type, then using exponentiation by
+/// squaring for efficient computation.
 ///
 /// ## Signature
 /// ```zig

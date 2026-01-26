@@ -18,8 +18,23 @@ pub fn Tan(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn tan(x: anytype) Tan(@TypeOf(x)) {
-    switch (Tan(@TypeOf(x))) {
+/// Returns the tangent $\tan(x)$ of a float, int or bool operand. The result
+/// type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its tangent.
+///
+/// ## Signature
+/// ```zig
+/// float.tan(x: X) float.Tan(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the tangent of.
+///
+/// ## Returns
+/// `float.Tan(@TypeOf(x))`: The tangent of `x`.
+pub inline fn tan(x: anytype) float.Tan(@TypeOf(x)) {
+    switch (float.Tan(@TypeOf(x))) {
         f16 => return types.scast(f16, tan32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/s_tanf.c

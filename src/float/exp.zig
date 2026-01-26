@@ -12,8 +12,23 @@ pub fn Exp(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn exp(x: anytype) Exp(@TypeOf(x)) {
-    switch (Exp(@TypeOf(x))) {
+/// Returns the exponential $e^x$ of a float, int or bool operand. The result
+/// type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its exponential.
+///
+/// ## Signature
+/// ```zig
+/// float.exp(x: X) float.Exp(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the exponential of.
+///
+/// ## Returns
+/// `float.Exp(@TypeOf(x))`: The exponential of `x`.
+pub inline fn exp(x: anytype) float.Exp(@TypeOf(x)) {
+    switch (float.Exp(@TypeOf(x))) {
         f16 => return types.scast(f16, exp32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_expf.c

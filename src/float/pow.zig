@@ -15,8 +15,26 @@ pub fn Pow(comptime X: type, comptime Y: type) type {
     return types.EnsureFloat(types.Coerce(X, Y));
 }
 
-pub inline fn pow(x: anytype, y: anytype) Pow(@TypeOf(x), @TypeOf(y)) {
-    switch (Pow(@TypeOf(x), @TypeOf(y))) {
+/// Performs exponentiation $x^y$ between two operands of float, int or bool
+/// types. The result type is determined by coercing the operand types, and
+/// coercing the coerced type to float, and the operation is performed by
+/// casting both operands to the result type, then performing the
+/// exponentiation.
+///
+/// ## Signature
+/// ```zig
+/// float.pow(x: X, y: Y) float.Pow(X, Y)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The base value.
+/// * `y` (`anytype`): The exponent value.
+///
+/// ## Returns
+/// `float.Pow(@TypeOf(x), @TypeOf(y))`: The result of raising `x` to the power
+/// of `y`.
+pub inline fn pow(x: anytype, y: anytype) float.Pow(@TypeOf(x), @TypeOf(y)) {
+    switch (float.Pow(@TypeOf(x), @TypeOf(y))) {
         f16 => return types.scast(f16, pow32(types.scast(f32, x), types.scast(f32, y))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_powf.c

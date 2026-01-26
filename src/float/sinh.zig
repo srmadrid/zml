@@ -13,8 +13,23 @@ pub fn Sinh(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn sinh(x: anytype) Sinh(@TypeOf(x)) {
-    switch (Sinh(@TypeOf(x))) {
+/// Returns the hyperbolic sine $\sinh(x)$ of a float, int or bool operand. The
+/// result type is determined by coercing the operand type to a float, and the
+/// operation is performed by casting the operand to the result type, then
+/// computing its hyperbolic sine.
+///
+/// ## Signature
+/// ```zig
+/// float.sinh(x: X) float.Sinh(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the hyperbolic sine of.
+///
+/// ## Returns
+/// `float.Sinh(@TypeOf(x))`: The hyperbolic sine of `x`.
+pub inline fn sinh(x: anytype) float.Sinh(@TypeOf(x)) {
+    switch (float.Sinh(@TypeOf(x))) {
         f16 => return types.scast(f16, sinh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_sinhf.c

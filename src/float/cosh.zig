@@ -13,8 +13,23 @@ pub fn Cosh(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-pub inline fn cosh(x: anytype) Cosh(@TypeOf(x)) {
-    switch (Cosh(@TypeOf(x))) {
+/// Returns the hyperbolic cosine $\cosh(x)$ of a float, int or bool operand.
+/// The result type is determined by coercing the operand type to a float, and
+/// the operation is performed by casting the operand to the result type, then
+/// computing its hyperbolic cosine.
+///
+/// ## Signature
+/// ```zig
+/// float.cosh(x: X) float.Cosh(X)
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The value to get the hyperbolic cosine of.
+///
+/// ## Returns
+/// `float.Cosh(@TypeOf(x))`: The hyperbolic cosine of `x`.
+pub inline fn cosh(x: anytype) float.Cosh(@TypeOf(x)) {
+    switch (float.Cosh(@TypeOf(x))) {
         f16 => return types.scast(f16, cosh32(types.scast(f32, x))),
         f32 => {
             // https://github.com/JuliaMath/openlibm/blob/master/src/e_coshf.c
