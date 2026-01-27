@@ -1,5 +1,7 @@
 //! Namespace for rational operations.
 
+const rational = @This();
+
 const std = @import("std");
 
 const types = @import("types.zig");
@@ -15,7 +17,7 @@ const Complex = complex.Complex;
 pub var default_accuracy: u32 = 50;
 pub var default_internal_accuracy: u32 = 60;
 
-/// Arbotrary-precision rational type, represented as a fraction of two
+/// Arbitrary-precision rational type, represented as a fraction of two
 /// arbitrary-precision integers (`Integer`).
 pub const Rational = struct {
     num: Integer,
@@ -34,103 +36,75 @@ pub const Rational = struct {
         .flags = .{ .owns_data = false, .writable = false },
     };
 
-    /// Initializes a new `Rational` with the specified numerator and
-    /// denominator sizes.
+    /// Initializes a new rational with the specified numerator and denominator
+    /// sizes.
     ///
     /// Sizes of zero are allowed, resulting in a numerator or denominator with
     /// no allocated limbs.
     ///
-    /// Parameters
-    /// ----------
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory allocations.
+    /// ## Arguments
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory allocations.
+    /// * `numsize` (`u32`): The size of the numerator in limbs.
+    /// * `densize` (`u32`): The size of the denominator in limbs.
     ///
-    /// `numsize` (`u32`):
-    /// The size of the numerator in limbs.
+    /// ## Returns
+    /// `Rational`: The newly initialized rational.
     ///
-    /// `densize` (`u32`):
-    /// The size of the denominator in limbs.
-    ///
-    /// Returns
-    /// -------
-    /// `Rational`:
-    /// The newly initialized `Rational`.
-    ///
-    /// Errors
-    /// ------
-    /// `std.mem.Allocator.Error.OutOfMemory`:
-    /// If memory allocation fails.
+    /// ## Errors
+    /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
     pub fn init(allocator: std.mem.Allocator, numsize: u32, densize: u32) !Rational {
-        var num: Integer = try Integer.init(allocator, numsize);
+        var num: Integer = try .init(allocator, numsize);
         errdefer num.deinit(allocator);
-
-        var den: Integer = try Integer.init(allocator, densize);
-        errdefer den.deinit(allocator);
 
         return .{
             .num = num,
-            .den = den,
+            .den = try .init(allocator, densize),
             .flags = .{ .owns_data = true, .writable = true },
         };
     }
 
-    /// Initializes a new `Rational` with the specified numerator and
-    /// denominator.
+    /// Initializes a new rational with the specified numerator and denominator.
     ///
-    /// Signature
-    /// ---------
+    /// ## Signature
     /// ```zig
-    /// fn initSet(allocator: std.mem.Allocator, numerator: N, denominator: D) !Rational
+    /// Rational.initSet(allocator: std.mem.Allocator, numerator: N, denominator: D) !Rational
     /// ```
     ///
-    /// Parameters
-    /// ----------
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory allocations.
+    /// ## Arguments
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+    ///   allocations.
+    /// * `numerator` (`anytype`): The value to set the numerator to. Must be a
+    ///   numeric type or a string.
+    /// * `denominator` (`anytype`): The value to set the denominator to. Must
+    ///   be a numeric type or a string.
     ///
-    /// `numerator` (`anytype`):
-    /// The value to set the numerator to. Must be a numeric type or a string.
+    /// ## Returns
+    /// `Rational`: The newly initialized rational.
     ///
-    /// `denominator` (`anytype`):
-    /// The value to set the denominator to. Must be a numeric type or a string.
-    ///
-    /// Returns
-    /// -------
-    /// `Rational`:
-    /// The newly initialized `Rational`.
-    ///
-    /// Errors
-    /// ------
-    /// `std.mem.Allocator.Error.OutOfMemory`:
-    /// If memory allocation fails.
-    ///
-    /// `rational.Error.ZeroDenominator`:
-    /// If the denominator is zero.
+    /// ## Errors
+    /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+    /// * `rational.Error.ZeroDenominator`: If the denominator is zero.
     pub fn initSet(allocator: std.mem.Allocator, numerator: anytype, denominator: anytype) !Rational {
         var r: Rational = try Rational.init(allocator, 0, 0);
         errdefer r.deinit(allocator);
 
         try r.set(allocator, numerator, denominator);
+
         return r;
     }
 
-    /// Deinitializes the `Rational`, freeing any allocated memory and
+    /// Deinitializes the rational, freeing any allocated memory and
     /// invalidating it.
     ///
-    /// If the `Rational` does not own its data, no memory is freed and this
-    /// only invalidates it.
+    /// If the rational does not own its data, no memory is freed and this only
+    /// invalidates it.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*Rational`):
-    /// A pointer to the `Rational` to deinitialize.
+    /// ## Arguments
+    /// * `self` (`*Rational`): A pointer to the rational to deinitialize.
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+    ///   deallocation. Must be the same allocator used to initialize `self`.
     ///
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory deallocation. Must be the same allocator
-    /// used to initialize `self`.
-    ///
-    /// Returns
-    /// -------
+    /// ## Returns
     /// `void`
     pub fn deinit(self: *Rational, allocator: std.mem.Allocator) void {
         if (self.flags.owns_data) {
@@ -141,32 +115,26 @@ pub const Rational = struct {
         self.* = undefined;
     }
 
-    /// Reduces the `Rational` to its simplest form, ensuring that the numerator
+    /// Reduces the rational to its simplest form, ensuring that the numerator
     /// and denominator are coprime.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*Rational`):
-    /// A pointer to the `Rational` to reduce.
+    /// ## Arguments
+    /// * `self` (`*Rational`): A pointer to the rational to reduce.
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+    ///   allocations. Must be the same allocator used to initialize `self`.
     ///
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory allocations. Must be the same allocator
-    /// used to initialize `self`.
-    ///
-    /// Returns
-    /// -------
+    /// ## Returns
     /// `void`
     ///
-    /// Errors
-    /// ------
-    /// `std.mem.Allocator.Error.OutOfMemory`:
-    /// If memory allocation fails.
-    ///
-    /// `rational.Error.ZeroDenominator`:
-    /// If the denominator is zero.
+    /// ## Errors
+    /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+    /// * `rational.Error.ZeroDenominator`: If the denominator is zero.
     pub fn reduce(self: *Rational, allocator: std.mem.Allocator) !void {
         if (!self.flags.writable)
-            return Error.NotWritable;
+            return rational.Error.NotWritable;
+
+        if (integer.eq(self.den, 0))
+            return rational.Error.ZeroDenominator;
 
         var g: Integer = try integer.gcd(allocator, self.num, self.den);
         defer g.deinit(allocator);
@@ -175,62 +143,53 @@ pub const Rational = struct {
         try integer.div_(allocator, &self.den, self.den, g);
     }
 
-    /// Sets the value of the `Rational`. If either `numerator` or `denominator`
+    /// Sets the value of the rational. If either `numerator` or `denominator`
     /// is not an integer type, a full division is performed to set the value.
     ///
-    /// Signature
-    /// ---------
+    /// ## Signature
     /// ```zig
-    /// fn set(allocator: std.mem.Allocator, numerator: N, denominator: D) !void
+    /// Rational.set(self, *Rational, allocator: std.mem.Allocator, numerator: N, denominator: D) !void
     /// ```
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*Rational`):
-    /// A pointer to the `Rational` to set.
+    /// ## Arguments
+    /// * `self` (`*Rational`): A pointer to the rational to set.
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+    ///   allocations. Must be the same allocator used to initialize `self`.
+    /// * `numerator` (`anytype`): The value to set the numerator to. Must be a
+    ///   numeric type or a string. Complex values use their real part.
+    /// * `denominator` (`anytype`): The value to set the denominator to. Must
+    ///   be a numeric type or a string. Complex values use their real part.
     ///
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory allocations. Must be the same allocator
-    /// used to initialize `self`.
-    ///
-    /// `numerator` (`anytype`):
-    /// The value to set the numerator to. Must be a numeric type or a string.
-    /// Complex values use their real part.
-    ///
-    /// `denominator` (`anytype`):
-    /// The value to set the denominator to. Must be a numeric type or a string.
-    /// Complex values use their real part.
-    ///
-    /// Returns
-    /// -------
+    /// ## Returns
     /// `void`
     ///
-    /// Errors
-    /// ------
-    /// `std.mem.Allocator.Error.OutOfMemory`:
-    /// If memory allocation fails.
-    ///
-    /// `rational.Error.NotWritable`:
-    /// If the `Rational` is not writable.
-    ///
-    /// `rational.Error.NotFinite`:
-    /// If the value is a float or complex number that is not finite.
-    ///
-    /// `rational.Error.ZeroDenominator`:
-    /// If the denominator is zero.
+    /// ## Errors
+    /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+    /// * `rational.Error.NotWritable`: If the rational is not writable.
+    /// * `rational.Error.DataNotOwned`: If the integer does not own its data
+    ///   and resizing is needed.
+    /// * `rational.Error.NotFinite`: If the value is a float, dyadic or cfloat
+    ///   that is not finite.
+    /// * `rational.Error.ZeroDenominator`: If the denominator is zero.
+    /// * `integer.Error.NotWritable`: If the numerator or denominator integer
+    ///   is not writable.
+    /// * `integer.Error.DataNotOwned`: If the rational owns its data, but the
+    ///   numerator or denominator integer does not own its data and resizing is
+    ///   needed.
     pub fn set(self: *Rational, allocator: std.mem.Allocator, numerator: anytype, denominator: anytype) !void {
+        // TODO: Improve significantly
         const N: type = @TypeOf(numerator);
         const D: type = @TypeOf(denominator);
 
         if (!self.flags.writable)
-            return Error.NotWritable;
+            return rational.Error.NotWritable;
 
         if (comptime types.isNumeric(N) and types.isNumeric(D)) {
             switch (comptime types.numericType(N)) {
                 .bool => switch (comptime types.numericType(D)) {
                     .bool => {
                         if (!denominator)
-                            return Error.ZeroDenominator;
+                            return rational.Error.ZeroDenominator;
 
                         try self.num.reserve(allocator, 1);
                         try self.den.reserve(allocator, 1);
@@ -559,55 +518,41 @@ pub const Rational = struct {
         }
     }
 
-    /// Creates a copy of the `Rational`.
+    /// Creates a copy of the rational.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*const Rational`):
-    /// A pointer to the `Rational` to copy.
+    /// ## Arguments
+    /// * `self` (`*const Rational`): A pointer to the rational to copy.
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+    ///   allocations.
     ///
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory allocations.
+    /// ## Returns
+    /// `Rational`: The newly created copy of the rational.
     ///
-    /// Returns
-    /// -------
-    /// `Rational`:
-    /// The newly created copy of the `Rational`.
-    ///
-    /// Errors
-    /// ------
-    /// `std.mem.Allocator.Error.OutOfMemory`:
-    /// If memory allocation fails.
+    /// ## Errors
+    /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
     pub fn copy(self: *const Rational, allocator: std.mem.Allocator) !Rational {
         var num: Integer = try self.num.copy(allocator);
         errdefer num.deinit(allocator);
-        const den: Integer = try self.den.copy(allocator);
 
         return .{
             .num = num,
-            .den = den,
+            .den = try self.den.copy(allocator),
             .flags = .{ .owns_data = true, .writable = true },
         };
     }
 
-    /// Converts the `Rational` to an int type `Int`, performing truncation if
+    /// Converts the rational to an int type `Int`, performing truncation if
     /// necessary.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*const Rational`):
-    /// A pointer to the `Rational` to convert.
+    /// ## Arguments
+    /// * `self` (`*const Rational`): A pointer to the rational to convert.
+    /// * `Int` (`type`): The int type to convert to.
     ///
-    /// `Int` (`type`):
-    /// The int type to convert to.
-    ///
-    /// Returns
-    /// -------
-    /// `Int`:
-    /// The converted int value.
+    /// ## Returns
+    /// `Int`: The converted int value.
     pub fn toInt(self: *const Rational, comptime Int: type) Int {
-        comptime if (types.numericType(Int) != .int)
-            @compileError("rational.toInt requires Int to be an int type, got " ++ @typeName(Int));
+        comptime if (!types.isNumeric(Int) or types.numericType(Int) != .int)
+            @compileError("zml.Rational.toInt: Int must be an int type, got \n\tInt: " ++ @typeName(Int) ++ "\n");
 
         const num_f: f128 = self.num.toFloat(f128);
         const den_f: f128 = self.den.toFloat(f128);
@@ -627,26 +572,20 @@ pub const Rational = struct {
                 return int.maxVal(Int);
         }
 
-        return types.scast(Int, q);
+        return error.NotImplemented;
     }
 
-    /// Converts the `Rational` to a float type `Float`.
+    /// Converts the rational to a float type `Float`.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*const Rational`):
-    /// A pointer to the `Rational` to convert.
+    /// ## Arguments
+    /// * `self` (`*const Rational`): A pointer to the rational to convert.
+    /// * `Float` (`type`): The float type to convert to.
     ///
-    /// `Float` (`type`):
-    /// The float type to convert to.
-    ///
-    /// Returns
-    /// -------
-    /// `Float`:
-    /// The converted float value.
+    /// ## Returns
+    /// `Float`: The converted float value.
     pub fn toFloat(self: *const Rational, comptime Float: type) Float {
-        comptime if (types.numericType(Float) != .float)
-            @compileError("rational.toFloat requires Float to be a float type, got " ++ @typeName(Float));
+        comptime if (!types.isNumeric(Float) or types.numericType(Float) != .float)
+            @compileError("zml.Rational.toFloat: Float must be a float type, got \n\tFloat: " ++ @typeName(Float) ++ "\n");
 
         const num_f: f128 = self.num.toFloat(f128);
         const den_f: f128 = self.den.toFloat(f128);
@@ -654,18 +593,14 @@ pub const Rational = struct {
         return types.scast(Float, num_f / den_f);
     }
 
-    /// Returns a view of the `Rational` as a complex number with zero imaginary
-    /// part.
+    /// Returns a view of the rational as a complex.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*const Rational`):
-    /// A pointer to the `Rational` to view as a complex number.
+    /// ## Arguments
+    /// * `self` (`*const Rational`): A pointer to the rational to view as a
+    ///   complex number.
     ///
-    /// Returns
-    /// -------
-    /// `Complex(Rational)`:
-    /// The `Rational` viewed as a complex number.
+    /// ## Returns
+    /// `Complex(Rational)`: The rational viewed as a complex.
     pub fn asComplex(self: *const Rational) Complex(Rational) {
         var re: Rational = self.*;
         re.flags.owns_data = false;
@@ -677,33 +612,24 @@ pub const Rational = struct {
         };
     }
 
-    /// Converts the `Rational` into a complex number with zero imaginary part.
-    /// After the conversion, the new complex number takes ownership of the data
-    /// and the original `Rational` is invalidated.
+    /// Converts the rational into a complex. After the conversion, the new
+    /// complex takes ownership of the data and the original rational is
+    /// invalidated.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*Rational`):
-    /// A pointer to the `Rational` to convert.
+    /// ## Arguments
+    /// * `self` (`*Rational`): A pointer to the rational to convert.
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+    ///   allocations.
     ///
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory allocations.
+    /// ## Returns
+    /// `Complex(Rational)`: The newly created complex.
     ///
-    /// Returns
-    /// -------
-    /// `Complex(Rational)`:
-    /// The newly created complex number.
-    ///
-    /// Errors
-    /// ------
-    /// `std.mem.Allocator.Error.OutOfMemory`:
-    /// If memory allocation fails.
-    ///
-    /// `rational.Error.DataNotOwned`:
-    /// If the `Rational` does not own its data.
+    /// ## Errors
+    /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+    /// * `rational.Error.DataNotOwned`: If the rational does not own its data.
     pub fn toComplex(self: *Rational, allocator: std.mem.Allocator) !Complex(Rational) {
         if (!self.flags.owns_data)
-            return Error.DataNotOwned;
+            return rational.Error.DataNotOwned;
 
         const result: Complex(Rational) = .{
             .re = self,
@@ -716,26 +642,18 @@ pub const Rational = struct {
         return result;
     }
 
-    /// Creates a copy of the `Rational` as a complex number with zero imaginary
-    /// part.
+    /// Creates a copy of the rational as a complex.
     ///
-    /// Parameters
-    /// ----------
-    /// `self` (`*const Rational`):
-    /// A pointer to the `Rational` to copy.
+    /// ## Arguments
+    /// * `self` (`*const Rational`): A pointer to the rational to copy.
+    /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+    ///   allocations.
     ///
-    /// `allocator` (`std.mem.Allocator`):
-    /// The allocator to use for memory allocations.
+    /// ## Returns
+    /// `Complex(Rational)`: The newly created complex.
     ///
-    /// Returns
-    /// -------
-    /// `Complex(Rational)`:
-    /// The newly created complex number.
-    ///
-    /// Errors
-    /// ------
-    /// `std.mem.Allocator.Error.OutOfMemory`:
-    /// If memory allocation fails.
+    /// ## Errors
+    /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
     pub fn copyToComplex(self: *const Rational, allocator: std.mem.Allocator) !Complex(Rational) {
         var re: Rational = try self.copy(allocator);
         errdefer re.deinit(allocator);
@@ -775,6 +693,7 @@ pub const Error = error{
     ZeroDenominator,
     ZeroDivision,
     NotWritable,
+    DataNotOwned,
 };
 
 pub const Flags = packed struct {
