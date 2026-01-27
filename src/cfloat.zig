@@ -18,13 +18,13 @@ pub const cf128 = Cfloat(f128);
 /// Compile-time complex type, represented as two compile-time floats.
 pub const comptime_cfloat = Cfloat(comptime_float);
 
-pub fn Cfloat(comptime T: type) type {
-    if (!types.isNumeric(T) or (types.numericType(T) != .float and types.numericType(T) != .dyadic))
-        @compileError("zml.Cfloat: T must be a float or dyadic type, got \n\tT: " ++ @typeName(T) ++ "\n");
+pub fn Cfloat(comptime N: type) type {
+    if (!types.isNumeric(N) or types.isAllocated(N) or types.isIntegral(N))
+        @compileError("zml.Cfloat: N must be a non-integral non-allocated numeric type, got \n\tN: " ++ @typeName(N) ++ "\n");
 
     return struct {
-        re: T,
-        im: T,
+        re: N,
+        im: N,
 
         /// Type signature
         pub const is_cfloat = {};
@@ -32,30 +32,30 @@ pub fn Cfloat(comptime T: type) type {
         pub const is_signed = {};
 
         /// Scalar type
-        pub const Scalar = T;
+        pub const Scalar = N;
 
-        pub fn init(re: T, im: T) Cfloat(T) {
+        pub fn init(re: N, im: N) Cfloat(N) {
             return .{
                 .re = re,
                 .im = im,
             };
         }
 
-        pub fn initReal(re: T) Cfloat(T) {
+        pub fn initReal(re: N) Cfloat(N) {
             return .{
                 .re = re,
-                .im = constants.zero(T, .{}) catch unreachable,
+                .im = constants.zero(N, .{}) catch unreachable,
             };
         }
 
-        pub fn initImag(im: T) Cfloat(T) {
+        pub fn initImag(im: N) Cfloat(N) {
             return .{
-                .re = constants.zero(T, .{}) catch unreachable,
+                .re = constants.zero(N, .{}) catch unreachable,
                 .im = im,
             };
         }
 
-        pub fn initPolar(r: T, theta: T) Cfloat(T) {
+        pub fn initPolar(r: N, theta: N) Cfloat(N) {
             return .{
                 .re = ops.mul(
                     r,
@@ -70,7 +70,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn add(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
+        pub fn add(x: Cfloat(N), y: Cfloat(N)) Cfloat(N) {
             return .{
                 .re = ops.add(
                     x.re,
@@ -85,7 +85,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn addReal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn addReal(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = ops.add(
                     x.re,
@@ -96,7 +96,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn addImag(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn addImag(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = x.re,
                 .im = ops.add(
@@ -107,7 +107,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn sub(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
+        pub fn sub(x: Cfloat(N), y: Cfloat(N)) Cfloat(N) {
             return .{
                 .re = ops.sub(
                     x.re,
@@ -122,7 +122,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn subReal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn subReal(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = ops.sub(
                     x.re,
@@ -133,7 +133,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn subImag(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn subImag(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = x.re,
                 .im = ops.sub(
@@ -144,10 +144,10 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn mul(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
+        pub fn mul(x: Cfloat(N), y: Cfloat(N)) Cfloat(N) {
             return .{
                 .re = ops.fma(
-                    T,
+                    N,
                     x.re,
                     y.re,
                     ops.mul(
@@ -158,7 +158,7 @@ pub fn Cfloat(comptime T: type) type {
                     .{},
                 ) catch unreachable,
                 .im = ops.fma(
-                    T,
+                    N,
                     x.re,
                     y.im,
                     ops.mul(
@@ -171,7 +171,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn mulReal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn mulReal(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = ops.mul(
                     x.re,
@@ -186,7 +186,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn mulImag(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn mulImag(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = ops.mul(
                     ops.neg(x.im, .{}) catch unreachable,
@@ -201,7 +201,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn div(x: Cfloat(T), y: Cfloat(T)) Cfloat(T) {
+        pub fn div(x: Cfloat(N), y: Cfloat(N)) Cfloat(N) {
             if (ops.lt(
                 ops.abs(y.im, .{}) catch unreachable,
                 ops.abs(y.re, .{}) catch unreachable,
@@ -287,7 +287,7 @@ pub fn Cfloat(comptime T: type) type {
             }
         }
 
-        pub fn divReal(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn divReal(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = ops.div(
                     x.re,
@@ -302,7 +302,7 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn divImag(x: Cfloat(T), y: T) Cfloat(T) {
+        pub fn divImag(x: Cfloat(N), y: N) Cfloat(N) {
             return .{
                 .re = ops.div(
                     x.im,
@@ -317,21 +317,21 @@ pub fn Cfloat(comptime T: type) type {
             };
         }
 
-        pub fn conj(self: Cfloat(T)) Cfloat(T) {
+        pub fn conj(self: Cfloat(N)) Cfloat(N) {
             return .{
                 .re = self.re,
                 .im = ops.neg(self.im, .{}) catch unreachable,
             };
         }
 
-        pub fn neg(self: Cfloat(T)) Cfloat(T) {
+        pub fn neg(self: Cfloat(N)) Cfloat(N) {
             return .{
                 .re = ops.neg(self.re, .{}) catch unreachable,
                 .im = ops.neg(self.im, .{}) catch unreachable,
             };
         }
 
-        pub fn inverse(self: Cfloat(T)) Cfloat(T) {
+        pub fn inverse(self: Cfloat(N)) Cfloat(N) {
             const s = ops.div(
                 1,
                 ops.hypot(self.re, self.im, .{}) catch unreachable,

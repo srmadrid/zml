@@ -9,13 +9,13 @@ const _real = @import("real.zig");
 
 /// Arbitrary-precision complex type, represented as two arbitrary-precision
 /// rational (`Rational`) or real (`Real`) numbers.
-pub fn Complex(comptime T: type) type {
-    if (T != rational.Rational and T != _real.Real)
-        @compileError("Unsupported type for Complex: " ++ @typeName(T));
+pub fn Complex(comptime N: type) type {
+    if (!types.isNumeric(N) or !types.isAllocated(N) or types.isIntegral(N))
+        @compileError("zml.Complex: N must be a non-integral allocated numeric type, got \n\tN: " ++ @typeName(N) ++ "\n");
 
     return struct {
-        re: T,
-        im: T,
+        re: N,
+        im: N,
         flags: Flags,
 
         /// Type signature
@@ -25,75 +25,62 @@ pub fn Complex(comptime T: type) type {
         pub const is_allocated = true;
 
         /// Scalar type
-        pub const Scalar = T;
+        pub const Scalar = N;
 
-        pub const empty: Complex(T) = .{
+        pub const empty: Complex(N) = .{
             .re = .empty,
             .im = .empty,
             .flags = .{ .owns_data = false, .writable = false },
         };
 
-        /// Initializes a new `Complex` with the specified numerator and
-        /// denominator.
+        /// Initializes a new complex with the specified real and imaginary
+        /// parts.
         ///
-        /// Signature
-        /// ---------
+        /// ## Signature
         /// ```zig
-        /// fn initSet(allocator: std.mem.Allocator, real: R, imaginary: I) !Complex
+        /// Complex(N).initSet(allocator: std.mem.Allocator, real: R, imaginary: I) !Complex
         /// ```
         ///
-        /// Parameters
-        /// ----------
-        /// `allocator` (`std.mem.Allocator`):
-        /// The allocator to use for memory allocations.
+        /// ## Arguments
+        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+        ///   allocations.
+        /// * `real` (`anytype`): The value to set the real part to. Must be a
+        ///   numeric or a string.
+        /// * `imaginary` (`anytype`): The value to set the imaginary part to.
+        ///   Must be a numeric or a string.
         ///
-        /// `real` (`anytype`):
-        /// The value to set the real part to. Must be a numeric type or a
-        /// string.
+        /// ## Returns
+        /// `Complex(N)`: The newly initialized complex.
         ///
-        /// `imaginary` (`anytype`):
-        /// The value to set the imaginary part to. Must be a numeric type or a
-        /// string.
-        ///
-        /// Returns
-        /// -------
-        /// `Complex`:
-        /// The newly initialized `Complex`.
-        ///
-        /// Errors
-        /// ------
-        /// `std.mem.Allocator.Error.OutOfMemory`:
-        /// If memory allocation fails.
-        pub fn initSet(allocator: std.mem.Allocator, real: anytype, imaginary: anytype) !Complex(T) {
-            var c: Complex(T) = undefined;
+        /// ## Errors
+        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+        pub fn initSet(allocator: std.mem.Allocator, real: anytype, imaginary: anytype) !Complex(N) {
+            var c: Complex(N) = undefined;
             c.re = try .init(allocator, 0, 0);
             c.im = try .init(allocator, 0, 0);
             c.flags = .{ .owns_data = true, .writable = true };
             errdefer c.deinit(allocator);
 
             try c.set(allocator, real, imaginary);
+
             return c;
         }
 
-        /// Deinitializes the `Complex`, freeing any allocated memory and
+        /// Deinitializes the complex, freeing any allocated memory and
         /// invalidating it.
         ///
-        /// If the `Complex` does not own its data, no memory is freed and this
+        /// If the complex does not own its data, no memory is freed and this
         /// only invalidates it.
         ///
-        /// Parameters
-        /// ----------
-        /// `self` (`*Complex`):
-        /// A pointer to the `Complex` to deinitialize.
+        /// ## Arguments
+        /// * `self` (`*Complex(N)`): A pointer to the complex to deinitialize.
+        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+        ///   deallocation. Must be the same allocator used to initialize
+        ///   `self`.
         ///
-        /// `allocator` (`std.mem.Allocator`):
-        /// The allocator to use for memory deallocation. Must be the same
-        /// allocator used to initialize `self`.
-        ///
-        /// Returns
-        /// -------
+        /// ## Returns
         /// `void`
-        pub fn deinit(self: *Complex(T), allocator: std.mem.Allocator) void {
+        pub fn deinit(self: *Complex(N), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
                 self.re.deinit(allocator);
                 self.im.deinit(allocator);
@@ -102,55 +89,32 @@ pub fn Complex(comptime T: type) type {
             self.* = undefined;
         }
 
-        /// Sets the value of the `Complex`.
+        /// Sets the value of the complex.
         ///
-        /// Signature
-        /// ---------
+        /// ## Signature
         /// ```zig
-        /// fn set(allocator: std.mem.Allocator, real: R, imaginary: I) !void
+        /// Complex(N).set(allocator: std.mem.Allocator, real: R, imaginary: I) !void
         /// ```
         ///
-        /// Parameters
-        /// ----------
-        /// `self` (`*Complex`):
-        /// A pointer to the `Complex` to set.
+        /// ## Arguments
+        /// * `self` (`*Complex(N)`): A pointer to the complex to set.
+        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+        ///   allocations. Must be the same allocator used to initialize `self`.
+        /// * `real` (`anytype`): The value to set the real part to. Must be a
+        ///   numeric or a string. Complex values use their real part.
+        /// * `imaginary` (`anytype`): The value to set the imaginary part to.
+        ///   Must be a numeric or a string. Complex values use their real part.
         ///
-        /// `allocator` (`std.mem.Allocator`):
-        /// The allocator to use for memory allocations. Must be the same
-        /// allocator used to initialize `self`.
-        ///
-        /// `real` (`anytype`):
-        /// The value to set the real part to. Must be a numeric type or a
-        /// string. Complex values use their real part.
-        ///
-        /// `imaginary` (`anytype`):
-        /// The value to set the imaginary part to. Must be a numeric type or a
-        /// string. Complex values use their real part.
-        ///
-        /// Returns
-        /// -------
+        /// ## Returns
         /// `void`
         ///
-        /// Errors
-        /// ------
-        /// `std.mem.Allocator.Error.OutOfMemory`:
-        /// If memory allocation fails.
-        ///
-        /// `complex.Error.NotWritable`:
-        /// If the `Rational` is not writable.
-        ///
-        /// `complex.Error.NotFinite`:
-        /// If either value is a float or complex number that is not finite.
-        pub fn set(self: *Complex(T), allocator: std.mem.Allocator, real: anytype, imaginary: anytype) !void {
-            comptime var S: type = @TypeOf(self);
-
-            comptime if (!types.isPointer(S) or types.isConstPointer(S))
-                @compileError("complex.set requires self to be a mutable pointer, got " ++ @typeName(S));
-
-            S = types.Child(S);
-
-            comptime if (types.numericType(S) != .complex)
-                @compileError("complex.set requires self to be a complex, got " ++ @typeName(S));
+        /// ## Errors
+        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+        /// * `complex.Error.NotWritable`: If the `Rational` is not writable.
+        /// * `complex.Error.NotFinite`: If either value is a float or cfloat
+        ///   number that is not finite.
+        pub fn set(self: *Complex(N), allocator: std.mem.Allocator, real: anytype, imaginary: anytype) !void {
+            // TODO: improve greatly
 
             if (!self.flags.writable)
                 return Error.NotWritable;
@@ -159,29 +123,22 @@ pub fn Complex(comptime T: type) type {
             try self.im.set(allocator, imaginary);
         }
 
-        /// Creates a copy of the `Complex`.
+        /// Creates a copy of the complex.
         ///
-        /// Parameters
-        /// ----------
-        /// `self` (`*const Complex`):
-        /// A pointer to the `Complex` to copy.
+        /// ## Arguments
+        /// * `self` (`*const Complex`): A pointer to the complex to copy.
+        /// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+        ///   allocations.
         ///
-        /// `allocator` (`std.mem.Allocator`):
-        /// The allocator to use for memory allocations.
+        /// ## Returns
+        /// `Complex(N)`: The newly created copy of the complex.
         ///
-        /// Returns
-        /// -------
-        /// `Complex`:
-        /// The newly created copy of the `Complex`.
-        ///
-        /// Errors
-        /// ------
-        /// `std.mem.Allocator.Error.OutOfMemory`:
-        /// If memory allocation fails.
-        pub fn copy(self: *const Complex(T), allocator: std.mem.Allocator) !Complex(T) {
-            var re: T = try self.re.copy(allocator);
+        /// ## Errors
+        /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+        pub fn copy(self: *const Complex(N), allocator: std.mem.Allocator) !Complex(N) {
+            var re: N = try self.re.copy(allocator);
             errdefer re.deinit(allocator);
-            const im: T = try self.im.copy(allocator);
+            const im: N = try self.im.copy(allocator);
 
             return .{
                 .re = re,
