@@ -5,70 +5,62 @@ const int = @import("../int.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
-/// Performs in-place addition between two operands of any numeric type in
-/// `Integer` precision. Float, rational or real types are truncated towards
-/// zero, and for cfloat or complex types, only the real part is considered.
+/// Performs in-place addition between two operands of any numeric type in i
+/// nteger precision. The operation is performed by casting both operands to
+/// integer, then adding them in-place.
 ///
 /// Aliasing between the output operand `o` and the input operands `x` or `y` is
 /// allowed.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn add_(allocator: std.mem.Allocator, o: *Integer, x: X, y: Y, ctx: anytype) !void
+/// integer.add_(allocator: std.mem.Allocator, o: *Integer, x: X, y: Y) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`std.mem.Allocator`):
-/// The allocator to use for memory allocations. Must be the same allocator used
-/// to initialize `o`.
+/// ## Arguments
+/// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+///   allocations. Must be the same allocator used to initialize `o`.
+/// * `o` (`*Integer`): A pointer to the output operand where the result will be
+///   stored.
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `o` (`*Integer`):
-/// A pointer to the output operand where the result will be stored.
-///
-/// `x` (`anytype`):
-/// The left operand.
-///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
+/// ## Returns
 /// `void`
 ///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails.
-///
-/// `integer.Error.NotWritable`:
-/// If the output operand `o` is not writable.
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+/// * `integer.Error.NotWritable`: If the output operand `o` is not writable.
 pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !void {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("integer.add_ requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.integer.add_: x and y must be numerics, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     if (!o.flags.writable)
         return integer.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
+        .custom => @compileError("zml.integer.add_: custom numeric types not supported yet"),
         .complex => switch (comptime types.numericType(Y)) {
+            .custom => @compileError("zml.integer.add_: custom numeric types not supported yet"),
             .complex => return add_(allocator, o, x.re, y.re),
-            .real => @compileError("integer.add_ not implemented for Complex + Real yet"),
+            .real => @compileError("integer.add_: complex + real not supported yet"),
             .rational => return add_(allocator, o, x.re, y),
             .integer => return add_(allocator, o, x.re, y),
             .cfloat => return add_(allocator, o, x.re, y.re),
+            .dyadic => @compileError("zml.integer.add_: dyadic types not supported yet"),
             .float => return add_(allocator, o, x.re, y),
             .int => return add_(allocator, o, x.re, y),
             .bool => return add_(allocator, o, x.re, y),
         },
-        .real => @compileError("integer.add_ not implemented for Real yet"),
+        .real => @compileError("zml.integer.add_: real not supported yet"),
         .rational => switch (comptime types.numericType(Y)) {
+            .custom => @compileError("zml.integer.add_: custom numeric types not supported yet"),
             .complex => return add_(allocator, o, x, y.re),
-            .real => @compileError("integer.add_ not implemented for Rational + Real yet"),
+            .real => @compileError("zml.integer.add_: rational + real not supported yet"),
             .rational => {
                 var tx: Integer = try integer.div(allocator, x.num, x.den);
                 defer tx.deinit(allocator);
@@ -82,6 +74,7 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 return add_(allocator, o, tx, y);
             },
             .cfloat => return add_(allocator, o, x, y.re),
+            .dyadic => @compileError("zml.integer.add_: dyadic types not supported yet"),
             .float => {
                 var tx: Integer = try integer.div(allocator, x.num, x.den);
                 defer tx.deinit(allocator);

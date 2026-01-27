@@ -13,10 +13,13 @@ const Real = real.Real;
 const complex = @import("../complex.zig");
 const Complex = complex.Complex;
 
-/// Casts a value of any numeric type to any fixed precision numeric type.
-///
-/// It is a more concise version of `cast` that does not require any options and
-/// cannot return an error.
+
+EDIT SCAST TO BE ABLE TO CAST TO ALLOCATED TYPES, BUT WITHOUT ALLOCATIONS, I.E.,
+ONLY ALLOW CASES WHERE THE TARGET TYPE CAN BE CONSTRUCTED WITHOUT ALLOCATIONS
+FROM THE SOURCE TYPE
+/// Casts a value of any numeric type to any numeric type, without allocation.
+/// Some casts may lead to runtime panics if the value cannot be represented
+/// in the target type.
 ///
 /// Parameters
 /// ----------
@@ -41,8 +44,9 @@ pub inline fn scast(
     const I: type = @TypeOf(value);
     const O: type = T;
 
-    comptime if (types.isAllocated(O))
-        @compileError("Expected a fixed precision type, but got " ++ @typeName(O));
+    comptime if (!types.isNumeric(I) or !types.isNumeric(O))
+        @compileError("zml.types.scast: value and T must be numerics, got\n\tvalue: " ++
+            @typeName(I) ++ "\n\tT: " ++ @typeName(O) ++ "\n");
 
     if (comptime I == O)
         return value;
