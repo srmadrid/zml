@@ -4,42 +4,38 @@ const types = @import("../types.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
-/// Performs multiplication between two operands of any numeric type in
-/// `Integer` precision. Float, rational or real types are truncated towards
-/// zero, and for cfloat or complex types, only the real part is considered.
+/// Performs multiplication between two operands of any numeric type in integer
+/// precision. The operation is performed by casting both operands to integer,
+/// then multiplying them.
 ///
-/// Signature
-/// ---------
+/// If either `x` or `y` is of custom numeric type, that type must implement the
+/// required `copyToInteger` method. The expected signature and behavior of
+/// `copyToInteger` are as follows:
+/// * `fn copyToInteger(self: *const @This(), allocator: std.mem.Allocator) !Integer`:
+///   Initializes and returns a new integer representing the value of the
+///   instance.
+///
+/// ## Signature
 /// ```zig
-/// fn mul(allocator: std.mem.Allocator, x: X, y: Y) !Integer
+/// integer.mul(x: X, y: Y) !Integer
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`std.mem.Allocator`):
-/// The allocator to use for memory allocations.
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `x` (`anytype`):
-/// The left operand.
+/// ## Returns
+/// `Integer`: The result of the multiplication.
 ///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
-/// `Integer`:
-/// The result of the multiplication.
-///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails.
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
 pub fn mul(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("integer.mul requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.integer.mul: x and y must be numerics, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     var result: Integer = try .init(allocator, 0);
     errdefer result.deinit(allocator);

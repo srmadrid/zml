@@ -460,7 +460,7 @@ pub inline fn deinit(
         },
         .custom => {
             if (comptime types.isAllocated(X)) {
-                if (comptime !types.hasMethod(X, "deinit", fn (*X) void, &.{}))
+                if (comptime !types.hasMethod(X, "deinit", fn (*X, std.mem.Allocator) void, &.{}))
                     @compileError("zml.deinit: custom numeric type " ++ @typeName(X) ++ " must have a `deinit` declaration");
 
                 comptime types.validateContext(

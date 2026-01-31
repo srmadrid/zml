@@ -8,6 +8,13 @@ const Integer = integer.Integer;
 /// precision. The operation is performed by casting both operands to integer,
 /// then adding them.
 ///
+/// If either `x` or `y` is of custom numeric type, that type must implement the
+/// required `copyToInteger` method. The expected signature and behavior of
+/// `copyToInteger` are as follows:
+/// * `fn copyToInteger(self: *const @This(), allocator: std.mem.Allocator) !Integer`:
+///   Initializes and returns a new integer representing the value of the
+///   instance.
+///
 /// ## Signature
 /// ```zig
 /// integer.add(x: X, y: Y) !Integer

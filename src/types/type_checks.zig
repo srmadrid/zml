@@ -586,6 +586,7 @@ pub fn isIntegral(comptime N: type) bool {
     switch (comptime types.numericType(N)) {
         .bool => return true,
         .int => return true,
+        .float => return false,
         else => return @hasDecl(N, "is_integral"),
     }
 }

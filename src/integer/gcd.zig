@@ -1,102 +1,282 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
+const ops = @import("../ops.zig");
 const int = @import("../int.zig");
-const float = @import("../float.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
-/// Compute the greatest common divisor of two numbers in `Integer` precision.
-/// Float, rational or real types are truncated towards zero, and for cfloat or
-/// complex types, only the real part is considered.
+/// Computes the greatest common divisor between two operands of any numeric
+/// type in integer precision. The operation is performed by casting both
+/// operands to integer, then applying the binary GCD algorithm.
 ///
-/// Signature
-/// ---------
+/// If either `x` or `y` is of custom numeric type, that type must implement the
+/// required `copyToInteger` method. The expected signature and behavior of
+/// `copyToInteger` are as follows:
+/// * `fn copyToInteger(self: *const @This(), allocator: std.mem.Allocator) !Integer`:
+///   Initializes and returns a new integer representing the value of the
+///   instance.
+///
+/// ## Signature
 /// ```zig
-/// fn gcd(allocator: std.mem.Allocator, x: X, y: Y) !Integer
+/// integer.gcd(x: X, y: Y) !Integer
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`std.mem.Allocator`):
-/// The allocator to use for memory allocations.
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `x` (`anytype`):
-/// The left operand.
+/// ## Returns
+/// `Integer`: The greatest common divisor of `x` and `y`.
 ///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
-/// `Integer`:
-/// The greatest common divisor of `x` and `y`.
-///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails.
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
 pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("integer.gcd requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+        @compileError("zml.integer.gcd: x and y must be numerics, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     switch (comptime types.numericType(X)) {
-        .complex => switch (comptime types.numericType(Y)) {
+        .custom => switch (comptime types.numericType(Y)) {
+            .custom => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ops.deinit(&ty, .{ .allocator = allocator });
+
+                return gcd(allocator, tx, ty);
+            },
             .complex => return gcd(allocator, x.re, y.re),
-            .real => @compileError("integer. gcd not implemented for Complex + Real yet"),
+            .real => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ops.deinit(&ty, .{ .allocator = allocator });
+
+                return gcd(allocator, tx, ty);
+            },
+            .rational => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ops.deinit(&ty, .{ .allocator = allocator });
+
+                return gcd(allocator, tx, ty);
+            },
+            .integer => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+
+                return gcd(allocator, tx, y);
+            },
+            .cfloat => return gcd(allocator, x.re, y.re),
+            .dyadic => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx, ty[0]);
+            },
+            .float => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx, ty[0]);
+            },
+            .int => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx, ty[0]);
+            },
+            .bool => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer ops.deinit(&tx, .{ .allocator = allocator });
+
+                return gcd(
+                    allocator,
+
+                    tx,
+                    types.cast(Integer, y, .{}) catch unreachable,
+                );
+            },
+        },
+        .complex => switch (comptime types.numericType(Y)) {
+            .custom => return gcd(allocator, x.re, y),
+            .complex => return gcd(allocator, x.re, y.re),
+            .real => return gcd(allocator, x.re, y),
             .rational => return gcd(allocator, x.re, y),
             .integer => return gcd(allocator, x.re, y),
             .cfloat => return gcd(allocator, x.re, y.re),
+            .dyadic => return gcd(allocator, x.re, y),
             .float => return gcd(allocator, x.re, y),
             .int => return gcd(allocator, x.re, y),
             .bool => return gcd(allocator, x.re, y),
         },
-        .real => @compileError("integer. gcd not implemented for Real yet"),
-        .rational => switch (comptime types.numericType(Y)) {
-            .complex => return gcd(allocator, x, y.re),
-            .real => @compileError("integer. gcd not implemented for Rational + Real yet"),
-            .rational => {
-                var tx: Integer = try integer.div(allocator, x.num, x.den);
+        .real => switch (comptime types.numericType(Y)) {
+            .custom => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
                 defer tx.deinit(allocator);
-                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
                 defer ty.deinit(allocator);
+
+                return gcd(allocator, tx, ty);
+            },
+            .complex => return gcd(allocator, x, y.re),
+            .real => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx, ty);
+            },
+            .rational => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
                 return gcd(allocator, tx, ty);
             },
             .integer => {
-                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
                 defer tx.deinit(allocator);
+
                 return gcd(allocator, tx, y);
             },
             .cfloat => return gcd(allocator, x, y.re),
+            .dyadic => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx, ty[0]);
+            },
             .float => {
-                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
                 defer tx.deinit(allocator);
                 var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, tx, ty[0]);
             },
             .int => {
-                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
                 defer tx.deinit(allocator);
                 var ty = @import("../int/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, tx, ty[0]);
             },
             .bool => {
-                var tx: Integer = try integer.div(allocator, x.num, x.den);
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
                 defer tx.deinit(allocator);
-                return gcd(allocator, tx, types.cast(Integer, y, .{}) catch unreachable);
+
+                return gcd(
+                    allocator,
+
+                    tx,
+                    types.cast(Integer, y, .{}) catch unreachable,
+                );
+            },
+        },
+        .rational => switch (comptime types.numericType(Y)) {
+            .custom => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx, ty);
+            },
+            .complex => return gcd(allocator, x, y.re),
+            .real => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx, ty);
+            },
+            .rational => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx, ty);
+            },
+            .integer => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+
+                return gcd(allocator, tx, y);
+            },
+            .cfloat => return gcd(allocator, x, y.re),
+            .dyadic => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx, ty[0]);
+            },
+            .float => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx, ty[0]);
+            },
+            .int => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx, ty[0]);
+            },
+            .bool => {
+                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
+                defer tx.deinit(allocator);
+
+                return gcd(
+                    allocator,
+
+                    tx,
+                    types.cast(Integer, y, .{}) catch unreachable,
+                );
             },
         },
         .integer => switch (comptime types.numericType(Y)) {
-            .complex => return gcd(allocator, x, y.re),
-            .real => @compileError("integer. gcd not implemented for Integer + Real yet"),
-            .rational => {
-                var ty: Integer = try integer.div(allocator, y.num, y.den);
+            .custom => {
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
                 defer ty.deinit(allocator);
+
+                return gcd(allocator, x, ty);
+            },
+            .complex => return gcd(allocator, x, y.re),
+            .real => {
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, x, ty);
+            },
+            .rational => {
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
                 return gcd(allocator, x, ty);
             },
             .integer => {
@@ -166,51 +346,159 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                 return a;
             },
             .cfloat => return gcd(allocator, x, y.re),
+            .dyadic => {
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, x, ty[0]);
+            },
             .float => {
                 var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, x, ty[0]);
             },
             .int => {
                 var ty = @import("../int/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, x, ty[0]);
             },
-            .bool => {
-                return gcd(allocator, x, types.cast(Integer, y, .{}) catch unreachable);
-            },
+            .bool => return gcd(
+                allocator,
+
+                x,
+                types.cast(Integer, y, .{}) catch unreachable,
+            ),
         },
         .cfloat => switch (comptime types.numericType(Y)) {
+            .custom => return gcd(allocator, x.re, y),
             .complex => return gcd(allocator, x.re, y.re),
-            .real => @compileError("integer. gcd not implemented for CFloat + Real yet"),
+            .real => return gcd(allocator, x.re, y),
             .rational => return gcd(allocator, x.re, y),
             .integer => return gcd(allocator, x.re, y),
             .cfloat => return gcd(allocator, x.re, y.re),
+            .dyadic => return gcd(allocator, x.re, y),
             .float => return gcd(allocator, x.re, y),
             .int => return gcd(allocator, x.re, y),
             .bool => return gcd(allocator, x.re, y),
         },
-        .float => switch (comptime types.numericType(Y)) {
+        .dyadic => switch (comptime types.numericType(Y)) {
+            .custom => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx[0], ty);
+            },
             .complex => return gcd(allocator, x, y.re),
-            .real => @compileError("integer. gcd not implemented for Float + Real yet"),
+            .real => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx[0], ty);
+            },
+            .rational => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx[0], ty);
+            },
+            .integer => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+
+                return gcd(allocator, tx[0], y);
+            },
+            .cfloat => return gcd(allocator, x, y.re),
+            .dyadic => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx[0], ty[0]);
+            },
+            .float => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx[0], ty[0]);
+            },
+            .int => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx[0], ty[0]);
+            },
+            .bool => {
+                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+
+                return gcd(
+                    allocator,
+
+                    tx[0],
+                    types.cast(Integer, y, .{}) catch unreachable,
+                );
+            },
+        },
+        .float => switch (comptime types.numericType(Y)) {
+            .custom => {
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx[0], ty);
+            },
+            .complex => return gcd(allocator, x, y.re),
+            .real => {
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx[0], ty);
+            },
             .rational => {
                 var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
                 defer ty.deinit(allocator);
+
                 return gcd(allocator, tx[0], ty);
             },
             .integer => {
                 var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
+
                 return gcd(allocator, tx[0], y);
             },
             .cfloat => return gcd(allocator, x, y.re),
+            .dyadic => {
+                var tx = try @import("../float/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx[0], ty[0]);
+            },
             .float => {
                 var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, tx[0], ty[0]);
             },
             .int => {
@@ -218,35 +506,68 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                 tx[0].limbs = &tx[1];
                 var ty = @import("../int/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, tx[0], ty[0]);
             },
             .bool => {
                 var tx = try @import("../float/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                return gcd(allocator, tx[0], types.cast(Integer, y, .{}) catch unreachable);
+
+                return gcd(
+                    allocator,
+
+                    tx[0],
+                    types.cast(Integer, y, .{}) catch unreachable,
+                );
             },
         },
         .int => switch (comptime types.numericType(Y)) {
+            .custom => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx[0], ty);
+            },
             .complex => return gcd(allocator, x, y.re),
-            .real => @compileError("integer. gcd not implemented for Int + Real yet"),
+            .real => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(allocator, tx[0], ty);
+            },
             .rational => {
                 var tx = @import("../int/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                var ty: Integer = try integer.div(allocator, y.num, y.den);
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
                 defer ty.deinit(allocator);
+
                 return gcd(allocator, tx[0], ty);
             },
             .integer => {
                 var tx = @import("../int/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
+
                 return gcd(allocator, tx[0], y);
             },
             .cfloat => return gcd(allocator, x, y.re),
+            .dyadic => {
+                var tx = @import("../int/asInteger.zig").asInteger(x);
+                tx[0].limbs = &tx[1];
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(allocator, tx[0], ty[0]);
+            },
             .float => {
                 var tx = @import("../int/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
                 var ty = try @import("../float/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, tx[0], ty[0]);
             },
             .int => {
@@ -254,44 +575,102 @@ pub fn gcd(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
                 tx[0].limbs = &tx[1];
                 var ty = @import("../int/asInteger.zig").asInteger(y);
                 ty[0].limbs = &ty[1];
+
                 return gcd(allocator, tx[0], ty[0]);
             },
             .bool => {
                 var tx = @import("../int/asInteger.zig").asInteger(x);
                 tx[0].limbs = &tx[1];
-                return gcd(allocator, tx[0], types.cast(Integer, y, .{}) catch unreachable);
+
+                return gcd(
+                    allocator,
+
+                    tx[0],
+                    types.cast(Integer, y, .{}) catch unreachable,
+                );
             },
         },
         .bool => switch (comptime types.numericType(Y)) {
-            .complex => return gcd(allocator, x, y.re),
-            .real => @compileError("integer. gcd not implemented for Bool + Real yet"),
-            .rational => {
-                var ty: Integer = try integer.div(allocator, y.num, y.den);
+            .custom => {
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
                 defer ty.deinit(allocator);
-                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, ty);
-            },
-            .integer => {
-                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, y);
-            },
-            .cfloat => return gcd(allocator, x, y.re),
-            .float => {
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, ty[0]);
-            },
-            .int => {
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-                return gcd(allocator, types.cast(Integer, x, .{}) catch unreachable, ty[0]);
-            },
-            .bool => {
+
                 return gcd(
                     allocator,
 
                     types.cast(Integer, x, .{}) catch unreachable,
-                    types.cast(Integer, y, .{}) catch unreachable,
+                    ty,
                 );
             },
+            .complex => return gcd(allocator, x, y.re),
+            .real => {
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(
+                    allocator,
+
+                    types.cast(Integer, x, .{}) catch unreachable,
+                    ty,
+                );
+            },
+            .rational => {
+                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
+                defer ty.deinit(allocator);
+
+                return gcd(
+                    allocator,
+
+                    types.cast(Integer, x, .{}) catch unreachable,
+                    ty,
+                );
+            },
+            .integer => return gcd(
+                allocator,
+
+                types.cast(Integer, x, .{}) catch unreachable,
+                y,
+            ),
+            .cfloat => return gcd(allocator, x, y.re),
+            .dyadic => {
+                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(
+                    allocator,
+
+                    types.cast(Integer, x, .{}) catch unreachable,
+                    ty[0],
+                );
+            },
+            .float => {
+                var ty = try @import("../float/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(
+                    allocator,
+
+                    types.cast(Integer, x, .{}) catch unreachable,
+                    ty[0],
+                );
+            },
+            .int => {
+                var ty = @import("../int/asInteger.zig").asInteger(y);
+                ty[0].limbs = &ty[1];
+
+                return gcd(
+                    allocator,
+
+                    types.cast(Integer, x, .{}) catch unreachable,
+                    ty[0],
+                );
+            },
+            .bool => return gcd(
+                allocator,
+
+                types.cast(Integer, x, .{}) catch unreachable,
+                types.cast(Integer, y, .{}) catch unreachable,
+            ),
         },
     }
 }

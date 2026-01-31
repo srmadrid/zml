@@ -15,13 +15,12 @@ const _two: u32 = 2;
 
 /// Returns the additive identity (zero) for the given numeric type `N`.
 ///
-/// If `N` is a custom type, it should implement the required `zero` method. If
-/// the method is not found, it must be provided via the context. The expected
-/// signature and behavior of `zero` are as follows:
-/// * Non-allocated: `fn zero() N` - Returns the zero value.
-/// * Allocated: `fn zero(allocator: ?std.mem.Allocator) !N` - Returns the zero
-///   as a newly allocated value, if the allocator is provided, or a read-only
-///   view if not.
+/// If `N` is a custom numeric type, it should implement the required `zero`
+/// method. If the method is not found, it must be provided via the context. The
+/// expected signature and behavior of `zero` are as follows:
+/// * Non-allocated: `fn zero() N`: Returns the zero value.
+/// * Allocated: `fn zero(?std.mem.Allocator) !N`: Returns the zero as a newly
+///   allocated value, if the allocator is provided, or a read-only view if not.
 ///
 /// ## Arguments
 /// * `N` (`comptime type`): The type to generate the zero value for.
@@ -50,11 +49,11 @@ const _two: u32 = 2;
 /// ```
 /// * Allocated type (without allocator):
 /// ```zig
-/// const zero = zml.zero(zml.integer.Integer, .{}) catch unreachable;
+/// const zero = zml.zero(zml.Integer, .{}) catch unreachable;
 /// ```
 /// * Allocated type (with allocator):
 /// ```zig
-/// var zero = try zml.zero(zml.integer.Integer, .{ .allocator = allocator });
+/// var zero = try zml.zero(zml.Integer, .{ .allocator = allocator });
 /// defer zero.deinit(allocator);
 /// ```
 /// * Non-allocated custom type (with `zero` method):
@@ -65,12 +64,22 @@ const _two: u32 = 2;
 /// ```zig
 /// const zero = zml.zero(Custom, .{ .zero = zeroFn }) catch unreachable;
 /// ```
-/// * Allocated custom type (with `zero` method):
+/// * Allocated custom type (without allocator, with `zero` method):
+/// ```zig
+/// var zero = zml.zero(Custom, .{}) catch unreachable;
+/// defer zero.deinit(allocator);
+/// ```
+/// * Allocated custom type (with allocator, with `zero` method):
 /// ```zig
 /// var zero = try zml.zero(Custom, .{ .allocator = allocator });
 /// defer zero.deinit(allocator);
 /// ```
-/// * Allocated custom type (without `zero` method):
+/// * Allocated custom type (without allocator, without `zero` method):
+/// ```zig
+/// var zero = try zml.zero(Custom, .{ .zero = zeroFn }) catch unreachable;
+/// defer zero.deinit(allocator);
+/// ```
+/// * Allocated custom type (with allocator, without `zero` method):
 /// ```zig
 /// var zero = try zml.zero(Custom, .{ .allocator = allocator, .zero = zeroFn });
 /// defer zero.deinit(allocator);
@@ -202,8 +211,8 @@ pub inline fn zero(
             }
         },
         .custom => {
-            if (comptime types.hasMethod(N, "zero", fn () N, &.{})) {
-                if (comptime types.isAllocated(N)) {
+            if (comptime types.isAllocated(N)) {
+                if (comptime types.hasMethod(N, "zero", fn (?std.mem.Allocator) anyerror!N, &.{})) {
                     const spec =
                         .{
                             .allocator = .{
@@ -218,12 +227,6 @@ pub inline fn zero(
 
                     return N.zero(types.getFieldOrDefault(ctx, spec, "allocator"));
                 } else {
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return N.zero();
-                }
-            } else {
-                if (comptime types.isAllocated(N)) {
                     const spec =
                         .{
                             .allocator = .{
@@ -242,6 +245,12 @@ pub inline fn zero(
                     comptime types.validateContext(@TypeOf(ctx), spec);
 
                     return ctx.zero(types.getFieldOrDefault(ctx, spec, "allocator"));
+                }
+            } else {
+                if (comptime types.hasMethod(N, "zero", fn () N, &.{})) {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return N.zero();
                 } else {
                     comptime types.validateContext(
                         @TypeOf(ctx),
@@ -263,13 +272,12 @@ pub inline fn zero(
 
 /// Returns the multiplicative identity (one) for the given numeric type `N`.
 ///
-/// If `N` is a custom type, it should implement the required `one` method. If
-/// the method is not found, it must be provided via the context. The expected
-/// signature and behavior of `one` are as follows:
-/// * Non-allocated: `fn one() N` - Returns the one value.
-/// * Allocated: `fn one(allocator: ?std.mem.Allocator) !N` - Returns the one as
-///   a newly allocated value, if the allocator is provided, or a read-only view
-///   if not.
+/// If `N` is a custom numeric type, it should implement the required `one`
+/// method. If the method is not found, it must be provided via the context. The
+/// expected signature and behavior of `one` are as follows:
+/// * Non-allocated: `fn one() N`: Returns the one value.
+/// * Allocated: `fn one(?std.mem.Allocator) !N`: Returns the one as a newly
+///   allocated value, if the allocator is provided, or a read-only view if not.
 ///
 /// ## Arguments
 /// * `N` (`comptime type`): The type to generate the one value for.
@@ -298,11 +306,11 @@ pub inline fn zero(
 /// ```
 /// * Allocated type (without allocator):
 /// ```zig
-/// const one = zml.one(zml.integer.Integer, .{}) catch unreachable;
+/// const one = zml.one(zml.Integer, .{}) catch unreachable;
 /// ```
 /// * Allocated type (with allocator):
 /// ```zig
-/// var one = try zml.one(zml.integer.Integer, .{ .allocator = allocator });
+/// var one = try zml.one(zml.Integer, .{ .allocator = allocator });
 /// defer one.deinit(allocator);
 /// ```
 /// * Non-allocated custom type (with `one` method):
@@ -313,12 +321,22 @@ pub inline fn zero(
 /// ```zig
 /// const one = zml.one(Custom, .{ .one = oneFn }) catch unreachable;
 /// ```
-/// * Allocated custom type (with `one` method):
+/// * Allocated custom type (without allocator, with `one` method):
+/// ```zig
+/// var one = try zml.one(Custom, .{}) catch unreachable;
+/// defer one.deinit(allocator);
+/// ```
+/// * Allocated custom type (with allocator, with `one` method):
 /// ```zig
 /// var one = try zml.one(Custom, .{ .allocator = allocator });
 /// defer one.deinit(allocator);
 /// ```
-/// * Allocated custom type (without `one` method):
+/// * Allocated custom type (without allocator, without `one` method):
+/// ```zig
+/// var one = try zml.one(Custom, .{ .one = oneFn }) catch unreachable;
+/// defer one.deinit(allocator);
+/// ```
+/// * Allocated custom type (with allocator, without `one` method):
 /// ```zig
 /// var one = try zml.one(Custom, .{ .allocator = allocator, .one = oneFn });
 /// defer one.deinit(allocator);
@@ -445,8 +463,8 @@ pub inline fn one(
             }
         },
         .custom => {
-            if (comptime types.hasMethod(N, "one", fn () N, &.{})) {
-                if (comptime types.isAllocated(N)) {
+            if (comptime types.isAllocated(N)) {
+                if (comptime types.hasMethod(N, "one", fn (?std.mem.Allocator) anyerror!N, &.{})) {
                     const spec =
                         .{
                             .allocator = .{
@@ -461,12 +479,6 @@ pub inline fn one(
 
                     return N.one(types.getFieldOrDefault(ctx, spec, "allocator"));
                 } else {
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return N.one();
-                }
-            } else {
-                if (comptime types.isAllocated(N)) {
                     const spec =
                         .{
                             .allocator = .{
@@ -484,7 +496,13 @@ pub inline fn one(
 
                     comptime types.validateContext(@TypeOf(ctx), spec);
 
-                    return try ctx.one(types.getFieldOrDefault(ctx, spec, "allocator"));
+                    return ctx.one(types.getFieldOrDefault(ctx, spec, "allocator"));
+                }
+            } else {
+                if (comptime types.hasMethod(N, "one", fn () N, &.{})) {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return N.one();
                 } else {
                     comptime types.validateContext(
                         @TypeOf(ctx),
@@ -506,13 +524,12 @@ pub inline fn one(
 
 /// Returns the numeric constant two for the given numeric type `N`.
 ///
-/// If `N` is a custom type, it should implement the required `two` method. If
-/// the method is not found, it must be provided via the context. The expected
-/// signature and behavior of `two` are as follows:
-/// * Non-allocated: `fn two() N` - Returns the two value.
-/// * Allocated: `fn two(allocator: ?std.mem.Allocator) !N` - Returns the two as
-///   a newly allocated value, if the allocator is provided, or a read-only view
-///   if not.
+/// If `N` is a custom numeric type, it should implement the required `two`
+/// method. If the method is not found, it must be provided via the context. The
+/// expected signature and behavior of `two` are as follows:
+/// * Non-allocated: `fn two() N`: Returns the two value.
+/// * Allocated: `fn two(?std.mem.Allocator) !N`: Returns the two as a newly
+///   allocated value, if the allocator is provided, or a read-only view if not.
 ///
 /// ## Arguments
 /// * `N` (`comptime type`): The type to generate the two value for.
@@ -541,11 +558,11 @@ pub inline fn one(
 /// ```
 /// * Allocated type (without allocator):
 /// ```zig
-/// const two = zml.two(zml.integer.Integer, .{}) catch unreachable;
+/// const two = zml.two(zml.Integer, .{}) catch unreachable;
 /// ```
 /// * Allocated type (with allocator):
 /// ```zig
-/// var two = try zml.two(zml.integer.Integer, .{ .allocator = allocator });
+/// var two = try zml.two(zml.Integer, .{ .allocator = allocator });
 /// defer two.deinit(allocator);
 /// ```
 /// * Non-allocated custom type (with `two` method):
@@ -556,12 +573,22 @@ pub inline fn one(
 /// ```zig
 /// const two = zml.two(Custom, .{ .two = twoFn }) catch unreachable;
 /// ```
-/// * Allocated custom type (with `two` method):
+/// * Allocated custom type (without allocator, with `two` method):
+/// ```zig
+/// var two = try zml.two(Custom, .{}) catch unreachable;
+/// defer two.deinit(allocator);
+/// ```
+/// * Allocated custom type (with allocator, with `two` method):
 /// ```zig
 /// var two = try zml.two(Custom, .{ .allocator = allocator });
 /// defer two.deinit(allocator);
 /// ```
-/// * Allocated custom type (without `two` method):
+/// * Allocated custom type (without allocator, without `two` method):
+/// ```zig
+/// var two = try zml.two(Custom, .{ .two = twoFn }) catch unreachable;
+/// defer two.deinit(allocator);
+/// ```
+/// * Allocated custom type (with allocator, without `two` method):
 /// ```zig
 /// var two = try zml.two(Custom, .{ .allocator = allocator, .two = twoFn });
 /// defer two.deinit(allocator);
@@ -688,8 +715,8 @@ pub inline fn two(
             }
         },
         .custom => {
-            if (comptime types.hasMethod(N, "two", fn () N, &.{})) {
-                if (comptime types.isAllocated(N)) {
+            if (comptime types.isAllocated(N)) {
+                if (comptime types.hasMethod(N, "two", fn (?std.mem.Allocator) anyerror!N, &.{})) {
                     const spec =
                         .{
                             .allocator = .{
@@ -704,12 +731,6 @@ pub inline fn two(
 
                     return N.two(types.getFieldOrDefault(ctx, spec, "allocator"));
                 } else {
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return N.two();
-                }
-            } else {
-                if (comptime types.isAllocated(N)) {
                     const spec =
                         .{
                             .allocator = .{
@@ -727,7 +748,13 @@ pub inline fn two(
 
                     comptime types.validateContext(@TypeOf(ctx), spec);
 
-                    return try ctx.two(types.getFieldOrDefault(ctx, spec, "allocator"));
+                    return ctx.two(types.getFieldOrDefault(ctx, spec, "allocator"));
+                }
+            } else {
+                if (comptime types.hasMethod(N, "two", fn () N, &.{})) {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return N.two();
                 } else {
                     comptime types.validateContext(
                         @TypeOf(ctx),

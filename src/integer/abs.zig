@@ -4,28 +4,26 @@ const types = @import("../types.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
-/// Returns the absolute value of an `Integer`. If an allocator is provided,
-/// the result will be a new `Integer` allocated with the given allocator. If
-/// no allocator is provided, the result will be a view of the `Integer` with
-/// the sign set to positive.
+/// Returns the absolute value of an integer `x`.
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`?std.mem.Allocator`):
-/// The allocator to use for memory allocations.
+/// If an allocator is provided, the result will be a new integer allocated with
+/// the given allocator. If no allocator is provided, the result will be a view
+/// of the integer with the sign set to positive.
 ///
-/// `x` (`Integer`):
-/// The input `Integer`.
+/// ## Signature
+/// ```zig
+/// integer.abs(allocator: ?std.mem.Allocator, x: X) X
+/// ```
 ///
-/// Returns
-/// -------
-/// `Integer`:
-/// The absolute value of `x`.
+/// ## Arguments
+/// * `x` (`anytype`): The integer value to get the absolute value of.
 ///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails. Can only occur if an allocator is provided.
+/// ## Returns
+/// `@TypeOf(x)`: The absolute value of `x`.
+///
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
+///   only happen if an allocator is provided.
 pub fn abs(allocator: ?std.mem.Allocator, x: Integer) !Integer {
     if (allocator) |a| {
         var result: Integer = try x.copy(a);

@@ -31,7 +31,7 @@ pub fn Dual(comptime T: type) type {
 
         pub const zero = if (types.isAllocated(T)) _zeroAllocated else _zero;
 
-        pub fn _zero() Dual(T) {
+        fn _zero() Dual(T) {
             return .{
                 .val = constants.zero(T, .{}) catch unreachable,
                 .eps = constants.zero(T, .{}) catch unreachable,

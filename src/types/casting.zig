@@ -13,10 +13,10 @@ const Real = real.Real;
 const complex = @import("../complex.zig");
 const Complex = complex.Complex;
 
+// EDIT SCAST TO BE ABLE TO CAST TO ALLOCATED TYPES, BUT WITHOUT ALLOCATIONS, I.E.,
+// ONLY ALLOW CASES WHERE THE TARGET TYPE CAN BE CONSTRUCTED WITHOUT ALLOCATIONS
+// FROM THE SOURCE TYPE
 
-EDIT SCAST TO BE ABLE TO CAST TO ALLOCATED TYPES, BUT WITHOUT ALLOCATIONS, I.E.,
-ONLY ALLOW CASES WHERE THE TARGET TYPE CAN BE CONSTRUCTED WITHOUT ALLOCATIONS
-FROM THE SOURCE TYPE
 /// Casts a value of any numeric type to any numeric type, without allocation.
 /// Some casts may lead to runtime panics if the value cannot be represented
 /// in the target type.

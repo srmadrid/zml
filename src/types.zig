@@ -871,15 +871,6 @@ pub fn ReturnTypeFromInputs(
 /// Checks if the type `T` has a method with the given name and type. `anytype`
 /// parameters are counted as matching any type.
 ///
-/// For  allocated numeric types, the method is expected to have an allocator as
-/// first parameter and return an error union, even though they are not included
-/// in `method_type`. For example, for a `method_type` of
-/// `fn (a: i32, b: i32) i32`, the actual method signature should be
-/// `fn (allocator: std.mem.Allocator, a: i32, b: i32) !i32`.
-///
-/// If the method has no parameters (i.e., is a constant method), the allocator
-/// parameter must be optional.
-///
 /// ## Arguments
 /// * `T` (`comptime type`): The type to check.
 /// * `method_name` (`comptime []const u8`): The name of the method to check.
@@ -916,54 +907,17 @@ pub fn hasMethod(
         return false;
 
     const spec_params = info_spec.@"fn".params;
-    const spec_return = info_spec.@"fn".return_type.?;
-    comptime var method_params = info_method.@"fn".params;
+    comptime var spec_return = info_spec.@"fn".return_type.?;
+    const method_params = info_method.@"fn".params;
     comptime var method_return = if (info_method.@"fn".return_type) |r|
         r
     else
         ReturnTypeFromInputs(@field(T, method_name), input_types);
-    const is_constant_method = spec_params.len == 0;
-
-    if (comptime std.mem.eql(u8, method_name, "deinit")) {
-        // Special case for deinit methods: they must have allocator as the second
-        // parameter and return void
-        if (comptime method_params.len != spec_params.len + 1)
-            return false;
-
-        if (method_params[0].type.? != spec_params[0].type.?)
-            return false;
-
-        if (method_params[1].type.? != std.mem.Allocator)
-            return false;
-
-        if (method_return != void)
-            return false;
-
-        return true;
-    }
 
     switch (comptime domain(T)) {
         .numeric => {
-            if (comptime isAllocated(T)) {
-                // Allocated numeric types have an allocator as first parameter
-                if (method_params.len != spec_params.len + 1)
-                    return false;
-
-                if (is_constant_method) {
-                    // For constant methods, the allocator is optional
-                    if (method_params[0].type.? != ?std.mem.Allocator)
-                        return false;
-                } else {
-                    if (method_params[0].type.? != std.mem.Allocator)
-                        return false;
-                }
-
-                // Remove the allocator parameter for comparison
-                method_params = method_params[1..];
-            } else {
-                if (method_params.len != spec_params.len)
-                    return false;
-            }
+            if (method_params.len != spec_params.len)
+                return false;
 
             // Check parameter types
             inline for (spec_params, method_params) |spec_param, method_param| {
@@ -975,13 +929,14 @@ pub fn hasMethod(
             }
 
             // Check return type
-            if (comptime isAllocated(T)) {
-                // Allocated numeric types return error unions
-                const return_info = @typeInfo(method_return);
-                if (return_info != .error_union)
+            const spec_return_info = @typeInfo(spec_return);
+            const method_return_info = @typeInfo(method_return);
+            if (comptime spec_return_info == .error_union) {
+                if (method_return_info != .error_union)
                     return false;
 
-                method_return = return_info.error_union.payload;
+                spec_return = spec_return_info.error_union.payload;
+                method_return = method_return_info.error_union.payload;
             }
 
             if (comptime spec_return != method_return)
