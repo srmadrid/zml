@@ -5,26 +5,18 @@ const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 const complex = @import("../complex.zig");
 
+const rational_check_aliasing = @import("../rational/check_aliasing.zig").check_aliasing;
+// const real_check_aliasing = @import("../real/check_aliasing.zig").check_aliasing;
+
 pub fn check_aliasing(o: anytype, x: anytype) bool {
     switch (comptime types.numericType(types.Scalar(types.Child(@TypeOf(o))))) {
         .rational => switch (comptime types.numericType(@TypeOf(x))) {
             .bool, .int, .float, .cfloat => return false,
-            .integer => return o.re.num.limbs == x.limbs or o.re.den.limbs == x.limbs or
-                o.im.num.limbs == x.limbs or o.im.den.limbs == x.limbs,
-            .rational => return o.re.num.limbs == x.num.limbs or o.re.num.limbs == x.den.limbs or
-                o.re.den.limbs == x.num.limbs or o.re.den.limbs == x.den.limbs or
-                o.im.num.limbs == x.num.limbs or o.im.num.limbs == x.den.limbs or
-                o.im.den.limbs == x.num.limbs or o.im.den.limbs == x.den.limbs,
+            .integer, .rational => return rational_check_aliasing(&o.re, x) or rational_check_aliasing(&o.im, x),
             .real => @compileError("zml.complex.check_aliasing not implemented yet for complex and real types"),
             .complex => switch (comptime types.numericType(types.Scalar(types.Child(@TypeOf(x))))) {
-                .rational => return o.re.num.limbs == x.re.num.limbs or o.re.num.limbs == x.re.den.limbs or
-                    o.re.num.limbs == x.im.num.limbs or o.re.num.limbs == x.im.den.limbs or
-                    o.re.den.limbs == x.re.num.limbs or o.re.den.limbs == x.re.den.limbs or
-                    o.re.den.limbs == x.im.num.limbs or o.re.den.limbs == x.im.den.limbs or
-                    o.im.num.limbs == x.re.num.limbs or o.im.num.limbs == x.re.den.limbs or
-                    o.im.num.limbs == x.im.num.limbs or o.im.num.limbs == x.im.den.limbs or
-                    o.im.den.limbs == x.re.num.limbs or o.im.den.limbs == x.re.den.limbs or
-                    o.im.den.limbs == x.im.num.limbs or o.im.den.limbs == x.im.den.limbs,
+                .rational => return rational_check_aliasing(&o.re, x.re) or rational_check_aliasing(&o.re, x.im) or
+                    rational_check_aliasing(&o.im, x.re) or rational_check_aliasing(&o.im, x.im),
                 .real => @compileError("zml.complex.check_aliasing not implemented yet for complex and real types"),
                 else => unreachable,
             },

@@ -1,52 +1,44 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const rational = @import("../rational.zig");
-const real = @import("../real.zig");
+const ops = @import("../ops.zig");
 const complex = @import("../complex.zig");
 const Complex = complex.Complex;
 
-/// Returns the complex conjugate of a `Complex`. If an allocator is provided,
-/// the result will be a new `Complex` allocated with the given allocator. If no
-/// allocator is provided, the result will be a view of the `Complex` with the
-/// sign of both the imaginary set to its negation.
+/// Returns the conjugation of a complex `x`.
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`?std.mem.Allocator`):
-/// The allocator to use for memory allocations.
+/// If an allocator is provided, the result will be a new complex allocated
+/// with the given allocator. If no allocator is provided, the result will be a
+/// view of the complex with the sign flipped.
 ///
-/// `x` (`Complex`):
-/// The input `Complex`.
+/// ## Signature
+/// ```zig
+/// complex.conj(allocator: ?std.mem.Allocator, x: X) !X
+/// ```
 ///
-/// Returns
-/// -------
-/// `Complex`:
-/// The complex conjugate of `x`.
+/// ## Arguments
+/// * `x` (`anytype`): The complex value to get the conjugation of.
 ///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails. Can only occur if an allocator is provided.
+/// ## Returns
+/// `@TypeOf(x)`: The conjugation of `x`.
+///
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
+///   only happen if an allocator is provided.
 pub fn conj(allocator: ?std.mem.Allocator, x: anytype) !@TypeOf(x) {
     const X: type = @TypeOf(x);
 
-    comptime if (types.numericType(X) != .complex)
-        @compileError("complex.conj requires x to be a complex, got " ++ @typeName(X));
+    comptime if (!types.isNumeric(X) or types.numericType(X) != .complex)
+        @compileError("zml.complex.conj: x must be a complex, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    var result: X = undefined;
     if (allocator) |a| {
-        result = try x.copy(a);
-    } else {
-        result = x;
+        var result: X = try x.copy(a);
+        ops.neg_(&result.im, result.im, .{}) catch unreachable;
+        return result;
     }
 
-    if (comptime types.Scalar(X) == rational.Rational) {
-        result.im.num.positive = !result.im.num.positive;
-    } else { // real
-        result.im.rational.num.positive = !result.im.rational.num.positive;
-    }
-
+    var result: X = x;
+    result.im = ops.neg(result.im, .{}) catch unreachable;
     result.flags.owns_data = false;
     return result;
 }

@@ -1,53 +1,42 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const Scalar = types.Scalar;
-const Coerce = types.Coerce;
-const rational = @import("../rational.zig");
-const Rational = rational.Rational;
 const complex = @import("../complex.zig");
-const Complex = complex.Complex;
 
-/// Performs addition between two operands of any numeric type in `Complex`
-/// precision.
+pub fn Add(comptime X: type, comptime Y: type) type {
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.complex) or !types.numericType(Y).le(.complex) or
+        (types.numericType(X) != .complex and types.numericType(Y) != .complex))
+        @compileError("zml.complex.add: at least one of x or y must be a complex, the other must be a bool, an int, a float, a dyadic, a cfloat, an integer, a rational, a real or a complex, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return types.Coerce(X, Y);
+}
+
+/// Performs addition between two operands of complex, real, rational, integer,
+/// cfloat, dyadic, float, int or bool types, where at least one operand must be
+/// of complex type. The result type is determined by coercing the operand
+/// types, and the operation is performed by casting both operands to the result
+/// type, then adding them.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn add(allocator: std.mem.Allocator, x: X, y: Y) !Complex
+/// complex.add(allocator: std.mem.Allocator, x: X, y: Y) !complex.Add(X, Y)
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`std.mem.Allocator`):
-/// The allocator to use for memory allocations.
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `x` (`anytype`):
-/// The left operand.
+/// ## Returns
+/// `complex.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
 ///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
-/// `Complex`:
-/// The result of the addition.
-///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails.
-pub fn add(allocator: std.mem.Allocator, x: anytype, y: anytype) !Complex(Scalar(Coerce(Rational, Coerce(@TypeOf(x), @TypeOf(y))))) {
-    const X: type = @TypeOf(x);
-    const Y: type = @TypeOf(y);
-    const C: type = Complex(Scalar(Coerce(Rational, Coerce(X, Y))));
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+pub fn add(allocator: std.mem.Allocator, x: anytype, y: anytype) !complex.Add(@TypeOf(x), @TypeOf(y)) {
+    const R: type = complex.Add(@TypeOf(x), @TypeOf(y));
 
-    comptime if (types.numericType(X) != .complex and types.numericType(X) != .real and types.numericType(X) != .rational and types.numericType(X) != .integer and types.numericType(X) != .int and types.numericType(X) != .float and
-        types.numericType(Y) != .complex and types.numericType(X) != .real and types.numericType(Y) != .rational and types.numericType(Y) != .integer and types.numericType(Y) != .int and types.numericType(Y) != .float)
-        @compileError("rational.add_ requires x and y to be an int, float, integer, rational, real or complex, got " ++
-            @typeName(X) ++ " and " ++ @typeName(Y));
-
-    var result: C = try .init(allocator, 0, 0);
+    var result: R = try .init(allocator, 0, 0);
     errdefer result.deinit(allocator);
 
     try complex.add_(allocator, &result, x, y);

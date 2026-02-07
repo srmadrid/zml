@@ -7,8 +7,8 @@ const ops = @import("ops.zig");
 const rational = @import("rational.zig");
 const _real = @import("real.zig");
 
-/// Arbitrary-precision complex type, represented as two arbitrary-precision
-/// rational (`Rational`) or real (`Real`) numbers.
+/// Arbitrary-precision complex type, represented as a pair of non-integral
+/// allocated numeric values (e.g., `Rational`, `Real`).
 pub fn Complex(comptime N: type) type {
     if (!types.isNumeric(N) or !types.isAllocated(N) or types.isIntegral(N))
         @compileError("zml.Complex: N must be a non-integral allocated numeric type, got \n\tN: " ++ @typeName(N) ++ "\n");
@@ -150,12 +150,16 @@ pub fn Complex(comptime N: type) type {
 }
 
 // Arithmetic operations
+pub const Add = @import("complex/add.zig").Add;
 pub const add = @import("complex/add.zig").add;
 pub const add_ = @import("complex/add_.zig").add_;
+pub const Sub = @import("complex/sub.zig").Sub;
 pub const sub = @import("complex/sub.zig").sub;
 pub const sub_ = @import("complex/sub_.zig").sub_;
+pub const Mul = @import("complex/mul.zig").Mul;
 pub const mul = @import("complex/mul.zig").mul;
 pub const mul_ = @import("complex/mul_.zig").mul_;
+pub const Div = @import("complex/div.zig").Div;
 pub const div = @import("complex/div.zig").div;
 pub const div_ = @import("complex/div_.zig").div_;
 
