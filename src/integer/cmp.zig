@@ -75,37 +75,25 @@ pub fn cmp(x: anytype, y: anytype) Cmp {
             .bool => return cmp(x, types.cast(Integer, y, .{}) catch unreachable),
             else => unreachable,
         },
-        .dyadic => switch (comptime types.numericType(Y)) {
-            .integer => {
-                var tx = @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
+        .dyadic => {
+            var tx = @import("../dyadic/asInteger.zig").asInteger(x);
+            tx[0].limbs = &tx[1];
 
-                return cmp(tx[0], y);
-            },
-            else => unreachable,
+            return cmp(tx[0], y);
         },
-        .float => switch (comptime types.numericType(Y)) {
-            .integer => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
+        .float => {
+            var tx = try @import("../float/asInteger.zig").asInteger(x);
+            tx[0].limbs = &tx[1];
 
-                return cmp(tx[0], y);
-            },
-            else => unreachable,
+            return cmp(tx[0], y);
         },
-        .int => switch (comptime types.numericType(Y)) {
-            .integer => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
+        .int => {
+            var tx = @import("../int/asInteger.zig").asInteger(x);
+            tx[0].limbs = &tx[1];
 
-                return cmp(tx[0], y);
-            },
-            else => unreachable,
+            return cmp(tx[0], y);
         },
-        .bool => switch (comptime types.numericType(Y)) {
-            .integer => return cmp(types.cast(Integer, x, .{}) catch unreachable, y),
-            else => unreachable,
-        },
+        .bool => return cmp(types.cast(Integer, x, .{}) catch unreachable, y),
         else => unreachable,
     }
 }

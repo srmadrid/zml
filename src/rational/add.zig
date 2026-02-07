@@ -1,45 +1,37 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const float = @import("../float.zig");
 const rational = @import("../rational.zig");
 const Rational = rational.Rational;
 
-/// Performs addition between two operands of any numeric type in `Rational`
-/// precision. For cfloat or complex types, only the real part is considered.
+/// Performs addition between two operands of rational, integer, cfloat, dyadic,
+/// float, int or bool types, where at least one operand must be of rational
+/// type. The operation is performed by casting both operands to rational, then
+/// adding them.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn add(allocator: std.mem.Allocator, x: X, y: Y) !Rational
+/// rational.add(allocator: std.mem.Allocator, x: X, y: Y) !Rational
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`std.mem.Allocator`):
-/// The allocator to use for memory allocations.
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `x` (`anytype`):
-/// The left operand.
+/// ## Returns
+/// `Rational`: The result of the addition.
 ///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
-/// `Rational`:
-/// The result of the addition.
-///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails.
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
 pub fn add(allocator: std.mem.Allocator, x: anytype, y: anytype) !Rational {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("rational.add requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.rational) or !types.numericType(Y).le(.rational) or
+        (types.numericType(X) != .rational and types.numericType(Y) != .rational))
+        @compileError("zml.rational.add: at least one of x or y must be a rational, the other must be a bool, an int, a float, a dyadic, a cfloat, an integer or a rational, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     var result: Rational = try .init(allocator, 0, 0);
     errdefer result.deinit(allocator);

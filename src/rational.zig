@@ -247,6 +247,7 @@ pub const Rational = struct {
                             try self.den.set(allocator, dvalue[0].num);
                         }
                     },
+                    .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                     .cfloat => return self.set(allocator, numerator, denominator.re),
                     .integer => {
                         if (denominator.size == 0)
@@ -278,8 +279,9 @@ pub const Rational = struct {
                             try self.den.set(allocator, denominator.num);
                         }
                     },
-                    .real => @compileError("Real type not supported yet"),
+                    .real => @compileError("zml.Rational.set: Real types not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
+                    .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
                 },
                 .int => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -318,6 +320,7 @@ pub const Rational = struct {
 
                         try div_(allocator, self, nvalue[0], dvalue[0]);
                     },
+                    .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                     .cfloat => return self.set(allocator, numerator, denominator.re),
                     .integer => {
                         if (denominator.size == 0)
@@ -338,8 +341,9 @@ pub const Rational = struct {
 
                         try div_(allocator, self, nvalue[0], denominator);
                     },
-                    .real => @compileError("Real type not supported yet"),
+                    .real => @compileError("zml.Rational.set: Real types not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
+                    .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
                 },
                 .float => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -380,6 +384,7 @@ pub const Rational = struct {
 
                         try div_(allocator, self, nvalue[0], dvalue[0]);
                     },
+                    .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                     .cfloat => return self.set(allocator, numerator, denominator.re),
                     .integer => {
                         if (denominator.size == 0)
@@ -401,18 +406,22 @@ pub const Rational = struct {
 
                         try div_(allocator, self, nvalue[0], denominator);
                     },
-                    .real => @compileError("Real type not supported yet"),
+                    .real => @compileError("zml.Rational.set: Real types not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
+                    .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
                 },
+                .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                 .cfloat => switch (comptime types.numericType(D)) {
                     .bool => return self.set(allocator, numerator.re, denominator),
                     .int => return self.set(allocator, numerator.re, denominator),
                     .float => return self.set(allocator, numerator.re, denominator),
+                    .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                     .cfloat => return self.set(allocator, numerator.re, denominator.re),
                     .integer => return self.set(allocator, numerator.re, denominator),
                     .rational => return self.set(allocator, numerator.re, denominator),
-                    .real => @compileError("Real type not supported yet"),
+                    .real => @compileError("zml.Rational.set: Real types not supported yet"),
                     .complex => return self.set(allocator, numerator.re, denominator.re),
+                    .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
                 },
                 .integer => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -439,6 +448,7 @@ pub const Rational = struct {
 
                         try div_(allocator, self, numerator.asRational(), dvalue[0]);
                     },
+                    .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                     .cfloat => return self.set(allocator, numerator, denominator.re),
                     .integer => {
                         if (denominator.size == 0)
@@ -453,8 +463,9 @@ pub const Rational = struct {
 
                         try div_(allocator, self, numerator.asRational(), denominator);
                     },
-                    .real => @compileError("Real type not supported yet"),
+                    .real => @compileError("zml.Rational.set: Real types not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
+                    .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
                 },
                 .rational => switch (comptime types.numericType(D)) {
                     .bool => {
@@ -483,6 +494,7 @@ pub const Rational = struct {
 
                         try div_(allocator, self, numerator, dvalue[0]);
                     },
+                    .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                     .cfloat => return self.set(allocator, numerator, denominator.re),
                     .integer => {
                         if (denominator.size == 0)
@@ -496,20 +508,24 @@ pub const Rational = struct {
 
                         try div_(allocator, self, numerator, denominator);
                     },
-                    .real => @compileError("Real type not supported yet"),
+                    .real => @compileError("zml.Rational.set: Real types not supported yet"),
                     .complex => return self.set(allocator, numerator, denominator.re),
+                    .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
                 },
-                .real => @compileError("Real type not supported yet"),
+                .real => @compileError("zml.Rational.set: Real types not supported yet"),
                 .complex => switch (comptime types.numericType(D)) {
                     .bool => return self.set(allocator, numerator.re, denominator),
                     .int => return self.set(allocator, numerator.re, denominator),
                     .float => return self.set(allocator, numerator.re, denominator),
+                    .dyadic => @compileError("zml.Rational.set: Dyadic types not supported yet"),
                     .cfloat => return self.set(allocator, numerator.re, denominator.re),
                     .integer => return self.set(allocator, numerator.re, denominator),
                     .rational => return self.set(allocator, numerator.re, denominator),
-                    .real => @compileError("Real type not supported yet"),
+                    .real => @compileError("zml.Rational.set: Real types not supported yet"),
                     .complex => return self.set(allocator, numerator.re, denominator.re),
+                    .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
                 },
+                .custom => @compileError("zml.Rational.set: Custom numeric types not supported yet"),
             }
         } else if (comptime N == []const u8 or N == []u8) {
             @compileError("String type not supported yet");

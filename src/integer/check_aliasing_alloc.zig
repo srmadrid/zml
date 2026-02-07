@@ -2,25 +2,16 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const integer = @import("../integer.zig");
-const rational = @import("../rational.zig");
-const complex = @import("../complex.zig");
 
+/// Checks if `x` is aliased with `o`, and if so, returns a copy of `x`
+/// allocated with `allocator`. Otherwise, returns `x`.
 pub fn check_aliasing_alloc(allocator: std.mem.Allocator, o: *const integer.Integer, x: anytype) !@TypeOf(x) {
-    var tx: @TypeOf(x) = undefined;
     switch (comptime types.numericType(@TypeOf(x))) {
-        .bool, .int, .float, .cfloat => {
-            tx = x;
-        },
-        .integer => {
-            if (@import("check_aliasing.zig").check_aliasing(o, x)) {
-                tx = try x.copy(allocator);
-            } else {
-                tx = x;
-                tx.flags.owns_data = false;
-            }
-        },
+        .bool, .int, .float, .dyadic, .cfloat => return x,
+        .integer => return if (@import("check_aliasing.zig").check_aliasing(o, x))
+            x.copy(allocator)
+        else
+            x,
         else => unreachable,
     }
-
-    return tx;
 }

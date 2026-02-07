@@ -10,16 +10,11 @@ const Integer = integer.Integer;
 /// the given allocator. If no allocator is provided, the result will be a view
 /// of the integer with the sign flipped.
 ///
-/// ## Signature
-/// ```zig
-/// integer.neg(allocator: ?std.mem.Allocator, x: X) X
-/// ```
-///
 /// ## Arguments
-/// * `x` (`anytype`): The integer value to get the negation of.
+/// * `x` (`Integer`): The integer value to get the negation of.
 ///
 /// ## Returns
-/// `@TypeOf(x)`: The negation of `x`.
+/// `Integer`: The negation of `x`.
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can

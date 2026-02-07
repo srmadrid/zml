@@ -2,80 +2,61 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const constants = @import("../constants.zig");
-const int = @import("../int.zig");
-const float = @import("../float.zig");
 const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 const Rational = rational.Rational;
 
-/// Performs in-place division between two operands of any numeric type in
-/// `Rational` precision. For cfloat or complex types, only the real part is
-/// considered.
+const check_aliasing_alloc = @import("check_aliasing_alloc.zig").check_aliasing_alloc;
+
+/// Performs in-place division between two operands of rational, integer,
+/// cfloat, dyadic, float, int or bool types, where at least one operand must be
+/// of rational type. The operation is performed by casting both operands to
+/// integer, then dividing them in-place.
 ///
 /// Aliasing between the output operand `o` and the input operands `x` or `y` is
 /// allowed.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn div_(allocator: std.mem.Allocator, o: *Rational, x: X, y: Y, ctx: anytype) !void
+/// rational.div_(allocator: std.mem.Allocator, o: *Rational, x: X, y: Y) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`std.mem.Allocator`):
-/// The allocator to use for memory allocations. Must be the same allocator used
-/// to initialize `o`.
+/// ## Arguments
+/// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
+///   allocations. Must be the same allocator used to initialize `o`.
+/// * `o` (`*Rational`): A pointer to the output operand where the result will
+///   be stored.
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `o` (`*Rational`):
-/// A pointer to the output operand where the result will be stored.
-///
-/// `x` (`anytype`):
-/// The left operand.
-///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
+/// ## Returns
 /// `void`
 ///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails.
-///
-/// `rational.Error.NotWritable`:
-/// If the output operand `o` is not writable, or if its numerator or
-/// denominator are not writable when they need to be modified.
-///
-/// `rational.Error.ZeroDivision`:
-/// If `y` is zero.
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
+/// * `rational.Error.ZeroDivision`: If `y` is zero.
+/// * `rational.Error.NotWritable`: If the output operand `o` is not writable.
+/// * `rational.Error.DataNotOwned`: If the output operand `o` does not own its
+///   data and resizing is needed.
+/// * `integer.Error.NotWritable`: If the numerator or denominator of the output
+///   operand `o` is not writable when it needs to be modified.
+/// * `integer.Error.DataNotOwned`: If the numerator or denominator of the
+///   output operand `o` does not own its data and resizing is needed.
 pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) !void {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("rational.div_ requires x and y to be numeric types, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.rational) or !types.numericType(Y).le(.rational) or
+        (types.numericType(X) != .rational and types.numericType(Y) != .rational))
+        @compileError("zml.rational.div_: at least one of x or y must be a rational, the other must be a bool, an int, a float, a dyadic, a cfloat, an integer or a rational, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     if (!o.flags.writable)
         return rational.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
-        .complex => switch (comptime types.numericType(Y)) {
-            .complex => return div_(allocator, o, x.re, y.re),
-            .real => @compileError("rational.div_ not implemented for Complex + Real yet"),
-            .rational => return div_(allocator, o, x.re, y),
-            .integer => return div_(allocator, o, x.re, y),
-            .cfloat => return div_(allocator, o, x.re, y.re),
-            .float => return div_(allocator, o, x.re, y),
-            .int => return div_(allocator, o, x.re, y),
-            .bool => return div_(allocator, o, x.re, y),
-        },
-        .real => @compileError("rational.div_ not implemented for Real yet"),
         .rational => switch (comptime types.numericType(Y)) {
-            .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("rational.div_ not implemented for Rational + Real yet"),
             .rational => {
                 if (y.num.size == 0)
                     return rational.Error.ZeroDivision;
@@ -99,39 +80,9 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
                 }
 
                 // Aliasing checks
-                var tx: Rational = undefined;
-                tx.num = if (o.num.limbs == x.num.limbs or o.den.limbs == x.num.limbs)
-                    try x.num.copy(allocator)
-                else blk: {
-                    var tmp: integer.Integer = x.num;
-                    tmp.flags.owns_data = false;
-                    break :blk tmp;
-                };
-                tx.den = if (o.num.limbs == x.den.limbs or o.den.limbs == x.den.limbs)
-                    try x.den.copy(allocator)
-                else blk: {
-                    var tmp: integer.Integer = x.den;
-                    tmp.flags.owns_data = false;
-                    break :blk tmp;
-                };
-                tx.flags = .{ .owns_data = true, .writable = false };
+                var tx: Rational = try check_aliasing_alloc(allocator, o, x);
                 defer tx.deinit(allocator);
-                var ty: Rational = undefined;
-                ty.num = if (o.num.limbs == y.num.limbs or o.den.limbs == y.num.limbs)
-                    try y.num.copy(allocator)
-                else blk: {
-                    var tmp: integer.Integer = y.num;
-                    tmp.flags.owns_data = false;
-                    break :blk tmp;
-                };
-                ty.den = if (o.num.limbs == y.den.limbs or o.den.limbs == y.den.limbs)
-                    try y.den.copy(allocator)
-                else blk: {
-                    var tmp: integer.Integer = y.den;
-                    tmp.flags.owns_data = false;
-                    break :blk tmp;
-                };
-                ty.flags = .{ .owns_data = true, .writable = false };
+                var ty: Rational = try check_aliasing_alloc(allocator, o, y);
                 defer ty.deinit(allocator);
 
                 // a/b / c/d = (a*d)/(b*c)
@@ -197,150 +148,62 @@ pub fn div_(allocator: std.mem.Allocator, o: *Rational, x: anytype, y: anytype) 
             },
             .integer => return div_(allocator, o, x, y.asRational()),
             .cfloat => return div_(allocator, o, x, y.re),
+            .dyadic => {
+                var ty = try @import("../dyadic/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1][0];
+                ty[0].den.limbs = &ty[1][1];
+
+                return div_(allocator, o, x, ty[0]);
+            },
             .float => {
                 var ty = try @import("../float/asRational.zig").asRational(y);
                 ty[0].num.limbs = &ty[1][0];
                 ty[0].den.limbs = &ty[1][1];
+
                 return div_(allocator, o, x, ty[0]);
             },
             .int => {
                 var ty = @import("../int/asRational.zig").asRational(y);
                 ty[0].num.limbs = &ty[1];
+
                 return div_(allocator, o, x, ty[0]);
             },
-            .bool => return div_(allocator, o, x, types.cast(Rational, y, .{}) catch unreachable),
+            .bool => return div_(
+                allocator,
+                o,
+                x,
+                types.cast(Rational, y, .{}) catch unreachable,
+            ),
+            else => unreachable,
         },
-        .integer => switch (comptime types.numericType(Y)) {
-            .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("rational.div_ not implemented for Integer + Real yet"),
-            .rational => return div_(allocator, o, x.asRational(), y),
-            .integer => return div_(allocator, o, x.asRational(), y.asRational()),
-            .cfloat => return div_(allocator, o, x, y.re),
-            .float => {
-                var ty = try @import("../float/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1][0];
-                ty[0].den.limbs = &ty[1][1];
-                return div_(allocator, o, x.asRational(), ty[0]);
-            },
-            .int => {
-                var ty = @import("../int/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1];
-                return div_(allocator, o, x.asRational(), ty[0]);
-            },
-            .bool => {
-                return div_(allocator, o, x.asRational(), types.cast(Rational, y, .{}) catch unreachable);
-            },
+        .integer => return div_(allocator, o, x.asRational(), y),
+        .cfloat => return div_(allocator, o, x.re, y),
+        .dyadic => {
+            var tx = try @import("../dyadic/asRational.zig").asRational(x);
+            tx[0].num.limbs = &tx[1][0];
+            tx[0].den.limbs = &tx[1][1];
+
+            return div_(allocator, o, tx[0], y);
         },
-        .cfloat => switch (comptime types.numericType(Y)) {
-            .complex => return div_(allocator, o, x.re, y.re),
-            .real => @compileError("rational.div_ not implemented for CFloat + Real yet"),
-            .rational => return div_(allocator, o, x.re, y),
-            .integer => return div_(allocator, o, x.re, y),
-            .cfloat => return div_(allocator, o, x.re, y.re),
-            .float => return div_(allocator, o, x.re, y),
-            .int => return div_(allocator, o, x.re, y),
-            .bool => return div_(allocator, o, x.re, y),
+        .float => {
+            var tx = try @import("../float/asRational.zig").asRational(x);
+            tx[0].num.limbs = &tx[1][0];
+            tx[0].den.limbs = &tx[1][1];
+
+            return div_(allocator, o, tx[0], y);
         },
-        .float => switch (comptime types.numericType(Y)) {
-            .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("rational.div_ not implemented for Float + Real yet"),
-            .rational => {
-                var tx = try @import("../float/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1][0];
-                tx[0].den.limbs = &tx[1][1];
-                return div_(allocator, o, tx[0], y);
-            },
-            .integer => {
-                var tx = try @import("../float/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1][0];
-                tx[0].den.limbs = &tx[1][1];
-                return div_(allocator, o, tx[0], y.asRational());
-            },
-            .cfloat => return div_(allocator, o, x, y.re),
-            .float => {
-                var tx = try @import("../float/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1][0];
-                tx[0].den.limbs = &tx[1][1];
-                var ty = try @import("../float/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1][0];
-                ty[0].den.limbs = &ty[1][1];
-                return div_(allocator, o, tx[0], ty[0]);
-            },
-            .int => {
-                var tx = try @import("../float/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1][0];
-                tx[0].den.limbs = &tx[1][1];
-                var ty = @import("../int/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1];
-                return div_(allocator, o, tx[0], ty[0]);
-            },
-            .bool => {
-                var tx = try @import("../float/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1][0];
-                tx[0].den.limbs = &tx[1][1];
-                return div_(allocator, o, tx[0], types.cast(Rational, y, .{}) catch unreachable);
-            },
+        .int => {
+            var tx = @import("../int/asRational.zig").asRational(x);
+            tx[0].num.limbs = &tx[1];
+
+            return div_(allocator, o, tx[0], y);
         },
-        .int => switch (comptime types.numericType(Y)) {
-            .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("rational.div_ not implemented for Int + Real yet"),
-            .rational => {
-                var tx = @import("../int/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1];
-                return div_(allocator, o, tx[0], y);
-            },
-            .integer => {
-                var tx = @import("../int/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1];
-                return div_(allocator, o, tx[0], y.asRational());
-            },
-            .cfloat => return div_(allocator, o, x, y.re),
-            .float => {
-                var tx = @import("../int/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1];
-                var ty = try @import("../float/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1][0];
-                ty[0].den.limbs = &ty[1][1];
-                return div_(allocator, o, tx[0], ty[0]);
-            },
-            .int => {
-                var tx = @import("../int/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1];
-                var ty = @import("../int/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1];
-                return div_(allocator, o, tx[0], ty[0]);
-            },
-            .bool => {
-                var tx = @import("../int/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1];
-                return div_(allocator, o, tx[0], types.cast(Rational, y, .{}) catch unreachable);
-            },
-        },
-        .bool => switch (comptime types.numericType(Y)) {
-            .complex => return div_(allocator, o, x, y.re),
-            .real => @compileError("rational.div_ not implemented for Bool + Real yet"),
-            .rational => return div_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, y),
-            .integer => return div_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, y.asRational()),
-            .cfloat => return div_(allocator, o, x, y.re),
-            .float => {
-                var ty = try @import("../float/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1][0];
-                ty[0].den.limbs = &ty[1][1];
-                return div_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, ty[0]);
-            },
-            .int => {
-                var ty = @import("../int/asRational.zig").asRational(y);
-                ty[0].num.limbs = &ty[1];
-                return div_(allocator, o, types.cast(Rational, x, .{}) catch unreachable, ty[0]);
-            },
-            .bool => {
-                return div_(
-                    allocator,
-                    o,
-                    types.cast(Rational, x, .{}) catch unreachable,
-                    types.cast(Rational, y, .{}) catch unreachable,
-                );
-            },
-        },
+        .bool => return div_(
+            allocator,
+            o,
+            types.cast(Rational, x, .{}) catch unreachable,
+            y,
+        ),
+        else => unreachable,
     }
 }

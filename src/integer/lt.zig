@@ -2,7 +2,6 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const integer = @import("../integer.zig");
-const Integer = integer.Integer;
 
 /// Compares two operands of integer, dyadic, float, int or bool types, where at
 /// least one operand must be of integer type, for less-than ordering. The

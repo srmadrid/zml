@@ -6,41 +6,32 @@ const int = @import("../int.zig");
 const rational = @import("../rational.zig");
 const Rational = rational.Rational;
 
-/// Compares a `Rational` with another lower or equal precision numeric type for
-/// ordering.
+/// Compares two operands of rational, integer, dyadic, float, int or bool
+/// types, where at least one operand must be of rational type, for ordering.
+/// The operation is performed by casting both operands to rational, then
+/// comparing them.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn cmp(x: X, y: Y) Cmp
+/// rational.cmp(x: X, y: Y) Cmp
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `x` (`anytype`):
-/// The left operand.
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
-/// `Cmp`:
-/// The comparison result.
+/// ## Returns
+/// `Cmp`: The result of the comparison.
 pub fn cmp(x: anytype, y: anytype) Cmp {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!(types.numericType(X) == .rational and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .integer) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .float) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .int) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .bool) and
-        !(types.numericType(X) == .integer and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .float and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .int and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .bool and types.numericType(Y) == .rational))
-        @compileError("rational.cmp requires x or y to be a rational type, the other must be a rational, integer, float, int or bool type, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.rational) or !types.numericType(Y).le(.rational) or
+        types.numericType(X) == .cfloat or types.numericType(Y) == .cfloat or
+        (types.numericType(X) != .rational and types.numericType(Y) != .rational))
+        @compileError("zml.rational.cmp: at least one of x or y must be a rational, the other must be a bool, an int, a float, a dyadic, an integer or a rational, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     switch (comptime types.numericType(X)) {
         .rational => switch (comptime types.numericType(Y)) {
@@ -80,7 +71,7 @@ pub fn cmp(x: anytype, y: anytype) Cmp {
 
                     // acc += sum_{i + j = k} x.num[i] * y.den[j]
                     const i_min_ad: u32 = if (k >= y.den.size) k - (y.den.size - 1) else 0;
-                    const i_max_ad: u32 = @min(k, x.num.size - 1);
+                    const i_max_ad: u32 = int.min(k, x.num.size - 1);
                     var i: u32 = i_min_ad;
                     while (i <= i_max_ad) : (i += 1) {
                         const j: u32 = k - i;
@@ -89,7 +80,7 @@ pub fn cmp(x: anytype, y: anytype) Cmp {
 
                     // acc -= sum_{i + j = k} y.num[i] * x.den[j]
                     const i_min_cb: u32 = if (k >= x.den.size) k - (x.den.size - 1) else 0;
-                    const i_max_cb: u32 = @min(k, y.num.size - 1);
+                    const i_max_cb: u32 = int.min(k, y.num.size - 1);
                     var t: u32 = i_min_cb;
                     while (t <= i_max_cb) : (t += 1) {
                         const j: u32 = k - t;
@@ -125,45 +116,53 @@ pub fn cmp(x: anytype, y: anytype) Cmp {
                 return if (x.num.positive) cmp_mag else cmp_mag.invert();
             },
             .integer => return cmp(x, y.asRational()),
+            .dyadic => {
+                var ty = @import("../dyadic/asRational.zig").asRational(y);
+                ty[0].num.limbs = &ty[1][0];
+                ty[0].den.limbs = &ty[1][1];
+
+                return cmp(x, ty[0]);
+            },
             .float => {
                 var ty = try @import("../float/asRational.zig").asRational(y);
                 ty[0].num.limbs = &ty[1][0];
                 ty[0].den.limbs = &ty[1][1];
+
                 return cmp(x, ty[0]);
             },
             .int => {
                 var ty = @import("../int/asRational.zig").asRational(y);
                 ty[0].num.limbs = &ty[1];
+
                 return cmp(x, ty[0]);
             },
-            .bool => return cmp(x, types.cast(Rational, y, .{}) catch unreachable),
+            .bool => return cmp(
+                x,
+                types.cast(Rational, y, .{}) catch unreachable,
+            ),
             else => unreachable,
         },
-        .integer => switch (comptime types.numericType(Y)) {
-            .rational => return cmp(x.asRational(), y),
-            else => unreachable,
+        .integer => return cmp(x.asRational(), y),
+        .dyadic => {
+            var tx = @import("../dyadic/asRational.zig").asRational(x);
+            tx[0].num.limbs = &tx[1][0];
+            tx[0].den.limbs = &tx[1][1];
+
+            return cmp(tx[0], y);
         },
-        .float => switch (comptime types.numericType(Y)) {
-            .rational => {
-                var tx = try @import("../float/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1][0];
-                tx[0].den.limbs = &tx[1][1];
-                return cmp(tx[0], y);
-            },
-            else => unreachable,
+        .float => {
+            var tx = try @import("../float/asRational.zig").asRational(x);
+            tx[0].num.limbs = &tx[1][0];
+            tx[0].den.limbs = &tx[1][1];
+
+            return cmp(tx[0], y);
         },
-        .int => switch (comptime types.numericType(Y)) {
-            .rational => {
-                var tx = @import("../int/asRational.zig").asRational(x);
-                tx[0].num.limbs = &tx[1];
-                return cmp(tx[0], y);
-            },
-            else => unreachable,
+        .int => {
+            var tx = @import("../int/asRational.zig").asRational(x);
+            tx[0].num.limbs = &tx[1];
+            return cmp(tx[0], y);
         },
-        .bool => switch (comptime types.numericType(Y)) {
-            .rational => return cmp(types.cast(Rational, x, .{}) catch unreachable, y),
-            else => unreachable,
-        },
+        .bool => return cmp(types.cast(Rational, x, .{}) catch unreachable, y),
         else => unreachable,
     }
 }

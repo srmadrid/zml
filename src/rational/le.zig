@@ -3,41 +3,32 @@ const std = @import("std");
 const types = @import("../types.zig");
 const rational = @import("../rational.zig");
 
-/// Compares a `Rational` with another lower or equal precision numeric type for
-/// equality or less than.
+/// Compares two operands of rational, integer, dyadic, float, int or bool
+/// types, where at least one operand must be of rational type, for less-than or
+/// equal ordering. The operation is performed by casting both operands to
+/// rational, then comparing them.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn le(x: X, y: Y) bool
+/// rational.le(x: X, y: Y) Cmp
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `x` (`anytype`):
-/// The left operand.
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
 ///
-/// `y` (`anytype`):
-/// The right operand.
-///
-/// Returns
-/// -------
-/// `bool`:
-/// The comparison result.
+/// ## Returns
+/// `bool`: `true` if `x` is less than or equal to `y`, `false` otherwise.
 pub fn le(x: anytype, y: anytype) bool {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!(types.numericType(X) == .rational and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .integer) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .float) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .int) and
-        !(types.numericType(X) == .rational and types.numericType(Y) == .bool) and
-        !(types.numericType(X) == .integer and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .float and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .int and types.numericType(Y) == .rational) and
-        !(types.numericType(X) == .bool and types.numericType(Y) == .rational))
-        @compileError("rational.le requires x or y to be a rational type, the other must be a rational, integer, float, int or bool type, got " ++ @typeName(X) ++ " and " ++ @typeName(Y));
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.rational) or !types.numericType(Y).le(.rational) or
+        types.numericType(X) == .cfloat or types.numericType(Y) == .cfloat or
+        (types.numericType(X) != .rational and types.numericType(Y) != .rational))
+        @compileError("zml.rational.le: at least one of x or y must be a rational, the other must be a bool, an int, a float, a dyadic, an integer or a rational, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const cmp: types.Cmp = rational.cmp(x, y);
     return cmp == .lt or cmp == .eq;

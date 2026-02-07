@@ -4,20 +4,14 @@ const types = @import("../types.zig");
 const integer = @import("../integer.zig");
 const Integer = integer.Integer;
 
-/// Performs addition between two operands of any numeric type in integer
-/// precision. The operation is performed by casting both operands to integer,
-/// then adding them.
-///
-/// If either `x` or `y` is of custom numeric type, that type must implement the
-/// required `copyToInteger` method. The expected signature and behavior of
-/// `copyToInteger` are as follows:
-/// * `fn copyToInteger(self: *const @This(), allocator: std.mem.Allocator) !Integer`:
-///   Initializes and returns a new integer representing the value of the
-///   instance.
+/// Performs addition between two operands of integer, cfloat, dyadic, float,
+/// int or bool types, where at least one operand must be of integer type. The
+/// operation is performed by casting both operands to integer, then adding
+/// them.
 ///
 /// ## Signature
 /// ```zig
-/// integer.add(x: X, y: Y) !Integer
+/// integer.add(allocator: std.mem.Allocator, x: X, y: Y) !Integer
 /// ```
 ///
 /// ## Arguments
@@ -33,8 +27,10 @@ pub fn add(allocator: std.mem.Allocator, x: anytype, y: anytype) !Integer {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("zml.integer.add: x and y must be numerics, got\n\tx: " ++
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.integer) or !types.numericType(Y).le(.integer) or
+        (types.numericType(X) != .integer and types.numericType(Y) != .integer))
+        @compileError("zml.integer.add: at least one of x or y must be an integer, the other must be a bool, an int, a float, a dyadic, a cfloat or an integer, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     var result: Integer = try .init(allocator, 0);

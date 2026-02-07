@@ -8,19 +8,15 @@ const Integer = integer.Integer;
 const ops = @import("../ops.zig");
 const constants = @import("../constants.zig");
 
-/// Performs in-place addition between two operands of any numeric type in
-/// integer precision. The operation is performed by casting both operands to
-/// integer, then adding them in-place.
+const check_aliasing_alloc = @import("check_aliasing_alloc.zig").check_aliasing_alloc;
+
+/// Performs in-place addition between two operands of integer, cfloat, dyadic,
+/// float, int or bool types, where at least one operand must be of integer
+/// type. The operation is performed by casting both operands to integer, then
+/// adding them in-place.
 ///
 /// Aliasing between the output operand `o` and the input operands `x` or `y` is
 /// allowed.
-///
-/// If either `x` or `y` is of custom numeric type, that type must implement the
-/// required `copyToInteger` method. The expected signature and behavior of
-/// `copyToInteger` are as follows:
-/// * `fn copyToInteger(self: *const @This(), allocator: std.mem.Allocator) !Integer`:
-///   Initializes and returns a new integer representing the value of the
-///   instance.
 ///
 /// ## Signature
 /// ```zig
@@ -41,285 +37,34 @@ const constants = @import("../constants.zig");
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
 /// * `integer.Error.NotWritable`: If the output operand `o` is not writable.
+/// * `integer.Error.DataNotOwned`: If the output operand `o` does not own its
+///   data and resizing is needed.
 pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !void {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("zml.integer.add_: x and y must be numerics, got\n\tx: " ++
+    comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or
+        !types.numericType(X).le(.integer) or !types.numericType(Y).le(.integer) or
+        (types.numericType(X) != .integer and types.numericType(Y) != .integer))
+        @compileError("zml.integer.add_: at least one of x or y must be an integer, the other must be a bool, an int, a float, a dyadic, a cfloat or an integer, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     if (!o.flags.writable)
         return integer.Error.NotWritable;
 
     switch (comptime types.numericType(X)) {
-        .custom => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ops.deinit(&ty, .{ .allocator = allocator });
-
-                return add_(allocator, o, tx, ty);
-            },
-            .complex => return add_(allocator, o, x.re, y.re),
-            .real => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ops.deinit(&ty, .{ .allocator = allocator });
-
-                return add_(allocator, o, tx, ty);
-            },
-            .rational => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ops.deinit(&ty, .{ .allocator = allocator });
-
-                return add_(allocator, o, tx, ty);
-            },
-            .integer => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-
-                return add_(allocator, o, tx, y);
-            },
-            .cfloat => return add_(allocator, o, x.re, y.re),
-            .dyadic => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .float => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .int => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .bool => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer ops.deinit(&tx, .{ .allocator = allocator });
-
-                return add_(
-                    allocator,
-                    o,
-                    tx,
-                    types.cast(Integer, y, .{}) catch unreachable,
-                );
-            },
-        },
-        .complex => switch (comptime types.numericType(Y)) {
-            .custom => return add_(allocator, o, x.re, y),
-            .complex => return add_(allocator, o, x.re, y.re),
-            .real => return add_(allocator, o, x.re, y),
-            .rational => return add_(allocator, o, x.re, y),
-            .integer => return add_(allocator, o, x.re, y),
-            .cfloat => return add_(allocator, o, x.re, y.re),
-            .dyadic => return add_(allocator, o, x.re, y),
-            .float => return add_(allocator, o, x.re, y),
-            .int => return add_(allocator, o, x.re, y),
-            .bool => return add_(allocator, o, x.re, y),
-        },
-        .real => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx, ty);
-            },
-            .complex => return add_(allocator, o, x, y.re),
-            .real => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx, ty);
-            },
-            .rational => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx, ty);
-            },
-            .integer => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-
-                return add_(allocator, o, tx, y);
-            },
-            .cfloat => return add_(allocator, o, x, y.re),
-            .dyadic => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .float => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .int => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .bool => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-
-                return add_(
-                    allocator,
-                    o,
-                    tx,
-                    types.cast(Integer, y, .{}) catch unreachable,
-                );
-            },
-        },
-        .rational => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx, ty);
-            },
-            .complex => return add_(allocator, o, x, y.re),
-            .real => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx, ty);
-            },
-            .rational => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx, ty);
-            },
-            .integer => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-
-                return add_(allocator, o, tx, y);
-            },
-            .cfloat => return add_(allocator, o, x, y.re),
-            .dyadic => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .float => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .int => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx, ty[0]);
-            },
-            .bool => {
-                var tx: Integer = try types.cast(Integer, x, .{ .allocator = allocator });
-                defer tx.deinit(allocator);
-
-                return add_(
-                    allocator,
-                    o,
-                    tx,
-                    types.cast(Integer, y, .{}) catch unreachable,
-                );
-            },
-        },
         .integer => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, x, ty);
-            },
-            .complex => return add_(allocator, o, x, y.re),
-            .real => {
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, x, ty);
-            },
-            .rational => {
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, x, ty);
-            },
             .integer => {
-                if (x.size == 0) {
-                    try o.set(allocator, y);
-                    return;
-                }
+                if (x.size == 0)
+                    return o.set(allocator, y);
 
-                if (y.size == 0) {
-                    try o.set(allocator, x);
-                    return;
-                }
+                if (y.size == 0)
+                    return o.set(allocator, x);
 
                 // Aliasing checks
-                var tx: Integer = if (o.limbs == x.limbs)
-                    try x.copy(allocator)
-                else blk: {
-                    var tmp: Integer = x;
-                    tmp.flags.owns_data = false;
-                    break :blk tmp;
-                };
+                var tx: Integer = try check_aliasing_alloc(allocator, o, x);
                 defer tx.deinit(allocator);
-
-                var ty: Integer = if (o.limbs == y.limbs)
-                    try y.copy(allocator)
-                else blk: {
-                    var tmp: Integer = y;
-                    tmp.flags.owns_data = false;
-                    break :blk tmp;
-                };
+                var ty: Integer = try check_aliasing_alloc(allocator, o, y);
                 defer ty.deinit(allocator);
 
                 if (tx.positive == ty.positive) {
@@ -374,308 +119,34 @@ pub fn add_(allocator: std.mem.Allocator, o: *Integer, x: anytype, y: anytype) !
                 x,
                 types.cast(Integer, y, .{}) catch unreachable,
             ),
+            else => unreachable,
         },
-        .cfloat => switch (comptime types.numericType(Y)) {
-            .custom => return add_(allocator, o, x.re, y),
-            .complex => return add_(allocator, o, x.re, y.re),
-            .real => return add_(allocator, o, x.re, y),
-            .rational => return add_(allocator, o, x.re, y),
-            .integer => return add_(allocator, o, x.re, y),
-            .cfloat => return add_(allocator, o, x.re, y.re),
-            .dyadic => return add_(allocator, o, x.re, y),
-            .float => return add_(allocator, o, x.re, y),
-            .int => return add_(allocator, o, x.re, y),
-            .bool => return add_(allocator, o, x.re, y),
+        .cfloat => return add_(allocator, o, x.re, y),
+        .dyadic => {
+            var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
+            tx[0].limbs = &tx[1];
+
+            return add_(allocator, o, tx[0], y);
         },
-        .dyadic => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
+        .float => {
+            var tx = try @import("../float/asInteger.zig").asInteger(x);
+            tx[0].limbs = &tx[1];
 
-                return add_(allocator, o, tx[0], ty);
-            },
-            .complex => return add_(allocator, o, x, y.re),
-            .real => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx[0], ty);
-            },
-            .rational => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx[0], ty);
-            },
-            .integer => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-
-                return add_(allocator, o, tx[0], y);
-            },
-            .cfloat => return add_(allocator, o, x, y.re),
-            .dyadic => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .float => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .int => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .bool => {
-                var tx = try @import("../dyadic/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-
-                return add_(
-                    allocator,
-                    o,
-                    tx[0],
-                    types.cast(Integer, y, .{}) catch unreachable,
-                );
-            },
+            return add_(allocator, o, tx[0], y);
         },
-        .float => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
+        .int => {
+            var tx = @import("../int/asInteger.zig").asInteger(x);
+            tx[0].limbs = &tx[1];
 
-                return add_(allocator, o, tx[0], ty);
-            },
-            .complex => return add_(allocator, o, x, y.re),
-            .real => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx[0], ty);
-            },
-            .rational => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx[0], ty);
-            },
-            .integer => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-
-                return add_(allocator, o, tx[0], y);
-            },
-            .cfloat => return add_(allocator, o, x, y.re),
-            .dyadic => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .float => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .int => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .bool => {
-                var tx = try @import("../float/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-
-                return add_(
-                    allocator,
-                    o,
-                    tx[0],
-                    types.cast(Integer, y, .{}) catch unreachable,
-                );
-            },
+            return add_(allocator, o, tx[0], y);
         },
-        .int => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx[0], ty);
-            },
-            .complex => return add_(allocator, o, x, y.re),
-            .real => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx[0], ty);
-            },
-            .rational => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(allocator, o, tx[0], ty);
-            },
-            .integer => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-
-                return add_(allocator, o, tx[0], y);
-            },
-            .cfloat => return add_(allocator, o, x, y.re),
-            .dyadic => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .float => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .int => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(allocator, o, tx[0], ty[0]);
-            },
-            .bool => {
-                var tx = @import("../int/asInteger.zig").asInteger(x);
-                tx[0].limbs = &tx[1];
-
-                return add_(
-                    allocator,
-                    o,
-                    tx[0],
-                    types.cast(Integer, y, .{}) catch unreachable,
-                );
-            },
-        },
-        .bool => switch (comptime types.numericType(Y)) {
-            .custom => {
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(
-                    allocator,
-                    o,
-                    types.cast(Integer, x, .{}) catch unreachable,
-                    ty,
-                );
-            },
-            .complex => return add_(allocator, o, x, y.re),
-            .real => {
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(
-                    allocator,
-                    o,
-                    types.cast(Integer, x, .{}) catch unreachable,
-                    ty,
-                );
-            },
-            .rational => {
-                var ty: Integer = try types.cast(Integer, y, .{ .allocator = allocator });
-                defer ty.deinit(allocator);
-
-                return add_(
-                    allocator,
-                    o,
-                    types.cast(Integer, x, .{}) catch unreachable,
-                    ty,
-                );
-            },
-            .integer => return add_(
-                allocator,
-                o,
-                types.cast(Integer, x, .{}) catch unreachable,
-                y,
-            ),
-            .cfloat => return add_(allocator, o, x, y.re),
-            .dyadic => {
-                var ty = try @import("../dyadic/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(
-                    allocator,
-                    o,
-                    types.cast(Integer, x, .{}) catch unreachable,
-                    ty[0],
-                );
-            },
-            .float => {
-                var ty = try @import("../float/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(
-                    allocator,
-                    o,
-                    types.cast(Integer, x, .{}) catch unreachable,
-                    ty[0],
-                );
-            },
-            .int => {
-                var ty = @import("../int/asInteger.zig").asInteger(y);
-                ty[0].limbs = &ty[1];
-
-                return add_(
-                    allocator,
-                    o,
-                    types.cast(Integer, x, .{}) catch unreachable,
-                    ty[0],
-                );
-            },
-            .bool => return add_(
-                allocator,
-                o,
-                types.cast(Integer, x, .{}) catch unreachable,
-                types.cast(Integer, y, .{}) catch unreachable,
-            ),
-        },
+        .bool => return add_(
+            allocator,
+            o,
+            types.cast(Integer, x, .{}) catch unreachable,
+            types.cast(Integer, y, .{}) catch unreachable,
+        ),
+        else => unreachable,
     }
 }
 

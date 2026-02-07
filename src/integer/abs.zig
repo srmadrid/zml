@@ -10,16 +10,11 @@ const Integer = integer.Integer;
 /// the given allocator. If no allocator is provided, the result will be a view
 /// of the integer with the sign set to positive.
 ///
-/// ## Signature
-/// ```zig
-/// integer.abs(allocator: ?std.mem.Allocator, x: X) X
-/// ```
-///
 /// ## Arguments
-/// * `x` (`anytype`): The integer value to get the absolute value of.
+/// * `x` (`Integer`): The integer value to get the absolute value of.
 ///
 /// ## Returns
-/// `@TypeOf(x)`: The absolute value of `x`.
+/// `Integer`: The absolute value of `x`.
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can

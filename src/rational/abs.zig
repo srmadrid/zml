@@ -4,28 +4,21 @@ const types = @import("../types.zig");
 const rational = @import("../rational.zig");
 const Rational = rational.Rational;
 
-/// Returns the absolute value of a `Rational`. If an allocator is provided,
-/// the result will be a new `Rational` allocated with the given allocator. If
-/// no allocator is provided, the result will be a view of the `Rational` with
-/// the sign set to positive.
+/// Returns the absolute value of a rational `x`.
 ///
-/// Parameters
-/// ----------
-/// `allocator` (`?std.mem.Allocator`):
-/// The allocator to use for memory allocations.
+/// If an allocator is provided, the result will be a new rational allocated
+/// with the given allocator. If no allocator is provided, the result will be a
+/// view of the rational with the sign set to positive.
 ///
-/// `x` (`Rational`):
-/// The input `Rational`.
+/// ## Arguments
+/// * `x` (`Rational`): The rational value to get the absolute value of.
 ///
-/// Returns
-/// -------
-/// `Rational`:
-/// The absolute value of `x`.
+/// ## Returns
+/// `Rational`: The absolute value of `x`.
 ///
-/// Errors
-/// ------
-/// `std.mem.Allocator.Error.OutOfMemory`:
-/// If memory allocation fails. Can only occur if an allocator is provided.
+/// ## Errors
+/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
+///   only happen if an allocator is provided.
 pub fn abs(allocator: ?std.mem.Allocator, x: Rational) !Rational {
     if (allocator) |a| {
         var result: Rational = try x.copy(a);
