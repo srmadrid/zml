@@ -15,9 +15,8 @@ const _two: u32 = 2;
 
 /// Returns the additive identity (zero) for the given numeric type `N`.
 ///
-/// If `N` is a custom numeric type, it should implement the required `zero`
-/// method. If the method is not found, it must be provided via the context. The
-/// expected signature and behavior of `zero` are as follows:
+/// If `N` is a custom numeric type, it must implement the required `zero`
+/// method. The expected signature and behavior of `zero` are as follows:
 /// * Non-allocated: `fn zero() N`: Returns the zero value.
 /// * Allocated: `fn zero(?std.mem.Allocator) !N`: Returns the zero as a newly
 ///   allocated value, if the allocator is provided, or a read-only view if not.
@@ -212,59 +211,29 @@ pub inline fn zero(
         },
         .custom => {
             if (comptime types.isAllocated(N)) {
-                if (comptime types.hasMethod(N, "zero", fn (?std.mem.Allocator) anyerror!N, &.{})) {
-                    const spec =
-                        .{
-                            .allocator = .{
-                                .type = ?std.mem.Allocator,
-                                .required = false,
-                                .default = null,
-                                .description = "The allocator to use for the custom numeric type's memory allocation. If not provided, a read-only view will be returned.",
-                            },
-                        };
+                comptime if (!types.hasMethod(N, "zero", fn (?std.mem.Allocator) anyerror!N, &.{}))
+                    @compileError("zml.zero: " ++ @typeName(N) ++ " must implement `fn zero(?std.mem.Allocator) anyerror!" ++ @typeName(N) ++ "`");
 
-                    comptime types.validateContext(@TypeOf(ctx), spec);
-
-                    return N.zero(types.getFieldOrDefault(ctx, spec, "allocator"));
-                } else {
-                    const spec =
-                        .{
-                            .allocator = .{
-                                .type = ?std.mem.Allocator,
-                                .required = false,
-                                .default = null,
-                                .description = "The allocator to use for the custom numeric type's memory allocation. If not provided, a read-only view will be returned.",
-                            },
-                            .zero = .{
-                                .type = fn (allocator: ?std.mem.Allocator) anyerror!N,
-                                .required = true,
-                                .description = "A function that returns the zero value for the custom numeric type.",
-                            },
-                        };
-
-                    comptime types.validateContext(@TypeOf(ctx), spec);
-
-                    return ctx.zero(types.getFieldOrDefault(ctx, spec, "allocator"));
-                }
-            } else {
-                if (comptime types.hasMethod(N, "zero", fn () N, &.{})) {
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return N.zero();
-                } else {
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .zero = .{
-                                .type = fn () N,
-                                .required = true,
-                                .description = "A function that returns the zero value for the custom numeric type.",
-                            },
+                const spec =
+                    .{
+                        .allocator = .{
+                            .type = ?std.mem.Allocator,
+                            .required = false,
+                            .default = null,
+                            .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a read-only view will be returned.",
                         },
-                    );
+                    };
 
-                    return ctx.zero();
-                }
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return N.zero(types.getFieldOrDefault(ctx, spec, "allocator"));
+            } else {
+                comptime if (!types.hasMethod(N, "zero", fn () N, &.{}))
+                    @compileError("zml.zero: " ++ @typeName(N) ++ " must implement `fn zero() " ++ @typeName(N) ++ "`");
+
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return N.zero();
             }
         },
     }
@@ -272,9 +241,8 @@ pub inline fn zero(
 
 /// Returns the multiplicative identity (one) for the given numeric type `N`.
 ///
-/// If `N` is a custom numeric type, it should implement the required `one`
-/// method. If the method is not found, it must be provided via the context. The
-/// expected signature and behavior of `one` are as follows:
+/// If `N` is a custom numeric type, it must implement the required `one`
+/// method. The expected signature and behavior of `one` are as follows:
 /// * Non-allocated: `fn one() N`: Returns the one value.
 /// * Allocated: `fn one(?std.mem.Allocator) !N`: Returns the one as a newly
 ///   allocated value, if the allocator is provided, or a read-only view if not.
@@ -464,59 +432,29 @@ pub inline fn one(
         },
         .custom => {
             if (comptime types.isAllocated(N)) {
-                if (comptime types.hasMethod(N, "one", fn (?std.mem.Allocator) anyerror!N, &.{})) {
-                    const spec =
-                        .{
-                            .allocator = .{
-                                .type = ?std.mem.Allocator,
-                                .required = false,
-                                .default = null,
-                                .description = "The allocator to use for the custom numeric type's memory allocation. If not provided, a read-only view will be returned.",
-                            },
-                        };
+                comptime if (!types.hasMethod(N, "one", fn (?std.mem.Allocator) anyerror!N, &.{}))
+                    @compileError("zml.one: " ++ @typeName(N) ++ " must implement `fn one(?std.mem.Allocator) anyerror!" ++ @typeName(N) ++ "`");
 
-                    comptime types.validateContext(@TypeOf(ctx), spec);
-
-                    return N.one(types.getFieldOrDefault(ctx, spec, "allocator"));
-                } else {
-                    const spec =
-                        .{
-                            .allocator = .{
-                                .type = ?std.mem.Allocator,
-                                .required = false,
-                                .default = null,
-                                .description = "The allocator to use for the custom numeric type's memory allocation. If not provided, a read-only view will be returned.",
-                            },
-                            .one = .{
-                                .type = fn (allocator: ?std.mem.Allocator) anyerror!N,
-                                .required = true,
-                                .description = "A function that returns the one value for the custom numeric type.",
-                            },
-                        };
-
-                    comptime types.validateContext(@TypeOf(ctx), spec);
-
-                    return ctx.one(types.getFieldOrDefault(ctx, spec, "allocator"));
-                }
-            } else {
-                if (comptime types.hasMethod(N, "one", fn () N, &.{})) {
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return N.one();
-                } else {
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .one = .{
-                                .type = fn () N,
-                                .required = true,
-                                .description = "A function that returns the one value for the custom numeric type.",
-                            },
+                const spec =
+                    .{
+                        .allocator = .{
+                            .type = ?std.mem.Allocator,
+                            .required = false,
+                            .default = null,
+                            .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a read-only view will be returned.",
                         },
-                    );
+                    };
 
-                    return ctx.one();
-                }
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return N.one(types.getFieldOrDefault(ctx, spec, "allocator"));
+            } else {
+                comptime if (!types.hasMethod(N, "one", fn () N, &.{}))
+                    @compileError("zml.one: " ++ @typeName(N) ++ " must implement `fn one() " ++ @typeName(N) ++ "`");
+
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return N.one();
             }
         },
     }
@@ -524,9 +462,8 @@ pub inline fn one(
 
 /// Returns the numeric constant two for the given numeric type `N`.
 ///
-/// If `N` is a custom numeric type, it should implement the required `two`
-/// method. If the method is not found, it must be provided via the context. The
-/// expected signature and behavior of `two` are as follows:
+/// If `N` is a custom numeric type, it must implement the required `two`
+/// method. The expected signature and behavior of `two` are as follows:
 /// * Non-allocated: `fn two() N`: Returns the two value.
 /// * Allocated: `fn two(?std.mem.Allocator) !N`: Returns the two as a newly
 ///   allocated value, if the allocator is provided, or a read-only view if not.
@@ -716,59 +653,29 @@ pub inline fn two(
         },
         .custom => {
             if (comptime types.isAllocated(N)) {
-                if (comptime types.hasMethod(N, "two", fn (?std.mem.Allocator) anyerror!N, &.{})) {
-                    const spec =
-                        .{
-                            .allocator = .{
-                                .type = ?std.mem.Allocator,
-                                .required = false,
-                                .default = null,
-                                .description = "The allocator to use for the custom numeric type's memory allocation. If not provided, a read-only view will be returned.",
-                            },
-                        };
+                comptime if (!types.hasMethod(N, "two", fn (?std.mem.Allocator) anyerror!N, &.{}))
+                    @compileError("zml.two: " ++ @typeName(N) ++ " must implement `fn two(?std.mem.Allocator) anyerror!" ++ @typeName(N) ++ "`");
 
-                    comptime types.validateContext(@TypeOf(ctx), spec);
-
-                    return N.two(types.getFieldOrDefault(ctx, spec, "allocator"));
-                } else {
-                    const spec =
-                        .{
-                            .allocator = .{
-                                .type = ?std.mem.Allocator,
-                                .required = false,
-                                .default = null,
-                                .description = "The allocator to use for the custom numeric type's memory allocation. If not provided, a read-only view will be returned.",
-                            },
-                            .two = .{
-                                .type = fn (allocator: ?std.mem.Allocator) anyerror!N,
-                                .required = true,
-                                .description = "A function that returns the two value for the custom numeric type.",
-                            },
-                        };
-
-                    comptime types.validateContext(@TypeOf(ctx), spec);
-
-                    return ctx.two(types.getFieldOrDefault(ctx, spec, "allocator"));
-                }
-            } else {
-                if (comptime types.hasMethod(N, "two", fn () N, &.{})) {
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return N.two();
-                } else {
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .two = .{
-                                .type = fn () N,
-                                .required = true,
-                                .description = "A function that returns the two value for the custom numeric type.",
-                            },
+                const spec =
+                    .{
+                        .allocator = .{
+                            .type = ?std.mem.Allocator,
+                            .required = false,
+                            .default = null,
+                            .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a read-only view will be returned.",
                         },
-                    );
+                    };
 
-                    return ctx.two();
-                }
+                comptime types.validateContext(@TypeOf(ctx), spec);
+
+                return N.two(types.getFieldOrDefault(ctx, spec, "allocator"));
+            } else {
+                comptime if (!types.hasMethod(N, "two", fn () N, &.{}))
+                    @compileError("zml.two: " ++ @typeName(N) ++ " must implement `fn two() " ++ @typeName(N) ++ "`");
+
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return N.two();
             }
         },
     }

@@ -20,6 +20,20 @@ pub fn isSupportedType(comptime T: type) bool {
         isExpression(T);
 }
 
+/// Checks if the input type is a custom type.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a custom type, `false` otherwise.
+pub fn isCustomType(comptime T: type) bool {
+    return isCustomNumeric(T) or
+        isCustomVector(T) or
+        isCustomMatrix(T) or
+        isCustomArray(T);
+}
+
 /// Checks if the input type is a one-item pointer.
 ///
 /// ## Arguments
@@ -152,6 +166,17 @@ pub fn isNumeric(comptime T: type) bool {
         },
         else => return false,
     }
+}
+
+/// Checks if the input type is a custom numeric type.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a custom numeric type, `false` otherwise.
+pub fn isCustomNumeric(comptime T: type) bool {
+    return isNumeric(T) and types.numericType(T) == .custom;
 }
 
 /// Checks if the input type is an instance of a vector.

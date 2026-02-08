@@ -431,7 +431,11 @@ pub inline fn deinit(
             comptime types.validateContext(
                 @TypeOf(ctx),
                 .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{
+                        .type = std.mem.Allocator,
+                        .required = true,
+                        .description = "The allocator to use for the integer's memory deallocation. Must be the same allocator used to initialize it.",
+                    },
                 },
             );
 
@@ -441,18 +445,39 @@ pub inline fn deinit(
             comptime types.validateContext(
                 @TypeOf(ctx),
                 .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{
+                        .type = std.mem.Allocator,
+                        .required = true,
+                        .description = "The allocator to use for the rational's memory deallocation. Must be the same allocator used to initialize it.",
+                    },
                 },
             );
 
             x.deinit(ctx.allocator);
         },
-        .real => @compileError("zml.deinit not implemented for " ++ @typeName(X) ++ " yet"),
+        .real => {
+            comptime types.validateContext(
+                @TypeOf(ctx),
+                .{
+                    .allocator = .{
+                        .type = std.mem.Allocator,
+                        .required = true,
+                        .description = "The allocator to use for the real's memory deallocation. Must be the same allocator used to initialize it.",
+                    },
+                },
+            );
+
+            x.deinit(ctx.allocator);
+        },
         .complex => {
             comptime types.validateContext(
                 @TypeOf(ctx),
                 .{
-                    .allocator = .{ .type = std.mem.Allocator, .required = true },
+                    .allocator = .{
+                        .type = std.mem.Allocator,
+                        .required = true,
+                        .description = "The allocator to use for the complex's memory deallocation. Must be the same allocator used to initialize it.",
+                    },
                 },
             );
 
@@ -460,13 +485,17 @@ pub inline fn deinit(
         },
         .custom => {
             if (comptime types.isAllocated(X)) {
-                if (comptime !types.hasMethod(X, "deinit", fn (*X, std.mem.Allocator) void, &.{}))
-                    @compileError("zml.deinit: custom numeric type " ++ @typeName(X) ++ " must have a `deinit` declaration");
+                comptime if (!types.hasMethod(X, "deinit", fn (*X, std.mem.Allocator) void, &.{}))
+                    @compileError("zml.deinit: " ++ @typeName(X) ++ " must implement `fn deinit(*" ++ @typeName(X) ++ ", std.mem.Allocator) void`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the custom numeric's memory deallocation. Must be the same allocator used to initialize it.",
+                        },
                     },
                 );
 

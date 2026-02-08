@@ -528,12 +528,14 @@ pub inline fn domain(comptime T: type) Domain {
 
 const type_checks = @import("types/type_checks.zig");
 pub const isSupportedType = type_checks.isSupportedType;
+pub const isCustomType = type_checks.isCustomType;
 pub const isPointer = type_checks.isPointer;
 pub const isManyPointer = type_checks.isManyPointer;
 pub const isConstPointer = type_checks.isConstPointer;
 pub const isSlice = type_checks.isSlice;
 pub const isSimdVector = type_checks.isSimdVector;
 pub const isNumeric = type_checks.isNumeric;
+pub const isCustomNumeric = type_checks.isCustomNumeric;
 pub const isVector = type_checks.isVector;
 pub const isDenseVector = type_checks.isDenseVector;
 pub const isSparseVector = type_checks.isSparseVector;

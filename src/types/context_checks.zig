@@ -10,7 +10,7 @@ const types = @import("../types.zig");
 /// found, a compile-time error is raised with a detailed message.
 ///
 /// ## Arguments
-/// * `ctx` (`comptime type`): The type of the context struct to validate. Must
+/// * `Ctx` (`comptime type`): The type of the context struct to validate. Must
 ///   be `void` or a struct type.
 /// * `spec` (`anytype`): The specification struct that defines the expected
 ///   fields. Must have the following structure:
@@ -86,7 +86,7 @@ fn formatSpecCtxMismatch(
 /// raised with a detailed message.
 ///
 /// ## Arguments
-/// * `ctx` (`comptime type`): The type of the context struct to validate. Must
+/// * `Ctx` (`comptime type`): The type of the context struct to validate. Must
 ///   be `void` or a struct type.
 /// * `spec` (`anytype`): The specification struct that defines the expected
 ///   fields. Must have the following structure:
