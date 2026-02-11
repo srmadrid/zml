@@ -850,10 +850,21 @@ pub fn ReturnTypeFromInputs(
     comptime func: anytype,
     comptime input_types: []const type,
 ) type {
-    comptime var inputs: std.meta.Tuple(input_types) = undefined;
+    const func_params = @typeInfo(@TypeOf(func)).@"fn".params;
+    comptime var corrected_input_types: [input_types.len]type = undefined;
+    inline for (func_params, 0..) |func_param, i| {
+        corrected_input_types[i] = if (func_param.type == type)
+            type
+        else
+            input_types[i];
+    }
 
-    inline for (input_types, 0..) |input_type, i| {
-        inputs[i] = if (input_type == std.mem.Allocator)
+    comptime var inputs: std.meta.Tuple(&corrected_input_types) = undefined;
+
+    inline for (func_params, input_types, 0..) |func_param, input_type, i| {
+        inputs[i] = if (func_param.type == type)
+            input_type // The type is passed directly
+        else if (input_type == std.mem.Allocator)
             useless_allocator
         else
             empty(input_type);
@@ -882,7 +893,9 @@ pub fn ReturnTypeFromInputs(
 ///   union.
 /// * `input_types` (`comptime []const type`): The types of the inputs to the
 ///   method, used to determine the return type for methods with inferred return
-///   types.
+///   types. If a parameter in `method_type` is of type `type`, the
+///   corresponding type in `input_types` should be the input type for that
+///   parameter.
 ///
 /// ## Returns
 /// `bool`: `true` if the method exists and has the correct type, `false`
@@ -925,6 +938,9 @@ pub fn hasMethod(
             inline for (spec_params, method_params) |spec_param, method_param| {
                 if (comptime spec_param.is_generic or method_param.is_generic)
                     continue;
+
+                if (comptime spec_param.type == type)
+                    continue; // The parameter type is `type`, so it matches any type
 
                 if (comptime spec_param.type.? != method_param.type.?)
                     return false;

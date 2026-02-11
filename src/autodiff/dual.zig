@@ -54,6 +54,17 @@ pub fn Dual(comptime T: type) type {
 
         pub const Add = _Add;
         pub const add = if (types.isAllocated(T)) _addAllocated else _add;
+
+        pub fn fromFloat(x: anytype) Dual(T) {
+            return .{
+                .val = types.scast(T, x),
+                .eps = constants.zero(T, .{}) catch unreachable,
+            };
+        }
+
+        pub fn toCfloat(self: Dual(T), comptime Cfloat: type) Cfloat {
+            return types.scast(Cfloat, self.val);
+        }
     };
 }
 

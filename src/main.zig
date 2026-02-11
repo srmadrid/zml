@@ -560,13 +560,20 @@ fn print_complex_matrix(desc: []const u8, m: u32, n: u32, a: []zml.cf64, lda: u3
 
 pub fn main() !void {
     // const a: std.mem.Allocator = std.heap.page_allocator;
-    var gpa: std.heap.DebugAllocator(.{}) = .init;
-    defer _ = gpa.deinit();
-    const a = gpa.allocator();
+    // var gpa: std.heap.DebugAllocator(.{}) = .init;
+    // defer _ = gpa.deinit();
+    // const a = gpa.allocator();
 
-    var zero = try zml.zero(zml.autodiff.Dual(zml.Integer), .{ .allocator = a, .zero = zml.autodiff.Dual(zml.Integer)._zeroAllocated });
-    defer zml.deinit(&zero, .{ .allocator = a });
-    std.debug.print("zero: {}\n", .{zero});
+    // var zero = try zml.zero(zml.autodiff.Dual(zml.Integer), .{ .allocator = a, .zero = zml.autodiff.Dual(zml.Integer)._zeroAllocated });
+    // defer zml.deinit(&zero, .{ .allocator = a });
+    // std.debug.print("zero: {}\n", .{zero});
+
+    const z: f64 = 1.234567890123456789;
+    const a: zml.autodiff.Dual(zml.cf32) = zml.scast(zml.autodiff.Dual(zml.cf32), z);
+    const b: zml.cf64 = zml.scast(zml.cf64, a);
+    std.debug.print("z: {d}\n", .{z});
+    std.debug.print("a: {} + {}ε\n", .{ a.val, a.eps });
+    std.debug.print("b: {}\n", .{b});
 
     // const a: u64 = 1000;
     // const b: f64 = 1000;

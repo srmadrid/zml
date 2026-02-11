@@ -2,6 +2,7 @@ const std = @import("std");
 
 const types = @import("../types.zig");
 const constants = @import("../constants.zig");
+const ops = @import("../ops.zig");
 
 const dyadic = @import("../dyadic.zig");
 const integer = @import("../integer.zig");
@@ -13,30 +14,38 @@ const Real = real.Real;
 const complex = @import("../complex.zig");
 const Complex = complex.Complex;
 
-// EDIT SCAST TO BE ABLE TO CAST TO ALLOCATED TYPES, BUT WITHOUT ALLOCATIONS, I.E.,
-// ONLY ALLOW CASES WHERE THE TARGET TYPE CAN BE CONSTRUCTED WITHOUT ALLOCATIONS
-// FROM THE SOURCE TYPE
-
 /// Casts a value of any numeric type to any numeric type, without allocation.
 /// Some casts may lead to runtime panics if the value cannot be represented
 /// in the target type.
 ///
-/// Parameters
-/// ----------
-/// comptime T (`type`): The type to cast to. Must be a fixed precision numeric
-/// type.
+/// If `T` is a custom numeric type, it must implement the required `toX`
+/// method, where `X` is the numeric type being casted to, or `Custom` if the
+/// output type is also a custom numeric type. The expected signature and
+/// behavior of `toX` are as follows:
+/// * Specific types: `fn toX(V) X`: Converts a value of the custom type to a
+///   value of type `X`.
+/// * Non-specific types: `fn toX(V, T: type) T`: Converts a value of the custom
+///   type to a value of type `T`, where `T` is a type in the category of `X`.
 ///
-/// value (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`): The value to cast.
+/// If `value` is of a custom numeric type, that type must implement the
+/// required `fromV` method, where `V` is the numeric type being casted from, or
+/// `Custom` if the input type is also a custom numeric type. The expected
+/// signature and behavior of `fromV` are as follows:
+/// * `fn fromV(V) O`: Creates a value of the custom type from a value of type
+///   `V`.
 ///
-/// Returns
-/// -------
+/// ## Signature
+/// ```zig
+/// scast(comptime T: type, value: V) T
+/// ```
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to cast to. Must be a fixed precision
+///   numeric type.
+/// * `value` (`anytype`): The value to cast.
+///
+/// ## Returns
 /// `T`: The value casted to the type `T`.
-///
-/// Notes
-/// -----
-/// This function does not check if the cast is safe, which could lead to
-/// runtime panics if the value cannot be represented in the target type.
 pub inline fn scast(
     comptime T: type,
     value: anytype,
@@ -45,7 +54,7 @@ pub inline fn scast(
     const O: type = T;
 
     comptime if (!types.isNumeric(I) or !types.isNumeric(O))
-        @compileError("zml.types.scast: value and T must be numerics, got\n\tvalue: " ++
+        @compileError("zml.scast: value and T must be numerics, got\n\tvalue: " ++
             @typeName(I) ++ "\n\tT: " ++ @typeName(O) ++ "\n");
 
     if (comptime I == O)
@@ -61,6 +70,15 @@ pub inline fn scast(
                 .re = if (value) 1.0 else 0.0,
                 .im = 0.0,
             },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromBool", fn (bool) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromBool(bool) " ++ @typeName(O) ++ "`");
+
+                return .fromBool(value);
+            },
             else => unreachable,
         },
         .int => switch (comptime types.numericType(O)) {
@@ -71,6 +89,15 @@ pub inline fn scast(
             .cfloat => return .{
                 .re = @floatFromInt(value),
                 .im = 0.0,
+            },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromInt", fn (I) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromInt(" ++ @typeName(I) ++ ") " ++ @typeName(O) ++ "`");
+
+                return .fromInt(value);
             },
             else => unreachable,
         },
@@ -86,6 +113,15 @@ pub inline fn scast(
                 .re = @floatCast(value),
                 .im = 0.0,
             },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromFloat", fn (I) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromFloat(" ++ @typeName(I) ++ ") " ++ @typeName(O) ++ "`");
+
+                return .fromFloat(value);
+            },
             else => unreachable,
         },
         .dyadic => switch (comptime types.numericType(O)) {
@@ -96,6 +132,15 @@ pub inline fn scast(
             .cfloat => return .{
                 .re = value.toFloat(types.Scalar(O)),
                 .im = 0.0,
+            },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromDyadic", fn (I) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromDyadic(" ++ @typeName(I) ++ ") " ++ @typeName(O) ++ "`");
+
+                return .fromDyadic(value);
             },
             else => unreachable,
         },
@@ -108,6 +153,15 @@ pub inline fn scast(
                 .re = @floatCast(value.re),
                 .im = @floatCast(value.im),
             },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromCfloat", fn (I) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromCfloat(" ++ @typeName(I) ++ ") " ++ @typeName(O) ++ "`");
+
+                return .fromCfloat(value);
+            },
             else => unreachable,
         },
         .integer => switch (comptime types.numericType(O)) {
@@ -118,6 +172,15 @@ pub inline fn scast(
             .cfloat => return .{
                 .re = value.toFloat(types.Scalar(O)),
                 .im = 0.0,
+            },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromInteger", fn (Integer) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromInteger(Integer) " ++ @typeName(O) ++ "`");
+
+                return .fromInteger(value);
             },
             else => unreachable,
         },
@@ -130,6 +193,15 @@ pub inline fn scast(
                 .re = value.toFloat(types.Scalar(O)),
                 .im = 0.0,
             },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromRational", fn (Rational) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromRational(anytype) " ++ @typeName(O) ++ "`");
+
+                return .fromRational(value);
+            },
             else => unreachable,
         },
         .real => @compileError("Not implemented yet."),
@@ -139,36 +211,123 @@ pub inline fn scast(
             .float => return value.toFloat(O),
             .dyadic => return .initSet(value.re),
             .cfloat => return value.toCFloat(O),
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(O, "fromComplex", fn (I) O, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(O) ++ " must implement `fn fromComplex(" ++ @typeName(I) ++ ") " ++ @typeName(O) ++ "`");
+
+                return .fromComplex(value);
+            },
             else => unreachable,
         },
-        .custom => unreachable,
+        .custom => switch (comptime types.numericType(O)) {
+            .bool => {
+                comptime if (!types.hasMethod(I, "toBool", fn (I) bool, &.{@TypeOf(value)}))
+                    @compileError("zml.scast: " ++ @typeName(I) ++ " must implement `fn toBool(" ++ @typeName(I) ++ ") bool`");
+
+                return value.toBool();
+            },
+            .int => {
+                comptime if (!types.hasMethod(I, "toInt", fn (I, type) O, &.{ @TypeOf(value), O }))
+                    @compileError("zml.scast: " ++ @typeName(I) ++ " must implement `fn toInt(" ++ @typeName(I) ++ ", type) " ++ @typeName(O) ++ "`");
+
+                return value.toInt(O);
+            },
+            .float => {
+                comptime if (!types.hasMethod(I, "toFloat", fn (I, type) O, &.{ @TypeOf(value), O }))
+                    @compileError("zml.scast: " ++ @typeName(I) ++ " must implement `fn toFloat(" ++ @typeName(I) ++ ", type) " ++ @typeName(O) ++ "`");
+
+                return value.toFloat(O);
+            },
+            .dyadic => {
+                comptime if (!types.hasMethod(I, "toDyadic", fn (I, type) O, &.{ @TypeOf(value), O }))
+                    @compileError("zml.scast: " ++ @typeName(I) ++ " must implement `fn toDyadic(" ++ @typeName(I) ++ ", type) " ++ @typeName(O) ++ "`");
+
+                return value.toDyadic(O);
+            },
+            .cfloat => {
+                comptime if (!types.hasMethod(I, "toCfloat", fn (I, type) O, &.{ @TypeOf(value), O }))
+                    @compileError("zml.scast: " ++ @typeName(I) ++ " must implement `fn toCfloat(" ++ @typeName(I) ++ ", type) " ++ @typeName(O) ++ "`");
+
+                return value.toCfloat(O);
+            },
+            .custom => {
+                comptime if (types.isAllocated(O))
+                    @compileError("zml.scast: cannot cast to allocated custom type, got\n\tT: " ++ @typeName(O) ++ "\n");
+
+                comptime if (!types.hasMethod(I, "toCustom", fn (I, type) O, &.{ @TypeOf(value), O }))
+                    @compileError("zml.scast: " ++ @typeName(I) ++ " must implement `fn toCustom(" ++ @typeName(I) ++ ", type) " ++ @typeName(O) ++ "`");
+
+                return value.toCustom(O);
+            },
+            else => unreachable,
+        },
     }
 }
 
-/// Casts a value of any numeric type to any other numeric type.
+/// Casts a value of any numeric type to any other numeric type. Some casts may
+/// lead to runtime panics if the value cannot be represented in the target
+/// type.
 ///
-/// Parameters
-/// ----------
-/// comptime `T` (`type`): The type to cast to. Must be a supported numeric type.
+/// If the input and output types are the same and are allocated, the allocator
+/// in the context is optional, and not providing it makes this return a view
+/// of the value. Then, if that type is custom, it must implement the required
+/// `view` method with the signature and behavior:
+/// * `fn view(V) V`: Returns a view of the value.
+/// If an allocator is provided, this returns a copy of the value, and if
+/// that type is custom, it must implement the required `copy` method with the
+/// signature and behavior:
+/// * `fn copy(std.mem.Allocator, V) V`: Returns an allocated copy of the value.
 ///
-/// `value` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex`):The value to cast.
+/// If `T` is a custom numeric type, it must implement the required `toX`
+/// method, where `X` is the numeric type being casted to, or `Custom` if the
+/// output type is also a custom numeric type. The expected signature and
+/// behavior of `toX` are as follows:
+/// * Specific types:
+///   * Non-allocated: `fn toX(V) X`: Converts a value of the custom type to a
+///     value of type `X`.
+///   * Allocated: `fn toX(std.mem.Allocator, V) X`: Converts a value of the
+///     custom type to an allocated value of type `X`.
+/// * Non-specific types:
+///   * Non-allocated: `fn toX(V, T: type) T`: Converts a value of the custom
+///     type to a value of type `T`, where `T` is a type in the category of `X`.
+///   * Allocated: `fn toX(std.mem.Allocator, V, T: type) T`: Converts a value
+///     of the custom type to an allocated value of type `T`, where `T` is a
+///     type in the category of `X`.
 ///
-/// `ctx` (`struct`): The context for the cast operation.
+/// If `value` is of a custom numeric type, that type must implement the
+/// required `fromV` method, where `V` is the numeric type being casted from, or
+/// `Custom` if the input type is also a custom numeric type. The expected
+/// signature and behavior of `fromV` are as follows:
+/// * Non-allocated: `fn fromV(V) O`: Creates a value of the custom type from a
+///   value of type `V`.
+/// * Allocated: `fn fromV(std.mem.Allocator, V) O`: Creates an allocated value
+///   of the custom type from a value of type `V`.
 ///
-/// Returns
-/// -------
+/// ## Signature
+/// ```zig
+/// cast(comptime T: type, value: V, ctx: anytype) !T
+/// ```
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to cast to. Must be a supported numeric
+///   type.
+/// * `value` (`anytype`): The value to cast.
+/// * `ctx` (`anytype`): A context struct providing necessary resources and
+///   configuration for the operation. The required fields depend on `T` and
+///   `V`. If the context is missing required fields or contains unnecessary or
+///   wrongly typed fields, the compiler will emit a detailed error message
+///   describing the expected structure.
+///
+/// ## Returns
 /// `T`: The value casted to the type `T`.
 ///
 /// Errors
 /// ------
 /// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
 /// memory for the output value.
-///
-/// Notes
-/// -----
-/// This function does not check if the cast is safe, which could lead to
-/// runtime panics.
 pub inline fn cast(
     comptime T: type,
     value: anytype,
@@ -177,112 +336,136 @@ pub inline fn cast(
     const I: type = @TypeOf(value);
     const O: type = T;
 
-    if (I == O) {
+    if (comptime I == O) {
         switch (comptime types.numericType(O)) {
-            .bool, .int, .float, .cfloat => {
+            .bool, .int, .float, .dyadic, .cfloat => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
                 return value;
             },
             .integer => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the integer's memory allocation. If not provided, a view will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
-                    return value.copy(allocator);
-                } else {
-                    return value;
-                }
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    value.copy(ctx.allocator)
+                else
+                    value.view();
             },
             .rational => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the rational's memory allocation. If not provided, a view will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
-                    return value.copy(allocator);
-                } else {
-                    return value;
-                }
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    value.copy(ctx.allocator)
+                else
+                    value.view();
             },
             .real => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the real's memory allocation. If not provided, a view will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
-                    return value.copy(allocator);
-                } else {
-                    return value;
-                }
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    value.copy(ctx.allocator)
+                else
+                    value.view();
             },
             .complex => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the complex's memory allocation. If not provided, a view will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    value.copy(ctx.allocator)
+                else
+                    value.view();
+            },
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = false,
+                                .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a view will be returned.",
+                            },
+                        },
+                    );
 
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
-                    return value.copy(allocator);
+                    if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator)) {
+                        comptime if (!types.hasMethod(O, "copy", fn (O) anyerror!O, &.{}))
+                            @compileError("zml.cast: " ++ @typeName(O) ++ " must implement `fn copy(" ++ @typeName(O) ++ ") anyerror!" ++ @typeName(O) ++ "`");
+
+                        return value.copy(ctx.allocator);
+                    } else {
+                        comptime if (!types.hasMethod(O, "view", fn (O) O, &.{}))
+                            @compileError("zml.cast: " ++ @typeName(O) ++ " must implement `fn view(" ++ @typeName(O) ++ ") " ++ @typeName(O) ++ "`");
+
+                        return value.view();
+                    }
                 } else {
                     return value;
                 }
             },
         }
-        return value;
     }
 
     switch (comptime types.numericType(I)) {
         .bool => switch (comptime types.numericType(O)) {
-            .bool => unreachable,
-            .int => {
+            .bool, .int, .float, .dyadic, .cfloat => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return if (value) 1 else 0;
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return if (value) 1.0 else 0.0;
-            },
-            .dyadic => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .initSet(value);
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .{
-                    .re = if (value) 1.0 else 0.0,
-                    .im = 0.0,
-                };
+                return scast(O, value);
             },
             .integer => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the integer's memory allocation. If not provided, a read-only view backed by static storage will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
+                if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator)) {
                     return if (value)
-                        constants.one(Integer, .{ .allocator = allocator })
+                        constants.one(Integer, ctx)
                     else
-                        constants.zero(Integer, .{ .allocator = allocator });
+                        constants.zero(Integer, ctx);
                 } else {
                     return if (value)
                         constants.one(Integer, .{}) catch unreachable
@@ -291,18 +474,22 @@ pub inline fn cast(
                 }
             },
             .rational => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the rational's memory allocation. If not provided, a read-only view backed by static storage will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
+                if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator)) {
                     return if (value)
-                        constants.one(Rational, .{ .allocator = allocator })
+                        constants.one(Rational, ctx)
                     else
-                        constants.zero(Rational, .{ .allocator = allocator });
+                        constants.zero(Rational, ctx);
                 } else {
                     return if (value)
                         constants.one(Rational, .{}) catch unreachable
@@ -311,18 +498,22 @@ pub inline fn cast(
                 }
             },
             .real => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the real's memory allocation. If not provided, a read-only view backed by static storage will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
+                if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator)) {
                     return if (value)
-                        constants.one(Real, .{ .allocator = allocator })
+                        constants.one(Real, ctx)
                     else
-                        constants.zero(Real, .{ .allocator = allocator });
+                        constants.zero(Real, ctx);
                 } else {
                     return if (value)
                         constants.one(Real, .{}) catch unreachable
@@ -331,18 +522,22 @@ pub inline fn cast(
                 }
             },
             .complex => {
-                const spec =
+                comptime types.validateContext(
+                    @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = ?std.mem.Allocator, .required = false, .default = null },
-                    };
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the complex's memory allocation. If not provided, a read-only view backed by static storage will be returned.",
+                        },
+                    },
+                );
 
-                comptime types.validateContext(@TypeOf(ctx), spec);
-
-                if (types.getFieldOrDefault(ctx, spec, "allocator")) |allocator| {
+                if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator)) {
                     return if (value)
-                        constants.one(O, .{ .allocator = allocator })
+                        constants.one(O, ctx)
                     else
-                        constants.zero(O, .{ .allocator = allocator });
+                        constants.zero(O, ctx);
                 } else {
                     return if (value)
                         constants.one(O, .{}) catch unreachable
@@ -350,41 +545,31 @@ pub inline fn cast(
                         constants.zero(O, .{}) catch unreachable;
                 }
             },
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    @compileError("zml.cast: casting bool to allocated custom types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return scast(O, value);
+                }
+            },
         },
         .int => switch (comptime types.numericType(O)) {
-            .bool => {
+            .bool, .int, .float, .dyadic, .cfloat => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return value != 0;
-            },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return @intCast(value);
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return @floatFromInt(value);
-            },
-            .dyadic => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .initSet(value);
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .{
-                    .re = @floatFromInt(value),
-                    .im = 0.0,
-                };
+                return scast(O, value);
             },
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the integer's memory allocation.",
+                        },
                     },
                 );
 
@@ -396,7 +581,11 @@ pub inline fn cast(
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the rational's memory allocation.",
+                        },
                     },
                 );
 
@@ -404,12 +593,16 @@ pub inline fn cast(
                 tv[0].num.limbs = &tv[1];
                 return tv[0].copy(ctx.allocator);
             },
-            .real => @compileError("Not implemented yet: casting from int to real"),
+            .real => @compileError("zml.cast: casting int to real not implemented yet"),
             .complex => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the complex's memory allocation.",
+                        },
                     },
                 );
 
@@ -417,44 +610,31 @@ pub inline fn cast(
                 tv[0].re.num.limbs = &tv[1];
                 return tv[0].copy(ctx.allocator);
             },
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    @compileError("zml.cast: casting int to allocated custom types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return scast(O, value);
+                }
+            },
         },
         .float => switch (comptime types.numericType(O)) {
-            .bool => {
+            .bool, .int, .float, .dyadic, .cfloat => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return value != 0.0;
-            },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return @intFromFloat(value);
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return @floatCast(value);
-            },
-            .dyadic => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .initSet(value);
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return if (comptime I == types.Scalar(O)) .{
-                    .re = value,
-                    .im = 0.0,
-                } else .{
-                    .re = @floatCast(value),
-                    .im = 0.0,
-                };
+                return scast(O, value);
             },
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the integer's memory allocation.",
+                        },
                     },
                 );
 
@@ -466,7 +646,11 @@ pub inline fn cast(
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the rational's memory allocation.",
+                        },
                     },
                 );
 
@@ -475,12 +659,16 @@ pub inline fn cast(
                 tv[0].den.limbs = &tv[1][1];
                 return tv[0].copy(ctx.allocator);
             },
-            .real => @compileError("Not implemented yet: casting from float to real"),
+            .real => @compileError("zml.cast: casting float to real not implemented yet"),
             .complex => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the complex's memory allocation.",
+                        },
                     },
                 );
 
@@ -489,82 +677,98 @@ pub inline fn cast(
                 tv[0].re.den.limbs = &tv[1][1];
                 return tv[0].copy(ctx.allocator);
             },
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    @compileError("zml.cast: casting float to allocated types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return scast(O, value);
+                }
+            },
         },
         .dyadic => switch (comptime types.numericType(O)) {
-            .bool => {
+            .bool, .int, .float, .dyadic, .cfloat => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return dyadic.ne(value, 0);
-            },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return value.toInt(O);
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return value.toFloat(O);
-            },
-            .dyadic => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .initSet(value);
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .{
-                    .re = value.toFloat(types.Scalar(O)),
-                    .im = 0.0,
-                };
-            },
-            .integer => @compileError("Not implemented yet: casting from dyadic to integer"),
-            .rational => @compileError("Not implemented yet: casting from dyadic to rational"),
-            .real => @compileError("Not implemented yet: casting from dyadic to real"),
-            .complex => @compileError("Not implemented yet: casting from dyadic to complex"),
-        },
-        .cfloat => switch (comptime types.numericType(O)) {
-            .bool => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return value.re != 0.0 or value.im != 0.0;
-            },
-            .int => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return @intFromFloat(value.re);
-            },
-            .float => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return if (comptime types.Scalar(I) == O)
-                    value.re
-                else
-                    @floatCast(value.re);
-            },
-            .dyadic => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return .initSet(value.re);
-            },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                if (comptime I == O) {
-                    return value;
-                } else {
-                    return .{
-                        .re = @floatCast(value.re),
-                        .im = @floatCast(value.im),
-                    };
-                }
+                return scast(O, value);
             },
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the integer's memory allocation.",
+                        },
+                    },
+                );
+
+                var tv = @import("../dyadic/asInteger.zig").asInteger(value);
+                tv[0].limbs = &tv[1];
+                return tv[0].copy(ctx.allocator);
+            },
+            .rational => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the rational's memory allocation.",
+                        },
+                    },
+                );
+
+                var tv = @import("../dyadic/asRational.zig").asRational(value);
+                tv[0].num.limbs = &tv[1][0];
+                tv[0].den.limbs = &tv[1][1];
+                return tv[0].copy(ctx.allocator);
+            },
+            .real => @compileError("zml.cast: casting dyadic to real not implemented yet"),
+            .complex => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the complex's memory allocation.",
+                        },
+                    },
+                );
+
+                var tv = @import("../dyadic/asComplex.zig").asComplex(value);
+                tv[0].re.num.limbs = &tv[1][0];
+                tv[0].re.den.limbs = &tv[1][1];
+                return tv[0].copy(ctx.allocator);
+            },
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    @compileError("zml.cast: casting dyadic to allocated types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return scast(O, value);
+                }
+            },
+        },
+        .cfloat => switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .dyadic, .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return scast(O, value);
+            },
+            .integer => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the integer's memory allocation.",
+                        },
                     },
                 );
 
@@ -576,7 +780,11 @@ pub inline fn cast(
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the rational's memory allocation.",
+                        },
                     },
                 );
 
@@ -585,12 +793,16 @@ pub inline fn cast(
                 tv[0].den.limbs = &tv[1][1];
                 return tv[0].copy(ctx.allocator);
             },
-            .real => @compileError("Not implemented yet: casting from cfloat to real"),
+            .real => @compileError("zml.cast: casting cfloat to real not implemented yet"),
             .complex => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the complex's memory allocation.",
+                        },
                     },
                 );
 
@@ -606,6 +818,7 @@ pub inline fn cast(
             .bool => return integer.ne(value, 0),
             .int => return value.toInt(O),
             .float => return value.toFloat(O),
+            .dyadic => return value.toDyadic(O),
             .cfloat => return .{
                 .re = value.toFloat(types.Scalar(O)),
                 .im = 0.0,
@@ -615,68 +828,77 @@ pub inline fn cast(
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the rational's memory allocation. If not provided, a view will be returned.",
+                        },
                     },
                 );
 
-                return value.copyToRational(ctx.allocator);
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    value.copyToRational(ctx.allocator)
+                else
+                    value.asRational();
             },
-            .real => @compileError("Not implemented yet: casting from integer to real"),
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+            .real => @compileError("zml.cast: casting integer to real not implemented yet"),
+            .complex => @compileError("zml.cast: casting integer to complex not implemented yet"),
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    @compileError("zml.cast: casting integer to allocated custom types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return value.copyToComplex(ctx.allocator);
+                    return scast(O, value);
+                }
             },
         },
         .rational => switch (comptime types.numericType(O)) {
             .bool => return rational.ne(value, 0),
             .int => return value.toInt(O),
             .float => return value.toFloat(O),
+            .dyadic => return value.toDyadic(O),
             .cfloat => return .{
                 .re = value.toFloat(types.Scalar(O)),
                 .im = 0.0,
             },
-            .integer => @compileError("Not implemented yet: casting from rational to integer"),
+            .integer => @compileError("zml.cast: casting rational to integer not implemented yet"),
             .rational => unreachable,
-            .real => @compileError("Not implemented yet: casting from rational to real"),
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{ .type = std.mem.Allocator, .required = true },
-                    },
-                );
+            .real => @compileError("zml.cast: casting rational to real not implemented yet"),
+            .complex => @compileError("zml.cast: casting rational to complex not implemented yet"),
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    @compileError("zml.cast: casting rational to allocated custom types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return value.copyToComplex(ctx.allocator);
+                    return scast(O, value);
+                }
             },
         },
-        .real => switch (comptime types.numericType(O)) {
-            .bool => @compileError("Not implemented yet: casting from real to bool"),
-            .int => @compileError("Not implemented yet: casting from real to int"),
-            .float => @compileError("Not implemented yet: casting from real to float"),
-            .cfloat => @compileError("Not implemented yet: casting from real to cfloat"),
-            .integer => @compileError("Not implemented yet: casting from real to integer"),
-            .rational => @compileError("Not implemented yet: casting from real to rational"),
-            .real => unreachable,
-            .complex => @compileError("Not implemented yet: casting from real to complex"),
-        },
+        .real => @compileError("zml.cast: casting real to any type not implemented yet"),
         .complex => switch (comptime types.numericType(O)) {
             .bool => return complex.ne(value, 0),
             .int => return value.re.toInt(O),
             .float => return value.re.toFloat(O),
+            .dyadic => return value.re.toDyadic(O),
             .cfloat => return .{
                 .re = value.re.toFloat(types.Scalar(O)),
                 .im = value.im.toFloat(types.Scalar(O)),
             },
-            .integer => @compileError("Not implemented yet: casting from complex to integer"),
-            .rational => return value.re.copy(ctx.allocator),
-            .real => @compileError("Not implemented yet: casting from complex to real"),
-            .complex => @compileError("Not implemented yet: casting from complex to complex"),
+            .integer => @compileError("zml.cast: casting complex to integer not implemented yet"),
+            .rational => @compileError("zml.cast: casting complex to rational not implemented yet"),
+            .real => @compileError("zml.cast: casting complex to real not implemented yet"),
+            .complex => @compileError("zml.cast: casting complex to complex not implemented yet"),
+            .custom => {
+                if (comptime types.isAllocated(O)) {
+                    @compileError("zml.cast: casting complex to allocated custom types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return scast(O, value);
+                }
+            },
         },
     }
 }
