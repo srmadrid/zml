@@ -18,22 +18,6 @@ const Complex = complex.Complex;
 /// Some casts may lead to runtime panics if the value cannot be represented
 /// in the target type.
 ///
-/// If `T` is a custom numeric type, it must implement the required `toX`
-/// method, where `X` is the numeric type being casted to, or `Custom` if the
-/// output type is also a custom numeric type. The expected signature and
-/// behavior of `toX` are as follows:
-/// * Specific types: `fn toX(V) X`: Converts a value of the custom type to a
-///   value of type `X`.
-/// * Non-specific types: `fn toX(V, T: type) T`: Converts a value of the custom
-///   type to a value of type `T`, where `T` is a type in the category of `X`.
-///
-/// If `value` is of a custom numeric type, that type must implement the
-/// required `fromV` method, where `V` is the numeric type being casted from, or
-/// `Custom` if the input type is also a custom numeric type. The expected
-/// signature and behavior of `fromV` are as follows:
-/// * `fn fromV(V) O`: Creates a value of the custom type from a value of type
-///   `V`.
-///
 /// ## Signature
 /// ```zig
 /// scast(comptime T: type, value: V) T
@@ -46,10 +30,26 @@ const Complex = complex.Complex;
 ///
 /// ## Returns
 /// `T`: The value casted to the type `T`.
-pub inline fn scast(
-    comptime T: type,
-    value: anytype,
-) T {
+///
+/// ## Custom type support
+/// This function supports custom numeric types via specific method
+/// implementations.
+///
+/// ### `T` is a custom numeric type
+/// `T` must implement the required `fromV` method, where `V` is the type name,
+/// or `Custom` if `V` is also a custom numeric type. The expected signature and
+/// behavior of `fromV` are as follows:
+/// * `fn fromV(V) T`: Creates a value of type `T` from a value of type `V`.
+///
+/// ### `V` is a custom numeric type
+/// `V` must implement the required `toT` method, where `T` is the type name, or
+/// `Custom` if `T` is also a custom numeric type. The expected signature and
+/// behavior of `toT` are as follows:
+/// * Non-specific types: `fn toT(V, type) T`: Converts a value of type `V` to a
+///   value of type `T`.
+/// * Specific types: `fn toT(V) T`: Converts a value of type `V` to a value of
+///   type `T`.
+pub inline fn scast(comptime T: type, value: anytype) T {
     const I: type = @TypeOf(value);
     const O: type = T;
 
@@ -271,41 +271,6 @@ pub inline fn scast(
 /// lead to runtime panics if the value cannot be represented in the target
 /// type.
 ///
-/// If the input and output types are the same and are allocated, the allocator
-/// in the context is optional, and not providing it makes this return a view
-/// of the value. Then, if that type is custom, it must implement the required
-/// `view` method with the signature and behavior:
-/// * `fn view(V) V`: Returns a view of the value.
-/// If an allocator is provided, this returns a copy of the value, and if
-/// that type is custom, it must implement the required `copy` method with the
-/// signature and behavior:
-/// * `fn copy(std.mem.Allocator, V) V`: Returns an allocated copy of the value.
-///
-/// If `T` is a custom numeric type, it must implement the required `toX`
-/// method, where `X` is the numeric type being casted to, or `Custom` if the
-/// output type is also a custom numeric type. The expected signature and
-/// behavior of `toX` are as follows:
-/// * Specific types:
-///   * Non-allocated: `fn toX(V) X`: Converts a value of the custom type to a
-///     value of type `X`.
-///   * Allocated: `fn toX(std.mem.Allocator, V) X`: Converts a value of the
-///     custom type to an allocated value of type `X`.
-/// * Non-specific types:
-///   * Non-allocated: `fn toX(V, T: type) T`: Converts a value of the custom
-///     type to a value of type `T`, where `T` is a type in the category of `X`.
-///   * Allocated: `fn toX(std.mem.Allocator, V, T: type) T`: Converts a value
-///     of the custom type to an allocated value of type `T`, where `T` is a
-///     type in the category of `X`.
-///
-/// If `value` is of a custom numeric type, that type must implement the
-/// required `fromV` method, where `V` is the numeric type being casted from, or
-/// `Custom` if the input type is also a custom numeric type. The expected
-/// signature and behavior of `fromV` are as follows:
-/// * Non-allocated: `fn fromV(V) O`: Creates a value of the custom type from a
-///   value of type `V`.
-/// * Allocated: `fn fromV(std.mem.Allocator, V) O`: Creates an allocated value
-///   of the custom type from a value of type `V`.
-///
 /// ## Signature
 /// ```zig
 /// cast(comptime T: type, value: V, ctx: anytype) !T
@@ -321,11 +286,53 @@ pub inline fn scast(
 ///   wrongly typed fields, the compiler will emit a detailed error message
 ///   describing the expected structure.
 ///
+/// ### Context structure
+/// The fields of `ctx` depend on `T` and `V`.
+///
+/// #### `T == V` and is allocated
+/// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
+///   output value. If not provided, a view will be returned.
+///
+/// #### `T` is not allocated
+/// The context must be empty.
+///
+/// #### `T` is allocated
+/// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
+///   May be optional if a value of type `T` can be created as a view of a value
+///   of type `V`.
+///
 /// ## Returns
 /// `T`: The value casted to the type `T`.
 ///
-/// Errors
-/// ------
+/// ## Custom type support
+/// This function supports custom numeric types via specific method
+/// implementations.
+///
+/// ### `T` is a custom numeric type
+/// `T` must implement the required `fromV` method, where `V` is the type name,
+/// or `Custom` if `V` is also a custom numeric type. The expected signature and
+/// behavior of `fromV` are as follows:
+/// * Non-allocated: `fn fromV(V) T`: Creates a value of type `T` from a value
+///   of type `V`.
+/// * Allocated: `fn fromV(std.mem.Allocator, V) !T`: Creates a value of type
+///   `T` from a value of type `V` using the provided allocator.
+///
+/// ## `V` is a custom numeric type
+/// `V` must implement the required `toT` method, where `T` is the type name, or
+/// `Custom` if `T` is also a custom numeric type. The expected signature and
+/// behavior of `toT` are as follows:
+/// * Non-specific types:
+///   * Non-allocated: `fn toT(V, type) T`: Converts a value of type `V` to a
+///     value of type `T`.
+///   * Allocated: `fn toT(std.mem.Allocator, V, type) !T`: Converts a value of
+///     type `V` to a value of type `T` using the provided allocator.
+/// * Specific types:
+///   * Non-allocated: `fn toT(V) T`: Converts a value of type `V` to a value of
+///     type `T`.
+///   * Allocated: `fn toT(std.mem.Allocator, V) !T`: Converts a value of type
+///     `V` to a value of type `T` using the provided allocator.
+///
+/// ## Errors
 /// `std.mem.Allocator.Error.OutOfMemory`: If the allocator fails to allocate
 /// memory for the output value.
 pub inline fn cast(
@@ -426,7 +433,7 @@ pub inline fn cast(
 
                     if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator)) {
                         comptime if (!types.hasMethod(O, "copy", fn (O) anyerror!O, &.{}))
-                            @compileError("zml.cast: " ++ @typeName(O) ++ " must implement `fn copy(" ++ @typeName(O) ++ ") anyerror!" ++ @typeName(O) ++ "`");
+                            @compileError("zml.cast: " ++ @typeName(O) ++ " must implement `fn copy(" ++ @typeName(O) ++ ") !" ++ @typeName(O) ++ "`");
 
                         return value.copy(ctx.allocator);
                     } else {

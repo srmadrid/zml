@@ -9,14 +9,45 @@ const rational = @import("../rational.zig");
 const real = @import("../real.zig");
 const complex = @import("../complex.zig");
 
+const numeric = @import("../numeric.zig");
 const vector = @import("../vector.zig");
 const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
-const expression = @import("../expression.zig");
+const Expression = @import("../expression.zig").Expression;
 
 /// The return type of the `add` routine for inputs of types `X` and `Y`.
 pub fn Add(X: type, Y: type) type {
-    return types.Coerce(X, Y);
+    switch (comptime types.domain(X)) {
+        .expression => Expression,
+        .array => switch (comptime types.domain(Y)) {
+            .expression => Expression,
+            .array => array.Add(X, Y),
+            .matrix => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .vector => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .numeric => array.Add(X, Y),
+        },
+        .matrix => switch (comptime types.domain(Y)) {
+            .expression => Expression,
+            .array => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .matrix => matrix.Add(X, Y),
+            .vector => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .numeric => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+        },
+        .vector => switch (comptime types.domain(Y)) {
+            .expression => Expression,
+            .array => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .matrix => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .vector => vector.Add(X, Y),
+            .numeric => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+        },
+        .numeric => switch (comptime types.domain(Y)) {
+            .expression => Expression,
+            .array => array.Add(X, Y),
+            .matrix => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .vector => @compileError("zml.add: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y)),
+            .numeric => numeric.Add(X, Y),
+        },
+    }
 }
 
 /// Performs addition between two operands of compatible types.

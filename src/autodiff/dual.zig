@@ -1,7 +1,7 @@
 const std = @import("std");
 
 const types = @import("../types.zig");
-const ops = @import("../ops.zig");
+const numeric = @import("../numeric.zig");
 const constants = @import("../constants.zig");
 
 pub fn isDual(comptime T: type) bool {
@@ -10,7 +10,7 @@ pub fn isDual(comptime T: type) bool {
 
 pub fn Dual(comptime T: type) type {
     if (comptime !types.isNumeric(T))
-        @compileError("zml.autodiff: T must be a numeric type, got \n\tT: " ++ @typeName(T) ++ "\n");
+        @compileError("zml.autodiff.Dual: T must be a numeric type, got \n\tT: " ++ @typeName(T) ++ "\n");
 
     return struct {
         val: T,
@@ -29,6 +29,14 @@ pub fn Dual(comptime T: type) type {
             .eps = undefined,
         };
 
+        pub fn deinit(self: *Dual(T), allocator: std.mem.Allocator) void {
+            if (comptime types.isAllocated(T)) {
+                numeric.deinit(&self.val, .{ .allocator = allocator });
+                numeric.deinit(&self.eps, .{ .allocator = allocator });
+            }
+        }
+
+        // Constants
         pub const zero = if (types.isAllocated(T)) _zeroAllocated else _zero;
 
         fn _zero() Dual(T) {
@@ -39,18 +47,18 @@ pub fn Dual(comptime T: type) type {
         }
 
         fn _zeroAllocated(allocator: ?std.mem.Allocator) !Dual(T) {
+            var val = try constants.zero(T, .{ .allocator = allocator });
+            errdefer numeric.deinit(&val, .{ .allocator = allocator });
+
             return .{
-                .val = try constants.zero(T, .{ .allocator = allocator }),
+                .val = val,
                 .eps = try constants.zero(T, .{ .allocator = allocator }),
             };
         }
 
-        pub fn deinit(self: *Dual(T), allocator: std.mem.Allocator) void {
-            if (comptime types.isAllocated(T)) {
-                ops.deinit(&self.val, .{ .allocator = allocator });
-                ops.deinit(&self.eps, .{ .allocator = allocator });
-            }
-        }
+        // Basic operations
+        pub const Abs = _Abs;
+        pub const abs = if (types.isAllocated(T)) _absAllocated else _abs;
 
         pub const Add = _Add;
         pub const add = if (types.isAllocated(T)) _addAllocated else _add;
@@ -68,6 +76,55 @@ pub fn Dual(comptime T: type) type {
     };
 }
 
+fn _Abs(comptime X: type) type {
+    comptime if (!types.isNumeric(X) or !isDual(X))
+        @compileError("zml.Dual(T).abs: X must be a dual type, got\n\tX: " ++ @typeName(X) ++ "\n");
+
+    return Dual(numeric.Abs(types.Scalar(X)));
+}
+
+fn _abs(x: anytype) _Abs(@TypeOf(x)) {
+    return if (comptime types.isComplexType(types.Scalar(@TypeOf(x))))
+        .{
+            .val = numeric.abs(x.val, .{}) catch unreachable,
+            .eps = numeric.div(
+                numeric.re(
+                    numeric.mul(
+                        x.val,
+                        numeric.conj(x.eps, .{}) catch unreachable,
+                        .{},
+                    ) catch unreachable,
+                    .{},
+                ) catch unreachable,
+                numeric.abs(x.val, .{}) catch unreachable,
+                .{},
+            ) catch unreachable,
+        }
+    else
+        .{
+            .val = numeric.abs(x.val, .{}) catch unreachable,
+            .eps = numeric.mul(
+                numeric.sgn(x.val, .{}) catch unreachable,
+                x.eps,
+                .{},
+            ) catch unreachable,
+        };
+}
+
+fn _absAllocated(allocator: std.mem.Allocator, x: anytype) !_Abs(@TypeOf(x)) {
+    var val = try numeric.abs(allocator, x.val, .{ .allocator = allocator });
+    errdefer numeric.deinit(&val, .{ .allocator = allocator });
+
+    return .{
+        .val = val,
+        .eps = try numeric.mul(
+            numeric.sgn(x.val, .{}) catch unreachable,
+            x.eps,
+            .{ .allocator = allocator },
+        ),
+    };
+}
+
 fn _Add(comptime X: type, comptime Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y) or (!isDual(X) and !isDual(Y)))
         @compileError("zml.Dual(T).add: at least one of x or y must be a dual, the other must be a numeric, got\n\tx: " ++
@@ -76,7 +133,7 @@ fn _Add(comptime X: type, comptime Y: type) type {
     const SX: type = if (isDual(X)) types.Scalar(X) else X;
     const SY: type = if (isDual(Y)) types.Scalar(Y) else Y;
 
-    return Dual(ops.Add(SX, SY));
+    return Dual(numeric.Add(SX, SY));
 }
 
 fn _add(x: anytype, y: anytype) _Add(@TypeOf(x), @TypeOf(y)) {

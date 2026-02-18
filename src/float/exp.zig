@@ -12,7 +12,7 @@ pub fn Exp(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-/// Returns the exponential $e^x$ of a float, int or bool operand. The result
+/// Returns the exponential `eˣ` of a float, int or bool operand. The result
 /// type is determined by coercing the operand type to a float, and the
 /// operation is performed by casting the operand to the result type, then
 /// computing its exponential.

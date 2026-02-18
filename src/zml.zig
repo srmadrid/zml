@@ -31,7 +31,6 @@ const constants = @import("constants.zig");
 pub const zero = constants.zero;
 pub const one = constants.one;
 pub const two = constants.two;
-pub const pi = constants.pi;
 
 const ops = @import("ops.zig");
 
@@ -184,6 +183,8 @@ pub const ceil_ = ops.ceil_;
 pub const set = ops.set;
 pub const deinit = ops.deinit;
 
+// Domain namespaces
+pub const numeric = @import("numeric.zig");
 pub const vector = @import("vector.zig");
 pub const matrix = @import("matrix.zig");
 pub const array = @import("array.zig");

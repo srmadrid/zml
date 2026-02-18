@@ -7,6 +7,8 @@ const cfloat = @import("../cfloat.zig");
 const integer = @import("../integer.zig");
 const rational = @import("../rational.zig");
 
+const vector = @import("../vector.zig");
+const matrix = @import("../matrix.zig");
 const array = @import("../array.zig");
 const expression = @import("../expression.zig");
 

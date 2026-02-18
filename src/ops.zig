@@ -1,15 +1,6 @@
 const std = @import("std");
 
 const types = @import("types.zig");
-const cast = types.cast;
-const scast = types.scast;
-const Scalar = types.Scalar;
-const Numeric = types.Numeric;
-const Coerce = types.Coerce;
-const MulCoerce = types.MulCoerce;
-const EnsureArray = types.EnsureArray;
-const Child = types.Child;
-const EnsureFloat = types.EnsureFloat;
 
 const int = @import("int.zig");
 const float = @import("float.zig");
@@ -22,8 +13,19 @@ const vector = @import("vector.zig");
 const matrix = @import("matrix.zig");
 const array = @import("array.zig");
 
-// Utility operations
-pub const copysign = @import("ops/copysign.zig").copysign;
+// Basic operations
+pub const Abs = @import("ops/abs.zig").Abs;
+pub const abs = @import("ops/abs.zig").abs;
+pub const abs_ = @import("ops/abs_.zig").abs_;
+pub const Abs1 = @import("ops/abs1.zig").Abs1;
+pub const abs1 = @import("ops/abs1.zig").abs1;
+pub const abs1_ = @import("ops/abs1_.zig").abs1_;
+pub const Abs2 = @import("ops/abs2.zig").Abs2;
+pub const abs2 = @import("ops/abs2.zig").abs2;
+pub const abs2_ = @import("ops/abs2_.zig").abs2_;
+pub const Neg = @import("ops/neg.zig").Neg;
+pub const neg = @import("ops/neg.zig").neg;
+pub const neg_ = @import("ops/neg_.zig").neg_;
 pub const Re = @import("ops/re.zig").Re;
 pub const re = @import("ops/re.zig").re;
 pub const Im = @import("ops/im.zig").Im;
@@ -31,6 +33,7 @@ pub const im = @import("ops/im.zig").im;
 pub const Conj = @import("ops/conj.zig").Conj;
 pub const conj = @import("ops/conj.zig").conj;
 pub const conj_ = @import("ops/conj_.zig").conj_;
+pub const copysign = @import("ops/copysign.zig").copysign;
 
 // Arithmetic operations
 pub const Add = @import("ops/add.zig").Add;
@@ -72,20 +75,6 @@ pub const max_ = @import("ops/max_.zig").max_;
 pub const Min = @import("ops/min.zig").Min;
 pub const min = @import("ops/min.zig").min;
 pub const min_ = @import("ops/min_.zig").min_;
-
-// Basic operations
-pub const Abs = @import("ops/abs.zig").Abs;
-pub const abs = @import("ops/abs.zig").abs;
-pub const abs_ = @import("ops/abs_.zig").abs_;
-pub const Abs1 = @import("ops/abs1.zig").Abs1;
-pub const abs1 = @import("ops/abs1.zig").abs1;
-pub const abs1_ = @import("ops/abs1_.zig").abs1_;
-pub const Abs2 = @import("ops/abs2.zig").Abs2;
-pub const abs2 = @import("ops/abs2.zig").abs2;
-pub const abs2_ = @import("ops/abs2_.zig").abs2_;
-pub const Neg = @import("ops/neg.zig").Neg;
-pub const neg = @import("ops/neg.zig").neg;
-pub const neg_ = @import("ops/neg_.zig").neg_;
 
 // Exponential functions
 pub const Exp = @import("ops/exp.zig").Exp;
@@ -161,7 +150,7 @@ pub const Atanh = @import("ops/atanh.zig").Atanh;
 pub const atanh = @import("ops/atanh.zig").atanh;
 pub const atanh_ = @import("ops/atanh_.zig").atanh_;
 
-// Error and gamma functions
+// Special functions
 pub const Erf = @import("ops/erf.zig").Erf;
 pub const erf = @import("ops/erf.zig").erf;
 pub const erf_ = @import("ops/erf_.zig").erf_;
@@ -179,12 +168,12 @@ pub const lgamma_ = @import("ops/lgamma_.zig").lgamma_;
 pub inline fn ceil(
     x: anytype,
     ctx: anytype,
-) !EnsureArray(@TypeOf(x), Numeric(@TypeOf(x))) {
+) !types.EnsureArray(@TypeOf(x), types.Numeric(@TypeOf(x))) {
     const X: type = @TypeOf(x);
 
     if (comptime types.isArray(X)) {
-        comptime if (types.isArbitraryPrecision(Numeric(X))) {
-            if (types.numericType(Numeric(X)) == .int) {
+        comptime if (types.isAllocated(types.Numeric(X))) {
+            if (types.numericType(types.Numeric(X)) == .int) {
                 types.validateContext(
                     @TypeOf(ctx),
                     .{
@@ -249,9 +238,9 @@ pub inline fn ceil_(
     O = types.Child(O);
 
     if (comptime types.isArray(O)) {
-        comptime if (types.isArbitraryPrecision(Numeric(O))) {
-            if (types.isArbitraryPrecision(Numeric(X))) {
-                if (Numeric(O) == Numeric(X)) {
+        comptime if (types.isAllocated(types.Numeric(O))) {
+            if (types.isAllocated(types.Numeric(X))) {
+                if (types.Numeric(O) == types.Numeric(X)) {
                     types.validateContext(
                         @TypeOf(ctx),
                         .{
@@ -274,7 +263,7 @@ pub inline fn ceil_(
                 );
             }
         } else {
-            if (types.isArbitraryPrecision(Numeric(X))) {
+            if (types.isAllocated(types.Numeric(X))) {
                 types.validateContext(
                     @TypeOf(ctx),
                     .{ .internal_allocator = .{ .type = std.mem.Allocator, .required = true } },
@@ -300,7 +289,7 @@ pub inline fn ceil_(
             .float => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                o.* = scast(O, float.ceil(x));
+                o.* = types.scast(O, float.ceil(x));
             },
             .cfloat => @compileError("zml.ceil_ not defined for " ++ @typeName(X) ++ " input type"),
             else => @compileError("zml.ceil_ not implemented for " ++ @typeName(O) ++ " and " ++ @typeName(X) ++ " output and input types yet"),
@@ -413,7 +402,7 @@ pub inline fn deinit(
     comptime if (!types.isPointer(@TypeOf(x)) or types.isConstPointer(@TypeOf(x)))
         @compileError("zml.deinit requires x a mutable pointer, got " ++ @typeName(@TypeOf(x)));
 
-    const X: type = Child(@TypeOf(x));
+    const X: type = types.Child(@TypeOf(x));
 
     if (comptime types.isArray(X))
         @compileError("zml.deinit not implemented for arrays yet.");

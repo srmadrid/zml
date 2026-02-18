@@ -359,9 +359,33 @@ pub fn empty(comptime T: type) T {
                 return .empty;
             },
         },
-        .vector => return .empty,
-        .matrix => return .empty,
-        .array => return .empty,
+        .vector => switch (comptime vectorType(T)) {
+            else => return .empty,
+            .custom => {
+                if (comptime !@hasDecl(T, "empty"))
+                    @compileError("zml.types.empty: custom vector type " ++ @typeName(T) ++ " must have an `empty` declaration");
+
+                return .empty;
+            },
+        },
+        .matrix => switch (comptime matrixType(T)) {
+            else => return .empty,
+            .custom => {
+                if (comptime !@hasDecl(T, "empty"))
+                    @compileError("zml.types.empty: custom matrix type " ++ @typeName(T) ++ " must have an `empty` declaration");
+
+                return .empty;
+            },
+        },
+        .array => switch (comptime arrayType(T)) {
+            else => return .empty,
+            .custom => {
+                if (comptime !@hasDecl(T, "empty"))
+                    @compileError("zml.types.empty: custom array type " ++ @typeName(T) ++ " must have an `empty` declaration");
+
+                return .empty;
+            },
+        },
         .expression => return .empty,
     }
 }
@@ -846,6 +870,22 @@ pub const renameStructFields = context_checks.renameStructFields;
 pub const KeepStructFields = context_checks.KeepStructFields;
 pub const keepStructFields = context_checks.keepStructFields;
 
+/// Returns the return type of a function when called with the given input
+/// types. If the return type does not depend on the input types, it is returned
+/// directly.
+///
+/// ## Arguments
+/// * `func` (`comptime anytype`): The function to get the return type of.
+/// * `input_types` (`comptime []const type`): The types of the inputs to the
+///   function, used to determine the return type for functions with inferred
+///   return types. If a parameter in the function type is of type `type`, the
+///   corresponding input should be passed directly as the parameter type. For
+///   instance, for a function `fn (..., T: type, ...) ...`, `input_types`
+///   should be `&.{..., T, ...}` instead of `&.{..., type, ...}`.
+///
+/// ## Returns
+/// `type`: The return type of the function when called with the given input
+/// types.
 pub fn ReturnTypeFromInputs(
     comptime func: anytype,
     comptime input_types: []const type,

@@ -13,7 +13,7 @@ pub fn Exp2(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-/// Returns the base-2 exponential $2^x$ of a float, int or bool operand. The
+/// Returns the base-2 exponential `2ˣ` of a float, int or bool operand. The
 /// result type is determined by coercing the operand type to a float, and the
 /// operation is performed by casting the operand to the result type, then
 /// computing its base-2 exponential.

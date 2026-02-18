@@ -13,7 +13,7 @@ pub fn Log(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-/// Returns the natural logarithm $\log(x)$ of a float, int or bool operand. The
+/// Returns the natural logarithm `log(x)` of a float, int or bool operand. The
 /// result type is determined by coercing the operand type to a float, and the
 /// operation is performed by casting the operand to the result type, then
 /// computing its logarithm.
