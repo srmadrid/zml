@@ -891,16 +891,42 @@ pub fn ReturnTypeFromInputs(
     comptime input_types: []const type,
 ) type {
     const func_params = @typeInfo(@TypeOf(func)).@"fn".params;
+
+    // Correct the input types:
+    // - If a parameter in the function type is generic, keep the input type as is without any checks, since it can be any type
+    // - If a parameter in the function type is of type `type`, keep `type`
+    // - If a parameter in the function type is optional, keep non-optional type
     comptime var corrected_input_types: [input_types.len]type = undefined;
     inline for (func_params, 0..) |func_param, i| {
-        corrected_input_types[i] = if (func_param.type == type)
-            type
-        else
-            input_types[i];
+        if (func_param.is_generic) {
+            corrected_input_types[i] = input_types[i];
+            continue;
+        }
+
+        const info_param = @typeInfo(func_param.type.?);
+        if (func_param.type.? == type) {
+            corrected_input_types[i] = type;
+        } else if (info_param == .optional) {
+            if (info_param.optional.child == type)
+                corrected_input_types[i] = type;
+
+            if (info_param.optional.child != input_types[i])
+                @compileError("zml.types.ReturnTypeFromInputs: input type " ++ @typeName(input_types[i]) ++ " does not match the non-optional type " ++ @typeName(info_param.optional.child) ++ " of the corresponding parameter in the function type");
+
+            corrected_input_types[i] = input_types[i];
+        } else {
+            if (func_param.type.? != input_types[i])
+                @compileError("zml.types.ReturnTypeFromInputs: input type " ++ @typeName(input_types[i]) ++ " does not match the type " ++ @typeName(func_param.type.?) ++ " of the corresponding parameter in the function type");
+
+            corrected_input_types[i] = input_types[i];
+        }
     }
 
+    // Generate the inputs to pass to the function based on the corrected input types:
+    // - If a parameter in the function type is of type `type`, pass the input type directly
+    // - If a parameter in the function type is of type `std.mem.Allocator`, pass the `useless_allocator`
+    // - Otherwise, pass an empty value of the corresponding input type
     comptime var inputs: std.meta.Tuple(&corrected_input_types) = undefined;
-
     inline for (func_params, input_types, 0..) |func_param, input_type, i| {
         inputs[i] = if (func_param.type == type)
             input_type // The type is passed directly

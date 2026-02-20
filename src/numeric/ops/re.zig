@@ -27,7 +27,7 @@ pub fn Re(X: type) type {
         .real => return X,
         .complex => return types.Scalar(X),
         .custom => {
-            if (comptime !types.hasMethod(X, "Re", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Re", fn (type) type, &.{X}))
                 @compileError("zml.numeric.re: " ++ @typeName(X) ++ " must implement `fn Re(type) type`");
 
             return X.Re(X);
@@ -147,7 +147,7 @@ pub inline fn re(x: anytype, ctx: anytype) !numeric.Re(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.re: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "re", fn (?std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "re", fn (?std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.re: " ++ @typeName(X) ++ " must implement `fn re(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -166,7 +166,7 @@ pub inline fn re(x: anytype, ctx: anytype) !numeric.Re(@TypeOf(x)) {
                 else
                     X.re(null, x);
             } else {
-                comptime if (!types.hasMethod(X, "re", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "re", fn (X) R, &.{X}))
                     @compileError("zml.numeric.re: " ++ @typeName(X) ++ " must implement `fn re(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

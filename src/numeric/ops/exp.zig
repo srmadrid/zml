@@ -27,7 +27,7 @@ pub fn Exp(X: type) type {
         .real => @compileError("zml.numeric.exp: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.exp: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime !types.hasMethod(X, "Exp", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Exp", fn (type) type, &.{X}))
                 @compileError("zml.numeric.exp: " ++ @typeName(X) ++ " must implement `fn Exp(type) type`");
 
             return X.Exp(X);
@@ -35,7 +35,7 @@ pub fn Exp(X: type) type {
     }
 }
 
-/// Returns the the exponential `eˣ` of a numeric `x`.
+/// Returns the exponential `eˣ` of a numeric `x`.
 ///
 /// ## Signature
 /// ```zig
@@ -109,7 +109,7 @@ pub inline fn exp(x: anytype, ctx: anytype) !numeric.Exp(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.exp: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "exp", fn (std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "exp", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.exp: " ++ @typeName(X) ++ " must implement `fn exp(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -125,7 +125,7 @@ pub inline fn exp(x: anytype, ctx: anytype) !numeric.Exp(@TypeOf(x)) {
 
                 return X.exp(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "exp", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "exp", fn (X) R, &.{X}))
                     @compileError("zml.numeric.exp: " ++ @typeName(X) ++ " must implement `fn exp(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

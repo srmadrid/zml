@@ -27,7 +27,7 @@ pub fn Log10(X: type) type {
         .real => @compileError("zml.numeric.log10: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.log10: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime !types.hasMethod(X, "Log10", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Log10", fn (type) type, &.{X}))
                 @compileError("zml.numeric.log10: " ++ @typeName(X) ++ " must implement `fn Log10(type) type`");
 
             return X.Log10(X);
@@ -35,7 +35,7 @@ pub fn Log10(X: type) type {
     }
 }
 
-/// Returns the the base-10 logarithm `log₁₀(x)` of a numeric `x`.
+/// Returns the base-10 logarithm `log₁₀(x)` of a numeric `x`.
 ///
 /// ## Signature
 /// ```zig
@@ -106,7 +106,7 @@ pub inline fn log10(x: anytype, ctx: anytype) !numeric.Log10(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.log10: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "log10", fn (std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "log10", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.log10: " ++ @typeName(X) ++ " must implement `fn log10(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -122,7 +122,7 @@ pub inline fn log10(x: anytype, ctx: anytype) !numeric.Log10(@TypeOf(x)) {
 
                 return X.log10(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "log10", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "log10", fn (X) R, &.{X}))
                     @compileError("zml.numeric.log10: " ++ @typeName(X) ++ " must implement `fn log10(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

@@ -27,7 +27,7 @@ pub fn Abs2(X: type) type {
         .real => return X,
         .complex => return complex.Abs2(X),
         .custom => {
-            if (comptime !types.hasMethod(X, "Abs2", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Abs2", fn (type) type, &.{X}))
                 @compileError("zml.numeric.abs2: " ++ @typeName(X) ++ " must implement `fn Abs2(type) type`");
 
             return X.Abs2(X);
@@ -141,7 +141,7 @@ pub inline fn abs2(x: anytype, ctx: anytype) !numeric.Abs2(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.abs2: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "abs2", fn (std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "abs2", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.abs2: " ++ @typeName(X) ++ " must implement `fn abs2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -157,7 +157,7 @@ pub inline fn abs2(x: anytype, ctx: anytype) !numeric.Abs2(@TypeOf(x)) {
 
                 return X.abs2(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "abs2", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "abs2", fn (X) R, &.{X}))
                     @compileError("zml.numeric.abs2: " ++ @typeName(X) ++ " must implement `fn abs2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

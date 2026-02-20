@@ -29,7 +29,7 @@ pub fn Im(X: type) type {
         .real => return X,
         .complex => return types.Scalar(X),
         .custom => {
-            if (comptime !types.hasMethod(X, "Im", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Im", fn (type) type, &.{X}))
                 @compileError("zml.numeric.im: " ++ @typeName(X) ++ " must implement `fn Im(type) type`");
 
             return X.Im(X);
@@ -143,7 +143,7 @@ pub inline fn im(x: anytype, ctx: anytype) !numeric.Im(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.im: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "im", fn (?std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "im", fn (?std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.im: " ++ @typeName(X) ++ " must implement `fn im(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -162,7 +162,7 @@ pub inline fn im(x: anytype, ctx: anytype) !numeric.Im(@TypeOf(x)) {
                 else
                     X.im(null, x);
             } else {
-                comptime if (!types.hasMethod(X, "im", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "im", fn (X) R, &.{X}))
                     @compileError("zml.numeric.im: " ++ @typeName(X) ++ " must implement `fn im(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

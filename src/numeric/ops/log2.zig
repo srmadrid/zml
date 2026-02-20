@@ -27,7 +27,7 @@ pub fn Log2(X: type) type {
         .real => @compileError("zml.numeric.log2: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.log2: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime !types.hasMethod(X, "Log2", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Log2", fn (type) type, &.{X}))
                 @compileError("zml.numeric.log2: " ++ @typeName(X) ++ " must implement `fn Log2(type) type`");
 
             return X.Log2(X);
@@ -35,7 +35,7 @@ pub fn Log2(X: type) type {
     }
 }
 
-/// Returns the the base-2 logarithm `log₂(x)` of a numeric `x`.
+/// Returns the base-2 logarithm `log₂(x)` of a numeric `x`.
 ///
 /// ## Signature
 /// ```zig
@@ -106,7 +106,7 @@ pub inline fn log2(x: anytype, ctx: anytype) !numeric.Log2(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.log2: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "log2", fn (std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "log2", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.log2: " ++ @typeName(X) ++ " must implement `fn log2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -122,7 +122,7 @@ pub inline fn log2(x: anytype, ctx: anytype) !numeric.Log2(@TypeOf(x)) {
 
                 return X.log2(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "log2", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "log2", fn (X) R, &.{X}))
                     @compileError("zml.numeric.log2: " ++ @typeName(X) ++ " must implement `fn log2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

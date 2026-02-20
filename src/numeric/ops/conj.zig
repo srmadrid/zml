@@ -27,7 +27,7 @@ pub fn Conj(X: type) type {
         .real => return X,
         .complex => return X,
         .custom => {
-            if (comptime !types.hasMethod(X, "Conj", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Conj", fn (type) type, &.{X}))
                 @compileError("zml.numeric.conj: " ++ @typeName(X) ++ " must implement `fn Conj(type) type`");
 
             return X.Conj(X);
@@ -148,7 +148,7 @@ pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.conj: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "conj", fn (?std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "conj", fn (?std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.conj: " ++ @typeName(X) ++ " must implement `fn conj(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -167,7 +167,7 @@ pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
                 else
                     X.conj(null, x);
             } else {
-                comptime if (!types.hasMethod(X, "conj", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "conj", fn (X) R, &.{X}))
                     @compileError("zml.numeric.conj: " ++ @typeName(X) ++ " must implement `fn conj(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

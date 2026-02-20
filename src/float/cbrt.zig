@@ -13,10 +13,10 @@ pub fn Cbrt(comptime X: type) type {
     return types.EnsureFloat(X);
 }
 
-/// Returns the cube root $\sqrt[3]{x}$ of a float, int or bool operand. The
-/// result type is determined by coercing the operand type to a float, and the
-/// operation is performed by casting the operand to the result type, then
-/// computing its cube root.
+/// Returns the cube root `∛x` of a float, int or bool operand. The result type
+/// is determined by coercing the operand type to a float, and the operation is
+/// performed by casting the operand to the result type, then computing its cube
+/// root.
 ///
 /// ## Signature
 /// ```zig

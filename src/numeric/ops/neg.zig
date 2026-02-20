@@ -27,7 +27,7 @@ pub fn Neg(X: type) type {
         .real => return X,
         .complex => return X,
         .custom => {
-            if (comptime !types.hasMethod(X, "Neg", fn (type) type, &.{}))
+            if (comptime !types.hasMethod(X, "Neg", fn (type) type, &.{X}))
                 @compileError("zml.numeric.neg: " ++ @typeName(X) ++ " must implement `fn Neg(type) type`");
 
             return X.Neg(X);
@@ -147,7 +147,7 @@ pub inline fn neg(x: anytype, ctx: anytype) !numeric.Neg(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.neg: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "neg", fn (?std.mem.Allocator, X) anyerror!R, &.{}))
+                comptime if (!types.hasMethod(X, "neg", fn (?std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
                     @compileError("zml.numeric.neg: " ++ @typeName(X) ++ " must implement `fn neg(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
@@ -166,7 +166,7 @@ pub inline fn neg(x: anytype, ctx: anytype) !numeric.Neg(@TypeOf(x)) {
                 else
                     X.neg(null, x);
             } else {
-                comptime if (!types.hasMethod(X, "neg", fn (X) R, &.{}))
+                comptime if (!types.hasMethod(X, "neg", fn (X) R, &.{X}))
                     @compileError("zml.numeric.neg: " ++ @typeName(X) ++ " must implement `fn neg(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});

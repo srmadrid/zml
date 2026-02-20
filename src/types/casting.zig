@@ -432,12 +432,12 @@ pub inline fn cast(
                     );
 
                     if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator)) {
-                        comptime if (!types.hasMethod(O, "copy", fn (O) anyerror!O, &.{}))
+                        comptime if (!types.hasMethod(O, "copy", fn (O) anyerror!O, &.{O}))
                             @compileError("zml.cast: " ++ @typeName(O) ++ " must implement `fn copy(" ++ @typeName(O) ++ ") !" ++ @typeName(O) ++ "`");
 
                         return value.copy(ctx.allocator);
                     } else {
-                        comptime if (!types.hasMethod(O, "view", fn (O) O, &.{}))
+                        comptime if (!types.hasMethod(O, "view", fn (O) O, &.{O}))
                             @compileError("zml.cast: " ++ @typeName(O) ++ " must implement `fn view(" ++ @typeName(O) ++ ") " ++ @typeName(O) ++ "`");
 
                         return value.view();
