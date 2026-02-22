@@ -51,12 +51,12 @@ pub fn Acos(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Acos(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Acos(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Acos(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Acos(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Acos` and `acos` methods. The expected
-/// signature and behavior of `Acos` and `acos` are as follows:
+/// `X` must implement the required `Acos` method. The expected signature and
+/// behavior of `Acos` are as follows:
 /// * `fn Acos(type) type`: Returns the return type of `acos` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn acos(X) X.Acos(X)`: Returns the arccosine of `x`.
-/// * Allocated: `fn acos(std.mem.Allocator, X) !X.Acos(X)`: Returns the
+///
+/// Let us denote the return type `numeric.Acos(X)` as `R`. Then, `R` or `X`
+/// must implement the required `acos` method. The expected signatures and
+/// behavior of `acos` are as follows:
+/// * `R` is not allocated: `fn acos(X) R`: Returns the arccosine of `x`.
+/// * `R` is allocated: `fn acos(std.mem.Allocator, X) !R`: Returns the
 ///   arccosine of `x` as a newly allocated value.
 pub inline fn acos(x: anytype, ctx: anytype) !numeric.Acos(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -108,9 +112,14 @@ pub inline fn acos(x: anytype, ctx: anytype) !numeric.Acos(@TypeOf(x)) {
         .real => @compileError("zml.numeric.acos: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.acos: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "acos", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.acos: " ++ @typeName(X) ++ " must implement `fn acos(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "acos",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.acos: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn acos(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn acos(x: anytype, ctx: anytype) !numeric.Acos(@TypeOf(x)) {
                     },
                 );
 
-                return X.acos(ctx.allocator, x);
+                return Impl.acos(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "acos", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.acos: " ++ @typeName(X) ++ " must implement `fn acos(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "acos",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.acos: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn acos(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.acos(x);
+                return Impl.acos(x);
             }
         },
     }

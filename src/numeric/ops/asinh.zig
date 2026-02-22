@@ -51,12 +51,12 @@ pub fn Asinh(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Asinh(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Asinh(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Asinh(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,13 +70,17 @@ pub fn Asinh(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Asinh` and `asinh` methods. The expected
-/// signature and behavior of `Asinh` and `asinh` are as follows:
+/// `X` must implement the required `Asinh` method. The expected signature and
+/// behavior of `Asinh` are as follows:
 /// * `fn Asinh(type) type`: Returns the return type of `asinh` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn asinh(X) X.Asinh(X)`: Returns the hyperbolic arcsine of
+///
+/// Let us denote the return type `numeric.Asinh(X)` as `R`. Then, `R` or `X`
+/// must implement the required `asinh` method. The expected signatures and
+/// behavior of `asinh` are as follows:
+/// * `R` is not allocated: `fn asinh(X) R`: Returns the hyperbolic arcsine of
 ///   `x`.
-/// * Allocated: `fn asinh(std.mem.Allocator, X) !X.Asinh(X)`: Returns the
+/// * `R` is allocated: `fn asinh(std.mem.Allocator, X) !R`: Returns the
 ///   hyperbolic arcsine of `x` as a newly allocated value.
 pub inline fn asinh(x: anytype, ctx: anytype) !numeric.Asinh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -109,9 +113,14 @@ pub inline fn asinh(x: anytype, ctx: anytype) !numeric.Asinh(@TypeOf(x)) {
         .real => @compileError("zml.numeric.asinh: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.asinh: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "asinh", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.asinh: " ++ @typeName(X) ++ " must implement `fn asinh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "asinh",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.asinh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn asinh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -124,14 +133,19 @@ pub inline fn asinh(x: anytype, ctx: anytype) !numeric.Asinh(@TypeOf(x)) {
                     },
                 );
 
-                return X.asinh(ctx.allocator, x);
+                return Impl.asinh(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "asinh", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.asinh: " ++ @typeName(X) ++ " must implement `fn asinh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "asinh",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.asinh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn asinh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.asinh(x);
+                return Impl.asinh(x);
             }
         },
     }

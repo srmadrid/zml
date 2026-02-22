@@ -23,7 +23,7 @@ pub fn Lgamma(comptime X: type) type {
 ///
 /// The log-gamma function is defined as:
 /// $$
-/// \log(\Gamma(x)) = \log\left(\int_0^\infty t^{x - 1} e^{-t} \mathrm{d}t\right)
+/// \log(\Gamma(x)) = \log\left(\int_0^\infty t^{x - 1} e^{-t} \mathrm{d}t\right).
 /// $$
 ///
 /// ## Signature

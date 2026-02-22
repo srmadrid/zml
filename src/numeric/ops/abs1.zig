@@ -35,8 +35,7 @@ pub fn Abs1(X: type) type {
     }
 }
 
-/// Returns the absolute value of a numeric `x`. For complex values, returns the
-/// sum of the absolute values of the real and imaginary parts.
+/// Returns the 1-norm of a numeric `x`.
 ///
 /// ## Signature
 /// ```zig
@@ -44,7 +43,7 @@ pub fn Abs1(X: type) type {
 /// ```
 ///
 /// ## Arguments
-/// * `x` (`anytype`): The numeric value to get the absolute value of.
+/// * `x` (`anytype`): The numeric value to get the 1-norm of.
 /// * `ctx` (`anytype`): A context struct providing necessary resources and
 ///   configuration for the operation. The required fields depend on `X`. If the
 ///   context is missing required fields or contains unnecessary or wrongly
@@ -52,17 +51,20 @@ pub fn Abs1(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Abs1(X)` and `X`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Abs1(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Abs1(X)` is allocated and `X` is not complex
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
 ///
+/// #### `numeric.Abs1(X)` is allocated and `X` is complex
+/// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
+///
 /// ## Returns
-/// `numeric.Abs1(@TypeOf(x))`: The absolute value of `x`.
+/// `numeric.Abs1(@TypeOf(x))`: The 1-norm of `x`.
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
@@ -72,14 +74,21 @@ pub fn Abs1(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Abs1` and `abs1` methods. The expected
-/// signature and behavior of `Abs1` and `abs1` are as follows:
+/// `X` must implement the required `Abs1` method. The expected signature and
+/// behavior of `Abs1` are as follows:
 /// * `fn Abs1(type) type`: Returns the return type of `abs1` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn abs1(X) X.Abs1(X)`: Returns the absolute value of `x`.
-/// * Allocated: `fn abs1(?std.mem.Allocator, X) !X.Abs1(X)`: Returns the
-///   absolute value of `x` as a newly allocated value, if the allocator is
-///   provided, or a read-only view if not.
+///
+/// Let us denote the return type `numeric.Abs1(X)` as `R`. Then, `R` or `X`
+/// must implement the required `abs1` method. The expected signatures and
+/// behavior of `abs1` are as follows:
+/// * `R` is not allocated: `fn abs1(X) R`: Returns the 1-norm of `x`.
+/// * `R` is allocated:
+///   * `R` is not complex: `fn abs1(?std.mem.Allocator, X) !R`: Returns the
+///     1-norm of `x` as a newly allocated value, if the allocator is provided,
+///     or a read-only view if not. If not provided, it must not fail.
+///   * `R` is complex: `fn abs1(std.mem.Allocator, X) !R`: Returns the 1-norm
+///     of `x` as a newly allocated value.
 pub inline fn abs1(x: anytype, ctx: anytype) !numeric.Abs1(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Abs1(X);
@@ -147,32 +156,65 @@ pub inline fn abs1(x: anytype, ctx: anytype) !numeric.Abs1(@TypeOf(x)) {
         .real => @compileError("zml.numeric.abs1: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.abs1: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "abs1", fn (?std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.abs1: " ++ @typeName(X) ++ " must implement `fn abs1(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                if (comptime types.isComplexType(X)) {
+                    const Impl: type = comptime types.haveMethod(
+                        &.{ R, X },
+                        "abs1",
+                        fn (std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.abs1: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs1(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = false,
-                            .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a view will be returned.",
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = true,
+                                .description = "The allocator to use for the custom numeric's memory allocation.",
+                            },
                         },
-                    },
-                );
+                    );
 
-                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
-                    X.abs1(ctx.allocator, x)
-                else
-                    X.abs1(null, x);
+                    return Impl.abs1(ctx.allocator, x);
+                } else {
+                    const Impl: type = comptime types.haveMethod(
+                        &.{ R, X },
+                        "abs1",
+                        fn (?std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.abs1: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs1(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = false,
+                                .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a view will be returned.",
+                            },
+                        },
+                    );
+
+                    return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                        Impl.abs1(ctx.allocator, x)
+                    else
+                        Impl.abs1(null, x) catch unreachable;
+                }
             } else {
-                comptime if (!types.hasMethod(X, "abs1", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.abs1: " ++ @typeName(X) ++ " must implement `fn abs1(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "abs1",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.abs1: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs1(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.abs1(x);
+                return Impl.abs1(x);
             }
         },
     }

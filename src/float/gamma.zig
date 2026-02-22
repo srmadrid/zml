@@ -22,7 +22,7 @@ pub fn Gamma(comptime X: type) type {
 ///
 /// The gamma function is defined as:
 /// $$
-/// \Gamma(x) = \int_0^\infty t^{x - 1} e^{-t} \mathrm{d}t
+/// \Gamma(x) = \int_0^\infty t^{x - 1} e^{-t} \mathrm{d}t.
 /// $$
 ///
 /// ## Signature

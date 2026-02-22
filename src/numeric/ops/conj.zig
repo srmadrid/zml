@@ -51,12 +51,12 @@ pub fn Conj(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Conj(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Conj(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Conj(X)` is allocated
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
 ///
@@ -71,15 +71,18 @@ pub fn Conj(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Conj` and `conj` methods. The expected
-/// signature and behavior of `Conj` and `conj` are as follows:
+/// `X` must implement the required `Conj` method. The expected signature and
+/// behavior of `Conj` are as follows:
 /// * `fn Conj(type) type`: Returns the return type of `conj` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn conj(X) X.Conj(X)`: Returns the complex conjugate of
-///   `x`.
-/// * Allocated: `fn conj(?std.mem.Allocator, X) !X.Conj(X)`: Returns the
-///   complex conjugate of `x` as a newly allocated value, if the allocator is
-///   provided, or a read-only view if not.
+///
+/// Let us denote the return type `numeric.Conj(X)` as `R`. Then, `R` or `X`
+/// must implement the required `conj` method. The expected signatures and
+/// behavior of `conj` are as follows:
+/// * `R` is not allocated: `fn conj(X) R`: Returns the conjugate of `x`.
+/// * `R` is allocated: `fn conj(?std.mem.Allocator, X) !R`: Returns the
+///   conjugate of `x` as a newly allocated value, if the allocator is provided,
+///   or a read-only view if not. If not provided, it must not fail.
 pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Conj(X);
@@ -147,9 +150,14 @@ pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
         .real => @compileError("zml.numeric.conj: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.conj: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "conj", fn (?std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.conj: " ++ @typeName(X) ++ " must implement `fn conj(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "conj",
+                    fn (?std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.conj: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn conj(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -163,16 +171,21 @@ pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
                 );
 
                 return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
-                    X.conj(ctx.allocator, x)
+                    Impl.conj(ctx.allocator, x)
                 else
-                    X.conj(null, x);
+                    Impl.conj(null, x) catch unreachable;
             } else {
-                comptime if (!types.hasMethod(X, "conj", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.conj: " ++ @typeName(X) ++ " must implement `fn conj(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "conj",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.conj: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn conj(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.conj(x);
+                return Impl.conj(x);
             }
         },
     }

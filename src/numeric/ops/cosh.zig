@@ -51,12 +51,12 @@ pub fn Cosh(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Cosh(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Cosh(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Cosh(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,13 +70,17 @@ pub fn Cosh(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Cosh` and `cosh` methods. The expected
-/// signature and behavior of `Cosh` and `cosh` are as follows:
+/// `X` must implement the required `Cosh` method. The expected signature and
+/// behavior of `Cosh` are as follows:
 /// * `fn Cosh(type) type`: Returns the return type of `cosh` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn cosh(X) X.Cosh(X)`: Returns the hyperbolic cosine of
+///
+/// Let us denote the return type `numeric.Cosh(X)` as `R`. Then, `R` or `X`
+/// must implement the required `cosh` method. The expected signatures and
+/// behavior of `cosh` are as follows:
+/// * `R` is not allocated: `fn cosh(X) R`: Returns the hyperbolic cosine of
 ///   `x`.
-/// * Allocated: `fn cosh(std.mem.Allocator, X) !X.Cosh(X)`: Returns the
+/// * `R` is allocated: `fn cosh(std.mem.Allocator, X) !R`: Returns the
 ///   hyperbolic cosine of `x` as a newly allocated value.
 pub inline fn cosh(x: anytype, ctx: anytype) !numeric.Cosh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -109,9 +113,14 @@ pub inline fn cosh(x: anytype, ctx: anytype) !numeric.Cosh(@TypeOf(x)) {
         .real => @compileError("zml.numeric.cosh: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.cosh: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "cosh", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.cosh: " ++ @typeName(X) ++ " must implement `fn cosh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "cosh",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.cosh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn cosh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -124,14 +133,19 @@ pub inline fn cosh(x: anytype, ctx: anytype) !numeric.Cosh(@TypeOf(x)) {
                     },
                 );
 
-                return X.cosh(ctx.allocator, x);
+                return Impl.cosh(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "cosh", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.cosh: " ++ @typeName(X) ++ " must implement `fn cosh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "cosh",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.cosh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn cosh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.cosh(x);
+                return Impl.cosh(x);
             }
         },
     }

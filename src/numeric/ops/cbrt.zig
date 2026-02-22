@@ -51,12 +51,12 @@ pub fn Cbrt(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Cbrt(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Cbrt(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Cbrt(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Cbrt(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Cbrt` and `cbrt` methods. The expected
-/// signature and behavior of `Cbrt` and `cbrt` are as follows:
+/// `X` must implement the required `Cbrt` method. The expected signature and
+/// behavior of `Cbrt` are as follows:
 /// * `fn Cbrt(type) type`: Returns the return type of `cbrt` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn cbrt(X) X.Cbrt(X)`: Returns the cube root of `x`.
-/// * Allocated: `fn cbrt(std.mem.Allocator, X) !X.Cbrt(X)`: Returns the cube
+///
+/// Let us denote the return type `numeric.Cbrt(X)` as `R`. Then, `R` or `X`
+/// must implement the required `cbrt` method. The expected signatures and
+/// behavior of `cbrt` are as follows:
+/// * `R` is not allocated: `fn cbrt(X) R`: Returns the cube root of `x`.
+/// * `R` is allocated: `fn cbrt(std.mem.Allocator, X) !R`: Returns the cube
 ///   root of `x` as a newly allocated value.
 pub inline fn cbrt(x: anytype, ctx: anytype) !numeric.Cbrt(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -104,9 +108,14 @@ pub inline fn cbrt(x: anytype, ctx: anytype) !numeric.Cbrt(@TypeOf(x)) {
         .real => @compileError("zml.numeric.cbrt: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.cbrt: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "cbrt", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.cbrt: " ++ @typeName(X) ++ " must implement `fn cbrt(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "cbrt",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.cbrt: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn cbrt(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -119,14 +128,19 @@ pub inline fn cbrt(x: anytype, ctx: anytype) !numeric.Cbrt(@TypeOf(x)) {
                     },
                 );
 
-                return X.cbrt(ctx.allocator, x);
+                return Impl.cbrt(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "cbrt", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.cbrt: " ++ @typeName(X) ++ " must implement `fn cbrt(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "cbrt",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.cbrt: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn cbrt(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.cbrt(x);
+                return Impl.cbrt(x);
             }
         },
     }

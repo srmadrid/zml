@@ -27,9 +27,11 @@ pub fn Cfloat(comptime N: type) type {
         im: N,
 
         /// Type signature
-        pub const is_cfloat = {};
-        pub const is_complex_type = {};
-        pub const is_signed = {};
+        pub const is_numeric = true;
+        pub const is_cfloat = true;
+        pub const is_complex_type = true;
+        pub const is_signed = true;
+        pub const is_custom = types.isCustomType(N);
 
         /// Scalar type
         pub const Scalar = N;

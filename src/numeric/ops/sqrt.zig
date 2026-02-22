@@ -51,12 +51,12 @@ pub fn Sqrt(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Sqrt(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Sqrt(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Sqrt(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Sqrt(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Sqrt` and `sqrt` methods. The expected
-/// signature and behavior of `Sqrt` and `sqrt` are as follows:
+/// `X` must implement the required `Sqrt` method. The expected signature and
+/// behavior of `Sqrt` are as follows:
 /// * `fn Sqrt(type) type`: Returns the return type of `sqrt` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn sqrt(X) X.Sqrt(X)`: Returns the square root of `x`.
-/// * Allocated: `fn sqrt(std.mem.Allocator, X) !X.Sqrt(X)`: Returns the square
+///
+/// Let us denote the return type `numeric.Sqrt(X)` as `R`. Then, `R` or `X`
+/// must implement the required `sqrt` method. The expected signatures and
+/// behavior of `sqrt` are as follows:
+/// * `R` is not allocated: `fn sqrt(X) R`: Returns the square root of `x`.
+/// * `R` is allocated: `fn sqrt(std.mem.Allocator, X) !R`: Returns the square
 ///   root of `x` as a newly allocated value.
 pub inline fn sqrt(x: anytype, ctx: anytype) !numeric.Sqrt(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -108,9 +112,14 @@ pub inline fn sqrt(x: anytype, ctx: anytype) !numeric.Sqrt(@TypeOf(x)) {
         .real => @compileError("zml.numeric.sqrt: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.sqrt: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "sqrt", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.sqrt: " ++ @typeName(X) ++ " must implement `fn sqrt(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "sqrt",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.sqrt: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sqrt(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn sqrt(x: anytype, ctx: anytype) !numeric.Sqrt(@TypeOf(x)) {
                     },
                 );
 
-                return X.sqrt(ctx.allocator, x);
+                return Impl.sqrt(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "sqrt", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.sqrt: " ++ @typeName(X) ++ " must implement `fn sqrt(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "sqrt",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.sqrt: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sqrt(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.sqrt(x);
+                return Impl.sqrt(x);
             }
         },
     }

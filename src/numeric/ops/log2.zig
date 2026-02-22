@@ -51,12 +51,12 @@ pub fn Log2(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Log2(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Log2(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Log2(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,14 +70,17 @@ pub fn Log2(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Log2` and `log2` methods. The expected
-/// signature and behavior of `Log2` and `log2` are as follows:
+/// `X` must implement the required `Log2` method. The expected signature and
+/// behavior of `Log2` are as follows:
 /// * `fn Log2(type) type`: Returns the return type of `log2` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn log2(X) X.Log2(X)`: Returns the base-2 logarithm of
-///   `x`.
-/// * Allocated: `fn log2(std.mem.Allocator, X) !X.Log2(X)`: Returns the
-///   base-2 logarithm of `x` as a newly allocated value.
+///
+/// Let us denote the return type `numeric.Log2(X)` as `R`. Then, `R` or `X`
+/// must implement the required `log2` method. The expected signatures and
+/// behavior of `log2` are as follows:
+/// * `R` is not allocated: `fn log2(X) R`: Returns the base-2 logarithm of `x`.
+/// * `R` is allocated: `fn log2(std.mem.Allocator, X) !R`: Returns the base-2
+///   logarithm of `x` as a newly allocated value.
 pub inline fn log2(x: anytype, ctx: anytype) !numeric.Log2(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Log2(X);
@@ -105,9 +108,14 @@ pub inline fn log2(x: anytype, ctx: anytype) !numeric.Log2(@TypeOf(x)) {
         .real => @compileError("zml.numeric.log2: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.log2: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "log2", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.log2: " ++ @typeName(X) ++ " must implement `fn log2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "log2",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.log2: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn log2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -120,14 +128,19 @@ pub inline fn log2(x: anytype, ctx: anytype) !numeric.Log2(@TypeOf(x)) {
                     },
                 );
 
-                return X.log2(ctx.allocator, x);
+                return Impl.log2(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "log2", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.log2: " ++ @typeName(X) ++ " must implement `fn log2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "log2",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.log2: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn log2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.log2(x);
+                return Impl.log2(x);
             }
         },
     }

@@ -23,9 +23,10 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         positive: bool,
 
         /// Type signature
-        pub const is_dyadic = {};
-        pub const is_real_type = {};
-        pub const is_signed = {};
+        pub const is_numeric = true;
+        pub const is_dyadic = true;
+        pub const is_real_type = true;
+        pub const is_signed = true;
 
         pub const Mantissa = std.meta.Int(.unsigned, mantissa_bits);
         pub const Exponent = std.meta.Int(.signed, exponent_bits);

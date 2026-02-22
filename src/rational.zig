@@ -25,9 +25,10 @@ pub const Rational = struct {
     flags: Flags,
 
     /// Type signature
-    pub const is_rational = {};
-    pub const is_real_type = {};
-    pub const is_signed = {};
+    pub const is_numeric = true;
+    pub const is_rational = true;
+    pub const is_real_type = true;
+    pub const is_signed = true;
     pub const is_allocated = true;
 
     pub const empty: Rational = .{

@@ -10,6 +10,12 @@ const complex = @import("complex.zig");
 
 const numops = @import("numeric/ops.zig");
 
+// Utilities
+pub const init = numops.init;
+pub const deinit = numops.deinit;
+pub const set = numops.set;
+pub const copy = numops.copy;
+
 // Basic operations
 pub const Abs = numops.Abs;
 pub const abs = numops.abs;

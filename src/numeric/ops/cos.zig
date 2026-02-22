@@ -51,12 +51,12 @@ pub fn Cos(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Cos(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Cos(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Cos(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Cos(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Cos` and `cos` methods. The expected
-/// signature and behavior of `Cos` and `cos` are as follows:
+/// `X` must implement the required `Cos` method. The expected signature and
+/// behavior of `Cos` are as follows:
 /// * `fn Cos(type) type`: Returns the return type of `cos` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn cos(X) X.Cos(X)`: Returns the cosine of `x`.
-/// * Allocated: `fn cos(std.mem.Allocator, X) !X.Cos(X)`: Returns the cosine of
+///
+/// Let us denote the return type `numeric.Cos(X)` as `R`. Then, `R` or `X`
+/// must implement the required `cos` method. The expected signatures and
+/// behavior of `cos` are as follows:
+/// * `R` is not allocated: `fn cos(X) R`: Returns the cosine of `x`.
+/// * `R` is allocated: `fn cos(std.mem.Allocator, X) !R`: Returns the cosine of
 ///   `x` as a newly allocated value.
 pub inline fn cos(x: anytype, ctx: anytype) !numeric.Cos(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -108,9 +112,14 @@ pub inline fn cos(x: anytype, ctx: anytype) !numeric.Cos(@TypeOf(x)) {
         .real => @compileError("zml.numeric.cos: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.cos: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "cos", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.cos: " ++ @typeName(X) ++ " must implement `fn cos(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "cos",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.cos: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn cos(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn cos(x: anytype, ctx: anytype) !numeric.Cos(@TypeOf(x)) {
                     },
                 );
 
-                return X.cos(ctx.allocator, x);
+                return Impl.cos(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "cos", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.cos: " ++ @typeName(X) ++ " must implement `fn cos(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "cos",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.cos: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn cos(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.cos(x);
+                return Impl.cos(x);
             }
         },
     }

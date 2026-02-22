@@ -51,12 +51,12 @@ pub fn Atanh(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Atanh(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Atanh(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Atanh(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,13 +70,17 @@ pub fn Atanh(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Atanh` and `atanh` methods. The expected
-/// signature and behavior of `Atanh` and `atanh` are as follows:
+/// `X` must implement the required `Atanh` method. The expected signature and
+/// behavior of `Atanh` are as follows:
 /// * `fn Atanh(type) type`: Returns the return type of `atanh` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn atanh(X) X.Atanh(X)`: Returns the hyperbolic arctangent
+///
+/// Let us denote the return type `numeric.Atanh(X)` as `R`. Then, `R` or `X`
+/// must implement the required `atanh` method. The expected signatures and
+/// behavior of `atanh` are as follows:
+/// * `R` is not allocated: `fn atanh(X) R`: Returns the hyperbolic arctangent
 ///   of `x`.
-/// * Allocated: `fn atanh(std.mem.Allocator, X) !X.Atanh(X)`: Returns the
+/// * `R` is allocated: `fn atanh(std.mem.Allocator, X) !R`: Returns the
 ///   hyperbolic arctangent of `x` as a newly allocated value.
 pub inline fn atanh(x: anytype, ctx: anytype) !numeric.Atanh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -109,9 +113,14 @@ pub inline fn atanh(x: anytype, ctx: anytype) !numeric.Atanh(@TypeOf(x)) {
         .real => @compileError("zml.numeric.atanh: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.atanh: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "atanh", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.atanh: " ++ @typeName(X) ++ " must implement `fn atanh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "atanh",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.atanh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn atanh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -124,14 +133,19 @@ pub inline fn atanh(x: anytype, ctx: anytype) !numeric.Atanh(@TypeOf(x)) {
                     },
                 );
 
-                return X.atanh(ctx.allocator, x);
+                return Impl.atanh(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "atanh", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.atanh: " ++ @typeName(X) ++ " must implement `fn atanh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "atanh",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.atanh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn atanh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.atanh(x);
+                return Impl.atanh(x);
             }
         },
     }

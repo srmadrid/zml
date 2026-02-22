@@ -51,12 +51,12 @@ pub fn Sin(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Sin(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Sin(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Sin(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Sin(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Sin` and `sin` methods. The expected
-/// signature and behavior of `Sin` and `sin` are as follows:
+/// `X` must implement the required `Sin` method. The expected signature and
+/// behavior of `Sin` are as follows:
 /// * `fn Sin(type) type`: Returns the return type of `sin` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn sin(X) X.Sin(X)`: Returns the sine of `x`.
-/// * Allocated: `fn sin(std.mem.Allocator, X) !X.Sin(X)`: Returns the sine of
+///
+/// Let us denote the return type `numeric.Sin(X)` as `R`. Then, `R` or `X`
+/// must implement the required `sin` method. The expected signatures and
+/// behavior of `sin` are as follows:
+/// * `R` is not allocated: `fn sin(X) R`: Returns the sine of `x`.
+/// * `R` is allocated: `fn sin(std.mem.Allocator, X) !R`: Returns the sine of
 ///   `x` as a newly allocated value.
 pub inline fn sin(x: anytype, ctx: anytype) !numeric.Sin(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -108,9 +112,14 @@ pub inline fn sin(x: anytype, ctx: anytype) !numeric.Sin(@TypeOf(x)) {
         .real => @compileError("zml.numeric.sin: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.sin: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "sin", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.sin: " ++ @typeName(X) ++ " must implement `fn sin(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "sin",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.sin: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sin(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn sin(x: anytype, ctx: anytype) !numeric.Sin(@TypeOf(x)) {
                     },
                 );
 
-                return X.sin(ctx.allocator, x);
+                return Impl.sin(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "sin", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.sin: " ++ @typeName(X) ++ " must implement `fn sin(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "sin",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.sin: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sin(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.sin(x);
+                return Impl.sin(x);
             }
         },
     }

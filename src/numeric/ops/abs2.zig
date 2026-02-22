@@ -52,13 +52,13 @@ pub fn Abs2(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Abs2(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Abs2(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
-/// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
+/// #### `numeric.Abs2(X)` is allocated
+/// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
 /// `numeric.Abs2(@TypeOf(x))`: The squared absolute value of `x`.
@@ -71,13 +71,17 @@ pub fn Abs2(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Abs2` and `abs2` methods. The expected
-/// signature and behavior of `Abs2` and `abs2` are as follows:
+/// `X` must implement the required `Abs2` method. The expected signature and
+/// behavior of `Abs2` are as follows:
 /// * `fn Abs2(type) type`: Returns the return type of `abs2` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn abs2(X) X.Abs2(X)`: Returns the squared absolute value
+///
+/// Let us denote the return type `numeric.Abs2(X)` as `R`. Then, `R` or `X`
+/// must implement the required `abs2` method. The expected signatures and
+/// behavior of `abs2` are as follows:
+/// * `R` is not allocated: `fn abs2(X) R`: Returns the squared absolute value
 ///   of `x`.
-/// * Allocated: `fn abs2(std.mem.Allocator, X) !X.Abs2(X)`: Returns the
+/// * `R` is allocated: `fn abs2(std.mem.Allocator, X) !R`: Returns the
 ///   squared absolute value of `x` as a newly allocated value.
 pub inline fn abs2(x: anytype, ctx: anytype) !numeric.Abs2(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -140,9 +144,14 @@ pub inline fn abs2(x: anytype, ctx: anytype) !numeric.Abs2(@TypeOf(x)) {
         .real => @compileError("zml.numeric.abs2: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.abs2: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "abs2", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.abs2: " ++ @typeName(X) ++ " must implement `fn abs2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "abs2",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.abs2: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -155,14 +164,19 @@ pub inline fn abs2(x: anytype, ctx: anytype) !numeric.Abs2(@TypeOf(x)) {
                     },
                 );
 
-                return X.abs2(ctx.allocator, x);
+                return Impl.abs2(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "abs2", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.abs2: " ++ @typeName(X) ++ " must implement `fn abs2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "abs2",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.abs2: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.abs2(x);
+                return Impl.abs2(x);
             }
         },
     }

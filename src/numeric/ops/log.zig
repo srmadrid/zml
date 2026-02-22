@@ -51,12 +51,12 @@ pub fn Log(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Log(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Log(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Log(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,13 +70,17 @@ pub fn Log(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Log` and `log` methods. The expected
-/// signature and behavior of `Log` and `log` are as follows:
+/// `X` must implement the required `Log` method. The expected signature and
+/// behavior of `Log` are as follows:
 /// * `fn Log(type) type`: Returns the return type of `log` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn log(X) X.Log(X)`: Returns the natural logarithm of `x`.
-/// * Allocated: `fn log(std.mem.Allocator, X) !X.Log(X)`: Returns the natural
-///   logarithm of `x` as a newly allocated value.
+///
+/// Let us denote the return type `numeric.Log(X)` as `R`. Then, `R` or `X` must
+/// implement the required `log` method. The expected signatures and behavior of
+/// `log` are as follows:
+/// * `R` is not allocated: `fn log(X) R`: Returns the logarithm of `x`.
+/// * `R` is allocated: `fn log(std.mem.Allocator, X) !R`: Returns the logarithm
+///   of `x` as a newly allocated value.
 pub inline fn log(x: anytype, ctx: anytype) !numeric.Log(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Log(X);
@@ -108,9 +112,14 @@ pub inline fn log(x: anytype, ctx: anytype) !numeric.Log(@TypeOf(x)) {
         .real => @compileError("zml.numeric.log: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.log: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "log", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.log: " ++ @typeName(X) ++ " must implement `fn log(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "log",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.log: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn log(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn log(x: anytype, ctx: anytype) !numeric.Log(@TypeOf(x)) {
                     },
                 );
 
-                return X.log(ctx.allocator, x);
+                return Impl.log(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "log", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.log: " ++ @typeName(X) ++ " must implement `fn log(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "log",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.log: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn log(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.log(x);
+                return Impl.log(x);
             }
         },
     }

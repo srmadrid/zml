@@ -24,10 +24,11 @@ pub const Integer = struct {
     flags: Flags,
 
     /// Type signature
-    pub const is_integer = {};
-    pub const is_integral = {};
-    pub const is_real_type = {};
-    pub const is_signed = {};
+    pub const is_numeric = true;
+    pub const is_integer = true;
+    pub const is_integral = true;
+    pub const is_real_type = true;
+    pub const is_signed = true;
     pub const is_allocated = true;
 
     pub const empty: Integer = .{

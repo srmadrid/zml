@@ -408,32 +408,36 @@ pub inline fn numericType(comptime N: type) NumericType {
         .bool => return .bool,
         .int, .comptime_int => return .int,
         .float, .comptime_float => return .float,
-        else => {
-            if (comptime @hasDecl(N, "is_dyadic"))
+        .@"struct" => {
+            if (comptime !@hasDecl(N, "is_numeric") or !N.is_numeric)
+                @compileError("zml.types.numericType: " ++ @typeName(N) ++ " is not a supported numeric type");
+
+            if (comptime @hasDecl(N, "is_custom") and N.is_custom)
+                return .custom;
+
+            if (comptime @hasDecl(N, "is_dyadic") and N.is_dyadic)
                 return .dyadic;
 
-            if (comptime (@hasDecl(N, "is_cfloat")) or
+            if (comptime (@hasDecl(N, "is_cfloat") and N.is_cfloat) or
                 N == std.math.Complex(f16) or N == std.math.Complex(f32) or N == std.math.Complex(f64) or
                 N == std.math.Complex(f80) or N == std.math.Complex(f128) or N == std.math.Complex(comptime_float))
                 return .cfloat;
 
-            if (comptime @hasDecl(N, "is_integer"))
+            if (comptime @hasDecl(N, "is_integer") and N.is_integer)
                 return .integer;
 
-            if (comptime @hasDecl(N, "is_rational"))
+            if (comptime @hasDecl(N, "is_rational") and N.is_rational)
                 return .rational;
 
-            if (comptime @hasDecl(N, "is_real"))
+            if (comptime @hasDecl(N, "is_real") and N.is_real)
                 return .real;
 
-            if (comptime @hasDecl(N, "is_complex"))
+            if (comptime @hasDecl(N, "is_complex") and N.is_complex)
                 return .complex;
-
-            if (comptime @hasDecl(N, "is_numeric"))
-                return .custom;
 
             @compileError("zml.types.numericType: " ++ @typeName(N) ++ " is not a supported numeric type");
         },
+        else => @compileError("zml.types.numericType: " ++ @typeName(N) ++ " is not a supported numeric type"),
     }
 }
 
@@ -1030,4 +1034,37 @@ pub fn hasMethod(
         },
         else => @compileError("zml.types.hasMethod: only implemented for numeric types so far"),
     }
+}
+
+/// Checks, in order, if any of the types in `types` has a method with the given
+/// name and type. `anytype` parameters are counted as matching any type.
+///
+/// ## Arguments
+/// * `types` (`comptime []const type`): The types to check.
+/// * `method_name` (`comptime []const u8`): The name of the method to check.
+/// * `method_type` (`comptime type`): The expected type of the method,
+///   including parameters and return type. Must not include the allocator
+///   parameter for allocated types, and the return type must not be an error
+///   union.
+/// * `input_types` (`comptime []const type`): The types of the inputs to the
+///   method, used to determine the return type for methods with inferred return
+///   types. If a parameter in `method_type` is of type `type`, the
+///   corresponding type in `input_types` should be the input type for that
+///   parameter.
+///
+/// ## Returns
+/// `?type`: The first type in `types` that has the method with the correct
+/// type, or `null` if no type has the method.
+pub fn haveMethod(
+    comptime types: []const type,
+    comptime method_name: []const u8,
+    comptime method_type: type,
+    comptime input_types: []const type,
+) ?type {
+    inline for (types) |T| {
+        if (hasMethod(T, method_name, method_type, input_types))
+            return T;
+    }
+
+    return null;
 }

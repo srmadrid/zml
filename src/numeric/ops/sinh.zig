@@ -51,12 +51,12 @@ pub fn Sinh(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Sinh(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Sinh(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Sinh(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Sinh(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Sinh` and `sinh` methods. The expected
-/// signature and behavior of `Sinh` and `sinh` are as follows:
+/// `X` must implement the required `Sinh` method. The expected signature and
+/// behavior of `Sinh` are as follows:
 /// * `fn Sinh(type) type`: Returns the return type of `sinh` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn sinh(X) X.Sinh(X)`: Returns the hyperbolic sine of `x`.
-/// * Allocated: `fn sinh(std.mem.Allocator, X) !X.Sinh(X)`: Returns the
+///
+/// Let us denote the return type `numeric.Sinh(X)` as `R`. Then, `R` or `X`
+/// must implement the required `sinh` method. The expected signatures and
+/// behavior of `sinh` are as follows:
+/// * `R` is not allocated: `fn sinh(X) R`: Returns the hyperbolic sine of `x`.
+/// * `R` is allocated: `fn sinh(std.mem.Allocator, X) !R`: Returns the
 ///   hyperbolic sine of `x` as a newly allocated value.
 pub inline fn sinh(x: anytype, ctx: anytype) !numeric.Sinh(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -108,9 +112,14 @@ pub inline fn sinh(x: anytype, ctx: anytype) !numeric.Sinh(@TypeOf(x)) {
         .real => @compileError("zml.numeric.sinh: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.sinh: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "sinh", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.sinh: " ++ @typeName(X) ++ " must implement `fn sinh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "sinh",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.sinh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sinh(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn sinh(x: anytype, ctx: anytype) !numeric.Sinh(@TypeOf(x)) {
                     },
                 );
 
-                return X.sinh(ctx.allocator, x);
+                return Impl.sinh(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "sinh", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.sinh: " ++ @typeName(X) ++ " must implement `fn sinh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "sinh",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.sinh: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sinh(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.sinh(x);
+                return Impl.sinh(x);
             }
         },
     }

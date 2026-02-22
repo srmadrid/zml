@@ -51,12 +51,12 @@ pub fn Tan(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Tan(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Tan(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Tan(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Tan(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Tan` and `tan` methods. The expected
-/// signature and behavior of `Tan` and `tan` are as follows:
+/// `X` must implement the required `Tan` method. The expected signature and
+/// behavior of `Tan` are as follows:
 /// * `fn Tan(type) type`: Returns the return type of `tan` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn tan(X) X.Tan(X)`: Returns the tangent of `x`.
-/// * Allocated: `fn tan(std.mem.Allocator, X) !X.Tan(X)`: Returns the tangent
+///
+/// Let us denote the return type `numeric.Tan(X)` as `R`. Then, `R` or `X`
+/// must implement the required `tan` method. The expected signatures and
+/// behavior of `tan` are as follows:
+/// * `R` is not allocated: `fn tan(X) R`: Returns the tangent of `x`.
+/// * `R` is allocated: `fn tan(std.mem.Allocator, X) !R`: Returns the tangent
 ///   of `x` as a newly allocated value.
 pub inline fn tan(x: anytype, ctx: anytype) !numeric.Tan(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -108,9 +112,14 @@ pub inline fn tan(x: anytype, ctx: anytype) !numeric.Tan(@TypeOf(x)) {
         .real => @compileError("zml.numeric.tan: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.tan: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "tan", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.tan: " ++ @typeName(X) ++ " must implement `fn tan(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "tan",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.tan: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn tan(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn tan(x: anytype, ctx: anytype) !numeric.Tan(@TypeOf(x)) {
                     },
                 );
 
-                return X.tan(ctx.allocator, x);
+                return Impl.tan(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "tan", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.tan: " ++ @typeName(X) ++ " must implement `fn tan(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "tan",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.tan: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn tan(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.tan(x);
+                return Impl.tan(x);
             }
         },
     }

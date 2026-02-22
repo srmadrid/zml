@@ -51,12 +51,12 @@ pub fn Exp2(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Exp(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Exp2(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Exp2(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,13 +70,17 @@ pub fn Exp2(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Exp2` and `exp2` methods. The expected
-/// signature and behavior of `Exp2` and `exp2` are as follows:
+/// `X` must implement the required `Exp2` method. The expected signature and
+/// behavior of `Exp2` are as follows:
 /// * `fn Exp2(type) type`: Returns the return type of `exp2` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn exp2(X) X.Exp2(X)`: Returns the base-2 exponential of
+///
+/// Let us denote the return type `numeric.Exp2(X)` as `R`. Then, `R` or `X` must
+/// implement the required `exp2` method. The expected signatures and behavior of
+/// `exp2` are as follows:
+/// * `R` is not allocated: `fn exp2(X) R`: Returns the base-2 exponential of
 ///   `x`.
-/// * Allocated: `fn exp2(std.mem.Allocator, X) !X.Exp2(X)`: Returns the
+/// * `R` is allocated: `fn exp2(std.mem.Allocator, X) !R`: Returns the base-2
 ///   exponential of `x` as a newly allocated value.
 pub inline fn exp2(x: anytype, ctx: anytype) !numeric.Exp2(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -105,9 +109,14 @@ pub inline fn exp2(x: anytype, ctx: anytype) !numeric.Exp2(@TypeOf(x)) {
         .real => @compileError("zml.numeric.exp2: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.exp2: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "exp2", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.exp2: " ++ @typeName(X) ++ " must implement `fn exp2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "exp2",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.exp2: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn exp2(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -120,14 +129,19 @@ pub inline fn exp2(x: anytype, ctx: anytype) !numeric.Exp2(@TypeOf(x)) {
                     },
                 );
 
-                return X.exp2(ctx.allocator, x);
+                return Impl.exp2(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "exp2", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.exp2: " ++ @typeName(X) ++ " must implement `fn exp2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "exp2",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.exp2: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn exp2(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.exp2(x);
+                return Impl.exp2(x);
             }
         },
     }

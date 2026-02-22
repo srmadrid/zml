@@ -5,7 +5,7 @@ const numeric = @import("../numeric.zig");
 const constants = @import("../constants.zig");
 
 pub fn isDual(comptime T: type) bool {
-    return @hasDecl(T, "is_dual");
+    return @hasDecl(T, "is_dual") and T.is_dual;
 }
 
 pub fn Dual(comptime T: type) type {
@@ -17,9 +17,11 @@ pub fn Dual(comptime T: type) type {
         eps: T,
 
         // Type signature
-        pub const is_numeric = {};
-        pub const is_dual = {};
+        pub const is_custom = true;
+        pub const is_numeric = true;
+        pub const is_dual = true;
         pub const is_allocated = types.isAllocated(T);
+        pub const is_complex_type = types.isComplexType(T);
 
         /// Scalar type
         pub const Scalar = T;

@@ -51,12 +51,12 @@ pub fn Asin(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Asin(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Asin(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Asin(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,12 +70,16 @@ pub fn Asin(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Asin` and `asin` methods. The expected
-/// signature and behavior of `Asin` and `asin` are as follows:
+/// `X` must implement the required `Asin` method. The expected signature and
+/// behavior of `Asin` are as follows:
 /// * `fn Asin(type) type`: Returns the return type of `asin` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn asin(X) X.Asin(X)`: Returns the arcsine of `x`.
-/// * Allocated: `fn asin(std.mem.Allocator, X) !X.Asin(X)`: Returns the arcsine
+///
+/// Let us denote the return type `numeric.Asin(X)` as `R`. Then, `R` or `X`
+/// must implement the required `asin` method. The expected signatures and
+/// behavior of `asin` are as follows:
+/// * `R` is not allocated: `fn asin(X) R`: Returns the arcsine of `x`.
+/// * `R` is allocated: `fn asin(std.mem.Allocator, X) !R`: Returns the arcsine
 ///   of `x` as a newly allocated value.
 pub inline fn asin(x: anytype, ctx: anytype) !numeric.Asin(@TypeOf(x)) {
     const X: type = @TypeOf(x);
@@ -108,9 +112,14 @@ pub inline fn asin(x: anytype, ctx: anytype) !numeric.Asin(@TypeOf(x)) {
         .real => @compileError("zml.numeric.asin: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.asin: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "asin", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.asin: " ++ @typeName(X) ++ " must implement `fn asin(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "asin",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.asin: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn asin(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -123,14 +132,19 @@ pub inline fn asin(x: anytype, ctx: anytype) !numeric.Asin(@TypeOf(x)) {
                     },
                 );
 
-                return X.asin(ctx.allocator, x);
+                return Impl.asin(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "asin", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.asin: " ++ @typeName(X) ++ " must implement `fn asin(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "asin",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.asin: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn asin(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.asin(x);
+                return Impl.asin(x);
             }
         },
     }

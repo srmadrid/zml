@@ -51,12 +51,12 @@ pub fn Re(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Re(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Re(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Re(X)` is allocated
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
 ///
@@ -71,14 +71,18 @@ pub fn Re(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Re` and `re` methods. The expected
-/// signature and behavior of `Re` and `re` are as follows:
+/// `X` must implement the required `Re` method. The expected signature and
+/// behavior of `Re` are as follows:
 /// * `fn Re(type) type`: Returns the return type of `re` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn re(X) X.Re(X)`: Returns the real part of `x`.
-/// * Allocated: `fn re(?std.mem.Allocator, X) !X.Re(X)`: Returns the real part
+///
+/// Let us denote the return type `numeric.Re(X)` as `R`. Then, `R` or `X` must
+/// implement the required `re` method. The expected signatures and behavior of
+/// `re` are as follows:
+/// * `R` is not allocated: `fn re(X) R`: Returns the real part of `x`.
+/// * `R` is allocated: `fn re(?std.mem.Allocator, X) !R`: Returns the real part
 ///   of `x` as a newly allocated value, if the allocator is provided, or a
-///   read-only view if not.
+///   read-only view if not. If not provided, it must not fail.
 pub inline fn re(x: anytype, ctx: anytype) !numeric.Re(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Re(X);
@@ -146,9 +150,14 @@ pub inline fn re(x: anytype, ctx: anytype) !numeric.Re(@TypeOf(x)) {
         .real => @compileError("zml.numeric.re: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.re: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "re", fn (?std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.re: " ++ @typeName(X) ++ " must implement `fn re(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "re",
+                    fn (?std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.re: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn re(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -162,16 +171,21 @@ pub inline fn re(x: anytype, ctx: anytype) !numeric.Re(@TypeOf(x)) {
                 );
 
                 return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
-                    X.re(ctx.allocator, x)
+                    Impl.re(ctx.allocator, x)
                 else
-                    X.re(null, x);
+                    Impl.re(null, x) catch unreachable;
             } else {
-                comptime if (!types.hasMethod(X, "re", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.re: " ++ @typeName(X) ++ " must implement `fn re(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "re",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.re: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn re(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.re(x);
+                return Impl.re(x);
             }
         },
     }

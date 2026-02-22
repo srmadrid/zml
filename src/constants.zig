@@ -218,7 +218,7 @@ pub inline fn zero(
         },
         .custom => {
             if (comptime types.isAllocated(N)) {
-                comptime if (!types.hasMethod(N, "zero", fn (?std.mem.Allocator) anyerror!N, &.{}))
+                comptime if (!types.hasMethod(N, "zero", fn (?std.mem.Allocator) anyerror!N, &.{std.mem.Allocator}))
                     @compileError("zml.zero: " ++ @typeName(N) ++ " must implement `fn zero(?std.mem.Allocator) !" ++ @typeName(N) ++ "`");
 
                 comptime types.validateContext(
@@ -448,7 +448,7 @@ pub inline fn one(
         },
         .custom => {
             if (comptime types.isAllocated(N)) {
-                comptime if (!types.hasMethod(N, "one", fn (?std.mem.Allocator) anyerror!N, &.{}))
+                comptime if (!types.hasMethod(N, "one", fn (?std.mem.Allocator) anyerror!N, &.{std.mem.Allocator}))
                     @compileError("zml.one: " ++ @typeName(N) ++ " must implement `fn one(?std.mem.Allocator) !" ++ @typeName(N) ++ "`");
 
                 comptime types.validateContext(
@@ -678,7 +678,7 @@ pub inline fn two(
         },
         .custom => {
             if (comptime types.isAllocated(N)) {
-                comptime if (!types.hasMethod(N, "two", fn (?std.mem.Allocator) anyerror!N, &.{}))
+                comptime if (!types.hasMethod(N, "two", fn (?std.mem.Allocator) anyerror!N, &.{std.mem.Allocator}))
                     @compileError("zml.two: " ++ @typeName(N) ++ " must implement `fn two(?std.mem.Allocator) !" ++ @typeName(N) ++ "`");
 
                 comptime types.validateContext(

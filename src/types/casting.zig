@@ -822,13 +822,10 @@ pub inline fn cast(
             },
         },
         .integer => switch (comptime types.numericType(O)) {
-            .bool => return integer.ne(value, 0),
-            .int => return value.toInt(O),
-            .float => return value.toFloat(O),
-            .dyadic => return value.toDyadic(O),
-            .cfloat => return .{
-                .re = value.toFloat(types.Scalar(O)),
-                .im = 0.0,
+            .bool, .int, .float, .dyadic, .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return scast(O, value);
             },
             .integer => unreachable,
             .rational => {
@@ -861,13 +858,10 @@ pub inline fn cast(
             },
         },
         .rational => switch (comptime types.numericType(O)) {
-            .bool => return rational.ne(value, 0),
-            .int => return value.toInt(O),
-            .float => return value.toFloat(O),
-            .dyadic => return value.toDyadic(O),
-            .cfloat => return .{
-                .re = value.toFloat(types.Scalar(O)),
-                .im = 0.0,
+            .bool, .int, .float, .dyadic, .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return scast(O, value);
             },
             .integer => @compileError("zml.cast: casting rational to integer not implemented yet"),
             .rational => unreachable,
@@ -885,13 +879,10 @@ pub inline fn cast(
         },
         .real => @compileError("zml.cast: casting real to any type not implemented yet"),
         .complex => switch (comptime types.numericType(O)) {
-            .bool => return complex.ne(value, 0),
-            .int => return value.re.toInt(O),
-            .float => return value.re.toFloat(O),
-            .dyadic => return value.re.toDyadic(O),
-            .cfloat => return .{
-                .re = value.re.toFloat(types.Scalar(O)),
-                .im = value.im.toFloat(types.Scalar(O)),
+            .bool, .int, .float, .dyadic, .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return scast(O, value);
             },
             .integer => @compileError("zml.cast: casting complex to integer not implemented yet"),
             .rational => @compileError("zml.cast: casting complex to rational not implemented yet"),
@@ -900,6 +891,22 @@ pub inline fn cast(
             .custom => {
                 if (comptime types.isAllocated(O)) {
                     @compileError("zml.cast: casting complex to allocated custom types not implemented yet");
+                } else {
+                    comptime types.validateContext(@TypeOf(ctx), .{});
+
+                    return scast(O, value);
+                }
+            },
+        },
+        .custom => switch (comptime types.numericType(O)) {
+            .bool, .int, .float, .dyadic, .cfloat => {
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return scast(O, value);
+            },
+            .integer, .rational, .real, .complex => {
+                if (comptime types.isAllocated(I)) {
+                    @compileError("zml.cast: casting from allocated custom types not implemented yet");
                 } else {
                     comptime types.validateContext(@TypeOf(ctx), .{});
 

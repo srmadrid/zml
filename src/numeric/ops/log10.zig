@@ -51,12 +51,12 @@ pub fn Log10(X: type) type {
 ///   the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `X`.
+/// The fields of `ctx` depend on `numeric.Log10(X)`.
 ///
-/// #### `X` is not allocated
+/// #### `numeric.Log10(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `X` is allocated
+/// #### `numeric.Log10(X)` is allocated
 /// * `allocator: std.mem.Allocator` The allocator to use for the output value.
 ///
 /// ## Returns
@@ -70,14 +70,18 @@ pub fn Log10(X: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` must implement the required `Log10` and `log10` methods. The expected
-/// signature and behavior of `Log10` and `log10` are as follows:
+/// `X` must implement the required `Log10` method. The expected signature and
+/// behavior of `Log10` are as follows:
 /// * `fn Log10(type) type`: Returns the return type of `log10` for the custom
 ///   numeric type.
-/// * Non-allocated: `fn log10(X) X.Log10(X)`: Returns the base-10 logarithm of
+///
+/// Let us denote the return type `numeric.Log10(X)` as `R`. Then, `R` or `X`
+/// must implement the required `log10` method. The expected signatures and
+/// behavior of `log10` are as follows:
+/// * `R` is not allocated: `fn log10(X) R`: Returns the base-10 logarithm of
 ///   `x`.
-/// * Allocated: `fn log10(std.mem.Allocator, X) !X.Log10(X)`: Returns the
-///   base-10 logarithm of `x` as a newly allocated value.
+/// * `R` is allocated: `fn log10(std.mem.Allocator, X) !R`: Returns the base-10
+///   logarithm of `x` as a newly allocated value.
 pub inline fn log10(x: anytype, ctx: anytype) !numeric.Log10(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Log10(X);
@@ -105,9 +109,14 @@ pub inline fn log10(x: anytype, ctx: anytype) !numeric.Log10(@TypeOf(x)) {
         .real => @compileError("zml.numeric.log10: not implemented for " ++ @typeName(X) ++ " yet."),
         .complex => @compileError("zml.numeric.log10: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
-            if (comptime types.isAllocated(X)) {
-                comptime if (!types.hasMethod(X, "log10", fn (std.mem.Allocator, X) anyerror!R, &.{ std.mem.Allocator, X }))
-                    @compileError("zml.numeric.log10: " ++ @typeName(X) ++ " must implement `fn log10(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "log10",
+                    fn (std.mem.Allocator, X) anyerror!R,
+                    &.{ std.mem.Allocator, X },
+                ) orelse
+                    @compileError("zml.numeric.log10: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn log10(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -120,14 +129,19 @@ pub inline fn log10(x: anytype, ctx: anytype) !numeric.Log10(@TypeOf(x)) {
                     },
                 );
 
-                return X.log10(ctx.allocator, x);
+                return Impl.log10(ctx.allocator, x);
             } else {
-                comptime if (!types.hasMethod(X, "log10", fn (X) R, &.{X}))
-                    @compileError("zml.numeric.log10: " ++ @typeName(X) ++ " must implement `fn log10(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "log10",
+                    fn (X) R,
+                    &.{X},
+                ) orelse
+                    @compileError("zml.numeric.log10: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn log10(" ++ @typeName(X) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.log10(x);
+                return Impl.log10(x);
             }
         },
     }
