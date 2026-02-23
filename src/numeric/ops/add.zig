@@ -18,14 +18,15 @@ pub fn Add(X: type, Y: type) type {
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
-            if (comptime !types.hasMethod(X, "Add", fn (type, type) type, &.{ X, Y })) {
-                if (comptime !types.hasMethod(Y, "Add", fn (type, type) type, &.{ X, Y }))
-                    @compileError("zml.numeric.add: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Add(type, type) type`");
+            const Impl: type = comptime types.haveMethod(
+                &.{ X, Y },
+                "Add",
+                fn (type, type) type,
+                &.{ X, Y },
+            ) orelse
+                @compileError("zml.numeric.add: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Add(type, type) type`");
 
-                return Y.Add(X, Y);
-            } else {
-                return X.Add(X, Y);
-            }
+            return Impl.Add(X, Y);
         } else { // only X custom
             comptime if (!types.hasMethod(X, "Add", fn (type, type) type, &.{ X, Y }))
                 @compileError("zml.numeric.add: " ++ @typeName(X) ++ " must implement `fn Add(type, type) type`");
@@ -49,7 +50,7 @@ pub fn Add(X: type, Y: type) type {
             .integer => return integer.Integer,
             .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Add(complex.Complex(rational.Rational), Y),
+            .complex => return complex.Add(X, Y),
             .custom => unreachable,
         },
         .int => switch (comptime types.numericType(Y)) {
@@ -60,7 +61,7 @@ pub fn Add(X: type, Y: type) type {
             .integer => return integer.Integer,
             .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Add(complex.Complex(rational.Rational), Y),
+            .complex => return complex.Add(X, Y),
             .custom => unreachable,
         },
         .float => switch (comptime types.numericType(Y)) {
@@ -69,7 +70,7 @@ pub fn Add(X: type, Y: type) type {
             .cfloat => return cfloat.Add(X, Y),
             .integer, .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Add(complex.Complex(rational.Rational), Y),
+            .complex => return complex.Add(X, Y),
             .custom => unreachable,
         },
         .dyadic => switch (comptime types.numericType(Y)) {
@@ -77,13 +78,13 @@ pub fn Add(X: type, Y: type) type {
             .cfloat => return cfloat.Add(X, Y),
             .integer, .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Add(complex.Complex(rational.Rational), Y),
+            .complex => return complex.Add(X, Y),
             .custom => unreachable,
         },
         .cfloat => switch (comptime types.numericType(Y)) {
             .bool, .int, .float, .dyadic, .cfloat => return cfloat.Add(X, Y),
             .integer, .rational, .real => return complex.Add(complex.Complex(rational.Rational), Y),
-            .complex => return complex.Add(complex.Complex(rational.Rational), Y),
+            .complex => return complex.Add(X, Y),
             .custom => unreachable,
         },
         .integer => switch (comptime types.numericType(Y)) {
@@ -155,24 +156,18 @@ pub fn Add(X: type, Y: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// ### `X` is a custom numeric type
-/// `X` must implement the required `Add` and `add` methods. The expected
-/// signature and behavior of `Add` and `add` are as follows:
-/// * `fn Add(type) type`: Returns the return type of `add` for the custom
-///   numeric type.
-/// * `X.Add(X, Y)` is non-allocated: `fn add(X, Y) X.Add(X, Y)`: Returns the
-///   addition of `x` and `y`.
-/// * `X.Add(X, Y)` is allocated: `fn add(std.mem.Allocator, X, Y) !numeric.Add(X, Y)`:
-///   Returns the addition of `x` and `y` as a newly allocated value.
+/// `X` or `Y` must implement the required `add` method. The expected signature
+/// and behavior of `Add` are as follows:
+/// * `fn Add(type, type) type`: Returns the return type of `add` for the input
+///   types.
 ///
-/// ### `Y` is a custom numeric type
-/// `Y` must implement the required `Add` and `add` methods, with the same
-/// specifications as above.
-///
-/// ### Both `X` and `Y` are custom numeric types
-/// At least one of `X` and `Y` must implement the required `Add` and `add`
-/// methods, with the same specifications as above. If both implement them,
-/// `X`'s implementation will be used.
+/// Let us denote the return type `numeric.Add(X, Y)` as `R`. Then, `R`, `X` or
+/// `Y` must implement the required `add` method. The expected signatures and
+/// behavior of `add` are as follows:
+/// * `R` is not allocated: `fn add(X, Y) R`: Returns the addition of `x` and
+///   `y`.
+/// * `R` is allocated: `fn add(std.mem.Allocator, X, Y) !R`: Returns the
+///   addition of `x` and `y` as a newly allocated value.
 pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
@@ -181,54 +176,13 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
             if (comptime types.isAllocated(R)) {
-                if (comptime !types.hasMethod(X, "add", fn (std.mem.Allocator, X, Y) anyerror!R, &.{ std.mem.Allocator, X, Y })) {
-                    comptime if (!types.hasMethod(Y, "add", fn (std.mem.Allocator, X, Y) anyerror!R, &.{ std.mem.Allocator, X, Y }))
-                        @compileError("zml.numeric.add: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn add(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
-
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{
-                                .type = std.mem.Allocator,
-                                .required = true,
-                                .description = "The allocator to use for the custom numeric's memory allocation.",
-                            },
-                        },
-                    );
-
-                    return Y.add(ctx.allocator, x, y);
-                } else {
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{
-                                .type = std.mem.Allocator,
-                                .required = true,
-                                .description = "The allocator to use for the custom numeric's memory allocation.",
-                            },
-                        },
-                    );
-
-                    return X.add(ctx.allocator, x, y);
-                }
-            } else {
-                if (comptime !types.hasMethod(X, "add", fn (X, Y) R, &.{ X, Y })) {
-                    comptime if (!types.hasMethod(Y, "add", fn (X, Y) R, &.{ X, Y }))
-                        @compileError("zml.numeric.add: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn add(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
-
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return Y.add(x, y);
-                } else {
-                    comptime types.validateContext(@TypeOf(ctx), .{});
-
-                    return X.add(x, y);
-                }
-            }
-        } else { // only X custom
-            if (comptime types.isAllocated(R)) {
-                comptime if (!types.hasMethod(X, "add", fn (std.mem.Allocator, X, Y) anyerror!R, &.{ std.mem.Allocator, X, Y }))
-                    @compileError("zml.numeric.add: " ++ @typeName(X) ++ " must implement `fn add(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X, Y },
+                    "add",
+                    fn (std.mem.Allocator, X, Y) anyerror!R,
+                    &.{ std.mem.Allocator, X, Y },
+                ) orelse
+                    @compileError("zml.numeric.add: " ++ @typeName(R) ++ ", " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn add(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -241,20 +195,65 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
                     },
                 );
 
-                return X.add(ctx.allocator, x, y);
+                return Impl.add(ctx.allocator, x, y);
             } else {
-                comptime if (!types.hasMethod(X, "add", fn (X, Y) R, &.{ X, Y }))
-                    @compileError("zml.numeric.add: " ++ @typeName(Y) ++ " must implement `fn add(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X, Y },
+                    "add",
+                    fn (X, Y) R,
+                    &.{ X, Y },
+                ) orelse
+                    @compileError("zml.numeric.add: " ++ @typeName(R) ++ ", " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn add(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return X.add(x, y);
+                return Impl.add(x, y);
+            }
+        } else { // only X custom
+            if (comptime types.isAllocated(R)) {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "add",
+                    fn (std.mem.Allocator, X, Y) anyerror!R,
+                    &.{ std.mem.Allocator, X, Y },
+                ) orelse
+                    @compileError("zml.numeric.add: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn add(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
+
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = true,
+                            .description = "The allocator to use for the custom numeric's memory allocation.",
+                        },
+                    },
+                );
+
+                return Impl.add(ctx.allocator, x, y);
+            } else {
+                const Impl: type = comptime types.haveMethod(
+                    &.{ R, X },
+                    "add",
+                    fn (X, Y) R,
+                    &.{ X, Y },
+                ) orelse
+                    @compileError("zml.numeric.add: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn add(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
+
+                comptime types.validateContext(@TypeOf(ctx), .{});
+
+                return Impl.add(x, y);
             }
         }
     } else if (comptime types.isCustomType(Y)) { // only Y custom
         if (comptime types.isAllocated(R)) {
-            comptime if (!types.hasMethod(Y, "add", fn (std.mem.Allocator, X, Y) anyerror!R, &.{ std.mem.Allocator, X, Y }))
-                @compileError("zml.numeric.add: " ++ @typeName(Y) ++ " must implement `fn add(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
+            const Impl: type = comptime types.haveMethod(
+                &.{ R, Y },
+                "add",
+                fn (std.mem.Allocator, X, Y) anyerror!R,
+                &.{ std.mem.Allocator, X, Y },
+            ) orelse
+                @compileError("zml.numeric.add: " ++ @typeName(R) ++ " or " ++ @typeName(Y) ++ " must implement `fn add(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
 
             comptime types.validateContext(
                 @TypeOf(ctx),
@@ -267,14 +266,19 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
                 },
             );
 
-            return Y.add(ctx.allocator, x, y);
+            return Impl.add(ctx.allocator, x, y);
         } else {
-            comptime if (!types.hasMethod(Y, "add", fn (X, Y) R, &.{ X, Y }))
-                @compileError("zml.numeric.add: " ++ @typeName(Y) ++ " must implement `fn add(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
+            const Impl: type = comptime types.haveMethod(
+                &.{ R, Y },
+                "add",
+                fn (X, Y) R,
+                &.{ X, Y },
+            ) orelse
+                @compileError("zml.numeric.add: " ++ @typeName(R) ++ " or " ++ @typeName(Y) ++ " must implement `fn add(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
 
             comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return Y.add(x, y);
+            return Impl.add(x, y);
         }
     }
 

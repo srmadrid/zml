@@ -46,6 +46,16 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             .exponent = int.minVal(Exponent),
             .positive = true,
         };
+        pub const one: Dyadic(mantissa_bits, exponent_bits) = .{
+            .mantissa = @as(Mantissa, 1) << (mantissa_bits - 1),
+            .exponent = int.minVal(Exponent) +| 1,
+            .positive = true,
+        };
+        pub const negOne: Dyadic(mantissa_bits, exponent_bits) = .{
+            .mantissa = @as(Mantissa, 1) << (mantissa_bits - 1),
+            .exponent = int.minVal(Exponent) +| 1,
+            .positive = false,
+        };
 
         /// Initializes a new dyadic with the specified value.
         ///
@@ -660,3 +670,5 @@ pub fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
 
     return types.scast(R, x).div(types.scast(R, y));
 }
+
+pub const sign = @import("dyadic/sign.zig").sign;

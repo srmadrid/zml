@@ -12,119 +12,111 @@ const complex = @import("../../complex.zig");
 
 const numeric = @import("../../numeric.zig");
 
-pub fn Sub(X: type, Y: type) type {
+pub fn Min(X: type, Y: type) type {
     comptime if (!types.isNumeric(X) or !types.isNumeric(Y))
-        @compileError("zml.numeric.sub: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zml.numeric.min: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
             const Impl: type = comptime types.haveMethod(
                 &.{ X, Y },
-                "Sub",
+                "Min",
                 fn (type, type) type,
                 &.{ X, Y },
             ) orelse
-                @compileError("zml.numeric.sub: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Sub(type, type) type`");
+                @compileError("zml.numeric.min: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn Min(type, type) type`");
 
-            return Impl.Sub(X, Y);
+            return Impl.Min(X, Y);
         } else { // only X custom
-            comptime if (!types.hasMethod(X, "Sub", fn (type, type) type, &.{ X, Y }))
-                @compileError("zml.numeric.sub: " ++ @typeName(X) ++ " must implement `fn Sub(type, type) type`");
+            comptime if (!types.hasMethod(X, "Min", fn (type, type) type, &.{ X, Y }))
+                @compileError("zml.numeric.min: " ++ @typeName(X) ++ " must implement `fn Min(type, type) type`");
 
-            return X.Sub(X, Y);
+            return X.Min(X, Y);
         }
     } else if (comptime types.isCustomType(Y)) { // only Y custom
-        comptime if (!types.hasMethod(Y, "Sub", fn (type, type) type, &.{ X, Y }))
-            @compileError("zml.numeric.sub: " ++ @typeName(Y) ++ " must implement `fn Sub(type, type) type`");
+        comptime if (!types.hasMethod(Y, "Min", fn (type, type) type, &.{ X, Y }))
+            @compileError("zml.numeric.min: " ++ @typeName(Y) ++ " must implement `fn Min(type, type) type`");
 
-        return Y.Sub(X, Y);
+        return Y.Min(X, Y);
     }
 
     switch (comptime types.numericType(X)) {
         .bool => switch (comptime types.numericType(Y)) {
-            .bool => @compileError("zml.numeric.sub: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
-            .int => return int.Sub(X, Y),
-            .float => return float.Sub(X, Y),
-            .dyadic => return dyadic.Sub(X, Y),
-            .cfloat => return cfloat.Sub(X, Y),
+            .bool => return bool,
+            .int => return int.Min(X, Y),
+            .float => return float.Min(X, Y),
+            .dyadic => return dyadic.Min(X, Y),
+            .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .integer => return integer.Integer,
             .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Sub(X, Y),
+            .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .custom => unreachable,
         },
         .int => switch (comptime types.numericType(Y)) {
-            .bool, .int => return int.Sub(X, Y),
-            .float => return float.Sub(X, Y),
-            .dyadic => return dyadic.Sub(X, Y),
-            .cfloat => return cfloat.Sub(X, Y),
+            .bool, .int => return int.Min(X, Y),
+            .float => return float.Min(X, Y),
+            .dyadic => return dyadic.Min(X, Y),
+            .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .integer => return integer.Integer,
             .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Sub(X, Y),
+            .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .custom => unreachable,
         },
         .float => switch (comptime types.numericType(Y)) {
-            .bool, .int, .float => return float.Sub(X, Y),
-            .dyadic => return dyadic.Sub(X, Y),
-            .cfloat => return cfloat.Sub(X, Y),
+            .bool, .int, .float => return float.Min(X, Y),
+            .dyadic => return dyadic.Min(X, Y),
+            .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .integer, .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Sub(X, Y),
+            .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .custom => unreachable,
         },
         .dyadic => switch (comptime types.numericType(Y)) {
-            .bool, .int, .float, .dyadic => return dyadic.Sub(X, Y),
-            .cfloat => return cfloat.Sub(X, Y),
+            .bool, .int, .float, .dyadic => return dyadic.Min(X, Y),
+            .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .integer, .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Sub(X, Y),
+            .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .custom => unreachable,
         },
-        .cfloat => switch (comptime types.numericType(Y)) {
-            .bool, .int, .float, .dyadic, .cfloat => return cfloat.Sub(X, Y),
-            .integer, .rational, .real => return complex.Sub(complex.Complex(rational.Rational), Y),
-            .complex => return complex.Sub(X, Y),
-            .custom => unreachable,
-        },
+        .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
         .integer => switch (comptime types.numericType(Y)) {
             .bool, .int => return integer.Integer,
             .float, .dyadic => return rational.Rational,
-            .cfloat => return complex.Sub(complex.Complex(rational.Rational), Y),
+            .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .integer => return integer.Integer,
             .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Sub(X, Y),
+            .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .custom => unreachable,
         },
         .rational => switch (comptime types.numericType(Y)) {
             .bool, .int, .float, .dyadic => return rational.Rational,
-            .cfloat => return complex.Sub(complex.Complex(rational.Rational), Y),
+            .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .integer, .rational => return rational.Rational,
             .real => return real.Real,
-            .complex => return complex.Sub(X, Y),
+            .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .custom => unreachable,
         },
         .real => switch (comptime types.numericType(Y)) {
             .bool, .int, .float, .dyadic => return real.Real,
-            .cfloat => return complex.Sub(complex.Complex(rational.Rational), Y),
+            .cfloat => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .integer, .rational, .real => return real.Real,
-            .complex => return complex.Sub(X, Y),
+            .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
             .custom => unreachable,
         },
-        .complex => switch (comptime types.numericType(Y)) {
-            .bool, .int, .float, .dyadic, .cfloat, .integer, .rational, .real, .complex => return complex.Sub(X, Y),
-            .custom => unreachable,
-        },
+        .complex => @compileError("zml.numeric.min: not defined for " ++ @typeName(X) ++ " and " ++ @typeName(Y) ++ "."),
         .custom => unreachable,
     }
 }
 
-/// Performs subtraction between any two numeric operands.
+/// Returns the minimum between any two numeric operands.
 ///
 /// ## Signature
 /// ```zig
-/// numeric.sub(x: X, y: Y, ctx: anytype) !numeric.Sub(X, Y)
+/// numeric.min(x: X, y: Y, ctx: anytype) !numeric.Min(X, Y)
 /// ```
 ///
 /// ## Arguments
@@ -137,16 +129,20 @@ pub fn Sub(X: type, Y: type) type {
 ///   describing the expected structure.
 ///
 /// ### Context structure
-/// The fields of `ctx` depend on `numeric.Sub(X, Y)`.
+/// The fields of `ctx` depend on `numeric.Min(X, Y)`.
 ///
-/// #### `numeric.Sub(X, Y)` is not allocated
+/// #### `numeric.Min(X, Y)` is not allocated
 /// The context must be empty.
 ///
-/// #### `numeric.Sub(X, Y)` is allocated
+/// #### `numeric.Min(X, Y)` is allocated and `X != Y`
 /// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
 ///
+/// #### `numeric.Min(X, Y)` is allocated and `X == Y`
+/// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
+///   output value. If not provided, a read-only view will be returned.
+///
 /// ## Returns
-/// `numeric.Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
+/// `numeric.Min(@TypeOf(x), @TypeOf(y))`: The minimum between `x` and `y`.
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
@@ -156,68 +152,98 @@ pub fn Sub(X: type, Y: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` or `Y` must implement the required `sub` method. The expected signature
-/// and behavior of `Sub` are as follows:
-/// * `fn Sub(type, type) type`: Returns the return type of `sub` for the input
+/// `X` or `Y` must implement the required `min` method. The expected signature
+/// and behavior of `Min` are as follows:
+/// * `fn Min(type, type) type`: Returns the return type of `min` for the input
 ///   types.
 ///
-/// Let us denote the return type `numeric.Sub(X, Y)` as `R`. Then, `R`, `X` or
-/// `Y` must implement the required `sub` method. The expected signatures and
-/// behavior of `sub` are as follows:
-/// * `R` is not allocated: `fn sub(X, Y) R`: Returns the subtraction of `x` and
-///   `y`.
-/// * `R` is allocated: `fn sub(std.mem.Allocator, X, Y) !R`: Returns the
-///   sub of `x` and `y` as a newly allocated value.
-pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x), @TypeOf(y)) {
+/// Let us denote the return type `numeric.Min(X, Y)` as `R`. Then, `R`, `X` or
+/// `Y` must implement the required `min` method. The expected signatures and
+/// behavior of `min` are as follows:
+/// * `R` is not allocated: `fn min(X, Y) R`: Returns the minimum between `x`
+///   and `y`.
+/// * `R` is allocated and `X != Y`: `fn min(std.mem.Allocator, X, Y) !R`:
+///   Returns the minimum between `x` and `y` as a newly allocated value.
+/// * `R` is allocated and `X == Y`: `fn min(?std.mem.Allocator, X, Y) !R`:
+///   Returns the minimum between `x` and `y` as a newly allocated value, if the
+///   allocator is provided, or as a read-only view if not. If not provided, it
+///   must not fail.
+pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x), @TypeOf(y)) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
-    const R: type = numeric.Sub(X, Y);
+    const R: type = numeric.Min(X, Y);
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
-                    &.{ R, X, Y },
-                    "sub",
-                    fn (std.mem.Allocator, X, Y) anyerror!R,
-                    &.{ std.mem.Allocator, X, Y },
-                ) orelse
-                    @compileError("zml.numeric.sub: " ++ @typeName(R) ++ ", " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn sub(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
+                if (comptime X == Y) {
+                    const Impl: type = comptime types.haveMethod(
+                        &.{ R, X },
+                        "min",
+                        fn (?std.mem.Allocator, X, Y) anyerror!R,
+                        &.{ ?std.mem.Allocator, X, Y },
+                    ) orelse
+                        @compileError("zml.numeric.min: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn min(?std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
 
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the custom numeric's memory allocation.",
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = false,
+                                .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a read-only view will be returned.",
+                            },
                         },
-                    },
-                );
+                    );
 
-                return Impl.sub(ctx.allocator, x, y);
+                    return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                        Impl.min(ctx.allocator, x, y)
+                    else
+                        Impl.min(null, x, y) catch unreachable;
+                } else {
+                    const Impl: type = comptime types.haveMethod(
+                        &.{ R, X, Y },
+                        "min",
+                        fn (std.mem.Allocator, X, Y) anyerror!R,
+                        &.{ std.mem.Allocator, X, Y },
+                    ) orelse
+                        @compileError("zml.numeric.min: " ++ @typeName(R) ++ ", " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn min(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
+
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = true,
+                                .description = "The allocator to use for the custom numeric's memory allocation.",
+                            },
+                        },
+                    );
+
+                    return Impl.min(ctx.allocator, x, y);
+                }
             } else {
                 const Impl: type = comptime types.haveMethod(
                     &.{ R, X, Y },
-                    "sub",
+                    "min",
                     fn (X, Y) R,
                     &.{ X, Y },
                 ) orelse
-                    @compileError("zml.numeric.sub: " ++ @typeName(R) ++ ", " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn sub(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
+                    @compileError("zml.numeric.min: " ++ @typeName(R) ++ ", " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn min(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return Impl.sub(x, y);
+                return Impl.min(x, y);
             }
         } else { // only X custom
             if (comptime types.isAllocated(R)) {
                 const Impl: type = comptime types.haveMethod(
                     &.{ R, X },
-                    "sub",
+                    "min",
                     fn (std.mem.Allocator, X, Y) anyerror!R,
                     &.{ std.mem.Allocator, X, Y },
                 ) orelse
-                    @compileError("zml.numeric.sub: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sub(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
+                    @compileError("zml.numeric.min: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn min(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -230,30 +256,30 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return Impl.sub(ctx.allocator, x, y);
+                return Impl.min(ctx.allocator, x, y);
             } else {
                 const Impl: type = comptime types.haveMethod(
                     &.{ R, X },
-                    "sub",
+                    "min",
                     fn (X, Y) R,
                     &.{ X, Y },
                 ) orelse
-                    @compileError("zml.numeric.sub: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sub(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
+                    @compileError("zml.numeric.min: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn min(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
 
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return Impl.sub(x, y);
+                return Impl.min(x, y);
             }
         }
     } else if (comptime types.isCustomType(Y)) { // only Y custom
         if (comptime types.isAllocated(R)) {
             const Impl: type = comptime types.haveMethod(
                 &.{ R, Y },
-                "sub",
+                "min",
                 fn (std.mem.Allocator, X, Y) anyerror!R,
                 &.{ std.mem.Allocator, X, Y },
             ) orelse
-                @compileError("zml.numeric.sub: " ++ @typeName(R) ++ " or " ++ @typeName(Y) ++ " must implement `fn sub(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
+                @compileError("zml.numeric.min: " ++ @typeName(R) ++ " or " ++ @typeName(Y) ++ " must implement `fn min(std.mem.Allocator, " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") !" ++ @typeName(R) ++ "`");
 
             comptime types.validateContext(
                 @TypeOf(ctx),
@@ -266,45 +292,41 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                 },
             );
 
-            return Impl.sub(ctx.allocator, x, y);
+            return Impl.min(ctx.allocator, x, y);
         } else {
             const Impl: type = comptime types.haveMethod(
                 &.{ R, Y },
-                "sub",
+                "min",
                 fn (X, Y) R,
                 &.{ X, Y },
             ) orelse
-                @compileError("zml.numeric.sub: " ++ @typeName(R) ++ " or " ++ @typeName(Y) ++ " must implement `fn sub(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
+                @compileError("zml.numeric.min: " ++ @typeName(R) ++ " or " ++ @typeName(Y) ++ " must implement `fn min(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") " ++ @typeName(R) ++ "`");
 
             comptime types.validateContext(@TypeOf(ctx), .{});
 
-            return Impl.sub(x, y);
+            return Impl.min(x, y);
         }
     }
 
     switch (comptime types.numericType(X)) {
         .bool => switch (comptime types.numericType(Y)) {
-            .bool => unreachable,
+            .bool => return x and y,
             .int => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return int.sub(x, y);
+                return int.min(x, y);
             },
             .float => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return float.sub(x, y);
+                return float.min(x, y);
             },
             .dyadic => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return dyadic.sub(x, y);
+                return dyadic.min(x, y);
             },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return cfloat.sub(x, y);
-            },
+            .cfloat => unreachable,
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -317,7 +339,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return integer.sub(ctx.allocator, x, y);
+                return integer.min(ctx.allocator, x, y);
             },
             .rational => {
                 comptime types.validateContext(
@@ -331,7 +353,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y);
+                return rational.min(ctx.allocator, x, y);
             },
             .real => {
                 comptime types.validateContext(
@@ -345,45 +367,28 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
+            .complex => unreachable,
             .custom => unreachable,
         },
         .int => switch (comptime types.numericType(Y)) {
             .bool, .int => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return int.sub(x, y);
+                return int.min(x, y);
             },
             .float => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return float.sub(x, y);
+                return float.min(x, y);
             },
             .dyadic => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return dyadic.sub(x, y);
+                return dyadic.min(x, y);
             },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return cfloat.sub(x, y);
-            },
+            .cfloat => unreachable,
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -396,7 +401,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return integer.sub(ctx.allocator, x, y);
+                return integer.min(ctx.allocator, x, y);
             },
             .rational => {
                 comptime types.validateContext(
@@ -410,7 +415,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y);
+                return rational.min(ctx.allocator, x, y);
             },
             .real => {
                 comptime types.validateContext(
@@ -424,40 +429,23 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
+            .complex => unreachable,
             .custom => unreachable,
         },
         .float => switch (comptime types.numericType(Y)) {
             .bool, .int, .float => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return float.sub(x, y);
+                return float.min(x, y);
             },
             .dyadic => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return dyadic.sub(x, y);
+                return dyadic.min(x, y);
             },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return cfloat.sub(x, y);
-            },
+            .cfloat => unreachable,
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -470,7 +458,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y.asRational());
+                return rational.min(ctx.allocator, x, y.asRational());
             },
             .rational => {
                 comptime types.validateContext(
@@ -484,7 +472,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y);
+                return rational.min(ctx.allocator, x, y);
             },
             .real => {
                 comptime types.validateContext(
@@ -498,35 +486,18 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
+            .complex => unreachable,
             .custom => unreachable,
         },
         .dyadic => switch (comptime types.numericType(Y)) {
             .bool, .int, .float, .dyadic => {
                 comptime types.validateContext(@TypeOf(ctx), .{});
 
-                return dyadic.sub(x, y);
+                return dyadic.min(x, y);
             },
-            .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return cfloat.sub(x, y);
-            },
+            .cfloat => unreachable,
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
@@ -539,7 +510,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y.asRational());
+                return rational.min(ctx.allocator, x, y.asRational());
             },
             .rational => {
                 comptime types.validateContext(
@@ -553,7 +524,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y);
+                return rational.min(ctx.allocator, x, y);
             },
             .real => {
                 comptime types.validateContext(
@@ -567,60 +538,12 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
+            .complex => unreachable,
             .custom => unreachable,
         },
-        .cfloat => switch (comptime types.numericType(Y)) {
-            .bool, .int, .float, .dyadic, .cfloat => {
-                comptime types.validateContext(@TypeOf(ctx), .{});
-
-                return cfloat.sub(x, y);
-            },
-            .integer, .rational, .real => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y.asComplex());
-            },
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
-            .custom => unreachable,
-        },
+        .cfloat => unreachable,
         .integer => switch (comptime types.numericType(Y)) {
             .bool, .int => {
                 comptime types.validateContext(
@@ -634,7 +557,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return integer.sub(ctx.allocator, x, y);
+                return integer.min(ctx.allocator, x, y);
             },
             .float, .dyadic => {
                 comptime types.validateContext(
@@ -648,35 +571,25 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x.asRational(), y);
+                return rational.min(ctx.allocator, x.asRational(), y);
             },
-            .cfloat => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x.asComplex(), y);
-            },
+            .cfloat => unreachable,
             .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .allocator = .{
                             .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the integer's memory allocation.",
+                            .required = false,
+                            .description = "The allocator to use for the integer's memory allocation. If not provided, a read-only view will be returned.",
                         },
                     },
                 );
 
-                return integer.sub(ctx.allocator, x, y);
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    integer.min(ctx.allocator, x, y)
+                else
+                    integer.min(null, x, y) catch unreachable;
             },
             .rational => {
                 comptime types.validateContext(
@@ -690,7 +603,7 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y);
+                return rational.min(ctx.allocator, x, y);
             },
             .real => {
                 comptime types.validateContext(
@@ -704,22 +617,9 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
+            .complex => unreachable,
             .custom => unreachable,
         },
         .rational => switch (comptime types.numericType(Y)) {
@@ -735,23 +635,10 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y);
+                return rational.min(ctx.allocator, x, y);
             },
-            .cfloat => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x.asComplex(), y);
-            },
-            .integer, .rational => {
+            .cfloat => unreachable,
+            .integer => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
@@ -763,7 +650,24 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return rational.sub(ctx.allocator, x, y);
+                return rational.min(ctx.allocator, x, y);
+            },
+            .rational => {
+                comptime types.validateContext(
+                    @TypeOf(ctx),
+                    .{
+                        .allocator = .{
+                            .type = std.mem.Allocator,
+                            .required = false,
+                            .description = "The allocator to use for the rational's memory allocation. If not provided, a read-only view will be returned.",
+                        },
+                    },
+                );
+
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    rational.min(ctx.allocator, x, y)
+                else
+                    rational.min(null, x, y) catch unreachable;
             },
             .real => {
                 comptime types.validateContext(
@@ -777,22 +681,9 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
+            .complex => unreachable,
             .custom => unreachable,
         },
         .real => switch (comptime types.numericType(Y)) {
@@ -808,23 +699,10 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .cfloat => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x.asComplex(), y);
-            },
-            .integer, .rational, .real => {
+            .cfloat => unreachable,
+            .integer, .rational => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
@@ -836,41 +714,29 @@ pub inline fn sub(x: anytype, y: anytype, ctx: anytype) !numeric.Sub(@TypeOf(x),
                     },
                 );
 
-                return real.sub(ctx.allocator, x, y);
+                return real.min(ctx.allocator, x, y);
             },
-            .complex => {
+            .real => {
                 comptime types.validateContext(
                     @TypeOf(ctx),
                     .{
                         .allocator = .{
                             .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
+                            .required = false,
+                            .description = "The allocator to use for the real's memory allocation. If not provided, a read-only view will be returned.",
                         },
                     },
                 );
 
-                return complex.sub(ctx.allocator, x, y);
+                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                    real.min(ctx.allocator, x, y)
+                else
+                    real.min(null, x, y) catch unreachable;
             },
+            .complex => unreachable,
             .custom => unreachable,
         },
-        .complex => switch (comptime types.numericType(Y)) {
-            .bool, .int, .float, .dyadic, .cfloat, .integer, .rational, .real, .complex => {
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = true,
-                            .description = "The allocator to use for the complex's memory allocation.",
-                        },
-                    },
-                );
-
-                return complex.sub(ctx.allocator, x, y);
-            },
-            .custom => unreachable,
-        },
+        .complex => unreachable,
         .custom => unreachable,
     }
 }

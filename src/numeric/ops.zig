@@ -33,16 +33,16 @@ pub const copysign = @import("ops/copysign.zig").copysign;
 
 // Arithmetic operations
 pub const Add = @import("ops/add.zig").Add;
-pub const add = @import("ops/add.zig").add; // Not done: use haveMethod and update docs
+pub const add = @import("ops/add.zig").add;
 pub const add_ = @import("ops/add_.zig").add_;
 pub const Sub = @import("ops/sub.zig").Sub;
-pub const sub = @import("ops/sub.zig").sub; // Not done: use haveMethod and update docs
+pub const sub = @import("ops/sub.zig").sub;
 pub const sub_ = @import("ops/sub_.zig").sub_;
 pub const Mul = @import("ops/mul.zig").Mul;
-pub const mul = @import("ops/mul.zig").mul; // Not done: use haveMethod and update docs
+pub const mul = @import("ops/mul.zig").mul;
 pub const mul_ = @import("ops/mul_.zig").mul_;
 pub const Div = @import("ops/div.zig").Div;
-pub const div = @import("ops/div.zig").div; // Not done: use haveMethod and update docs
+pub const div = @import("ops/div.zig").div;
 pub const div_ = @import("ops/div_.zig").div_;
 
 // Comparison operations
@@ -60,7 +60,7 @@ pub const gt_ = @import("ops/gt_.zig").gt_;
 pub const ge = @import("ops/ge.zig").ge;
 pub const ge_ = @import("ops/ge_.zig").ge_;
 pub const Max = @import("ops/max.zig").Max;
-pub const max = @import("ops/max.zig").max; // Not done: use haveMethod and update docs
+pub const max = @import("ops/max.zig").max;
 pub const max_ = @import("ops/max_.zig").max_;
 pub const Min = @import("ops/min.zig").Min;
 pub const min = @import("ops/min.zig").min;

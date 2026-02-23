@@ -36,6 +36,9 @@ pub const im = numops.im;
 pub const Conj = numops.Conj;
 pub const conj = numops.conj;
 pub const conj_ = numops.conj_;
+pub const Sign = numops.Sign;
+pub const sign = numops.sign;
+pub const sign_ = numops.sign_;
 pub const copysign = numops.copysign;
 
 // Arithmetic operations

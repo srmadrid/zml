@@ -475,6 +475,7 @@ pub inline fn minVal(comptime T: type) T {
 }
 
 pub const abs = @import("int/abs.zig").abs;
+pub const sign = @import("int/sign.zig").sign;
 pub const Pow = @import("int/pow.zig").Pow;
 pub const pow = @import("int/pow.zig").pow;
 
