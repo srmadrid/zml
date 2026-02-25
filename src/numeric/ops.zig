@@ -29,7 +29,7 @@ pub const conj_ = @import("ops/conj_.zig").conj_;
 pub const Sign = @import("ops/sign.zig").Sign;
 pub const sign = @import("ops/sign.zig").sign;
 pub const sign_ = @import("ops/sign_.zig").sign_;
-pub const copysign = @import("ops/copysign.zig").copysign;
+// pub const copysign = @import("ops/copysign.zig").copysign;
 
 // Arithmetic operations
 pub const Add = @import("ops/add.zig").Add;

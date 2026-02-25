@@ -156,7 +156,7 @@ pub fn Add(X: type, Y: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` or `Y` must implement the required `add` method. The expected signature
+/// `X` or `Y` must implement the required `Add` method. The expected signature
 /// and behavior of `Add` are as follows:
 /// * `fn Add(type, type) type`: Returns the return type of `add` for the input
 ///   types.

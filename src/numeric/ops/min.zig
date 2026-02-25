@@ -152,7 +152,7 @@ pub fn Min(X: type, Y: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` or `Y` must implement the required `min` method. The expected signature
+/// `X` or `Y` must implement the required `Min` method. The expected signature
 /// and behavior of `Min` are as follows:
 /// * `fn Min(type, type) type`: Returns the return type of `min` for the input
 ///   types.

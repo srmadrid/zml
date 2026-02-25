@@ -156,7 +156,7 @@ pub fn Mul(X: type, Y: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` or `Y` must implement the required `mul` method. The expected signature
+/// `X` or `Y` must implement the required `Mul` method. The expected signature
 /// and behavior of `Mul` are as follows:
 /// * `fn Mul(type, type) type`: Returns the return type of `mul` for the input
 ///   types.

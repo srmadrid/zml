@@ -156,7 +156,7 @@ pub fn Div(X: type, Y: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` or `Y` must implement the required `div` method. The expected signature
+/// `X` or `Y` must implement the required `Div` method. The expected signature
 /// and behavior of `Div` are as follows:
 /// * `fn Div(type, type) type`: Returns the return type of `div` for the input
 ///   types.

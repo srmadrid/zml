@@ -156,7 +156,7 @@ pub fn Sub(X: type, Y: type) type {
 /// This function supports custom numeric types via specific method
 /// implementations.
 ///
-/// `X` or `Y` must implement the required `sub` method. The expected signature
+/// `X` or `Y` must implement the required `Sub` method. The expected signature
 /// and behavior of `Sub` are as follows:
 /// * `fn Sub(type, type) type`: Returns the return type of `sub` for the input
 ///   types.
