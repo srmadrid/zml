@@ -64,7 +64,7 @@ pub fn Atanh(X: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Atanh(X)` is allocated.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -114,7 +114,7 @@ pub inline fn atanh(x: anytype, ctx: anytype) !numeric.Atanh(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.atanh: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "atanh",
                     fn (std.mem.Allocator, X) anyerror!R,
@@ -135,7 +135,7 @@ pub inline fn atanh(x: anytype, ctx: anytype) !numeric.Atanh(@TypeOf(x)) {
 
                 return Impl.atanh(ctx.allocator, x);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "atanh",
                     fn (X) R,

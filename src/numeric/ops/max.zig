@@ -18,7 +18,7 @@ pub fn Max(X: type, Y: type) type {
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ X, Y },
                 "Max",
                 fn (type, type) type,
@@ -146,7 +146,8 @@ pub fn Max(X: type, Y: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Max(X, Y)` is allocated and an allocator is
+///   provided.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -177,7 +178,7 @@ pub inline fn max(x: anytype, y: anytype, ctx: anytype) !numeric.Max(@TypeOf(x),
         if (comptime types.isCustomType(Y)) { // X and Y both custom
             if (comptime types.isAllocated(R)) {
                 if (comptime X == Y) {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "max",
                         fn (?std.mem.Allocator, X, Y) anyerror!R,
@@ -201,7 +202,7 @@ pub inline fn max(x: anytype, y: anytype, ctx: anytype) !numeric.Max(@TypeOf(x),
                     else
                         Impl.max(null, x, y) catch unreachable;
                 } else {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X, Y },
                         "max",
                         fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -223,7 +224,7 @@ pub inline fn max(x: anytype, y: anytype, ctx: anytype) !numeric.Max(@TypeOf(x),
                     return Impl.max(ctx.allocator, x, y);
                 }
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X, Y },
                     "max",
                     fn (X, Y) R,
@@ -237,7 +238,7 @@ pub inline fn max(x: anytype, y: anytype, ctx: anytype) !numeric.Max(@TypeOf(x),
             }
         } else { // only X custom
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "max",
                     fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -258,7 +259,7 @@ pub inline fn max(x: anytype, y: anytype, ctx: anytype) !numeric.Max(@TypeOf(x),
 
                 return Impl.max(ctx.allocator, x, y);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "max",
                     fn (X, Y) R,
@@ -273,7 +274,7 @@ pub inline fn max(x: anytype, y: anytype, ctx: anytype) !numeric.Max(@TypeOf(x),
         }
     } else if (comptime types.isCustomType(Y)) { // only Y custom
         if (comptime types.isAllocated(R)) {
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ R, Y },
                 "max",
                 fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -294,7 +295,7 @@ pub inline fn max(x: anytype, y: anytype, ctx: anytype) !numeric.Max(@TypeOf(x),
 
             return Impl.max(ctx.allocator, x, y);
         } else {
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ R, Y },
                 "max",
                 fn (X, Y) R,

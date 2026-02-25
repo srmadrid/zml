@@ -65,7 +65,7 @@ pub fn Abs2(X: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Abs2(X)` is allocated.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -145,7 +145,7 @@ pub inline fn abs2(x: anytype, ctx: anytype) !numeric.Abs2(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.abs2: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "abs2",
                     fn (std.mem.Allocator, X) anyerror!R,
@@ -166,7 +166,7 @@ pub inline fn abs2(x: anytype, ctx: anytype) !numeric.Abs2(@TypeOf(x)) {
 
                 return Impl.abs2(ctx.allocator, x);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "abs2",
                     fn (X) R,

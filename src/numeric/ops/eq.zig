@@ -47,7 +47,7 @@ pub inline fn eq(x: anytype, y: anytype) bool {
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ X, Y },
                 "eq",
                 fn (X, Y) bool,

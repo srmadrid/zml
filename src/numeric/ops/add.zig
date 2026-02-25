@@ -18,7 +18,7 @@ pub fn Add(X: type, Y: type) type {
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ X, Y },
                 "Add",
                 fn (type, type) type,
@@ -150,7 +150,7 @@ pub fn Add(X: type, Y: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Add(X, Y)` is allocated.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -176,7 +176,7 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X, Y },
                     "add",
                     fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -197,7 +197,7 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
 
                 return Impl.add(ctx.allocator, x, y);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X, Y },
                     "add",
                     fn (X, Y) R,
@@ -211,7 +211,7 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
             }
         } else { // only X custom
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "add",
                     fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -232,7 +232,7 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
 
                 return Impl.add(ctx.allocator, x, y);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "add",
                     fn (X, Y) R,
@@ -247,7 +247,7 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
         }
     } else if (comptime types.isCustomType(Y)) { // only Y custom
         if (comptime types.isAllocated(R)) {
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ R, Y },
                 "add",
                 fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -268,7 +268,7 @@ pub inline fn add(x: anytype, y: anytype, ctx: anytype) !numeric.Add(@TypeOf(x),
 
             return Impl.add(ctx.allocator, x, y);
         } else {
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ R, Y },
                 "add",
                 fn (X, Y) R,

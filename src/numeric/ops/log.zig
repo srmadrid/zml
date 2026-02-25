@@ -64,7 +64,7 @@ pub fn Log(X: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Log(X)` is allocated.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -113,7 +113,7 @@ pub inline fn log(x: anytype, ctx: anytype) !numeric.Log(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.log: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "log",
                     fn (std.mem.Allocator, X) anyerror!R,
@@ -134,7 +134,7 @@ pub inline fn log(x: anytype, ctx: anytype) !numeric.Log(@TypeOf(x)) {
 
                 return Impl.log(ctx.allocator, x);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "log",
                     fn (X) R,

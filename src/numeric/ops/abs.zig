@@ -69,7 +69,7 @@ pub fn Abs(X: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Abs(X)` is allocated and an allocator is provided.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -159,7 +159,7 @@ pub inline fn abs(x: anytype, ctx: anytype) !numeric.Abs(@TypeOf(x)) {
         .custom => {
             if (comptime types.isAllocated(R)) {
                 if (comptime types.isComplexType(X)) {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "abs",
                         fn (std.mem.Allocator, X) anyerror!R,
@@ -180,7 +180,7 @@ pub inline fn abs(x: anytype, ctx: anytype) !numeric.Abs(@TypeOf(x)) {
 
                     return Impl.abs(ctx.allocator, x);
                 } else {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "abs",
                         fn (?std.mem.Allocator, X) anyerror!R,
@@ -205,7 +205,7 @@ pub inline fn abs(x: anytype, ctx: anytype) !numeric.Abs(@TypeOf(x)) {
                         Impl.abs(null, x) catch unreachable;
                 }
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "abs",
                     fn (X) R,

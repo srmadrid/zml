@@ -18,7 +18,7 @@ pub fn Min(X: type, Y: type) type {
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ X, Y },
                 "Min",
                 fn (type, type) type,
@@ -146,7 +146,8 @@ pub fn Min(X: type, Y: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Min(X, Y)` is allocated and an allocator is
+///   provided.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -177,7 +178,7 @@ pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x),
         if (comptime types.isCustomType(Y)) { // X and Y both custom
             if (comptime types.isAllocated(R)) {
                 if (comptime X == Y) {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "min",
                         fn (?std.mem.Allocator, X, Y) anyerror!R,
@@ -201,7 +202,7 @@ pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x),
                     else
                         Impl.min(null, x, y) catch unreachable;
                 } else {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X, Y },
                         "min",
                         fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -223,7 +224,7 @@ pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x),
                     return Impl.min(ctx.allocator, x, y);
                 }
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X, Y },
                     "min",
                     fn (X, Y) R,
@@ -237,7 +238,7 @@ pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x),
             }
         } else { // only X custom
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "min",
                     fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -258,7 +259,7 @@ pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x),
 
                 return Impl.min(ctx.allocator, x, y);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "min",
                     fn (X, Y) R,
@@ -273,7 +274,7 @@ pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x),
         }
     } else if (comptime types.isCustomType(Y)) { // only Y custom
         if (comptime types.isAllocated(R)) {
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ R, Y },
                 "min",
                 fn (std.mem.Allocator, X, Y) anyerror!R,
@@ -294,7 +295,7 @@ pub inline fn min(x: anytype, y: anytype, ctx: anytype) !numeric.Min(@TypeOf(x),
 
             return Impl.min(ctx.allocator, x, y);
         } else {
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ R, Y },
                 "min",
                 fn (X, Y) R,

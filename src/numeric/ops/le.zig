@@ -47,7 +47,7 @@ pub inline fn le(x: anytype, y: anytype) bool {
 
     if (comptime types.isCustomType(X)) {
         if (comptime types.isCustomType(Y)) { // X and Y both custom
-            const Impl: type = comptime types.haveMethod(
+            const Impl: type = comptime types.anyHasMethod(
                 &.{ X, Y },
                 "le",
                 fn (X, Y) bool,

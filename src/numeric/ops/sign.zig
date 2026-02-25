@@ -68,7 +68,8 @@ pub fn Sign(X: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Sign(X)` is allocated and an allocator is
+///   provided.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -155,7 +156,7 @@ pub inline fn sign(x: anytype, ctx: anytype) !numeric.Sign(@TypeOf(x)) {
         .custom => {
             if (comptime types.isAllocated(R)) {
                 if (comptime types.isComplexType(X)) {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "sign",
                         fn (std.mem.Allocator, X) anyerror!R,
@@ -176,7 +177,7 @@ pub inline fn sign(x: anytype, ctx: anytype) !numeric.Sign(@TypeOf(x)) {
 
                     return Impl.sign(ctx.allocator, x);
                 } else {
-                    const Impl: type = comptime types.haveMethod(
+                    const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "sign",
                         fn (?std.mem.Allocator, X) anyerror!R,
@@ -201,7 +202,7 @@ pub inline fn sign(x: anytype, ctx: anytype) !numeric.Sign(@TypeOf(x)) {
                         Impl.sign(null, x) catch unreachable;
                 }
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "sign",
                     fn (X) R,

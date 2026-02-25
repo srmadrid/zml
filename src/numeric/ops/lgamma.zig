@@ -69,7 +69,7 @@ pub fn Lgamma(X: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Lgamma(X)` is allocated.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -115,7 +115,7 @@ pub inline fn lgamma(x: anytype, ctx: anytype) !numeric.Lgamma(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.lgamma: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "lgamma",
                     fn (std.mem.Allocator, X) anyerror!R,
@@ -136,7 +136,7 @@ pub inline fn lgamma(x: anytype, ctx: anytype) !numeric.Lgamma(@TypeOf(x)) {
 
                 return Impl.lgamma(ctx.allocator, x);
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "lgamma",
                     fn (X) R,

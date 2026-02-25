@@ -65,7 +65,8 @@ pub fn Conj(X: type) type {
 ///
 /// ## Errors
 /// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails. Can
-///   only happen if `X` is allocated and an allocator is provided.
+///   only happen if `numeric.Conj(X)` is allocated and an allocator is
+///   provided.
 ///
 /// ## Custom type support
 /// This function supports custom numeric types via specific method
@@ -151,7 +152,7 @@ pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.conj: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "conj",
                     fn (?std.mem.Allocator, X) anyerror!R,
@@ -175,7 +176,7 @@ pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
                 else
                     Impl.conj(null, x) catch unreachable;
             } else {
-                const Impl: type = comptime types.haveMethod(
+                const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },
                     "conj",
                     fn (X) R,

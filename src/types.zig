@@ -1055,7 +1055,7 @@ pub fn hasMethod(
 /// ## Returns
 /// `?type`: The first type in `types` that has the method with the correct
 /// type, or `null` if no type has the method.
-pub fn haveMethod(
+pub fn anyHasMethod(
     comptime types: []const type,
     comptime method_name: []const u8,
     comptime method_type: type,
