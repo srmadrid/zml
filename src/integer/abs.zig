@@ -11,6 +11,7 @@ const Integer = integer.Integer;
 /// of the integer with the sign set to positive.
 ///
 /// ## Arguments
+/// * `allocator` (`?std.mem.Allocator`): The allocator to use for the result.
 /// * `x` (`Integer`): The integer value to get the absolute value of.
 ///
 /// ## Returns

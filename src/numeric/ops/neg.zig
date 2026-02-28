@@ -56,9 +56,12 @@ pub fn Neg(X: type) type {
 /// #### `numeric.Neg(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `numeric.Neg(X)` is allocated
+/// #### `numeric.Neg(X)` is allocated and `X.has_simple_neg` exists and is true
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
+///
+/// #### `numeric.Neg(X)` is allocated and `X.has_simple_neg` does not exist or is false
+/// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
 ///
 /// ## Returns
 /// `numeric.Neg(@TypeOf(x))`: The negation of `x`.
@@ -83,6 +86,12 @@ pub fn Neg(X: type) type {
 /// * `R` is allocated: `fn neg(?std.mem.Allocator, X) !R`: Returns the negation
 ///   of `x` as a newly allocated value, if the allocator is provided, or a
 ///   read-only view if not. If not provided, it must not fail.
+/// * `R` is allocated:
+///   * `X.has_simple_neg` exists and is true: `fn neg(?std.mem.Allocator, X) !R`:
+///     Returns the negation of `x` as a newly allocated value, if the allocator is provided, or a read-only view if not. If not provided, it
+///     must not fail.
+///   * `X.has_simple_neg` does not exist or is false: `fn neg(std.mem.Allocator, X) !R`:
+///     Returns the negation of `x` as a newly allocated value.
 pub inline fn neg(x: anytype, ctx: anytype) !numeric.Neg(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Neg(X);
@@ -151,29 +160,52 @@ pub inline fn neg(x: anytype, ctx: anytype) !numeric.Neg(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.neg: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.anyHasMethod(
-                    &.{ R, X },
-                    "neg",
-                    fn (?std.mem.Allocator, X) anyerror!R,
-                    &.{ std.mem.Allocator, X },
-                ) orelse
-                    @compileError("zml.numeric.neg: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn neg(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+                if (comptime @hasDecl(X, "has_simple_neg") and X.has_simple_neg) {
+                    const Impl: type = comptime types.anyHasMethod(
+                        &.{ R, X },
+                        "neg",
+                        fn (?std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.neg: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn neg(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = false,
-                            .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a view will be returned.",
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = false,
+                                .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a view will be returned.",
+                            },
                         },
-                    },
-                );
+                    );
 
-                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
-                    Impl.neg(ctx.allocator, x)
-                else
-                    Impl.neg(null, x) catch unreachable;
+                    return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                        Impl.neg(ctx.allocator, x)
+                    else
+                        Impl.neg(null, x) catch unreachable;
+                } else {
+                    const Impl: type = comptime types.anyHasMethod(
+                        &.{ R, X },
+                        "neg",
+                        fn (std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.neg: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn neg(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = true,
+                                .description = "The allocator to use for the custom numeric's memory allocation.",
+                            },
+                        },
+                    );
+
+                    return Impl.neg(ctx.allocator, x);
+                }
             } else {
                 const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },

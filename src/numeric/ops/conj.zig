@@ -56,9 +56,12 @@ pub fn Conj(X: type) type {
 /// #### `numeric.Conj(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `numeric.Conj(X)` is allocated
+/// #### `numeric.Conj(X)` is allocated and `X.has_simple_conj` exists and is true
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
+///
+/// #### `numeric.Conj(X)` is allocated and `X.has_simple_conj` does not exist or is false
+/// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
 ///
 /// ## Returns
 /// `numeric.Conj(@TypeOf(x))`: The complex conjugate of `x`.
@@ -84,6 +87,13 @@ pub fn Conj(X: type) type {
 /// * `R` is allocated: `fn conj(?std.mem.Allocator, X) !R`: Returns the
 ///   conjugate of `x` as a newly allocated value, if the allocator is provided,
 ///   or a read-only view if not. If not provided, it must not fail.
+/// * `R` is allocated:
+///   * `X.has_simple_conj` exists and is true: `fn conj(?std.mem.Allocator, X) !R`:
+///     Returns the complex conjugate of `x` as a newly allocated value, if the
+///     allocator is provided, or a read-only view if not. If not provided, it
+///     must not fail.
+///   * `X.has_simple_conj` does not exist or is false: `fn conj(std.mem.Allocator, X) !R`:
+///     Returns the complex conjugate of `x` as a newly allocated value.
 pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Conj(X);
@@ -152,29 +162,52 @@ pub inline fn conj(x: anytype, ctx: anytype) !numeric.Conj(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.conj: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                const Impl: type = comptime types.anyHasMethod(
-                    &.{ R, X },
-                    "conj",
-                    fn (?std.mem.Allocator, X) anyerror!R,
-                    &.{ std.mem.Allocator, X },
-                ) orelse
-                    @compileError("zml.numeric.conj: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn conj(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+                if (comptime @hasDecl(X, "has_simple_conj") and X.has_simple_conj) {
+                    const Impl: type = comptime types.anyHasMethod(
+                        &.{ R, X },
+                        "conj",
+                        fn (?std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.conj: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn conj(?std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
 
-                comptime types.validateContext(
-                    @TypeOf(ctx),
-                    .{
-                        .allocator = .{
-                            .type = std.mem.Allocator,
-                            .required = false,
-                            .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a view will be returned.",
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = false,
+                                .description = "The allocator to use for the custom numeric's memory allocation. If not provided, a view will be returned.",
+                            },
                         },
-                    },
-                );
+                    );
 
-                return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
-                    Impl.conj(ctx.allocator, x)
-                else
-                    Impl.conj(null, x) catch unreachable;
+                    return if (comptime types.ctxHasField(@TypeOf(ctx), "allocator", std.mem.Allocator))
+                        Impl.conj(ctx.allocator, x)
+                    else
+                        Impl.conj(null, x) catch unreachable;
+                } else {
+                    const Impl: type = comptime types.anyHasMethod(
+                        &.{ R, X },
+                        "conj",
+                        fn (std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.conj: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn conj(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = true,
+                                .description = "The allocator to use for the custom numeric's memory allocation.",
+                            },
+                        },
+                    );
+
+                    return Impl.conj(ctx.allocator, x);
+                }
             } else {
                 const Impl: type = comptime types.anyHasMethod(
                     &.{ R, X },

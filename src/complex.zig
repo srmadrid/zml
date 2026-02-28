@@ -18,13 +18,16 @@ pub fn Complex(comptime N: type) type {
         im: N,
         flags: Flags,
 
-        /// Type signature
+        /// Type flags
         pub const is_numeric = true;
         pub const is_complex = true;
         pub const is_complex_type = true;
         pub const is_signed = true;
         pub const is_allocated = true;
         pub const is_custom = types.isCustomType(N);
+
+        /// Operation flags
+        pub const has_simple_abs = false;
 
         /// Scalar type
         pub const Scalar = N;

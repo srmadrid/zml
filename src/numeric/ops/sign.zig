@@ -56,11 +56,11 @@ pub fn Sign(X: type) type {
 /// #### `numeric.Sign(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `numeric.Sign(X)` is allocated and `X` is not complex
+/// #### `numeric.Sign(X)` is allocated and `X.has_simple_sign` exists and is true
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
 ///
-/// #### `numeric.Sign(X)` is allocated and `X` is complex
+/// #### `numeric.Sign(X)` is allocated and `X.has_simple_sign` does not exist or is false
 /// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
 ///
 /// ## Returns
@@ -87,6 +87,12 @@ pub fn Sign(X: type) type {
 /// * `R` is allocated: `fn sign(?std.mem.Allocator, X) !R`: Returns the sign of
 ///   `x` as a newly allocated value, if the allocator is provided, or a
 ///   read-only view if not. If not provided, it must not fail.
+/// * `R` is allocated:
+///   * `X.has_simple_sign` exists and is true: `fn sign(?std.mem.Allocator, X) !R`:
+///     Returns the sign of `x` as a newly allocated value, if the allocator is
+///     provided, or a read-only view if not. If not provided, it must not fail.
+///   * `X.has_simple_sign` does not exist or is false: `fn sign(std.mem.Allocator, X) !R`:
+///     Returns the sign of `x` as a newly allocated value.
 pub inline fn sign(x: anytype, ctx: anytype) !numeric.Sign(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Sign(X);
@@ -155,28 +161,7 @@ pub inline fn sign(x: anytype, ctx: anytype) !numeric.Sign(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.sign: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                if (comptime types.isComplexType(X)) {
-                    const Impl: type = comptime types.anyHasMethod(
-                        &.{ R, X },
-                        "sign",
-                        fn (std.mem.Allocator, X) anyerror!R,
-                        &.{ std.mem.Allocator, X },
-                    ) orelse
-                        @compileError("zml.numeric.sign: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sign(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
-
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{
-                                .type = std.mem.Allocator,
-                                .required = true,
-                                .description = "The allocator to use for the custom numeric's memory allocation.",
-                            },
-                        },
-                    );
-
-                    return Impl.sign(ctx.allocator, x);
-                } else {
+                if (comptime @hasDecl(X, "has_simple_sign") and X.has_simple_sign) {
                     const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "sign",
@@ -200,6 +185,27 @@ pub inline fn sign(x: anytype, ctx: anytype) !numeric.Sign(@TypeOf(x)) {
                         Impl.sign(ctx.allocator, x)
                     else
                         Impl.sign(null, x) catch unreachable;
+                } else {
+                    const Impl: type = comptime types.anyHasMethod(
+                        &.{ R, X },
+                        "sign",
+                        fn (std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.sign: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn sign(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = true,
+                                .description = "The allocator to use for the custom numeric's memory allocation.",
+                            },
+                        },
+                    );
+
+                    return Impl.sign(ctx.allocator, x);
                 }
             } else {
                 const Impl: type = comptime types.anyHasMethod(

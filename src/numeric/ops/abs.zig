@@ -35,8 +35,7 @@ pub fn Abs(X: type) type {
     }
 }
 
-/// Returns the absolute value of a numeric `x`. For complex values, returns the
-/// magnitude.
+/// Returns the absolute value of a numeric `x`.
 ///
 /// ## Signature
 /// ```zig
@@ -57,11 +56,11 @@ pub fn Abs(X: type) type {
 /// #### `numeric.Abs(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `numeric.Abs(X)` is allocated and `X` is not complex
+/// #### `numeric.Abs(X)` is allocated and `X.has_simple_abs` exists and is true
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
 ///
-/// #### `numeric.Abs(X)` is allocated and `X` is complex
+/// #### `numeric.Abs(X)` is allocated and `X.has_simple_abs` does not exist or is false
 /// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
 ///
 /// ## Returns
@@ -85,11 +84,12 @@ pub fn Abs(X: type) type {
 /// `abs` are as follows:
 /// * `R` is not allocated: `fn abs(X) R`: Returns the absolute value of `x`.
 /// * `R` is allocated:
-///   * `R` is not complex: `fn abs(?std.mem.Allocator, X) !R`: Returns the
-///     absolute value of `x` as a newly allocated value, if the allocator is
-///     provided, or a read-only view if not. If not provided, it must not fail.
-///   * `R` is complex: `fn abs(std.mem.Allocator, X) !R`: Returns the absolute
-///     value of `x` as a newly allocated value.
+///   * `X.has_simple_abs` exists and is true: `fn abs(?std.mem.Allocator, X) !R`:
+///     Returns the absolute value of `x` as a newly allocated value, if the
+///     allocator is provided, or a read-only view if not. If not provided, it
+///     must not fail.
+///   * `X.has_simple_abs` does not exist or is false: `fn abs(std.mem.Allocator, X) !R`:
+///     Returns the absolute value of `x` as a newly allocated value.
 pub inline fn abs(x: anytype, ctx: anytype) !numeric.Abs(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Abs(X);
@@ -158,28 +158,7 @@ pub inline fn abs(x: anytype, ctx: anytype) !numeric.Abs(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.abs: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                if (comptime types.isComplexType(X)) {
-                    const Impl: type = comptime types.anyHasMethod(
-                        &.{ R, X },
-                        "abs",
-                        fn (std.mem.Allocator, X) anyerror!R,
-                        &.{ std.mem.Allocator, X },
-                    ) orelse
-                        @compileError("zml.numeric.abs: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
-
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{
-                                .type = std.mem.Allocator,
-                                .required = true,
-                                .description = "The allocator to use for the custom numeric's memory allocation.",
-                            },
-                        },
-                    );
-
-                    return Impl.abs(ctx.allocator, x);
-                } else {
+                if (comptime @hasDecl(X, "has_simple_abs") and X.has_simple_abs) {
                     const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "abs",
@@ -203,6 +182,27 @@ pub inline fn abs(x: anytype, ctx: anytype) !numeric.Abs(@TypeOf(x)) {
                         Impl.abs(ctx.allocator, x)
                     else
                         Impl.abs(null, x) catch unreachable;
+                } else {
+                    const Impl: type = comptime types.anyHasMethod(
+                        &.{ R, X },
+                        "abs",
+                        fn (std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.abs: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = true,
+                                .description = "The allocator to use for the custom numeric's memory allocation.",
+                            },
+                        },
+                    );
+
+                    return Impl.abs(ctx.allocator, x);
                 }
             } else {
                 const Impl: type = comptime types.anyHasMethod(

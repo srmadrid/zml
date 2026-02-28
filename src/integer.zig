@@ -23,13 +23,16 @@ pub const Integer = struct {
     positive: bool,
     flags: Flags,
 
-    /// Type signature
+    /// Type flags
     pub const is_numeric = true;
     pub const is_integer = true;
     pub const is_integral = true;
     pub const is_real_type = true;
     pub const is_signed = true;
     pub const is_allocated = true;
+
+    /// Operation flags
+    pub const has_simple_abs = true;
 
     pub const empty: Integer = .{
         .limbs = &.{},
@@ -552,6 +555,7 @@ pub const ge = @import("integer/ge.zig").ge;
 
 // Basic operations
 pub const abs = @import("integer/abs.zig").abs;
+pub const abs_ = @import("integer/abs_.zig").abs_;
 pub const neg = @import("integer/neg.zig").neg;
 
 pub const gcd = @import("integer/gcd.zig").gcd;
@@ -561,6 +565,7 @@ pub const Error = error{
     NotFinite,
     NotWritable,
     DataNotOwned,
+    AllocatorRequired,
 };
 
 pub const Flags = packed struct {

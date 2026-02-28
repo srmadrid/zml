@@ -56,11 +56,11 @@ pub fn Abs1(X: type) type {
 /// #### `numeric.Abs1(X)` is not allocated
 /// The context must be empty.
 ///
-/// #### `numeric.Abs1(X)` is allocated and `X` is not complex
+/// #### `numeric.Abs1(X)` is allocated and `X.has_simple_abs1` exists and is true
 /// * `allocator: std.mem.Allocator` (optional): The allocator to use for the
 ///   output value. If not provided, a read-only view will be returned.
 ///
-/// #### `numeric.Abs1(X)` is allocated and `X` is complex
+/// #### `numeric.Abs1(X)` is allocated and `X.has_simple_abs1` does not exist or is false
 /// * `allocator: std.mem.Allocator`: The allocator to use for the output value.
 ///
 /// ## Returns
@@ -85,11 +85,12 @@ pub fn Abs1(X: type) type {
 /// behavior of `abs1` are as follows:
 /// * `R` is not allocated: `fn abs1(X) R`: Returns the 1-norm of `x`.
 /// * `R` is allocated:
-///   * `R` is not complex: `fn abs1(?std.mem.Allocator, X) !R`: Returns the
-///     1-norm of `x` as a newly allocated value, if the allocator is provided,
-///     or a read-only view if not. If not provided, it must not fail.
-///   * `R` is complex: `fn abs1(std.mem.Allocator, X) !R`: Returns the 1-norm
-///     of `x` as a newly allocated value.
+///   * `X.has_simple_abs1` exists and is true: `fn abs(?std.mem.Allocator, X) !R`:
+///     Returns the 1-norm of `x` as a newly allocated value, if the allocator
+///     is provided, or a read-only view if not. If not provided, it must not
+///     fail.
+///   * `X.has_simple_abs1` does not exist or is false: `fn abs(std.mem.Allocator, X) !R`:
+///     Returns the 1-norm of `x` as a newly allocated value.
 pub inline fn abs1(x: anytype, ctx: anytype) !numeric.Abs1(@TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Abs1(X);
@@ -158,28 +159,7 @@ pub inline fn abs1(x: anytype, ctx: anytype) !numeric.Abs1(@TypeOf(x)) {
         .complex => @compileError("zml.numeric.abs1: not implemented for " ++ @typeName(X) ++ " yet."),
         .custom => {
             if (comptime types.isAllocated(R)) {
-                if (comptime types.isComplexType(X)) {
-                    const Impl: type = comptime types.anyHasMethod(
-                        &.{ R, X },
-                        "abs1",
-                        fn (std.mem.Allocator, X) anyerror!R,
-                        &.{ std.mem.Allocator, X },
-                    ) orelse
-                        @compileError("zml.numeric.abs1: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs1(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
-
-                    comptime types.validateContext(
-                        @TypeOf(ctx),
-                        .{
-                            .allocator = .{
-                                .type = std.mem.Allocator,
-                                .required = true,
-                                .description = "The allocator to use for the custom numeric's memory allocation.",
-                            },
-                        },
-                    );
-
-                    return Impl.abs1(ctx.allocator, x);
-                } else {
+                if (comptime @hasDecl(X, "has_simple_abs1") and X.has_simple_abs1) {
                     const Impl: type = comptime types.anyHasMethod(
                         &.{ R, X },
                         "abs1",
@@ -203,6 +183,27 @@ pub inline fn abs1(x: anytype, ctx: anytype) !numeric.Abs1(@TypeOf(x)) {
                         Impl.abs1(ctx.allocator, x)
                     else
                         Impl.abs1(null, x) catch unreachable;
+                } else {
+                    const Impl: type = comptime types.anyHasMethod(
+                        &.{ R, X },
+                        "abs1",
+                        fn (std.mem.Allocator, X) anyerror!R,
+                        &.{ std.mem.Allocator, X },
+                    ) orelse
+                        @compileError("zml.numeric.abs1: " ++ @typeName(R) ++ " or " ++ @typeName(X) ++ " must implement `fn abs1(std.mem.Allocator, " ++ @typeName(X) ++ ") !" ++ @typeName(R) ++ "`");
+
+                    comptime types.validateContext(
+                        @TypeOf(ctx),
+                        .{
+                            .allocator = .{
+                                .type = std.mem.Allocator,
+                                .required = true,
+                                .description = "The allocator to use for the custom numeric's memory allocation.",
+                            },
+                        },
+                    );
+
+                    return Impl.abs1(ctx.allocator, x);
                 }
             } else {
                 const Impl: type = comptime types.anyHasMethod(

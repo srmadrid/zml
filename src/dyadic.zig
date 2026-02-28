@@ -22,7 +22,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         exponent: Exponent,
         positive: bool,
 
-        /// Type signature
+        /// Type flags
         pub const is_numeric = true;
         pub const is_dyadic = true;
         pub const is_real_type = true;

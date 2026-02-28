@@ -24,12 +24,15 @@ pub const Rational = struct {
     den: Integer,
     flags: Flags,
 
-    /// Type signature
+    /// Type flags
     pub const is_numeric = true;
     pub const is_rational = true;
     pub const is_real_type = true;
     pub const is_signed = true;
     pub const is_allocated = true;
+
+    /// Operation flags
+    pub const has_simple_abs = true;
 
     pub const empty: Rational = .{
         .num = .empty,
@@ -704,6 +707,7 @@ pub const ge = @import("rational/ge.zig").ge;
 
 // Basic operations
 pub const abs = @import("rational/abs.zig").abs;
+pub const abs_ = @import("rational/abs_.zig").abs_;
 pub const neg = @import("rational/neg.zig").neg;
 
 pub const Error = error{
@@ -711,6 +715,7 @@ pub const Error = error{
     ZeroDivision,
     NotWritable,
     DataNotOwned,
+    AllocatorRequired,
 };
 
 pub const Flags = packed struct {
