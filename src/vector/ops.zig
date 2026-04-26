@@ -1,6 +1,3 @@
-// Utilities
-pub const EnsureVector = @import("ops/ensureVector.zig").EnsureVector;
-
 // Elementwise generic functions
 pub const Apply2 = @import("ops/apply2.zig").Apply2;
 pub const apply2 = @import("ops/apply2.zig").apply2;

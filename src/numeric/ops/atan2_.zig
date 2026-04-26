@@ -45,9 +45,9 @@ pub fn atan2_(o: anytype, y: anytype, x: anytype) void {
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O)) {
-        if (comptime meta.isCustomType(Y)) {
-            if (comptime meta.isCustomType(X)) { // O, Y and X all custom
+    if (comptime meta.isCustomNumeric(O)) {
+        if (comptime meta.isCustomNumeric(Y)) {
+            if (comptime meta.isCustomNumeric(X)) { // O, Y and X all custom
                 if (comptime meta.anyHasMethod(&.{ O, Y, X }, "atan2_", fn (*O, Y, X) void, &.{ *O, Y, X })) |Impl|
                     return Impl.atan2_(o, y, x);
             } else { // only O and Y custom
@@ -55,7 +55,7 @@ pub fn atan2_(o: anytype, y: anytype, x: anytype) void {
                     return Impl.atan2_(o, y, x);
             }
         } else {
-            if (comptime meta.isCustomType(X)) { // only O and X custom
+            if (comptime meta.isCustomNumeric(X)) { // only O and X custom
                 if (comptime meta.anyHasMethod(&.{ O, X }, "atan2_", fn (*O, Y, X) void, &.{ *O, Y, X })) |Impl|
                     return Impl.atan2_(o, y, x);
             } else { // only O custom
@@ -64,15 +64,15 @@ pub fn atan2_(o: anytype, y: anytype, x: anytype) void {
             }
         }
     } else {
-        if (comptime meta.isCustomType(Y)) {
-            if (comptime meta.isCustomType(X)) { // only Y and X custom
+        if (comptime meta.isCustomNumeric(Y)) {
+            if (comptime meta.isCustomNumeric(X)) { // only Y and X custom
                 if (comptime meta.anyHasMethod(&.{ Y, X }, "atan2_", fn (*O, Y, X) void, &.{ *O, Y, X })) |Impl|
                     return Impl.atan2_(o, y, x);
             } else { // only Y custom
                 if (comptime meta.hasMethod(Y, "atan2_", fn (*O, Y, X) void, &.{ *O, Y, X }))
                     return Y.atan2_(o, y, x);
             }
-        } else if (comptime meta.isCustomType(X)) { // only X custom
+        } else if (comptime meta.isCustomNumeric(X)) { // only X custom
             if (comptime meta.hasMethod(Y, "atan2_", fn (*O, Y, X) void, &.{ *O, Y, X }))
                 return Y.atan2_(o, y, x);
         }

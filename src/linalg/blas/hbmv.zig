@@ -1,19 +1,16 @@
-const std = @import("std");
+const options = @import("options");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
+const meta = @import("../../meta.zig");
+const Layout = meta.Layout;
+const Uplo = meta.Uplo;
+
+const numeric = @import("../../numeric.zig");
+
 const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Order = types.Order;
-const Uplo = types.Uplo;
 
-/// Computes a matrix-vector product using a Hermitian band matrix.
-///
-/// The `hbmv` routine performs a matrix-vector operation defined as:
+/// Computes a matrix-vector product with a Hermitian band matrix defined as:
 ///
 /// ```zig
 ///     y = alpha * A * x + beta * y,
@@ -22,10 +19,12 @@ const Uplo = types.Uplo;
 /// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` Hermitian band matrix with `k` super-diagonals.
 ///
-/// Signature
-/// ---------
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available.
+///
+/// ## Signature
 /// ```zig
-/// fn hbmv(order: Order, uplo: Uplo, n: i32, k: i32, alpha: Al, a: [*]const A, lda: i32, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// linalg.blas.hbmv(order: Order, uplo: Uplo, n: isize, k: isize, alpha: Al, a: [*]const A, lda: isize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
 /// ```
 ///
 /// Parameters
@@ -40,10 +39,10 @@ const Uplo = types.Uplo;
 /// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
 /// used.
 ///
-/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
+/// `n` (`isize`): Specifies the order of the matrix `A`. Must be greater than
 /// or equal to 0.
 ///
-/// `k` (`i32`): Specifies the number of super-diagonals or sub-diagonals of
+/// `k` (`isize`): Specifies the number of super-diagonals or sub-diagonals of
 /// the matrix `A`. Must be greater than or equal to 0.
 ///
 /// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -52,14 +51,14 @@ const Uplo = types.Uplo;
 /// `a` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least `lda * n`.
 ///
-/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
+/// `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 /// calling (sub)program. Must be greater than or equal to `k + 1`.
 ///
 /// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
 /// `real`, `complex` or `expression`): Array, size at least
 /// `1 + (n - 1) * abs(incx)`.
 ///
-/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
+/// `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 /// different from 0.
 ///
 /// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
@@ -71,7 +70,7 @@ const Uplo = types.Uplo;
 /// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 /// operation.
 ///
-/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
+/// `incy` (`isize`): Specifies the increment for indexing vector `y`. Must be
 /// different from 0.
 ///
 /// Returns
@@ -91,16 +90,16 @@ const Uplo = types.Uplo;
 pub fn hbmv(
     order: Layout,
     uplo: Uplo,
-    n: i32,
-    k: i32,
+    n: isize,
+    k: isize,
     alpha: anytype,
     a: anytype,
-    lda: i32,
+    lda: isize,
     x: anytype,
-    incx: i32,
+    incx: isize,
     beta: anytype,
     y: anytype,
-    incy: i32,
+    incy: isize,
     ctx: anytype,
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -177,16 +176,16 @@ pub fn hbmv(
 fn _hbmv(
     order: Order,
     uplo: Uplo,
-    n: i32,
-    k: i32,
+    n: isize,
+    k: isize,
     alpha: anytype,
     a: anytype,
-    lda: i32,
+    lda: isize,
     x: anytype,
-    incx: i32,
+    incx: isize,
     beta: anytype,
     y: anytype,
-    incy: i32,
+    incy: isize,
     ctx: anytype,
 ) !void {
     if (order == .col_major) {
@@ -226,16 +225,16 @@ fn _hbmv(
 
 fn k_hbmv(
     uplo: Uplo,
-    n: i32,
-    k: i32,
+    n: isize,
+    k: isize,
     alpha: anytype,
     a: anytype,
-    lda: i32,
+    lda: isize,
     x: anytype,
-    incx: i32,
+    incx: isize,
     beta: anytype,
     y: anytype,
-    incy: i32,
+    incy: isize,
     noconj: bool,
     ctx: anytype,
 ) !void {
@@ -256,8 +255,8 @@ fn k_hbmv(
         (ops.eq(alpha, 0, ctx) catch unreachable and ops.eq(beta, 1, ctx) catch unreachable))
         return;
 
-    var kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
-    var ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
+    var kx: isize = if (incx < 0) (-n + 1) * incx else 0;
+    var ky: isize = if (incy < 0) (-n + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         // First form  y = beta * y.
@@ -293,7 +292,7 @@ fn k_hbmv(
                     }
                 }
             } else {
-                var iy: i32 = ky;
+                var iy: isize = ky;
                 if (ops.eq(beta, 0, ctx) catch unreachable) {
                     for (0..scast(u32, n)) |_| {
                         ops.set( // y[iy] = 0
@@ -343,7 +342,7 @@ fn k_hbmv(
                         ) catch unreachable;
                     }
                 } else {
-                    var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
+                    var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
                     for (0..scast(u32, n)) |_| {
                         ops.conj_( // y[iy] = conj(y[iy])
                             &y[scast(u32, iy)],
@@ -363,7 +362,7 @@ fn k_hbmv(
             // Form  y  when upper triangle of A is stored.
             if (noconj) {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
                             alpha,
@@ -372,8 +371,8 @@ fn k_hbmv(
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                        const l: i32 = k - j;
-                        var i: i32 = int.max(0, j - k);
+                        const l: isize = k - j;
+                        var i: isize = int.max(0, j - k);
                         while (i < j) : (i += 1) {
                             ops.add_( // y[i] += temp1 * a[l + i + j * lda]
                                 &y[scast(u32, i)],
@@ -418,9 +417,9 @@ fn k_hbmv(
                         ) catch unreachable;
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
                             alpha,
@@ -429,10 +428,10 @@ fn k_hbmv(
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                        var ix: i32 = kx;
-                        var iy: i32 = ky;
-                        const l: i32 = k - j;
-                        var i: i32 = int.max(0, j - k);
+                        var ix: isize = kx;
+                        var iy: isize = ky;
+                        const l: isize = k - j;
+                        var i: isize = int.max(0, j - k);
                         while (i < j) : (i += 1) {
                             ops.add_( // y[iy] += temp1 * a[l + i + j * lda]
                                 &y[scast(u32, iy)],
@@ -490,7 +489,7 @@ fn k_hbmv(
                 }
             } else {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
                             alpha,
@@ -499,8 +498,8 @@ fn k_hbmv(
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                        const l: i32 = k - j;
-                        var i: i32 = int.max(0, j - k);
+                        const l: isize = k - j;
+                        var i: isize = int.max(0, j - k);
                         while (i < j) : (i += 1) {
                             ops.add_( // y[i] += temp1 * a[l + i + j * lda]
                                 &y[scast(u32, i)],
@@ -545,9 +544,9 @@ fn k_hbmv(
                         ) catch unreachable;
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
                             alpha,
@@ -556,10 +555,10 @@ fn k_hbmv(
                         ) catch unreachable;
                         var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
 
-                        var ix: i32 = kx;
-                        var iy: i32 = ky;
-                        const l: i32 = k - j;
-                        var i: i32 = int.max(0, j - k);
+                        var ix: isize = kx;
+                        var iy: isize = ky;
+                        const l: isize = k - j;
+                        var i: isize = int.max(0, j - k);
                         while (i < j) : (i += 1) {
                             ops.add_( // y[iy] += temp1 * a[l + i + j * lda]
                                 &y[scast(u32, iy)],
@@ -620,7 +619,7 @@ fn k_hbmv(
             // Form  y  when lower triangle of A is stored.
             if (noconj) {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
                             alpha,
@@ -640,8 +639,8 @@ fn k_hbmv(
                             ctx,
                         ) catch unreachable;
 
-                        const l: i32 = -j;
-                        var i: i32 = j + 1;
+                        const l: isize = -j;
+                        var i: isize = j + 1;
                         while (i < int.min(n, j + k + 1)) : (i += 1) {
                             ops.add_( // y[i] += temp1 * a[l + i + j * lda]
                                 &y[scast(u32, i)],
@@ -678,9 +677,9 @@ fn k_hbmv(
                         ) catch unreachable;
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
                             alpha,
@@ -700,10 +699,10 @@ fn k_hbmv(
                             ctx,
                         ) catch unreachable;
 
-                        const l: i32 = -j;
-                        var ix: i32 = jx;
-                        var iy: i32 = jy;
-                        var i: i32 = j + 1;
+                        const l: isize = -j;
+                        var ix: isize = jx;
+                        var iy: isize = jy;
+                        var i: isize = j + 1;
                         while (i < int.min(n, j + k + 1)) : (i += 1) {
                             ix += incx;
                             iy += incy;
@@ -748,7 +747,7 @@ fn k_hbmv(
                 }
             } else {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[j])
                             alpha,
@@ -768,8 +767,8 @@ fn k_hbmv(
                             ctx,
                         ) catch unreachable;
 
-                        const l: i32 = -j;
-                        var i: i32 = j + 1;
+                        const l: isize = -j;
+                        var i: isize = j + 1;
                         while (i < int.min(n, j + k + 1)) : (i += 1) {
                             ops.add_( // y[i] += temp1 * a[l + i + j * lda]
                                 &y[scast(u32, i)],
@@ -806,9 +805,9 @@ fn k_hbmv(
                         ) catch unreachable;
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         const temp1: C1 = ops.mul( // temp1 = alpha * conj(x[jx])
                             alpha,
@@ -828,10 +827,10 @@ fn k_hbmv(
                             ctx,
                         ) catch unreachable;
 
-                        const l: i32 = -j;
-                        var ix: i32 = jx;
-                        var iy: i32 = jy;
-                        var i: i32 = j + 1;
+                        const l: isize = -j;
+                        var ix: isize = jx;
+                        var iy: isize = jy;
+                        var i: isize = j + 1;
                         while (i < int.min(n, j + k + 1)) : (i += 1) {
                             ix += incx;
                             iy += incy;
@@ -887,7 +886,7 @@ fn k_hbmv(
                     ) catch unreachable;
                 }
             } else {
-                var iy: i32 = if (incy < 0) (-n + 1) * incy else 0;
+                var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
                 for (0..scast(u32, n)) |_| {
                     ops.conj_( // y[iy] = conj(y[iy])
                         &y[scast(u32, iy)],

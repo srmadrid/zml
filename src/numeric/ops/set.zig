@@ -37,8 +37,8 @@ pub fn set(o: anytype, x: anytype) void {
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O)) {
-        if (comptime meta.isCustomType(X)) { // O and X both custom
+    if (comptime meta.isCustomNumeric(O)) {
+        if (comptime meta.isCustomNumeric(X)) { // O and X both custom
             if (comptime meta.anyHasMethod(
                 &.{ O, X },
                 "set",
@@ -50,7 +50,7 @@ pub fn set(o: anytype, x: anytype) void {
             comptime if (meta.hasMethod(O, "set", fn (*O, X) void, &.{ *O, X }))
                 return O.set(o, x);
         }
-    } else if (comptime meta.isCustomType(X)) { // only X custom
+    } else if (comptime meta.isCustomNumeric(X)) { // only X custom
         comptime if (meta.hasMethod(X, "set", fn (*O, X) void, &.{ *O, X }))
             return X.set(o, x);
     }

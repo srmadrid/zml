@@ -35,8 +35,8 @@ pub fn gt(x: anytype, y: anytype) bool {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
         @compileError("zsl.numeric.gt: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ X, Y },
                 "gt",
@@ -52,7 +52,7 @@ pub fn gt(x: anytype, y: anytype) bool {
 
             return X.gt(x, y);
         }
-    } else if (comptime meta.isCustomType(Y)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "gt", fn (X, Y) bool, &.{ X, Y }))
             @compileError("zsl.numeric.gt: " ++ @typeName(Y) ++ " must implement `fn gt(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") bool`");
 

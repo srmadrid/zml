@@ -20,20 +20,6 @@ pub fn isSupportedType(comptime T: type) bool {
         isExpression(T);
 }
 
-/// Checks if the input type is a custom type.
-///
-/// ## Arguments
-/// * `T` (`comptime type`): The type to check.
-///
-/// ## Returns
-/// `bool`: `true` if the type is a custom type, `false` otherwise.
-pub fn isCustomType(comptime T: type) bool {
-    return isCustomNumeric(T) or
-        isCustomVector(T) or
-        isCustomMatrix(T) or
-        isCustomArray(T);
-}
-
 /// Checks if the input type is a one-item pointer.
 ///
 /// ## Arguments
@@ -192,20 +178,6 @@ pub fn isDenseVector(comptime T: type) bool {
 pub fn isSparseVector(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_vector") and T.is_vector and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a custom vector.
-///
-/// ## Arguments
-/// * `T` (`comptime type`): The type to check.
-///
-/// ## Returns
-/// `bool`: `true` if the type is a custom vector, `false` otherwise.
-pub fn isCustomVector(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_vector") and T.is_vector and @hasDecl(T, "is_custom") and T.is_custom,
         else => return false,
     }
 }
@@ -491,20 +463,6 @@ pub fn isSparseMatrix(comptime T: type) bool {
     }
 }
 
-/// Checks if the input type is an instance of a custom matrix.
-///
-/// ## Arguments
-/// * `T` (`comptime type`): The type to check.
-///
-/// ## Returns
-/// `bool`: `true` if the type is a custom matrix, `false` otherwise.
-pub fn isCustomMatrix(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_matrix") and T.is_matrix and @hasDecl(T, "is_custom") and T.is_custom,
-        else => return false,
-    }
-}
-
 /// Checks if the input type is an instance of an array.
 ///
 /// ## Arguments
@@ -557,20 +515,6 @@ pub fn isStridedArray(comptime T: type) bool {
 pub fn isSparseArray(comptime T: type) bool {
     switch (comptime @typeInfo(T)) {
         .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_sparse") and T.is_sparse,
-        else => return false,
-    }
-}
-
-/// Checks if the input type is an instance of a custom array.
-///
-/// ## Arguments
-/// * `T` (`comptime type`): The type to check.
-///
-/// ## Returns
-/// `bool`: `true` if the type is a custom array, `false` otherwise.
-pub fn isCustomArray(comptime T: type) bool {
-    switch (comptime @typeInfo(T)) {
-        .@"struct" => return @hasDecl(T, "is_array") and T.is_array and @hasDecl(T, "is_custom") and T.is_custom,
         else => return false,
     }
 }

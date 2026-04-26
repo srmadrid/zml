@@ -12,7 +12,6 @@ pub const Permutation = permutation.Permutation;
 pub const builder = @import("matrix/builder.zig");
 
 const matops = @import("matrix/ops.zig");
-pub const EnsureVector = matops.EnsureVector;
 pub const apply2_ = matops.apply2_;
 // pub const Add = matops.Add;
 // pub const add = matops.add;

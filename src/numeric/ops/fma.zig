@@ -11,9 +11,9 @@ pub fn Fma(X: type, Y: type, Z: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or !meta.isNumeric(Z))
         @compileError("zsl.numeric.fma: x, y and z must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tz: " ++ @typeName(Z) ++ "\n");
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) {
-            if (comptime meta.isCustomType(Z)) { // X, Y and Z all custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) {
+            if (comptime meta.isCustomNumeric(Z)) { // X, Y and Z all custom
                 const Impl: type = comptime meta.anyHasMethod(
                     &.{ X, Y, Z },
                     "Fma",
@@ -35,7 +35,7 @@ pub fn Fma(X: type, Y: type, Z: type) type {
                 return Impl.Fma(X, Y, Z);
             }
         } else {
-            if (comptime meta.isCustomType(Z)) { // only X and Z custom
+            if (comptime meta.isCustomNumeric(Z)) { // only X and Z custom
                 const Impl: type = comptime meta.anyHasMethod(
                     &.{ X, Z },
                     "Fma",
@@ -52,8 +52,8 @@ pub fn Fma(X: type, Y: type, Z: type) type {
                 return X.Fma(X, Y, Z);
             }
         }
-    } else if (comptime meta.isCustomType(Y)) {
-        if (comptime meta.isCustomType(Z)) { // only Y and Z custom
+    } else if (comptime meta.isCustomNumeric(Y)) {
+        if (comptime meta.isCustomNumeric(Z)) { // only Y and Z custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ Y, Z },
                 "Fma",
@@ -69,7 +69,7 @@ pub fn Fma(X: type, Y: type, Z: type) type {
 
             return Y.Fma(X, Y, Z);
         }
-    } else if (comptime meta.isCustomType(Z)) { // only Z custom
+    } else if (comptime meta.isCustomNumeric(Z)) { // only Z custom
         comptime if (!meta.hasMethod(Z, "Fma", fn (type, type, type) type, &.{ X, Y, Z }))
             @compileError("zsl.numeric.fma: " ++ @typeName(Z) ++ " must implement `fn Fma(type, type, type) type`");
 
@@ -211,9 +211,9 @@ pub fn fma(x: anytype, y: anytype, z: anytype) numeric.Fma(@TypeOf(x), @TypeOf(y
     const Z: type = @TypeOf(z);
     const R: type = numeric.Fma(X, Y, Z);
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) {
-            if (comptime meta.isCustomType(Z)) { // X, Y and Z all custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) {
+            if (comptime meta.isCustomNumeric(Z)) { // X, Y and Z all custom
                 const Impl: type = comptime meta.anyHasMethod(
                     &.{ R, X, Y, Z },
                     "fma",
@@ -235,7 +235,7 @@ pub fn fma(x: anytype, y: anytype, z: anytype) numeric.Fma(@TypeOf(x), @TypeOf(y
                 return Impl.fma(x, y, z);
             }
         } else {
-            if (comptime meta.isCustomType(Z)) { // only X and Z custom
+            if (comptime meta.isCustomNumeric(Z)) { // only X and Z custom
                 const Impl: type = comptime meta.anyHasMethod(
                     &.{ R, X, Z },
                     "fma",
@@ -257,8 +257,8 @@ pub fn fma(x: anytype, y: anytype, z: anytype) numeric.Fma(@TypeOf(x), @TypeOf(y
                 return Impl.fma(x, y, z);
             }
         }
-    } else if (comptime meta.isCustomType(Y)) {
-        if (comptime meta.isCustomType(Z)) { // only Y and Z custom
+    } else if (comptime meta.isCustomNumeric(Y)) {
+        if (comptime meta.isCustomNumeric(Z)) { // only Y and Z custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ R, Y, Z },
                 "fma",
@@ -279,7 +279,7 @@ pub fn fma(x: anytype, y: anytype, z: anytype) numeric.Fma(@TypeOf(x), @TypeOf(y
 
             return Impl.fma(x, y, z);
         }
-    } else if (comptime meta.isCustomType(Z)) { // only Z custom
+    } else if (comptime meta.isCustomNumeric(Z)) { // only Z custom
         const Impl: type = comptime meta.anyHasMethod(
             &.{ R, Z },
             "fma",

@@ -30,7 +30,7 @@ pub fn Complex(comptime N: type) type {
         pub const is_numeric = true;
         pub const is_complex = true;
         pub const is_signed = true;
-        pub const is_custom = meta.isCustomType(N);
+        pub const is_custom = meta.isCustomNumeric(N);
 
         pub const Accumulator = Complex(meta.Accumulator(N));
         pub const Real = N;

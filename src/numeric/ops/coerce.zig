@@ -36,8 +36,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
         @compileError("zsl.numeric.Coerce: X and Y must be numeric types, got \n\tX = " ++ @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n");
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ X, Y },
                 "Coerce",
@@ -53,7 +53,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
 
             return X.Coerce(X, Y);
         }
-    } else if (comptime meta.isCustomType(Y)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Coerce", fn (type, type) type, &.{ X, Y }))
             @compileError("zsl.numeric.Coerce: " ++ @typeName(Y) ++ " must implement `fn Coerce(type, type) type`");
 

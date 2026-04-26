@@ -40,15 +40,15 @@ pub fn exp_(o: anytype, x: anytype) void {
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O)) {
-        if (comptime meta.isCustomType(X)) { // O and X both custom
+    if (comptime meta.isCustomNumeric(O)) {
+        if (comptime meta.isCustomNumeric(X)) { // O and X both custom
             if (comptime meta.anyHasMethod(&.{ O, X }, "exp_", fn (*O, X) void, &.{ *O, X })) |Impl|
                 return Impl.exp_(o, x);
         } else { // only O custom
             if (comptime meta.hasMethod(O, "exp_", fn (*O, X) void, &.{ *O, X }))
                 return O.exp_(o, x);
         }
-    } else if (comptime meta.isCustomType(X)) { // only X custom
+    } else if (comptime meta.isCustomNumeric(X)) { // only X custom
         if (comptime meta.hasMethod(X, "exp_", fn (*O, X) void, &.{ *O, X }))
             return X.exp_(o, x);
     }

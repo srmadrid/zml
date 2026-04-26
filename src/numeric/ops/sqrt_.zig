@@ -40,15 +40,15 @@ pub fn sqrt_(o: anytype, x: anytype) void {
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O)) {
-        if (comptime meta.isCustomType(X)) { // O and X both custom
+    if (comptime meta.isCustomNumeric(O)) {
+        if (comptime meta.isCustomNumeric(X)) { // O and X both custom
             if (comptime meta.anyHasMethod(&.{ O, X }, "sqrt_", fn (*O, X) void, &.{ *O, X })) |Impl|
                 return Impl.sqrt_(o, x);
         } else { // only O custom
             if (comptime meta.hasMethod(O, "sqrt_", fn (*O, X) void, &.{ *O, X }))
                 return O.sqrt_(o, x);
         }
-    } else if (comptime meta.isCustomType(X)) { // only X custom
+    } else if (comptime meta.isCustomNumeric(X)) { // only X custom
         if (comptime meta.hasMethod(X, "sqrt_", fn (*O, X) void, &.{ *O, X }))
             return X.sqrt_(o, x);
     }

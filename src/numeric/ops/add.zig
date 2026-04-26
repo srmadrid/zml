@@ -11,8 +11,8 @@ pub fn Add(X: type, Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
         @compileError("zsl.numeric.add: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ X, Y },
                 "Add",
@@ -28,7 +28,7 @@ pub fn Add(X: type, Y: type) type {
 
             return X.Add(X, Y);
         }
-    } else if (comptime meta.isCustomType(Y)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Add", fn (type, type) type, &.{ X, Y }))
             @compileError("zsl.numeric.add: " ++ @typeName(Y) ++ " must implement `fn Add(type, type) type`");
 
@@ -100,8 +100,8 @@ pub fn add(x: anytype, y: anytype) numeric.Add(@TypeOf(x), @TypeOf(y)) {
     const Y: type = @TypeOf(y);
     const R: type = numeric.Add(X, Y);
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ R, X, Y },
                 "add",
@@ -122,7 +122,7 @@ pub fn add(x: anytype, y: anytype) numeric.Add(@TypeOf(x), @TypeOf(y)) {
 
             return Impl.add(x, y);
         }
-    } else if (comptime meta.isCustomType(Y)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         const Impl: type = comptime meta.anyHasMethod(
             &.{ R, Y },
             "add",

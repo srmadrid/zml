@@ -43,9 +43,9 @@ pub fn sub_(o: anytype, x: anytype, y: anytype) void {
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O)) {
-        if (comptime meta.isCustomType(X)) {
-            if (comptime meta.isCustomType(Y)) { // O, X and Y all custom
+    if (comptime meta.isCustomNumeric(O)) {
+        if (comptime meta.isCustomNumeric(X)) {
+            if (comptime meta.isCustomNumeric(Y)) { // O, X and Y all custom
                 if (comptime meta.anyHasMethod(&.{ O, X, Y }, "sub_", fn (*O, X, Y) void, &.{ *O, X, Y })) |Impl|
                     return Impl.sub_(o, x, y);
             } else { // only O and X custom
@@ -53,7 +53,7 @@ pub fn sub_(o: anytype, x: anytype, y: anytype) void {
                     return Impl.sub_(o, x, y);
             }
         } else {
-            if (comptime meta.isCustomType(Y)) { // only O and Y custom
+            if (comptime meta.isCustomNumeric(Y)) { // only O and Y custom
                 if (comptime meta.anyHasMethod(&.{ O, Y }, "sub_", fn (*O, X, Y) void, &.{ *O, X, Y })) |Impl|
                     return Impl.sub_(o, x, y);
             } else { // only O custom
@@ -62,15 +62,15 @@ pub fn sub_(o: anytype, x: anytype, y: anytype) void {
             }
         }
     } else {
-        if (comptime meta.isCustomType(X)) {
-            if (comptime meta.isCustomType(Y)) { // only X and Y custom
+        if (comptime meta.isCustomNumeric(X)) {
+            if (comptime meta.isCustomNumeric(Y)) { // only X and Y custom
                 if (comptime meta.anyHasMethod(&.{ X, Y }, "sub_", fn (*O, X, Y) void, &.{ *O, X, Y })) |Impl|
                     return Impl.sub_(o, x, y);
             } else { // only X custom
                 if (comptime meta.hasMethod(X, "sub_", fn (*O, X, Y) void, &.{ *O, X, Y }))
                     return X.sub_(o, x, y);
             }
-        } else if (comptime meta.isCustomType(Y)) { // only Y custom
+        } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
             if (comptime meta.hasMethod(Y, "sub_", fn (*O, X, Y) void, &.{ *O, X, Y }))
                 return Y.sub_(o, x, y);
         }

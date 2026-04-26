@@ -11,8 +11,8 @@ pub fn Sub(X: type, Y: type) type {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
         @compileError("zsl.numeric.sub: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ X, Y },
                 "Sub",
@@ -28,7 +28,7 @@ pub fn Sub(X: type, Y: type) type {
 
             return X.Sub(X, Y);
         }
-    } else if (comptime meta.isCustomType(Y)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Sub", fn (type, type) type, &.{ X, Y }))
             @compileError("zsl.numeric.sub: " ++ @typeName(Y) ++ " must implement `fn Sub(type, type) type`");
 
@@ -101,8 +101,8 @@ pub fn sub(x: anytype, y: anytype) numeric.Sub(@TypeOf(x), @TypeOf(y)) {
     const Y: type = @TypeOf(y);
     const R: type = numeric.Sub(X, Y);
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ R, X, Y },
                 "sub",
@@ -123,7 +123,7 @@ pub fn sub(x: anytype, y: anytype) numeric.Sub(@TypeOf(x), @TypeOf(y)) {
 
             return Impl.sub(x, y);
         }
-    } else if (comptime meta.isCustomType(Y)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         const Impl: type = comptime meta.anyHasMethod(
             &.{ R, Y },
             "sub",

@@ -35,8 +35,8 @@ pub fn lt(x: anytype, y: anytype) bool {
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y))
         @compileError("zsl.numeric.lt: x and y must be numerics, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ X, Y },
                 "lt",
@@ -52,7 +52,7 @@ pub fn lt(x: anytype, y: anytype) bool {
 
             return X.lt(x, y);
         }
-    } else if (comptime meta.isCustomType(Y)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(Y)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "lt", fn (X, Y) bool, &.{ X, Y }))
             @compileError("zsl.numeric.lt: " ++ @typeName(Y) ++ " must implement `fn lt(" ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ") bool`");
 

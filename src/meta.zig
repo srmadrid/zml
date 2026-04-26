@@ -156,7 +156,6 @@ pub const NumericType = enum {
 pub const VectorType = enum {
     dense,
     sparse,
-    custom,
     numeric, // Fallback for numeric types that are not vectors
 };
 
@@ -172,7 +171,6 @@ pub const MatrixType = enum {
     builder_sparse,
     diagonal,
     permutation,
-    custom,
     numeric, // Fallback for numeric types that are not matrices
 };
 
@@ -196,7 +194,6 @@ pub const ArrayType = enum {
     dense,
     strided,
     sparse,
-    custom,
     numeric, // Fallback for numeric types that are not arrays
 };
 
@@ -305,9 +302,6 @@ pub inline fn numericType(comptime N: type) NumericType {
 /// ## Returns
 /// `meta.VectorType`: The corresponding `meta.VectorType` enum value.
 pub fn vectorType(comptime V: type) VectorType {
-    if (comptime isCustomVector(V))
-        return .custom;
-
     if (comptime isDenseVector(V))
         return .dense;
 
@@ -325,9 +319,6 @@ pub fn vectorType(comptime V: type) VectorType {
 /// ## Returns
 /// `meta.MatrixType`: The corresponding `meta.MatrixType` enum value.
 pub fn matrixType(comptime M: type) MatrixType {
-    if (comptime isCustomMatrix(M))
-        return .custom;
-
     if (comptime isGeneralDenseMatrix(M))
         return .general_dense;
 
@@ -394,9 +385,6 @@ pub fn matrixKind(comptime M: type) MatrixKind {
 /// ## Returns
 /// `meta.ArrayType`: The corresponding `meta.ArrayType` enum value.
 pub fn arrayType(comptime A: type) ArrayType {
-    if (comptime isCustomArray(A))
-        return .custom;
-
     if (comptime isDenseArray(A))
         return .dense;
 
@@ -437,7 +425,6 @@ pub fn domain(comptime T: type) Domain {
 
 const type_checks = @import("meta/type_checks.zig");
 pub const isSupportedType = type_checks.isSupportedType;
-pub const isCustomType = type_checks.isCustomType;
 pub const isPointer = type_checks.isPointer;
 pub const isManyItemPointer = type_checks.isManyItemPointer;
 pub const isConstPointer = type_checks.isConstPointer;
@@ -448,7 +435,6 @@ pub const isCustomNumeric = type_checks.isCustomNumeric;
 pub const isVector = type_checks.isVector;
 pub const isDenseVector = type_checks.isDenseVector;
 pub const isSparseVector = type_checks.isSparseVector;
-pub const isCustomVector = type_checks.isCustomVector;
 pub const isMatrix = type_checks.isMatrix;
 pub const isSquareMatrix = type_checks.isSquareMatrix;
 pub const isGeneralDenseMatrix = type_checks.isGeneralDenseMatrix;
@@ -469,12 +455,10 @@ pub const isTriangularMatrix = type_checks.isTriangularMatrix;
 pub const isBuilderMatrix = type_checks.isBuilderMatrix;
 pub const isDenseMatrix = type_checks.isDenseMatrix;
 pub const isSparseMatrix = type_checks.isSparseMatrix;
-pub const isCustomMatrix = type_checks.isCustomMatrix;
 pub const isArray = type_checks.isArray;
 pub const isDenseArray = type_checks.isDenseArray;
 pub const isStridedArray = type_checks.isStridedArray;
 pub const isSparseArray = type_checks.isSparseArray;
-pub const isCustomArray = type_checks.isCustomArray;
 pub const isExpression = type_checks.isExpression;
 pub const isIntegral = type_checks.isIntegral;
 pub const isNonIntegral = type_checks.isNonIntegral;
@@ -626,12 +610,6 @@ pub fn Numeric(comptime T: type) type {
         .vector => switch (comptime vectorType(T)) {
             .dense => return T.Numeric,
             .sparse => return T.Numeric,
-            .custom => {
-                if (comptime !@hasDecl(T, "Numeric"))
-                    @compileError("zsl.meta.Numeric: custom vector type " ++ @typeName(T) ++ " must have a `Numeric` declaration");
-
-                return T.Numeric;
-            },
             .numeric => return T,
         },
         .matrix => switch (comptime matrixType(T)) {
@@ -646,24 +624,12 @@ pub fn Numeric(comptime T: type) type {
             .builder_sparse => return T.Numeric,
             .diagonal => return T.Numeric,
             .permutation => return T.Numeric,
-            .custom => {
-                if (comptime !@hasDecl(T, "Numeric"))
-                    @compileError("zsl.meta.Numeric: custom matrix type " ++ @typeName(T) ++ " must have a `Numeric` declaration");
-
-                return T.Numeric;
-            },
             .numeric => return T,
         },
         .array => switch (comptime arrayType(T)) {
             .dense => return T.Numeric,
             .strided => return T.Numeric,
             .sparse => return T.Numeric,
-            .custom => {
-                if (comptime !@hasDecl(T, "Numeric"))
-                    @compileError("zsl.meta.Numeric: custom array type " ++ @typeName(T) ++ " must have a `Numeric` declaration");
-
-                return T.Numeric;
-            },
             .numeric => return T,
         },
         .expression => return T,
@@ -687,24 +653,12 @@ pub fn layoutOf(comptime T: type) Layout {
             .builder_sparse => return T.storage_layout,
             .diagonal => return T.storage_layout,
             .permutation => return T.storage_layout,
-            .custom => {
-                if (comptime !@hasDecl(T, "storage_layout"))
-                    @compileError("zsl.meta.layoutOf: custom matrix type " ++ @typeName(T) ++ " must have a `storage_layout` declaration");
-
-                return T.storage_layout;
-            },
             .numeric => unreachable,
         },
         .array => switch (comptime arrayType(T)) {
             .dense => return T.storage_layout,
             .strided => return T.storage_layout,
             .sparse => return T.storage_layout,
-            .custom => {
-                if (comptime !@hasDecl(T, "storage_layout"))
-                    @compileError("zsl.meta.layoutOf: custom array type " ++ @typeName(T) ++ " must have a `storage_layout` declaration");
-
-                return T.storage_layout;
-            },
             .numeric => unreachable,
         },
         else => @compileError("zsl.meta.layoutOf: T must be a matrix or array type, got " ++ @typeName(T)),
@@ -728,12 +682,6 @@ pub fn uploOf(comptime T: type) Uplo {
             .builder_sparse => return T.storage_uplo,
             .diagonal => return default_uplo,
             .permutation => return default_uplo,
-            .custom => {
-                if (comptime !@hasDecl(T, "storage_uplo"))
-                    @compileError("zsl.meta.uploOf: custom matrix type " ++ @typeName(T) ++ " must have a `storage_uplo` declaration");
-
-                return T.storage_uplo;
-            },
             .numeric => unreachable,
         },
         else => @compileError("zsl.meta.uploOf: T must be a matrix type, got " ++ @typeName(T)),
@@ -757,12 +705,6 @@ pub fn diagOf(comptime T: type) Diag {
             .builder_sparse => return T.storage_diag,
             .diagonal => return default_diag,
             .permutation => return default_diag,
-            .custom => {
-                if (comptime !@hasDecl(T, "storage_diag"))
-                    @compileError("zsl.meta.diagOf: custom matrix type " ++ @typeName(T) ++ " must have a `storage_diag` declaration");
-
-                return T.storage_diag;
-            },
             .numeric => unreachable,
         },
         else => @compileError("zsl.meta.diagOf: T must be a matrix type, got " ++ @typeName(T)),

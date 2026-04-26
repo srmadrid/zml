@@ -32,15 +32,6 @@ const vector = @import("../../vector.zig");
 /// ## Errors
 /// * `vector.Error.DimensionMismatch`: If the vectors do not have the same
 ///   length.
-///
-/// ## Custom type support
-/// This function supports custom vector types via specific method
-/// implementations.
-///
-/// `O`, `X` or `Y` must implement the required `apply2_` method. The expected
-/// signatures and behavior of `apply2_` are as follows:
-/// * `fn apply2_(*O, X, Y, anytype) !void`: Returns the elementwise application
-///   of `op_` on `o`, `x` and `y`.
 pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) !void {
     comptime var O: type = @TypeOf(o);
     const X: type = @TypeOf(x);
@@ -57,71 +48,6 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) !void 
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O) and meta.isVector(O)) {
-        if (comptime meta.isCustomType(X) and meta.isVector(X)) {
-            if (comptime meta.isCustomType(Y) and meta.isVector(Y)) { // O, X and Y all custom vectors
-                const Impl: type = comptime meta.anyHasMethod(
-                    &.{ O, X, Y },
-                    "apply2_",
-                    fn (*O, X, Y, anytype) anyerror!void,
-                    &.{ *O, X, Y, Op },
-                ) orelse
-                    @compileError("zsl.vector.apply2_: " ++ @typeName(O) ++ ", " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn apply2_(*" ++ @typeName(O) ++ ", " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ", anytype) !void`");
-
-                return Impl.apply2_(o, x, y, op_);
-            } else { // only O and X custom vectors
-                const Impl: type = comptime meta.anyHasMethod(
-                    &.{ O, X },
-                    "apply2_",
-                    fn (*O, X, Y, anytype) anyerror!void,
-                    &.{ *O, X, Y, Op },
-                ) orelse
-                    @compileError("zsl.vector.apply2_: " ++ @typeName(O) ++ " or " ++ @typeName(X) ++ " must implement `fn apply2_(*" ++ @typeName(O) ++ ", " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ", anytype) !void`");
-
-                return Impl.apply2_(o, x, y, op_);
-            }
-        } else {
-            if (comptime meta.isCustomType(Y) and meta.isVector(Y)) { // only O and Y custom vectors
-                const Impl: type = comptime meta.anyHasMethod(
-                    &.{ O, Y },
-                    "apply2_",
-                    fn (*O, X, Y, anytype) anyerror!void,
-                    &.{ *O, X, Y, Op },
-                ) orelse
-                    @compileError("zsl.vector.apply2_: " ++ @typeName(O) ++ " or " ++ @typeName(Y) ++ " must implement `fn apply2_(*" ++ @typeName(O) ++ ", " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ", anytype) !void`");
-
-                return Impl.apply2_(o, x, y, op_);
-            } else { // only O custom vector
-                comptime if (!meta.hasMethod(O, "apply2_", fn (*O, X, Y, anytype) anyerror!void, &.{ *O, X, Y, Op }))
-                    @compileError("zsl.vector.apply2_: " ++ @typeName(O) ++ " must implement `fn apply2_(*" ++ @typeName(O) ++ ", " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ", anytype) !void`");
-
-                return O.apply2_(o, x, y, op_);
-            }
-        }
-    } else if (comptime meta.isCustomType(X) and meta.isVector(X)) {
-        if (comptime meta.isCustomType(Y) and meta.isVector(Y)) { // only X and Y custom vectors
-            const Impl: type = comptime meta.anyHasMethod(
-                &.{ X, Y },
-                "apply2_",
-                fn (*O, X, Y, anytype) anyerror!void,
-                &.{ *O, X, Y, Op },
-            ) orelse
-                @compileError("zsl.vector.apply2_: " ++ @typeName(X) ++ " or " ++ @typeName(Y) ++ " must implement `fn apply2_(*" ++ @typeName(O) ++ ", " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ", anytype) !void`");
-
-            return Impl.apply2_(o, x, y, op_);
-        } else { // only X custom vector
-            comptime if (!meta.hasMethod(X, "apply2_", fn (*O, X, Y, anytype) anyerror!void, &.{ *O, X, Y, Op }))
-                @compileError("zsl.vector.apply2_: " ++ @typeName(X) ++ " must implement `fn apply2_(*" ++ @typeName(O) ++ ", " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ", anytype) !void`");
-
-            return X.apply2_(o, x, y, op_);
-        }
-    } else if (comptime meta.isCustomType(Y) and meta.isVector(Y)) { // only Y custom vector
-        comptime if (!meta.hasMethod(Y, "apply2_", fn (*O, X, Y, anytype) anyerror!void, &.{ *O, X, Y, Op }))
-            @compileError("zsl.vector.apply2_: " ++ @typeName(Y) ++ " must implement `fn apply2_(*" ++ @typeName(O) ++ ", " ++ @typeName(X) ++ ", " ++ @typeName(Y) ++ ", anytype) !void`");
-
-        return Y.apply2_(o, x, y, op_);
-    }
-
     const x_len = if (comptime meta.isMatrix(X)) x.len else o.len;
     const y_len = if (comptime meta.isMatrix(Y)) y.len else o.len;
 
@@ -133,20 +59,16 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) !void 
             .dense => switch (comptime meta.vectorType(Y)) {
                 .dense => return @import("apply2_/dedede.zig").apply2_(o, x, y, op_),
                 .sparse => return @import("apply2_/dedesp.zig").apply2_(o, x, y, op_),
-                .custom => unreachable,
                 .numeric => return @import("apply2_/dedenu.zig").apply2_(o, x, y, op_),
             },
             .sparse => switch (comptime meta.vectorType(Y)) {
                 .dense => return @import("apply2_/despde.zig").apply2_(o, x, y, op_),
                 .sparse => return @import("apply2_/despsp.zig").apply2_(o, x, y, op_),
-                .custom => unreachable,
                 .numeric => return @import("apply2_/despnu.zig").apply2_(o, x, y, op_),
             },
-            .custom => unreachable,
             .numeric => switch (comptime meta.vectorType(Y)) {
                 .dense => return @import("apply2_/denude.zig").apply2_(o, x, y, op_),
                 .sparse => return @import("apply2_/denusp.zig").apply2_(o, x, y, op_),
-                .custom => unreachable,
                 .numeric => unreachable,
             },
         },
@@ -157,19 +79,15 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) !void 
                 .dense => @compileError("zsl.vector.apply2_: o cannot point to a sparse vector if the result is dense, got\n\to: *" ++
                     @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top_: " ++ @typeName(Op) ++ "\n"),
                 .sparse => return @import("apply2_/spspsp.zig").apply2_(o, x, y, op_),
-                .custom => unreachable,
                 .numeric => return @import("apply2_/spspnu.zig").apply2_(o, x, y, op_),
             },
-            .custom => unreachable,
             .numeric => switch (comptime meta.vectorType(Y)) {
                 .dense => @compileError("zsl.vector.apply2_: o cannot point to a sparse vector if the result is dense, got\n\to: *" ++
                     @typeName(O) ++ "x: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top_: " ++ @typeName(Op) ++ "\n"),
                 .sparse => return @import("apply2_/spnusp.zig").apply2_(o, x, y, op_),
-                .custom => unreachable,
                 .numeric => unreachable,
             },
         },
-        .custom => unreachable,
         .numeric => unreachable,
     }
 }

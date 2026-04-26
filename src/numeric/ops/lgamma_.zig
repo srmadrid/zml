@@ -45,15 +45,15 @@ pub fn lgamma_(o: anytype, x: anytype) void {
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O)) {
-        if (comptime meta.isCustomType(X)) { // O and X both custom
+    if (comptime meta.isCustomNumeric(O)) {
+        if (comptime meta.isCustomNumeric(X)) { // O and X both custom
             if (comptime meta.anyHasMethod(&.{ O, X }, "lgamma_", fn (*O, X) void, &.{ *O, X })) |Impl|
                 return Impl.lgamma_(o, x);
         } else { // only O custom
             if (comptime meta.hasMethod(O, "lgamma_", fn (*O, X) void, &.{ *O, X }))
                 return O.lgamma_(o, x);
         }
-    } else if (comptime meta.isCustomType(X)) { // only X custom
+    } else if (comptime meta.isCustomNumeric(X)) { // only X custom
         if (comptime meta.hasMethod(X, "lgamma_", fn (*O, X) void, &.{ *O, X }))
             return X.lgamma_(o, x);
     }

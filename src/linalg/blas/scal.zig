@@ -9,13 +9,13 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 
-/// Computes the product of a vector by a scalar:
+/// Computes the product of a vector by a numeric:
 ///
 /// ```zig
 /// x = alpha * x,
 /// ```
 ///
-/// where `alpha` is a scalar, and `x` is a vector with `n` elements.
+/// where `alpha` is a numeric, and `x` is a vector with `n` elements.
 ///
 /// If the `link_cblas` option is not `null`, the function will try to call the
 /// corresponding CBLAS function.
@@ -28,7 +28,7 @@ const linalg = @import("../../linalg.zig");
 /// ## Arguments
 /// * `n` (`isize`): Specifies the number of elements in vectors `x` and `y`.
 ///   Must be greater than 0.
-/// * `alpha` (`anytype`): Specifies the scalar `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.

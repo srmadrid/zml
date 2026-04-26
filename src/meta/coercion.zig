@@ -57,8 +57,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
         !types.isPermutationMatrix(X))
         return X;
 
-    if (comptime types.isCustomType(X)) {
-        if (comptime types.isCustomType(Y)) {
+    if (comptime types.isCustomNumeric(X)) {
+        if (comptime types.isCustomNumeric(Y)) {
             if (comptime types.hasMethod(X, "Coerce", fn (type, type) type, &.{}))
                 return X.Coerce(X, Y);
 
@@ -72,7 +72,7 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
             return X.Coerce(X, Y);
 
         @compileError("zml.types.Coerce: " ++ @typeName(X) ++ " must implement `fn Coerce(type, type) type`");
-    } else if (comptime types.isCustomType(Y)) {
+    } else if (comptime types.isCustomNumeric(Y)) {
         if (comptime types.hasMethod(Y, "Coerce", fn (type, type) type, &.{}))
             return Y.Coerce(X, Y);
 
@@ -516,8 +516,8 @@ pub fn Coerce(comptime X: type, comptime Y: type) type {
 /// `type`: The coerced type that can represent the result of multiplying `X`
 /// and `Y`.
 pub fn MulCoerce(comptime X: type, comptime Y: type) type {
-    if (comptime types.isCustomType(X)) {
-        if (comptime types.isCustomType(Y)) {
+    if (comptime types.isCustomNumeric(X)) {
+        if (comptime types.isCustomNumeric(Y)) {
             if (comptime types.hasMethod(X, "MulCoerce", fn (type, type) type, &.{}))
                 return X.MulCoerce(X, Y);
 
@@ -531,7 +531,7 @@ pub fn MulCoerce(comptime X: type, comptime Y: type) type {
             return X.MulCoerce(X, Y);
 
         @compileError("zml.types.MulCoerce: " ++ @typeName(X) ++ " must implement `fn MulCoerce(type, type) type`");
-    } else if (comptime types.isCustomType(Y)) {
+    } else if (comptime types.isCustomNumeric(Y)) {
         if (comptime types.hasMethod(Y, "MulCoerce", fn (type, type) type, &.{}))
             return Y.MulCoerce(X, Y);
 

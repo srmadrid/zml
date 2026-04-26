@@ -33,7 +33,7 @@ const linalg = @import("../../linalg.zig");
 /// y = alpha * Aᴴ * x + beta * y,
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are vectors, and `A` is an
+/// where `alpha` and `beta` are numerics, `x` and `y` are vectors, and `A` is an
 /// `m`-by-`n` band matrix with `kl` sub-diagonals and `ku` super-diagonals.
 ///
 /// If the `link_cblas` option is not `null`, the function will try to call the
@@ -61,7 +61,7 @@ const linalg = @import("../../linalg.zig");
 ///   Must be greater than or equal to 0.
 /// * `ku` (`isize`): Specifies the number of super-diagonals of the matrix `A`.
 ///   Must be greater than or equal to 0.
-/// * `alpha` (`anytype`): Specifies the scalar `alpha`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `a` (`anytype`): Array, size at least `lda * n`.
 /// * `lda` (`isize`): Specifies the leading dimension of `a` as declared in the
 ///   calling (sub)program. Must be greater than or equal to `kl + ku + 1`.
@@ -70,7 +70,7 @@ const linalg = @import("../../linalg.zig");
 ///   `1 + (m - 1) * abs(incx)` otherwise.
 /// * `incx` (`isize`): Specifies the increment for indexing vector `x`. Must be
 ///   different from 0.
-/// * `beta` (`anytype`): Specifies the scalar `beta`. When `beta` is 0, then
+/// * `beta` (`anytype`): Specifies the numeric `beta`. When `beta` is 0, then
 ///   `y` need not be set on input.
 /// * `y` (`anytype`): Array, size at least `1 + (m - 1) * abs(incy)` when
 ///   `transa` is `no_transpose` or `conj_no_transpose`, or

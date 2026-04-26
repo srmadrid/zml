@@ -47,10 +47,10 @@ pub fn fma_(o: anytype, x: anytype, y: anytype, z: anytype) void {
 
     O = meta.Child(O);
 
-    if (comptime meta.isCustomType(O)) {
-        if (comptime meta.isCustomType(X)) {
-            if (comptime meta.isCustomType(Y)) {
-                if (comptime meta.isCustomType(Z)) { // O, X, Y and Z all custom
+    if (comptime meta.isCustomNumeric(O)) {
+        if (comptime meta.isCustomNumeric(X)) {
+            if (comptime meta.isCustomNumeric(Y)) {
+                if (comptime meta.isCustomNumeric(Z)) { // O, X, Y and Z all custom
                     if (comptime meta.anyHasMethod(&.{ O, X, Y, Z }, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z })) |Impl|
                         return Impl.fma_(o, x, y, z);
                 } else { // only O, X and Y custom
@@ -58,7 +58,7 @@ pub fn fma_(o: anytype, x: anytype, y: anytype, z: anytype) void {
                         return Impl.fma_(o, x, y, z);
                 }
             } else {
-                if (comptime meta.isCustomType(Z)) { // only O, X and Z custom
+                if (comptime meta.isCustomNumeric(Z)) { // only O, X and Z custom
                     if (comptime meta.anyHasMethod(&.{ O, X, Z }, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z })) |Impl|
                         return Impl.fma_(o, x, y, z);
                 } else { // only O and X custom
@@ -67,8 +67,8 @@ pub fn fma_(o: anytype, x: anytype, y: anytype, z: anytype) void {
                 }
             }
         } else {
-            if (comptime meta.isCustomType(Y)) {
-                if (comptime meta.isCustomType(Z)) { // only O, Y and Z custom
+            if (comptime meta.isCustomNumeric(Y)) {
+                if (comptime meta.isCustomNumeric(Z)) { // only O, Y and Z custom
                     if (comptime meta.anyHasMethod(&.{ O, Y, Z }, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z })) |Impl|
                         return Impl.fma_(o, x, y, z);
                 } else { // only O and Y custom
@@ -76,7 +76,7 @@ pub fn fma_(o: anytype, x: anytype, y: anytype, z: anytype) void {
                         return Impl.fma_(o, x, y, z);
                 }
             } else {
-                if (comptime meta.isCustomType(Z)) { // only O and Z custom
+                if (comptime meta.isCustomNumeric(Z)) { // only O and Z custom
                     if (comptime meta.anyHasMethod(&.{ O, Z }, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z })) |Impl|
                         return Impl.fma_(o, x, y, z);
                 } else { // only O custom
@@ -85,9 +85,9 @@ pub fn fma_(o: anytype, x: anytype, y: anytype, z: anytype) void {
                 }
             }
         }
-    } else if (comptime meta.isCustomType(X)) {
-        if (comptime meta.isCustomType(Y)) {
-            if (comptime meta.isCustomType(Z)) { // only X, Y and Z custom
+    } else if (comptime meta.isCustomNumeric(X)) {
+        if (comptime meta.isCustomNumeric(Y)) {
+            if (comptime meta.isCustomNumeric(Z)) { // only X, Y and Z custom
                 if (comptime meta.anyHasMethod(&.{ X, Y, Z }, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z })) |Impl|
                     return Impl.fma_(o, x, y, z);
             } else { // only X and Y custom
@@ -95,7 +95,7 @@ pub fn fma_(o: anytype, x: anytype, y: anytype, z: anytype) void {
                     return Impl.fma_(o, x, y, z);
             }
         } else {
-            if (comptime meta.isCustomType(Z)) { // only X and Z custom
+            if (comptime meta.isCustomNumeric(Z)) { // only X and Z custom
                 if (comptime meta.anyHasMethod(&.{ X, Z }, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z })) |Impl|
                     return Impl.fma_(o, x, y, z);
             } else { // only X custom
@@ -103,15 +103,15 @@ pub fn fma_(o: anytype, x: anytype, y: anytype, z: anytype) void {
                     return X.fma_(o, x, y, z);
             }
         }
-    } else if (comptime meta.isCustomType(Y)) {
-        if (comptime meta.isCustomType(Z)) { // only Y and Z custom
+    } else if (comptime meta.isCustomNumeric(Y)) {
+        if (comptime meta.isCustomNumeric(Z)) { // only Y and Z custom
             if (comptime meta.anyHasMethod(&.{ Y, Z }, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z })) |Impl|
                 return Impl.fma_(o, x, y, z);
         } else { // only Y custom
             if (comptime meta.hasMethod(Y, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z }))
                 return Y.fma_(o, x, y, z);
         }
-    } else if (comptime meta.isCustomType(Z)) { // only Z custom
+    } else if (comptime meta.isCustomNumeric(Z)) { // only Z custom
         if (comptime meta.hasMethod(Z, "fma_", fn (*O, X, Y, Z) void, &.{ *O, X, Y, Z }))
             return Z.fma_(o, x, y, z);
     }

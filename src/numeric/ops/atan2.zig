@@ -11,8 +11,8 @@ pub fn Atan2(Y: type, X: type) type {
     comptime if (!meta.isNumeric(Y) or !meta.isNumeric(X))
         @compileError("zsl.numeric.atan2: x and y must be numerics, got \n\ty: " ++ @typeName(Y) ++ "\n\tx: " ++ @typeName(X) ++ "\n");
 
-    if (comptime meta.isCustomType(Y)) {
-        if (comptime meta.isCustomType(X)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(Y)) {
+        if (comptime meta.isCustomNumeric(X)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ Y, X },
                 "Atan2",
@@ -28,7 +28,7 @@ pub fn Atan2(Y: type, X: type) type {
 
             return Y.Atan2(Y, X);
         }
-    } else if (comptime meta.isCustomType(X)) { // only Y custom
+    } else if (comptime meta.isCustomNumeric(X)) { // only Y custom
         comptime if (!meta.hasMethod(Y, "Atan2", fn (type, type) type, &.{ Y, X }))
             @compileError("zsl.numeric.atan2: " ++ @typeName(X) ++ " must implement `fn Atan2(type, type) type`");
 
@@ -101,8 +101,8 @@ pub fn atan2(y: anytype, x: anytype) numeric.Atan2(@TypeOf(y), @TypeOf(x)) {
     const X: type = @TypeOf(x);
     const R: type = numeric.Atan2(Y, X);
 
-    if (comptime meta.isCustomType(Y)) {
-        if (comptime meta.isCustomType(X)) { // X and Y both custom
+    if (comptime meta.isCustomNumeric(Y)) {
+        if (comptime meta.isCustomNumeric(X)) { // X and Y both custom
             const Impl: type = comptime meta.anyHasMethod(
                 &.{ R, Y, X },
                 "atan2",
@@ -123,7 +123,7 @@ pub fn atan2(y: anytype, x: anytype) numeric.Atan2(@TypeOf(y), @TypeOf(x)) {
 
             return Impl.atan2(y, x);
         }
-    } else if (comptime meta.isCustomType(X)) { // only X custom
+    } else if (comptime meta.isCustomNumeric(X)) { // only X custom
         const Impl: type = comptime meta.anyHasMethod(
             &.{ R, X },
             "atan2",
