@@ -34,7 +34,7 @@ pub fn Dot(X: type, Y: type) type {
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`isize`): Specifies the number of elements in vectors `x` and `y`.
+/// * `n` (`usize`): Specifies the number of elements in vectors `x` and `y`.
 ///   Must be greater than 0.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
@@ -60,10 +60,10 @@ pub fn Dot(X: type, Y: type) type {
 /// `Dot(@TypeOf(x), @TypeOf(y))`: The dot product of `x` and `y`.
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0, or
-///   `incx` or `incy` is equal to 0.
+/// * `linalg.blas.Error.InvalidArgument`: If `n`, `incx` or `incy` is equal to
+///   0.
 pub fn dot(
-    n: isize,
+    n: usize,
     x: anytype,
     incx: isize,
     y: anytype,
@@ -76,23 +76,23 @@ pub fn dot(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    if (n <= 0 or incx == 0 or incy == 0)
+    if (n == 0 or incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
     if ((comptime options.link_cblas != null) and meta.Child(X) == meta.Child(Y)) {
         switch (comptime meta.numericType(meta.Child(X))) {
             .float => {
                 if (comptime meta.Child(X) == f32)
-                    return linalg.cblas.sdot(n, x, incx, y, incy)
+                    return linalg.cblas.sdot(numeric.cast(isize, n), x, incx, y, incy)
                 else if (comptime meta.Child(X) == f64)
-                    return linalg.cblas.ddot(n, x, incx, y, incy);
+                    return linalg.cblas.ddot(numeric.cast(isize, n), x, incx, y, incy);
             },
             .complex => {
                 var result: linalg.blas.Dot(X, Y) = undefined;
                 if (comptime meta.Scalar(meta.Child(X)) == f32)
-                    linalg.cblas.cdotu_sub(n, x, incx, y, incy, &result)
+                    linalg.cblas.cdotu_sub(numeric.cast(isize, n), x, incx, y, incy, &result)
                 else if (comptime meta.Scalar(meta.Child(X)) == f64)
-                    linalg.cblas.zdotu_sub(n, x, incx, y, incy, &result);
+                    linalg.cblas.zdotu_sub(numeric.cast(isize, n), x, incx, y, incy, &result);
 
                 return result;
             },
@@ -107,7 +107,7 @@ pub fn dot(
         if (opts.parallel_threshold == 0)
             break :blk options.max_threads;
 
-        break :blk int.max(1, numeric.cast(usize, n) / opts.parallel_threshold);
+        break :blk int.max(1, n / opts.parallel_threshold);
     } else opts.num_threads;
 
     num_threads = int.min(num_threads, options.max_threads);
@@ -124,31 +124,31 @@ pub fn dot(
     var sums: [options.max_threads]meta.Accumulator(linalg.blas.Dot(X, Y)) = .{numeric.zero(meta.Accumulator(linalg.blas.Dot(X, Y)))} ** options.max_threads;
 
     const Worker = struct {
-        fn execute(out: *meta.Accumulator(linalg.blas.Dot(X, Y)), worker_n: isize, worker_x: X, worker_incx: isize, worker_y: Y, worker_incy: isize) void {
+        fn execute(out: *meta.Accumulator(linalg.blas.Dot(X, Y)), worker_n: usize, worker_x: X, worker_incx: isize, worker_y: Y, worker_incy: isize) void {
             out.* = k_dot(worker_n, worker_x, worker_incx, worker_y, worker_incy);
         }
     };
 
-    const chunk_size = int.div(n, numeric.cast(isize, num_threads));
+    const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;
     var i: usize = 0;
     while (i < num_threads) : (i += 1) {
-        const chunk_start = numeric.cast(isize, i) * chunk_size;
+        const chunk_start = i * chunk_size;
         const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
 
         if (std.Thread.spawn(.{}, Worker.execute, .{
             &sums[i],
             chunk_end - chunk_start,
             x + numeric.cast(usize, if (incx > 0)
-                chunk_start * incx
+                numeric.cast(isize, chunk_start) * incx
             else
-                (-n + chunk_end) * incx),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
             incx,
             y + numeric.cast(usize, if (incy > 0)
-                chunk_start * incy
+                numeric.cast(isize, chunk_start) * incy
             else
-                (-n + chunk_end) * incy),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incy),
             incy,
         })) |th| {
             threads[i] = th;
@@ -172,18 +172,17 @@ pub fn dot(
     return numeric.cast(linalg.blas.Dot(X, Y), sum);
 }
 
-fn k_dot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumulator(linalg.blas.Dot(@TypeOf(x), @TypeOf(y))) {
+fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumulator(linalg.blas.Dot(@TypeOf(x), @TypeOf(y))) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    const len = numeric.cast(usize, n);
     const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(linalg.blas.Dot(X, Y))) orelse 2);
 
     var sums: [unroll]meta.Accumulator(linalg.blas.Dot(X, Y)) = .{numeric.zero(meta.Accumulator(linalg.blas.Dot(X, Y)))} ** unroll;
 
     if (incx == 1 and incy == 1) {
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += x[i + u] * y[i + u]
                 numeric.fma_(
@@ -195,7 +194,7 @@ fn k_dot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
             }
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             // sums[0] += x[i] * y[i]
             numeric.fma_(
                 &sums[0],
@@ -205,10 +204,10 @@ fn k_dot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
             );
         }
     } else {
-        var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-        var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+        var ix: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+        var iy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += x[ix + u * incx] * y[iy + u * incy]
                 numeric.fma_(
@@ -223,7 +222,7 @@ fn k_dot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
             iy += numeric.cast(isize, unroll) * incy;
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             // sums[0] += x[ix] * y[ix]
             numeric.fma_(
                 &sums[0],

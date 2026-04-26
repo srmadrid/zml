@@ -23,11 +23,11 @@ const linalg = @import("../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.axpy(n: isize, alpha: Al, x: [*]const X, incx: isize, y: [*]Y, incy: isize) !void
+/// linalg.blas.axpy(n: usize, alpha: Al, x: [*]const X, incx: isize, y: [*]Y, incy: isize) !void
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`isize`): Specifies the number of elements in vectors `x` and `y`.
+/// * `n` (`usize`): Specifies the number of elements in vectors `x` and `y`.
 ///   Must be greater than 0.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `x` (`anytype`): Many-item pointer, size at least
@@ -54,10 +54,10 @@ const linalg = @import("../../linalg.zig");
 /// `void`
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0, or
-///   `incx` or `incy` is equal to 0.
+/// * `linalg.blas.Error.InvalidArgument`: If `n`, `incx` or `incy` is equal to
+///   0.
 pub fn axpy(
-    n: isize,
+    n: usize,
     alpha: anytype,
     x: anytype,
     incx: isize,
@@ -80,22 +80,22 @@ pub fn axpy(
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (n <= 0 or incx == 0 or incy == 0)
+    if (n == 0 or incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
     if (comptime options.link_cblas != null and Al == X and Al == Y) {
         switch (comptime meta.numericType(Al)) {
             .float => {
                 if (comptime Al == f32)
-                    return linalg.cblas.saxpy(n, alpha, x, incx, y, incy)
+                    return linalg.cblas.saxpy(numeric.cast(isize, n), alpha, x, incx, y, incy)
                 else if (comptime Al == f64)
-                    return linalg.cblas.daxpy(n, alpha, x, incx, y, incy);
+                    return linalg.cblas.daxpy(numeric.cast(isize, n), alpha, x, incx, y, incy);
             },
             .complex => {
                 if (comptime meta.Scalar(Al) == f32)
-                    return linalg.cblas.caxpy(n, &alpha, x, incx, y, incy)
+                    return linalg.cblas.caxpy(numeric.cast(isize, n), &alpha, x, incx, y, incy)
                 else if (comptime meta.Scalar(Al) == f64)
-                    return linalg.cblas.zaxpy(n, &alpha, x, incx, y, incy);
+                    return linalg.cblas.zaxpy(numeric.cast(isize, n), &alpha, x, incx, y, incy);
             },
             else => {},
         }
@@ -108,7 +108,7 @@ pub fn axpy(
         if (opts.parallel_threshold == 0)
             break :blk options.max_threads;
 
-        break :blk int.max(1, numeric.cast(usize, n) / opts.parallel_threshold);
+        break :blk int.max(1, n / opts.parallel_threshold);
     } else opts.num_threads;
 
     num_threads = int.min(num_threads, options.max_threads);
@@ -123,26 +123,26 @@ pub fn axpy(
 
     var threads: [options.max_threads]std.Thread = undefined;
 
-    const chunk_size = int.div(n, numeric.cast(isize, num_threads));
+    const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;
     var i: usize = 0;
     while (i < num_threads) : (i += 1) {
-        const chunk_start = numeric.cast(isize, i) * chunk_size;
+        const chunk_start = i * chunk_size;
         const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
 
         if (std.Thread.spawn(.{}, k_axpy, .{
             chunk_end - chunk_start,
             alpha,
             x + numeric.cast(usize, if (incx > 0)
-                chunk_start * incx
+                numeric.cast(isize, chunk_start) * incx
             else
-                (-n + chunk_end) * incx),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
             incx,
             y + numeric.cast(usize, if (incy > 0)
-                chunk_start * incy
+                numeric.cast(isize, chunk_start) * incy
             else
-                (-n + chunk_end) * incy),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incy),
             incy,
         })) |th| {
             threads[i] = th;
@@ -162,20 +162,19 @@ pub fn axpy(
         return err;
 }
 
-fn k_axpy(n: isize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize) void {
+fn k_axpy(n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize) void {
     const Al: type = @TypeOf(alpha);
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    if (n == 0 or numeric.eq(alpha, 0))
+    if (numeric.eq(alpha, 0))
         return;
 
-    const len = numeric.cast(usize, n);
     const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(Al, X, Y)) orelse 2);
 
     if (incx == 1 and incy == 1) {
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // y[i + u] += alpha * x[i + u]
                 numeric.fma_(
@@ -187,7 +186,7 @@ fn k_axpy(n: isize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
             }
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             // y[i] += alpha * x[i]
             numeric.fma_(
                 &y[i],
@@ -197,10 +196,10 @@ fn k_axpy(n: isize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
             );
         }
     } else {
-        var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-        var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+        var ix: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+        var iy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // y[iy + u * incy] += alpha * x[ix + u * incx]
                 numeric.fma_(
@@ -215,7 +214,7 @@ fn k_axpy(n: isize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
             iy += numeric.cast(isize, unroll) * incy;
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             // y[iy] += alpha * x[ix]
             numeric.fma_(
                 &y[numeric.cast(usize, iy)],

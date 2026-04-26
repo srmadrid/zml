@@ -16,11 +16,11 @@ const linalg = @import("../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.swap(n: isize, x: [*]X, incx: isize, y: [*]Y, incy: isize) !void
+/// linalg.blas.swap(n: usize, x: [*]X, incx: isize, y: [*]Y, incy: isize) !void
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`isize`): Specifies the number of elements in vectors `x` and `y`.
+/// * `n` (`usize`): Specifies the number of elements in vectors `x` and `y`.
 ///   Must be greater than 0.
 /// * `x` (`anytype`): Mutable many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`. On return contains the updated vector `x`.
@@ -50,7 +50,7 @@ const linalg = @import("../../linalg.zig");
 /// * `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0, or
 ///   `incx` or `incy` is equal to 0.
 pub fn swap(
-    n: isize,
+    n: usize,
     x: anytype,
     incx: isize,
     y: anytype,
@@ -70,22 +70,22 @@ pub fn swap(
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (n <= 0 or incx == 0 or incy == 0)
+    if (n == 0 or incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
     if (comptime options.link_cblas != null and X == Y) {
         switch (comptime meta.numericType(X)) {
             .float => {
                 if (comptime X == f32)
-                    return linalg.cblas.sswap(n, x, incx, y, incy)
+                    return linalg.cblas.sswap(numeric.cast(isize, n), x, incx, y, incy)
                 else if (comptime X == f64)
-                    return linalg.cblas.dswap(n, x, incx, y, incy);
+                    return linalg.cblas.dswap(numeric.cast(isize, n), x, incx, y, incy);
             },
             .complex => {
                 if (comptime meta.Scalar(X) == f32)
-                    return linalg.cblas.cswap(n, x, incx, y, incy)
+                    return linalg.cblas.cswap(numeric.cast(isize, n), x, incx, y, incy)
                 else if (comptime meta.Scalar(X) == f64)
-                    return linalg.cblas.zswap(n, x, incx, y, incy);
+                    return linalg.cblas.zswap(numeric.cast(isize, n), x, incx, y, incy);
             },
             else => {},
         }
@@ -98,7 +98,7 @@ pub fn swap(
         if (opts.parallel_threshold == 0)
             break :blk options.max_threads;
 
-        break :blk int.max(1, numeric.cast(usize, n) / opts.parallel_threshold);
+        break :blk int.max(1, n / opts.parallel_threshold);
     } else opts.num_threads;
 
     num_threads = int.min(num_threads, options.max_threads);
@@ -113,25 +113,25 @@ pub fn swap(
 
     var threads: [options.max_threads]std.Thread = undefined;
 
-    const chunk_size = int.div(n, numeric.cast(isize, num_threads));
+    const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;
     var i: usize = 0;
     while (i < num_threads) : (i += 1) {
-        const chunk_start = numeric.cast(isize, i) * chunk_size;
+        const chunk_start = i * chunk_size;
         const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
 
         if (std.Thread.spawn(.{}, k_swap, .{
             chunk_end - chunk_start,
             x + numeric.cast(usize, if (incx > 0)
-                chunk_start * incx
+                numeric.cast(isize, chunk_start) * incx
             else
-                (-n + chunk_end) * incx),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
             incx,
             y + numeric.cast(usize, if (incy > 0)
-                chunk_start * incy
+                numeric.cast(isize, chunk_start) * incy
             else
-                (-n + chunk_end) * incy),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incy),
             incy,
         })) |th| {
             threads[i] = th;
@@ -151,14 +151,10 @@ pub fn swap(
         return err;
 }
 
-fn k_swap(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) void {
+fn k_swap(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) void {
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    if (n == 0)
-        return;
-
-    const len = numeric.cast(usize, n);
     const unroll = 2 * (int.min(
         std.simd.suggestVectorLength(X) orelse 2,
         std.simd.suggestVectorLength(Y) orelse 2,
@@ -166,7 +162,7 @@ fn k_swap(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) void {
 
     if (incx == 1 and incy == 1) {
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 const temp = x[i + u];
 
@@ -184,7 +180,7 @@ fn k_swap(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) void {
             }
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             const temp = x[i];
 
             // x[i] = y[i]
@@ -200,10 +196,10 @@ fn k_swap(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) void {
             );
         }
     } else {
-        var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-        var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+        var ix: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+        var iy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 const temp = x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)];
 
@@ -224,7 +220,7 @@ fn k_swap(n: isize, x: anytype, incx: isize, y: anytype, incy: isize) void {
             iy += numeric.cast(isize, unroll) * incy;
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             const temp = x[numeric.cast(usize, ix)];
 
             // x[ix] = y[iy]

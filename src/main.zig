@@ -2,58 +2,60 @@ const std = @import("std");
 const zsl = @import("zsl");
 
 pub fn main(init: std.process.Init) !void {
-    const io = init.io;
-    var gpa: std.heap.DebugAllocator(.{}) = .{ .backing_allocator = init.gpa };
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
-    const benchmark = true;
+    try blas_lv1_threshold_calibration(init);
 
-    var m: isize = 1_000_000 * (if (benchmark) 1 else 1);
-    _ = &m;
-    var n: isize = 1_500_000 * (if (benchmark) 1 else 1);
-    _ = &n;
-    var kl: isize = 500;
-    _ = &kl;
-    var ku: isize = 350;
-    _ = &ku;
+    // const io = init.io;
+    // var gpa: std.heap.DebugAllocator(.{}) = .{ .backing_allocator = init.gpa };
+    // defer _ = gpa.deinit();
+    // const allocator = gpa.allocator();
+    // const benchmark = true;
 
-    const lda = kl + ku + 1;
-    const a = try allocator.alloc(f64, zsl.numeric.cast(usize, lda * n));
-    defer allocator.free(a);
-    const x = try allocator.alloc(f64, zsl.numeric.cast(usize, n));
-    defer allocator.free(x);
-    const y = try allocator.alloc(f64, zsl.numeric.cast(usize, m));
-    defer allocator.free(y);
-    for (a, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 100)) / 100.0;
-    for (x, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 33)) / 100.0;
-    for (y) |*v| v.* = 0;
+    // var m: usize = 1_000_000 * (if (benchmark) 1 else 1);
+    // _ = &m;
+    // var n: usize = 1_500_000 * (if (benchmark) 1 else 1);
+    // _ = &n;
+    // var kl: usize = 500;
+    // _ = &kl;
+    // var ku: usize = 350;
+    // _ = &ku;
 
-    const start_time = std.Io.Clock.real.now(io);
-    try zsl.linalg.blas.gbmv(
-        .col_major,
-        .no_trans,
-        m,
-        n,
-        kl,
-        ku,
-        @as(f64, 2.0),
-        a.ptr,
-        lda,
-        x.ptr,
-        1,
-        @as(f64, 1.0),
-        y.ptr,
-        1,
-    );
-    const end_time = std.Io.Clock.real.now(io);
+    // const lda = kl + ku + 1;
+    // const a = try allocator.alloc(f64, zsl.numeric.cast(usize, lda * n));
+    // defer allocator.free(a);
+    // const x = try allocator.alloc(f64, zsl.numeric.cast(usize, n));
+    // defer allocator.free(x);
+    // const y = try allocator.alloc(f64, zsl.numeric.cast(usize, m));
+    // defer allocator.free(y);
+    // for (a, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 100)) / 100.0;
+    // for (x, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 33)) / 100.0;
+    // for (y) |*v| v.* = 0;
 
-    std.debug.print(
-        "zsl.linalg.blas.gbmv ({} x {}, kl={}, ku={}) took {d} seconds\n",
-        .{
-            m,                                                                                                                           n, kl, ku,
-            (zsl.numeric.cast(f128, end_time.toNanoseconds()) - zsl.numeric.cast(f128, start_time.toNanoseconds())) / std.time.ns_per_s,
-        },
-    );
+    // const start_time = std.Io.Clock.real.now(io);
+    // try zsl.linalg.blas.gbmv(
+    //     .col_major,
+    //     .no_trans,
+    //     m,
+    //     n,
+    //     kl,
+    //     ku,
+    //     @as(f64, 2.0),
+    //     a.ptr,
+    //     lda,
+    //     x.ptr,
+    //     1,
+    //     @as(f64, 1.0),
+    //     y.ptr,
+    //     1,
+    // );
+    // const end_time = std.Io.Clock.real.now(io);
+
+    // std.debug.print(
+    //     "zsl.linalg.blas.gbmv ({} x {}, kl={}, ku={}) took {d} seconds\n",
+    //     .{
+    //         m,                                                                                                                           n, kl, ku,
+    //         (zsl.numeric.cast(f128, end_time.toNanoseconds()) - zsl.numeric.cast(f128, start_time.toNanoseconds())) / std.time.ns_per_s,
+    //     },
+    // );
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
@@ -63,8 +65,8 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const max_n: isize = 268_435_457;
-    const alpha: f64 = 2.0;
+    const max_n: usize = 268_435_457;
+    // const alpha: f64 = 2.0;
     const a = try allocator.alloc(f64, zsl.numeric.cast(usize, max_n));
     const b = try allocator.alloc(f64, zsl.numeric.cast(usize, max_n));
     defer allocator.free(a);
@@ -97,7 +99,7 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
     // ratio storage for the summary pass.
     var n_rows: usize = 0;
     {
-        var x: isize = 128;
+        var x: usize = 128;
         while (x <= max_n) : (x *= 2) n_rows += 1;
     }
 
@@ -107,7 +109,7 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
     defer allocator.free(ratios);
     const thread_counts = try allocator.alloc([]usize, thresholds.len);
     defer allocator.free(thread_counts);
-    const row_ns = try allocator.alloc(isize, n_rows);
+    const row_ns = try allocator.alloc(usize, n_rows);
     defer allocator.free(row_ns);
     for (ratios, thread_counts) |*r, *t| {
         r.* = try allocator.alloc(f64, n_rows);
@@ -118,7 +120,7 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
         allocator.free(t);
     };
 
-    std.debug.print("\n=== ROT Threshold Calibration ===\n", .{});
+    std.debug.print("\n=== IAMIN Threshold Calibration ===\n", .{});
     std.debug.print("Hardware threads: {d}, options.max_threads: {d}, effective cap: {d}\n", .{ hw_threads, options_max_threads, effective_cap });
     std.debug.print("Automatic-mode rule: threads = max(1, min(effective_cap, n / T))\n\n", .{});
     std.debug.print("Cell format: 'R.RRx(Nt)' -> R = parallel_time/serial_time, N = threads spawned\n", .{});
@@ -139,7 +141,7 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
     std.debug.print("\n", .{});
 
     var row: usize = 0;
-    var current_n: isize = 128;
+    var current_n: usize = 128;
     while (current_n <= max_n) : (current_n *= 2) {
         row_ns[row] = current_n;
 
@@ -148,12 +150,12 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
 
         // --- Serial baseline: force single-threaded with num_threads = 1. ---
         std.mem.doNotOptimizeAway(
-            try zsl.linalg.blas.rot(current_n, a.ptr, 1, b.ptr, 1, zsl.numeric.cos(alpha), zsl.numeric.sin(alpha), .{ .num_threads = 1 }),
+            try zsl.linalg.blas.iamin(current_n, a.ptr, 1, .{ .num_threads = 1 }),
         );
         const s0 = std.Io.Clock.real.now(io);
         for (0..iters) |_| {
             std.mem.doNotOptimizeAway(
-                try zsl.linalg.blas.rot(current_n, a.ptr, 1, b.ptr, 1, zsl.numeric.cos(alpha), zsl.numeric.sin(alpha), .{ .num_threads = 1 }),
+                try zsl.linalg.blas.iamin(current_n, a.ptr, 1, .{ .num_threads = 1 }),
             );
         }
         const s1 = std.Io.Clock.real.now(io);
@@ -167,12 +169,12 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
 
         for (thresholds, 0..) |T, k| {
             std.mem.doNotOptimizeAway(
-                try zsl.linalg.blas.rot(current_n, a.ptr, 1, b.ptr, 1, zsl.numeric.cos(alpha), zsl.numeric.sin(alpha), .{ .num_threads = 0, .parallel_threshold = T }),
+                try zsl.linalg.blas.iamin(current_n, a.ptr, 1, .{ .num_threads = 0, .parallel_threshold = T }),
             );
             const p0 = std.Io.Clock.real.now(io);
             for (0..iters) |_| {
                 std.mem.doNotOptimizeAway(
-                    try zsl.linalg.blas.rot(current_n, a.ptr, 1, b.ptr, 1, zsl.numeric.cos(alpha), zsl.numeric.sin(alpha), .{ .num_threads = 0, .parallel_threshold = T }),
+                    try zsl.linalg.blas.iamin(current_n, a.ptr, 1, .{ .num_threads = 0, .parallel_threshold = T }),
                 );
             }
             const p1 = std.Io.Clock.real.now(io);
@@ -238,9 +240,9 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
         var spawn_count: usize = 0;
         var best: f64 = std.math.inf(f64);
         var worst: f64 = -std.math.inf(f64);
-        var worst_n: isize = 0;
+        var worst_n: usize = 0;
         var regression_count: usize = 0;
-        var first_win_n: ?isize = null;
+        var first_win_n: ?usize = null;
 
         for (0..n_rows) |r| {
             const ratio = ratios[k][r];
@@ -308,7 +310,7 @@ fn fmtT(buf: []u8, x: usize) []const u8 {
     return std.fmt.bufPrint(buf, "T={d}", .{x}) catch "?";
 }
 
-fn fmtN(buf: []u8, x: isize) []const u8 {
+fn fmtN(buf: []u8, x: usize) []const u8 {
     const ux: usize = @intCast(x);
     if (ux >= 1024 * 1024)
         return std.fmt.bufPrint(buf, "{d}Mi", .{ux / (1024 * 1024)}) catch "?";

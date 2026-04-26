@@ -24,11 +24,11 @@ const linalg = @import("../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.rot(n: isize, x: [*]X, incx: isize, y: [*]Y, incy: isize, c: C, s: S) !void
+/// linalg.blas.rot(n: usize, x: [*]X, incx: isize, y: [*]Y, incy: isize, c: C, s: S) !void
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`isize`): Number of elements in `x` and `y`. Must be greater than 0.
+/// * `n` (`usize`): Number of elements in `x` and `y`. Must be greater than 0.
 /// * `x` (`anytype`): Mutable many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -56,10 +56,10 @@ const linalg = @import("../../linalg.zig");
 /// `void`
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `n <= 0`, or `incx == 0`, or
-///   `incy == 0`.
+/// * `linalg.blas.Error.InvalidArgument`: If `n`, `incx` or `incy` is equal to
+///   zero.
 pub fn rot(
-    n: isize,
+    n: usize,
     x: anytype,
     incx: isize,
     y: anytype,
@@ -79,33 +79,33 @@ pub fn rot(
     comptime if (!meta.isManyItemPointer(X) or meta.isConstPointer(X) or !meta.isNumeric(meta.Child(X)) or
         !meta.isManyItemPointer(Y) or meta.isConstPointer(Y) or !meta.isNumeric(meta.Child(Y)) or
         !meta.isNumeric(C) or !meta.isReal(C) or !meta.isNumeric(S))
-        @compileError("zsl.linalg.blas.axpy: x and y must be mutable many-item pointers to numerics, c must be a real numeric, and s must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tc: " ++ @typeName(C) ++ "\n\ts: " ++ @typeName(S) ++ "\n");
+        @compileError("zsl.linalg.blas.rot: x and y must be mutable many-item pointers to numerics, c must be a real numeric, and s must be a numeric, got \n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\tc: " ++ @typeName(C) ++ "\n\ts: " ++ @typeName(S) ++ "\n");
 
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (n <= 0 or incx == 0 or incy == 0)
+    if (n == 0 or incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
     if (comptime options.link_cblas != null and X == Y and meta.Real(X) == C and meta.Real(X) == S) {
         switch (comptime meta.numericType(X)) {
             .float => {
                 if (comptime X == f32)
-                    return linalg.cblas.srot(n, x, incx, y, incy, c, s)
+                    return linalg.cblas.srot(numeric.cast(isize, n), x, incx, y, incy, c, s)
                 else if (comptime X == f64)
-                    return linalg.cblas.drot(n, x, incx, y, incy, c, s);
+                    return linalg.cblas.drot(numeric.cast(isize, n), x, incx, y, incy, c, s);
             },
             .complex => {
                 if (comptime !meta.isComplex(S)) {
                     if (comptime meta.Scalar(X) == f32)
-                        return linalg.cblas.csrot(n, x, incx, y, incy, c, s)
+                        return linalg.cblas.csrot(numeric.cast(isize, n), x, incx, y, incy, c, s)
                     else if (comptime meta.Scalar(X) == f64)
-                        return linalg.cblas.zdrot(n, x, incx, y, incy, c, s);
+                        return linalg.cblas.zdrot(numeric.cast(isize, n), x, incx, y, incy, c, s);
                 } else {
                     if (comptime meta.Scalar(X) == f32)
-                        return linalg.cblas.crot(n, x, incx, y, incy, c, &s)
+                        return linalg.cblas.crot(numeric.cast(isize, n), x, incx, y, incy, c, &s)
                     else if (comptime meta.Scalar(X) == f64)
-                        return linalg.cblas.zrot(n, x, incx, y, incy, c, &s);
+                        return linalg.cblas.zrot(numeric.cast(isize, n), x, incx, y, incy, c, &s);
                 }
             },
             else => {},
@@ -119,7 +119,7 @@ pub fn rot(
         if (opts.parallel_threshold == 0)
             break :blk options.max_threads;
 
-        break :blk int.max(1, numeric.cast(usize, n) / opts.parallel_threshold);
+        break :blk int.max(1, n / opts.parallel_threshold);
     } else opts.num_threads;
 
     num_threads = int.min(num_threads, options.max_threads);
@@ -134,25 +134,25 @@ pub fn rot(
 
     var threads: [options.max_threads]std.Thread = undefined;
 
-    const chunk_size = int.div(n, numeric.cast(isize, num_threads));
+    const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;
     var i: usize = 0;
     while (i < num_threads) : (i += 1) {
-        const chunk_start = numeric.cast(isize, i) * chunk_size;
+        const chunk_start = i * chunk_size;
         const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
 
         if (std.Thread.spawn(.{}, k_rot, .{
             chunk_end - chunk_start,
             x + numeric.cast(usize, if (incx > 0)
-                chunk_start * incx
+                numeric.cast(isize, chunk_start) * incx
             else
-                (-n + chunk_end) * incx),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
             incx,
             y + numeric.cast(usize, if (incy > 0)
-                chunk_start * incy
+                numeric.cast(isize, chunk_start) * incy
             else
-                (-n + chunk_end) * incy),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incy),
             incy,
             c,
             s,
@@ -166,18 +166,20 @@ pub fn rot(
     }
 
     var t: usize = 0;
-    while (t < spawned_count) : (t += 1) threads[t].join();
+    while (t < spawned_count) : (t += 1) {
+        threads[t].join();
+    }
 
-    if (spawn_err) |err| return err;
+    if (spawn_err) |err|
+        return err;
 }
 
-fn k_rot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype, s: anytype) void {
+fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype, s: anytype) void {
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
     const C: type = @TypeOf(c);
     const S: type = @TypeOf(s);
 
-    const len = numeric.cast(usize, n);
     const unroll = 2 * int.min(
         std.simd.suggestVectorLength(numeric.Fma(C, X, numeric.Mul(S, Y))) orelse 2,
         std.simd.suggestVectorLength(numeric.Fma(C, Y, numeric.Neg(numeric.Mul(numeric.Conj(S), X)))) orelse 2,
@@ -185,7 +187,7 @@ fn k_rot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
 
     if (incx == 1 and incy == 1) {
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 const xi = x[i + u];
 
@@ -207,7 +209,7 @@ fn k_rot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
             }
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             const xi = x[i];
 
             // x[i] = c * xi + s * y[i]
@@ -227,10 +229,10 @@ fn k_rot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
             );
         }
     } else {
-        var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
-        var iy: isize = if (incy < 0) (-n + 1) * incy else 0;
+        var ix: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+        var iy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
         var i: usize = 0;
-        while (i < (len / unroll) * unroll) : (i += unroll) {
+        while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 const x_idx = numeric.cast(usize, ix + numeric.cast(isize, u) * incx);
                 const y_idx = numeric.cast(usize, iy + numeric.cast(isize, u) * incy);
@@ -257,7 +259,7 @@ fn k_rot(n: isize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
             iy += numeric.cast(isize, unroll) * incy;
         }
 
-        while (i < len) : (i += 1) {
+        while (i < n) : (i += 1) {
             const x_idx = numeric.cast(usize, ix);
             const y_idx = numeric.cast(usize, iy);
             const xi = x[x_idx];

@@ -23,11 +23,11 @@ const linalg = @import("../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.iamin(n: isize, x: [*]const X, incx: isize) !usize
+/// linalg.blas.iamin(n: usize, x: [*]const X, incx: isize) !usize
 /// ```
 ///
 /// ## Arguments
-/// * `n` (`isize`): Number of elements in `x`. Must be greater than 0.
+/// * `n` (`usize`): Number of elements in `x`. Must be greater than 0.
 /// * `x` (`anytype`): Many-item pointer, size at least
 ///   `1 + (n - 1) * abs(incx)`.
 /// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
@@ -50,10 +50,9 @@ const linalg = @import("../../linalg.zig");
 /// `usize`: The 0-based index of the first element with the smallest magnitude.
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `n` is less than or equal to 0,
-///   or `incx` is equal to 0.
+/// * `linalg.blas.Error.InvalidArgument`: If `n` or `incx` is equal to 0.
 pub fn iamin(
-    n: isize,
+    n: usize,
     x: anytype,
     incx: isize,
     opts: struct {
@@ -66,22 +65,22 @@ pub fn iamin(
     comptime if (!meta.isManyItemPointer(X) or meta.isConstPointer(X) or !meta.isNumeric(meta.Child(X)))
         @compileError("zsl.linalg.blas.iamin: x must be a mutable many-item pointer to numerics, got \n\tx: " ++ @typeName(X) ++ "\n");
 
-    if (n <= 0 or incx == 0)
+    if (n == 0 or incx == 0)
         return linalg.blas.Error.InvalidArgument;
 
     if ((comptime options.link_cblas != null) and incx > 0) {
         switch (comptime meta.numericType(meta.Child(X))) {
             .float => {
                 if (comptime meta.Child(X) == f32)
-                    return linalg.cblas.isamin(n, x, incx)
+                    return linalg.cblas.isamin(numeric.cast(isize, n), x, incx)
                 else if (comptime meta.Child(X) == f64)
-                    return linalg.cblas.idamin(n, x, incx);
+                    return linalg.cblas.idamin(numeric.cast(isize, n), x, incx);
             },
             .complex => {
                 if (comptime meta.Scalar(meta.Child(X)) == f32)
-                    return linalg.cblas.icamin(n, x, incx)
+                    return linalg.cblas.icamin(numeric.cast(isize, n), x, incx)
                 else if (comptime meta.Scalar(meta.Child(X)) == f64)
-                    return linalg.cblas.izamin(n, x, incx);
+                    return linalg.cblas.izamin(numeric.cast(isize, n), x, incx);
             },
             else => {},
         }
@@ -94,7 +93,7 @@ pub fn iamin(
         if (opts.parallel_threshold == 0)
             break :blk options.max_threads;
 
-        break :blk int.max(1, numeric.cast(usize, n) / opts.parallel_threshold);
+        break :blk int.max(1, n / opts.parallel_threshold);
     } else opts.num_threads;
 
     num_threads = int.min(num_threads, options.max_threads);
@@ -112,28 +111,28 @@ pub fn iamin(
     var chunk_bases: [options.max_threads]usize = .{0} ** options.max_threads;
 
     const Worker = struct {
-        fn execute(out: *IaminResult(numeric.Abs1(meta.Child(X))), worker_n: isize, worker_x: X, worker_incx: isize) void {
+        fn execute(out: *IaminResult(numeric.Abs1(meta.Child(X))), worker_n: usize, worker_x: X, worker_incx: isize) void {
             out.* = k_iamin(worker_n, worker_x, worker_incx);
         }
     };
 
-    const chunk_size = int.div(n, numeric.cast(isize, num_threads));
+    const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;
     var i: usize = 0;
     while (i < num_threads) : (i += 1) {
-        const chunk_start = numeric.cast(isize, i) * chunk_size;
+        const chunk_start = i * chunk_size;
         const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
 
-        chunk_bases[i] = numeric.cast(usize, chunk_start);
+        chunk_bases[i] = chunk_start;
 
         if (std.Thread.spawn(.{}, Worker.execute, .{
             &results[i],
             chunk_end - chunk_start,
             x + numeric.cast(usize, if (incx > 0)
-                chunk_start * incx
+                numeric.cast(isize, chunk_start) * incx
             else
-                (-n + chunk_end) * incx),
+                (-numeric.cast(isize, n) + numeric.cast(isize, chunk_end)) * incx),
             incx,
         })) |th| {
             threads[i] = th;
@@ -168,13 +167,13 @@ pub fn IaminResult(N: type) type {
     };
 }
 
-fn k_iamin(n: isize, x: anytype, incx: isize) IaminResult(numeric.Abs1(meta.Child(@TypeOf(x)))) {
+fn k_iamin(n: usize, x: anytype, incx: isize) IaminResult(numeric.Abs1(meta.Child(@TypeOf(x)))) {
     const len = numeric.cast(usize, n);
 
     var best_value = if (incx == 1)
         numeric.abs1(x[0])
     else
-        numeric.abs1(x[numeric.cast(usize, if (incx < 0) (-n + 1) * incx else 0)]);
+        numeric.abs1(x[numeric.cast(usize, if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0)]);
     var best_index: usize = 0;
 
     if (incx == 1) {
@@ -187,7 +186,7 @@ fn k_iamin(n: isize, x: anytype, incx: isize) IaminResult(numeric.Abs1(meta.Chil
             }
         }
     } else {
-        var ix: isize = if (incx < 0) (-n + 1) * incx else 0;
+        var ix: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
 
         ix += incx;
 
