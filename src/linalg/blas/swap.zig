@@ -235,8 +235,8 @@ fn k_swap(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) void {
                 temp,
             );
 
-            ix += numeric.cast(isize, unroll) * incx;
-            iy += numeric.cast(isize, unroll) * incy;
+            ix += incx;
+            iy += incy;
         }
     }
 }

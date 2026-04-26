@@ -491,8 +491,8 @@ pub fn Accumulator(comptime N: type) type {
         .float => {
             return if (comptime @typeInfo(N).float.bits <= 16) f32 else N;
         },
-        .dyadic => N.Accumulator,
-        .complex => N.Accumulator,
+        .dyadic => return N.Accumulator,
+        .complex => return N.Accumulator,
         .custom => {
             if (comptime !@hasDecl(N, "Accumulator"))
                 @compileError("zsl.meta.Accumulator: custom numeric type " ++ @typeName(N) ++ " must have an `Accumulator` declaration");

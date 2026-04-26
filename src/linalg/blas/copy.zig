@@ -208,8 +208,8 @@ fn k_copy(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) void {
                 x[numeric.cast(usize, ix)],
             );
 
-            ix += numeric.cast(isize, unroll) * incx;
-            iy += numeric.cast(isize, unroll) * incy;
+            ix += incx;
+            iy += incy;
         }
     }
 }

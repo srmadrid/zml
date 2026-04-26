@@ -201,7 +201,7 @@ fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
                 x[numeric.cast(usize, ix)],
             );
 
-            ix += numeric.cast(isize, unroll) * incx;
+            ix += incx;
         }
     }
 }

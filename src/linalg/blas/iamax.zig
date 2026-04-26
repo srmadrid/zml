@@ -62,8 +62,8 @@ pub fn iamax(
 ) !usize {
     const X: type = @TypeOf(x);
 
-    comptime if (!meta.isManyItemPointer(X) or meta.isConstPointer(X) or !meta.isNumeric(meta.Child(X)))
-        @compileError("zsl.linalg.blas.iamax: x must be a mutable many-item pointer to numerics, got \n\tx: " ++ @typeName(X) ++ "\n");
+    comptime if (!meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)))
+        @compileError("zsl.linalg.blas.iamax: x must be a many-item pointer to numerics, got \n\tx: " ++ @typeName(X) ++ "\n");
 
     if (n == 0 or incx == 0)
         return linalg.blas.Error.InvalidArgument;

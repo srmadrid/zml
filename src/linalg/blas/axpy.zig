@@ -223,8 +223,8 @@ fn k_axpy(n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
                 y[numeric.cast(usize, iy)],
             );
 
-            ix += numeric.cast(isize, unroll) * incx;
-            iy += numeric.cast(isize, unroll) * incy;
+            ix += incx;
+            iy += incy;
         }
     }
 }
