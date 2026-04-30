@@ -164,7 +164,7 @@ fn k_hbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize
                     x[j],
                 );
 
-                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(numeric.Conj(A), if (comptime noconj) X else numeric.Conj(X))));
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
 
                 var i: usize = j -| k;
                 while (i < j) : (i += 1) {
@@ -214,7 +214,7 @@ fn k_hbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize
                     x[numeric.cast(usize, jx)],
                 );
 
-                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(numeric.Conj(A), if (comptime noconj) X else numeric.Conj(X))));
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
 
                 var ix: isize = kx;
                 var iy: isize = ky;
@@ -278,7 +278,7 @@ fn k_hbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize
                     x[j],
                 );
 
-                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(numeric.Conj(A), if (comptime noconj) X else numeric.Conj(X))));
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
 
                 // y[j] += temp1 * re(a[0 + j * lda])
                 numeric.fma_(
@@ -332,7 +332,7 @@ fn k_hbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize
                     x[numeric.cast(usize, jx)],
                 );
 
-                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(numeric.Conj(A), if (comptime noconj) X else numeric.Conj(X))));
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
 
                 // y[jy] += temp1 * re(a[0 + j * lda])
                 numeric.fma_(
