@@ -76,11 +76,11 @@ pub fn hbmv(layout: Layout, uplo: Uplo, n: usize, k: usize, alpha: anytype, a: a
         return linalg.blas.Error.InvalidArgument;
 
     if (comptime options.link_cblas != null and Al == A and Al == X and Al == Y and Al == Be) {
-        switch (comptime meta.numericType(A)) {
+        switch (comptime meta.numericType(Al)) {
             .complex => {
-                if (comptime meta.Scalar(A) == f32)
+                if (comptime meta.Scalar(Al) == f32)
                     return linalg.cblas.chbmv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), numeric.cast(isize, k), &alpha, a, numeric.cast(isize, lda), x, incx, &beta, y, incy)
-                else if (comptime meta.Scalar(A) == f64)
+                else if (comptime meta.Scalar(Al) == f64)
                     return linalg.cblas.zhbmv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), numeric.cast(isize, k), &alpha, a, numeric.cast(isize, lda), x, incx, &beta, y, incy);
             },
             else => {},

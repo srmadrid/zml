@@ -31,7 +31,7 @@ const linalg = @import("../../linalg.zig");
 /// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
 ///   col-major or row-major.
 /// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
-///   the Hermitian band matrix `A` is used.
+///   the Hermitian packed matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `ap` (`anytype`): Many-item pointer, size at least `(n * (n + 1)) / 2`.
@@ -71,11 +71,11 @@ pub fn hpmv(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x
         return linalg.blas.Error.InvalidArgument;
 
     if (comptime options.link_cblas != null and Al == Ap and Al == X and Al == Y and Al == Be) {
-        switch (comptime meta.numericType(Ap)) {
+        switch (comptime meta.numericType(Al)) {
             .complex => {
-                if (comptime meta.Scalar(Ap) == f32)
+                if (comptime meta.Scalar(Al) == f32)
                     return linalg.cblas.chpmv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, ap, x, incx, &beta, y, incy)
-                else if (comptime meta.Scalar(Ap) == f64)
+                else if (comptime meta.Scalar(Al) == f64)
                     return linalg.cblas.zhpmv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, ap, x, incx, &beta, y, incy);
             },
             else => {},
@@ -219,7 +219,7 @@ fn k_hpmv(uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: i
 
                 var ix: isize = kx;
                 var iy: isize = ky;
-                var k: isize = kk;
+                var k: usize = kk;
                 while (k < kk + j) : (k += 1) {
                     // y[iy] += temp1 * ap[k]
                     numeric.fma_(

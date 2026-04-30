@@ -1,534 +1,368 @@
-const std = @import("std");
+const options = @import("options");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
+const meta = @import("../../meta.zig");
+const Layout = meta.Layout;
+const Uplo = meta.Uplo;
+
+const numeric = @import("../../numeric.zig");
+
 const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Order = types.Order;
-const Uplo = types.Uplo;
 
-/// Computes a matrix-vector product with a symmetric packed matrix.
-///
-/// The `spmv` routine performs a matrix-vector operation defined as:
+/// Computes a matrix-vector product with a symmetric packed matrix defined as:
 ///
 /// ```zig
-///     y = alpha * A * x + beta * y
+/// y = alpha * A * x + beta * y
 /// ```
 ///
-/// where `alpha` and `beta` are scalars, `x` and `y` are `n`-element vectors,
+/// where `alpha` and `beta` are numerics, `x` and `y` are `n`-element vectors,
 /// `A` is an `n`-by-`n` symmetric matrix, supplied in packed form.
 ///
-/// Signature
-/// ---------
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available.
+///
+/// ## Signature
 /// ```zig
-/// fn spmv(order: Order, uplo: Uplo, n: i32, alpha: Al, ap: [*]const A, x: [*]const X, incx: i32, beta: Be, y: [*]Y, incy: i32, ctx: anytype) !void
+/// linalg.blas.spmv(layout: Layout, uplo: Uplo, n: usize, alpha: Al, ap: [*]const Ap, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
+///   col-major or row-major.
+/// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
+///   the symmetric packed matrix `A` is used.
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `ap` (`anytype`): Many-item pointer, size at least `(n * (n + 1)) / 2`.
+/// * `x` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `beta` (`anytype`): Specifies the numeric `beta`. When `beta` is 0, then
+///   `y` need not be set on input.
+/// * `y` (`anytype`): Mutable many-item pointer, size at least
+///   `1 + (n - 1) * abs(incy)`. On return, contains the result of the
+///   operation.
+/// * `incy` (`isize`): Indexing increment for `y`. Must be different from 0.
 ///
-/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// matrix `A` is supplied in the packed array `ap`:
-/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
-/// supplied in `ap`.
-/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
-/// supplied in `ap`.
+/// ## Returns
+/// `void`
 ///
-/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
-/// or equal to 0.
-///
-/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): Specifies the scalar `alpha`.
-///
-/// `ap` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `(n * (n + 1)) / 2`.
-///
-/// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incx)`.
-///
-/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
-/// different from 0.
-///
-/// `beta` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): Specifies the scalar `beta`. When `beta` is
-/// 0, then `y` need not be set on input.
-///
-/// `y` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incy)`. On return, contains the result of the
-/// operation.
-///
-/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
-/// different from 0.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `y`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` or
-/// `incy` is 0.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
-pub fn spmv(
-    order: Layout,
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    ap: anytype,
-    x: anytype,
-    incx: i32,
-    beta: anytype,
-    y: anytype,
-    incy: i32,
-    ctx: anytype,
-) !void {
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` or `incy` is 0.
+pub fn spmv(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) !void {
     const Al: type = @TypeOf(alpha);
-    comptime var A: type = @TypeOf(ap);
+    comptime var Ap: type = @TypeOf(ap);
     comptime var X: type = @TypeOf(x);
     const Be: type = @TypeOf(beta);
     comptime var Y: type = @TypeOf(y);
 
-    comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.spmv requires alpha to be numeric, got " ++ @typeName(Al));
+    comptime if (!meta.isNumeric(Al) or !meta.isNumeric(Be) or
+        !meta.isManyItemPointer(Ap) or !meta.isNumeric(meta.Child(Ap)) or
+        !meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
+        !meta.isManyItemPointer(Y) or meta.isConstPointer(Y) or !meta.isNumeric(meta.Child(Y)))
+        @compileError("zsl.linalg.blas.spmv: alpha and beta must be numerics, ap and x must be many-item pointers to numerics, and y must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\tap: " ++ @typeName(Ap) ++ "\n\tx: " ++ @typeName(X) ++ "\n\tbeta: " ++ @typeName(Be) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.spmv requires ap to be a many-item pointer, got " ++ @typeName(A));
+    Ap = meta.Child(Ap);
+    X = meta.Child(X);
+    Y = meta.Child(Y);
 
-    A = types.Child(A);
+    if (incx == 0 or incy == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.spmv requires ap's child type to numeric, got " ++ @typeName(A));
-
-    comptime if (!types.isManyPointer(X))
-        @compileError("zml.linalg.blas.spmv requires x to be a many-item pointer, got " ++ @typeName(X));
-
-    X = types.Child(X);
-
-    comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.spmv requires x's child type to be numeric, got " ++ @typeName(X));
-
-    comptime if (!types.isNumeric(Be))
-        @compileError("zml.linalg.blas.spmv requires beta to be numeric, got " ++ @typeName(Be));
-
-    comptime if (!types.isManyPointer(Y) or types.isConstPointer(Y))
-        @compileError("zml.linalg.blas.spmv requires y to be a mutable many-item pointer, got " ++ @typeName(Y));
-
-    Y = types.Child(Y);
-
-    comptime if (!types.isNumeric(Y))
-        @compileError("zml.linalg.blas.spmv requires y's child type to be numeric, got " ++ @typeName(Y));
-
-    comptime if (Al == bool and A == bool and X == bool and Be == bool and Y == bool)
-        @compileError("zml.linalg.blas.spmv does not support alpha, a, x, beta and y all being bool");
-
-    comptime if (types.isArbitraryPrecision(Al) or
-        types.isArbitraryPrecision(A) or
-        types.isArbitraryPrecision(X) or
-        types.isArbitraryPrecision(Be) or
-        types.isArbitraryPrecision(Y))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.spmv not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and types.canCoerce(Be, A) and options.link_cblas != null) {
-        switch (comptime types.numericType(A)) {
+    if (comptime options.link_cblas != null and Al == Ap and Al == X and Al == Y and Al == Be) {
+        switch (comptime meta.numericType(Al)) {
             .float => {
-                if (comptime A == f32) {
-                    return ci.cblas_sspmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                } else if (comptime A == f64) {
-                    return ci.cblas_dspmv(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), ap, x, scast(c_int, incx), beta, y, scast(c_int, incy));
-                }
+                if (comptime Al == f32)
+                    return linalg.cblas.sspmv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, ap, x, incx, &beta, y, incy)
+                else if (comptime Al == f64)
+                    return linalg.cblas.dspmv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, ap, x, incx, &beta, y, incy);
             },
             else => {},
         }
     }
 
-    return _spmv(order, uplo, n, alpha, ap, x, incx, beta, y, incy, ctx);
+    return if (layout == .col_major)
+        k_spmv(uplo, n, alpha, ap, x, incx, beta, y, incy)
+    else
+        k_spmv(uplo.invert(), n, alpha, ap, x, incx, beta, y, incy);
 }
 
-fn _spmv(
-    order: Order,
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    ap: anytype,
-    x: anytype,
-    incx: i32,
-    beta: anytype,
-    y: anytype,
-    incy: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_spmv(uplo, n, alpha, ap, x, incx, beta, y, incy, ctx);
-    } else {
-        return k_spmv(uplo.invert(), n, alpha, ap, x, incx, beta, y, incy, ctx);
-    }
-}
-
-fn k_spmv(
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    ap: anytype,
-    x: anytype,
-    incx: i32,
-    beta: anytype,
-    y: anytype,
-    incy: i32,
-    ctx: anytype,
-) !void {
-    const Al: type = @TypeOf(alpha);
-    const A: type = types.Child(@TypeOf(ap));
-    const X: type = types.Child(@TypeOf(x));
-    const C1: type = types.Coerce(Al, X);
-    const C2: type = types.Coerce(A, X);
-    const Be: type = @TypeOf(beta);
-    const Y: type = types.Child(@TypeOf(y));
-    const CC: type = types.Coerce(Al, types.Coerce(A, types.Coerce(X, types.Coerce(Be, Y))));
-
-    if (n < 0 or incx == 0 or incy == 0)
-        return blas.Error.InvalidArgument;
+fn k_spmv(uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) !void {
+    const Ap: type = meta.Child(@TypeOf(ap));
+    const X: type = meta.Child(@TypeOf(x));
 
     // Quick return if possible.
-    if (n == 0 or
-        (ops.eq(alpha, 0, ctx) catch unreachable and ops.eq(beta, 1, ctx) catch unreachable))
+    if (n == 0 or (numeric.eq(alpha, 0) and numeric.eq(beta, 1)))
         return;
 
-    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
-    const ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
+    const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+    const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
 
-    if (comptime !types.isArbitraryPrecision(CC)) {
-        // First form  y = beta * y.
-        if (ops.ne(beta, 1, ctx) catch unreachable) {
-            if (incy == 1) {
-                if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(u32, n)) |i| {
-                        ops.set( // y[i] = 0
-                            &y[i],
-                            0,
-                            ctx,
-                        ) catch unreachable;
-                    }
-                } else {
-                    for (0..scast(u32, n)) |i| {
-                        ops.mul_( // y[i] *= beta
-                            &y[i],
-                            y[i],
-                            beta,
-                            ctx,
-                        ) catch unreachable;
-                    }
+    // First form  y = beta * y.
+    if (numeric.ne(beta, 1)) {
+        if (incy == 1) {
+            if (numeric.eq(beta, 0)) {
+                var i: usize = 0;
+                while (i < n) : (i += 1) {
+                    // y[i] = 0
+                    numeric.set(&y[i], 0);
                 }
             } else {
-                var iy: i32 = ky;
-                if (ops.eq(beta, 0, ctx) catch unreachable) {
-                    for (0..scast(u32, n)) |_| {
-                        ops.set( // y[iy] = 0
-                            &y[scast(u32, iy)],
-                            0,
-                            ctx,
-                        ) catch unreachable;
-
-                        iy += incy;
-                    }
-                } else {
-                    for (0..scast(u32, n)) |_| {
-                        ops.mul_( // y[iy] *= beta
-                            &y[scast(u32, iy)],
-                            y[scast(u32, iy)],
-                            beta,
-                            ctx,
-                        ) catch unreachable;
-
-                        iy += incy;
-                    }
-                }
-            }
-        }
-
-        if (ops.eq(alpha, 0, ctx) catch unreachable) return;
-
-        var kk: i32 = 0;
-        if (uplo == .upper) {
-            if (incx == 1 and incy == 1) {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
-                        x[scast(u32, j)],
-                        alpha,
-                        ctx,
-                    ) catch unreachable;
-                    var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
-
-                    var k: i32 = kk;
-                    var i: i32 = 0;
-                    while (i < j) : (i += 1) {
-                        ops.add_( // y[i] += temp1 * ap[k]
-                            &y[scast(u32, i)],
-                            y[scast(u32, i)],
-                            ops.mul(
-                                temp1,
-                                ap[scast(u32, k)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        ops.add_( // temp2 += ap[k] * x[i]
-                            &temp2,
-                            temp2,
-                            ops.mul(
-                                ap[scast(u32, k)],
-                                x[scast(u32, i)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        k += 1;
-                    }
-
-                    ops.add_( // y[j] += temp1 * ap[kk + j] + alpha * temp2
-                        &y[scast(u32, j)],
-                        y[scast(u32, j)],
-                        ops.add(
-                            ops.mul(
-                                temp1,
-                                ap[scast(u32, kk + j)],
-                                ctx,
-                            ) catch unreachable,
-                            ops.mul(
-                                alpha,
-                                temp2,
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable,
-                        ctx,
-                    ) catch unreachable;
-
-                    kk += j + 1;
-                }
-            } else {
-                var jx: i32 = kx;
-                var jy: i32 = ky;
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
-                        x[scast(u32, jx)],
-                        alpha,
-                        ctx,
-                    ) catch unreachable;
-                    var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
-
-                    var ix: i32 = kx;
-                    var iy: i32 = ky;
-                    var k: i32 = kk;
-                    while (k < kk + j) : (k += 1) {
-                        ops.add_( // y[iy] += temp1 * ap[k]
-                            &y[scast(u32, iy)],
-                            y[scast(u32, iy)],
-                            ops.mul(
-                                temp1,
-                                ap[scast(u32, k)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        ops.add_( // temp2 += ap[k] * x[ix]
-                            &temp2,
-                            temp2,
-                            ops.mul(
-                                ap[scast(u32, k)],
-                                x[scast(u32, ix)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        ix += incx;
-                        iy += incy;
-                    }
-
-                    ops.add_( // y[jy] += temp1 * ap[kk + j] + alpha * temp2
-                        &y[scast(u32, jy)],
-                        y[scast(u32, jy)],
-                        ops.add(
-                            ops.mul(
-                                temp1,
-                                ap[scast(u32, kk + j)],
-                                ctx,
-                            ) catch unreachable,
-                            ops.mul(
-                                alpha,
-                                temp2,
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable,
-                        ctx,
-                    ) catch unreachable;
-
-                    jx += incx;
-                    jy += incy;
-                    kk += j + 1;
+                var i: usize = 0;
+                while (i < n) : (i += 1) {
+                    // y[i] *= beta
+                    numeric.mul_(
+                        &y[i],
+                        y[i],
+                        beta,
+                    );
                 }
             }
         } else {
-            if (incx == 1 and incy == 1) {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    const temp1: C1 = ops.mul( // temp1 = alpha * x[j]
-                        x[scast(u32, j)],
-                        alpha,
-                        ctx,
-                    ) catch unreachable;
-                    var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
+            var iy: isize = ky;
+            if (numeric.eq(beta, 0)) {
+                var i: usize = 0;
+                while (i < n) : (i += 1) {
+                    // y[iy] = 0
+                    numeric.set(&y[numeric.cast(usize, iy)], 0);
 
-                    ops.add_( // y[j] += temp1 * ap[kk]
-                        &y[scast(u32, j)],
-                        y[scast(u32, j)],
-                        ops.mul(
-                            temp1,
-                            ap[scast(u32, kk)],
-                            ctx,
-                        ) catch unreachable,
-                        ctx,
-                    ) catch unreachable;
-
-                    var k: i32 = kk + 1;
-                    var i: i32 = j + 1;
-                    while (i < n) : (i += 1) {
-                        ops.add_( // y[i] += temp1 * ap[k]
-                            &y[scast(u32, i)],
-                            y[scast(u32, i)],
-                            ops.mul(
-                                temp1,
-                                ap[scast(u32, k)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        ops.add_( // temp2 += ap[k] * x[i]
-                            &temp2,
-                            temp2,
-                            ops.mul(
-                                ap[scast(u32, k)],
-                                x[scast(u32, i)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        k += 1;
-                    }
-
-                    ops.add_( // y[j] += alpha * temp2
-                        &y[scast(u32, j)],
-                        y[scast(u32, j)],
-                        ops.mul(
-                            alpha,
-                            temp2,
-                            ctx,
-                        ) catch unreachable,
-                        ctx,
-                    ) catch unreachable;
-
-                    kk += n - j;
+                    iy += incy;
                 }
             } else {
-                var jx: i32 = kx;
-                var jy: i32 = ky;
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    const temp1: C1 = ops.mul( // temp1 = alpha * x[jx]
-                        x[scast(u32, jx)],
-                        alpha,
-                        ctx,
-                    ) catch unreachable;
-                    var temp2: C2 = constants.zero(C2, ctx) catch unreachable;
+                var i: usize = 0;
+                while (i < n) : (i += 1) {
+                    // y[iy] *= beta
+                    numeric.mul_(
+                        &y[numeric.cast(usize, iy)],
+                        y[numeric.cast(usize, iy)],
+                        beta,
+                    );
 
-                    ops.add_( // y[jy] += temp1 * ap[kk]
-                        &y[scast(u32, jy)],
-                        y[scast(u32, jy)],
-                        ops.mul(
-                            temp1,
-                            ap[scast(u32, kk)],
-                            ctx,
-                        ) catch unreachable,
-                        ctx,
-                    ) catch unreachable;
-
-                    var ix: i32 = jx;
-                    var iy: i32 = jy;
-                    var k: i32 = kk + 1;
-                    while (k < kk + n - j) : (k += 1) {
-                        ix += incx;
-                        iy += incy;
-
-                        ops.add_( // y[iy] += temp1 * ap[k]
-                            &y[scast(u32, iy)],
-                            y[scast(u32, iy)],
-                            ops.mul(
-                                temp1,
-                                ap[scast(u32, k)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        ops.add_( // temp2 += ap[k] * x[ix]
-                            &temp2,
-                            temp2,
-                            ops.mul(
-                                ap[scast(u32, k)],
-                                x[scast(u32, ix)],
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-                    }
-
-                    ops.add_( // y[jy] += alpha * temp2
-                        &y[scast(u32, jy)],
-                        y[scast(u32, jy)],
-                        ops.mul(
-                            alpha,
-                            temp2,
-                            ctx,
-                        ) catch unreachable,
-                        ctx,
-                    ) catch unreachable;
-
-                    jx += incx;
-                    jy += incy;
-                    kk += n - j;
+                    iy += incy;
                 }
             }
         }
+    }
+
+    if (numeric.eq(alpha, 0))
+        return;
+
+    var kk: usize = 0;
+    if (uplo == .upper) {
+        // Form  y  when upper triangle of A is stored.
+        if (incx == 1 and incy == 1) {
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                // temp1 = alpha * x[j]
+                const temp1 = numeric.mul(
+                    alpha,
+                    x[j],
+                );
+
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(Ap, X)));
+
+                var k: usize = kk;
+                var i: usize = 0;
+                while (i < j) : (i += 1) {
+                    // y[i] += temp1 * ap[k]
+                    numeric.fma_(
+                        &y[i],
+                        temp1,
+                        ap[k],
+                        y[i],
+                    );
+
+                    // temp2 += ap[k] * x[i]
+                    numeric.fma_(
+                        &temp2,
+                        ap[k],
+                        x[i],
+                        temp2,
+                    );
+
+                    k += 1;
+                }
+
+                // y[j] += temp1 * ap[kk + j] + alpha * temp2
+                numeric.fma_(
+                    &y[j],
+                    temp1,
+                    ap[kk + j],
+                    numeric.fma(
+                        alpha,
+                        temp2,
+                        y[j],
+                    ),
+                );
+
+                kk += j + 1;
+            }
+        } else {
+            var jx: isize = kx;
+            var jy: isize = ky;
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                // temp1 = alpha * x[jx]
+                const temp1 = numeric.mul(
+                    alpha,
+                    x[numeric.cast(usize, jx)],
+                );
+
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(Ap, X)));
+
+                var ix: isize = kx;
+                var iy: isize = ky;
+                var k: usize = kk;
+                while (k < kk + j) : (k += 1) {
+                    // y[iy] += temp1 * ap[k]
+                    numeric.fma_(
+                        &y[numeric.cast(usize, iy)],
+                        temp1,
+                        ap[k],
+                        y[numeric.cast(usize, iy)],
+                    );
+
+                    // temp2 += ap[k] * x[ix]
+                    numeric.fma_(
+                        &temp2,
+                        ap[k],
+                        x[numeric.cast(usize, ix)],
+                        temp2,
+                    );
+
+                    ix += incx;
+                    iy += incy;
+                }
+
+                // y[jy] += temp1 * ap[kk + j] + alpha * temp2
+                numeric.fma_(
+                    &y[numeric.cast(usize, jy)],
+                    temp1,
+                    ap[kk + j],
+                    numeric.fma(
+                        alpha,
+                        temp2,
+                        y[numeric.cast(usize, jy)],
+                    ),
+                );
+
+                jx += incx;
+                jy += incy;
+                kk += j + 1;
+            }
+        }
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.spmv not implemented for arbitrary precision types yet");
+        // Form  y  when lower triangle of A is stored.
+        if (incx == 1 and incy == 1) {
+            var j: isize = 0;
+            while (j < n) : (j += 1) {
+                // temp1 = alpha * x[j]
+                const temp1 = numeric.mul(
+                    alpha,
+                    x[j],
+                );
+
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(Ap, X)));
+
+                // y[j] += temp1 * ap[kk]
+                numeric.fma_(
+                    &y[j],
+                    temp1,
+                    ap[kk],
+                    y[j],
+                );
+
+                var k: usize = kk + 1;
+                var i: usize = j + 1;
+                while (i < n) : (i += 1) {
+                    // y[i] += temp1 * ap[k]
+                    numeric.fma_(
+                        &y[i],
+                        temp1,
+                        ap[k],
+                        y[i],
+                    );
+
+                    // temp2 += ap[k] * x[i]
+                    numeric.fma_(
+                        &temp2,
+                        ap[k],
+                        x[i],
+                        temp2,
+                    );
+
+                    k += 1;
+                }
+
+                // y[j] += alpha * temp2
+                numeric.fma_(
+                    &y[j],
+                    alpha,
+                    temp2,
+                    y[j],
+                );
+
+                kk += n - j;
+            }
+        } else {
+            var jx: isize = kx;
+            var jy: isize = ky;
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                // temp1 = alpha * x[jx]
+                const temp1 = numeric.mul(
+                    alpha,
+                    x[numeric.cast(usize, jx)],
+                );
+
+                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(Ap, X)));
+
+                // y[jy] += temp1 * ap[kk]
+                numeric.fma_(
+                    &y[numeric.cast(usize, jy)],
+                    temp1,
+                    ap[kk],
+                    y[numeric.cast(usize, jy)],
+                );
+
+                var ix: isize = jx;
+                var iy: isize = jy;
+                var k: usize = kk + 1;
+                while (k < kk + n - j) : (k += 1) {
+                    ix += incx;
+                    iy += incy;
+
+                    // y[iy] += temp1 * ap[k]
+                    numeric.fma_(
+                        &y[numeric.cast(usize, iy)],
+                        temp1,
+                        ap[k],
+                        y[numeric.cast(usize, iy)],
+                    );
+
+                    // temp2 += conj(ap[k]) * x[ix]
+                    numeric.fma_(
+                        &temp2,
+                        ap[k],
+                        x[numeric.cast(usize, ix)],
+                        temp2,
+                    );
+                }
+
+                // y[jy] += alpha * temp2
+                numeric.fma_(
+                    &y[numeric.cast(usize, jy)],
+                    alpha,
+                    temp2,
+                    y[numeric.cast(usize, jy)],
+                );
+
+                jx += incx;
+                jy += incy;
+                kk += n - j;
+            }
+        }
     }
 
     return;

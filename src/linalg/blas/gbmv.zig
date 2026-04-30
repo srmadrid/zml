@@ -100,17 +100,17 @@ pub fn gbmv(layout: Layout, transa: linalg.Transpose, m: usize, n: usize, kl: us
         return linalg.blas.Error.InvalidArgument;
 
     if (comptime options.link_cblas != null and Al == A and Al == X and Al == Y and Al == Be) {
-        switch (comptime meta.numericType(A)) {
+        switch (comptime meta.numericType(Al)) {
             .float => {
-                if (comptime A == f32)
+                if (comptime Al == f32)
                     return linalg.cblas.sgbmv(layout.toInt(c_int), transa.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), numeric.cast(isize, kl), numeric.cast(isize, ku), alpha, a, numeric.cast(isize, lda), x, incx, beta, y, incy)
-                else if (comptime A == f64)
+                else if (comptime Al == f64)
                     return linalg.cblas.dgbmv(layout.toInt(c_int), transa.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), numeric.cast(isize, kl), numeric.cast(isize, ku), alpha, a, numeric.cast(isize, lda), x, incx, beta, y, incy);
             },
             .complex => {
-                if (comptime meta.Scalar(A) == f32)
+                if (comptime meta.Scalar(Al) == f32)
                     return linalg.cblas.cgbmv(layout.toInt(c_int), transa.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), numeric.cast(isize, kl), numeric.cast(isize, ku), &alpha, a, numeric.cast(isize, lda), x, incx, &beta, y, incy)
-                else if (comptime meta.Scalar(A) == f64)
+                else if (comptime meta.Scalar(Al) == f64)
                     return linalg.cblas.zgbmv(layout.toInt(c_int), transa.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), numeric.cast(isize, kl), numeric.cast(isize, ku), &alpha, a, numeric.cast(isize, lda), x, incx, &beta, y, incy);
             },
             else => {},
