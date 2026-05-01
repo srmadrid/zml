@@ -44,19 +44,19 @@ const linalg = @import("../../linalg.zig");
 /// `void`
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: If `incx` or `incy` is 0.
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` is 0.
 pub fn hpr(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anytype) !void {
     const Al: type = @TypeOf(alpha);
-    comptime var Ap: type = @TypeOf(ap);
     comptime var X: type = @TypeOf(x);
+    comptime var Ap: type = @TypeOf(ap);
 
     comptime if (!meta.isNumeric(Al) or !meta.isReal(Al) or
         !meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
         !meta.isManyItemPointer(Ap) or meta.isConstPointer(Ap) or !meta.isNumeric(meta.Child(Ap)))
         @compileError("zsl.linalg.blas.hpr: alpha must be a numeric, x must be a many-item pointer to numerics, and ap must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\tx: " ++ @typeName(X) ++ "\n\tap: " ++ @typeName(Ap) ++ "\n");
 
-    Ap = meta.Child(Ap);
     X = meta.Child(X);
+    Ap = meta.Child(Ap);
 
     if (incx == 0)
         return linalg.blas.Error.InvalidArgument;
