@@ -93,7 +93,7 @@ pub fn hbmv(layout: Layout, uplo: Uplo, n: usize, k: usize, alpha: anytype, a: a
         k_hbmv(uplo.invert(), n, k, alpha, a, lda, x, incx, beta, y, incy, false);
 }
 
-fn k_hbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) !void {
+fn k_hbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 

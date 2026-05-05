@@ -88,7 +88,7 @@ pub fn hpmv(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x
         k_hpmv(uplo.invert(), n, alpha, ap, x, incx, beta, y, incy, false);
 }
 
-fn k_hpmv(uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) !void {
+fn k_hpmv(uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
     const Ap: type = meta.Child(@TypeOf(ap));
     const X: type = meta.Child(@TypeOf(x));
 

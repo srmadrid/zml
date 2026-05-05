@@ -79,7 +79,7 @@ pub fn spr(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, x: anytype, inc
         k_spr(uplo.invert(), n, alpha, x, incx, ap);
 }
 
-fn k_spr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anytype) !void {
+fn k_spr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anytype) void {
     // Quick return if possible.
     if (n == 0 or numeric.eq(alpha, 0))
         return;

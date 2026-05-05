@@ -130,7 +130,7 @@ pub fn gbmv(layout: Layout, transa: linalg.Transpose, m: usize, n: usize, kl: us
     }
 }
 
-fn k_gbmv(transa: linalg.Transpose, m: usize, n: usize, kl: usize, ku: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) !void {
+fn k_gbmv(transa: linalg.Transpose, m: usize, n: usize, kl: usize, ku: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 

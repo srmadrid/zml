@@ -87,7 +87,7 @@ pub fn spr2(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, x: anytype, in
         k_spr2(uplo.invert(), n, alpha, x, incx, y, incy, ap);
 }
 
-fn k_spr2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize, ap: anytype) !void {
+fn k_spr2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize, ap: anytype) void {
     // Quick return if possible.
     if (n == 0 or numeric.eq(alpha, 0))
         return;

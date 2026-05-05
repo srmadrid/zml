@@ -124,7 +124,7 @@ pub fn tbsv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n:
     }
 }
 
-fn k_tbsv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, a: anytype, lda: usize, x: anytype, incx: isize, comptime noconj: bool) !void {
+fn k_tbsv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, a: anytype, lda: usize, x: anytype, incx: isize, comptime noconj: bool) void {
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 

@@ -93,7 +93,7 @@ pub fn sbmv(layout: Layout, uplo: Uplo, n: usize, k: usize, alpha: anytype, a: a
         k_sbmv(uplo.invert(), n, k, alpha, a, lda, x, incx, beta, y, incy);
 }
 
-fn k_sbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) !void {
+fn k_sbmv(uplo: Uplo, n: usize, k: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) void {
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 

@@ -88,7 +88,7 @@ pub fn spmv(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x
         k_spmv(uplo.invert(), n, alpha, ap, x, incx, beta, y, incy);
 }
 
-fn k_spmv(uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) !void {
+fn k_spmv(uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) void {
     const Ap: type = meta.Child(@TypeOf(ap));
     const X: type = meta.Child(@TypeOf(x));
 

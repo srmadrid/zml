@@ -36,14 +36,14 @@ const linalg = @import("../../linalg.zig");
 /// ```
 ///
 /// where `x` is an `n`-element vector, and `A` is an `n`-by-`n` unit, or
-/// non-unit, uppee or lower triangular band matrix, with `k + 1` diagonals.
+/// non-unit, upper or lower triangular band matrix, with `k + 1` diagonals.
 ///
 /// If the `link_cblas` option is not `null`, the function will try to call the
 /// corresponding CBLAS function, if available.
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.tbmv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: isize, k: isize, a: [*]const A, lda: isize, x: [*]X, incx: isize, ctx: anytype) !void
+/// linalg.blas.tbmv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
 /// ```
 ///
 /// ## Arguments
@@ -120,7 +120,7 @@ pub fn tbmv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n:
     }
 }
 
-fn k_tbmv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, a: anytype, lda: usize, x: anytype, incx: isize, comptime noconj: bool) !void {
+fn k_tbmv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, a: anytype, lda: usize, x: anytype, incx: isize, comptime noconj: bool) void {
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));
 

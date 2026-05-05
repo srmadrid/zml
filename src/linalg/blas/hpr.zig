@@ -79,7 +79,7 @@ pub fn hpr(layout: Layout, uplo: Uplo, n: usize, alpha: anytype, x: anytype, inc
         k_hpr(uplo.invert(), n, alpha, x, incx, ap, false);
 }
 
-fn k_hpr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anytype, comptime noconj: bool) !void {
+fn k_hpr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anytype, comptime noconj: bool) void {
     // Quick return if possible.
     if (n == 0 or numeric.eq(alpha, 0))
         return;
