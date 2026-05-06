@@ -46,7 +46,7 @@ const linalg = @import("../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.tbsv(layout: Layout, uplo: Uplo, transa: Transpose, diag: Diag, n: usize, k: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
+/// linalg.blas.tbsv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, a: [*]const A, lda: usize, x: [*]X, incx: isize) !void
 /// ```
 ///
 /// ## Arguments
@@ -377,7 +377,11 @@ fn k_tbsv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, 
                         );
                     }
 
-                    numeric.set(&x[numeric.cast(usize, jx)], temp);
+                    // x[jx] = temp
+                    numeric.set(
+                        &x[numeric.cast(usize, jx)],
+                        temp,
+                    );
 
                     jx += incx;
 
@@ -423,7 +427,11 @@ fn k_tbsv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, 
                         );
                     }
 
-                    numeric.set(&x[j], temp);
+                    // x[j] = temp
+                    numeric.set(
+                        &x[j],
+                        temp,
+                    );
                 }
             } else {
                 kx += (n - 1) * incx;
@@ -466,7 +474,11 @@ fn k_tbsv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, k: usize, 
                         );
                     }
 
-                    numeric.set(&x[numeric.cast(usize, jx)], temp);
+                    // x[jx] = temp
+                    numeric.set(
+                        &x[numeric.cast(usize, jx)],
+                        temp,
+                    );
 
                     jx -= incx;
 

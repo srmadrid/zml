@@ -43,7 +43,7 @@ const linalg = @import("../../linalg.zig");
 ///
 /// ## Signature
 /// ```zig
-/// linalg.blas.tpmv(layout: Layout, uplo: Uplo, transa: Transpose, diag: Diag, n: usize, ap: [*]const A, x: [*]X, incx: isize, ctx: anytype) !void
+/// linalg.blas.tpmv(layout: Layout, uplo: Uplo, transa: Transpose, diag: Diag, n: usize, ap: [*]const Ap, x: [*]X, incx: isize, ctx: anytype) !void
 /// ```
 ///
 /// ## Arguments
@@ -115,7 +115,7 @@ pub fn tpmv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n:
     }
 }
 
-fn k_tpmv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: isize, ap: anytype, x: anytype, incx: isize, comptime noconj: bool) void {
+fn k_tpmv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, ap: anytype, x: anytype, incx: isize, comptime noconj: bool) void {
     const Ap: type = meta.Child(@TypeOf(ap));
     const X: type = meta.Child(@TypeOf(x));
 

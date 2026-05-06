@@ -1,770 +1,496 @@
-const std = @import("std");
+const options = @import("options");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
+const meta = @import("../../meta.zig");
+const Layout = meta.Layout;
+const Uplo = meta.Uplo;
+const Diag = meta.Diag;
+
+const numeric = @import("../../numeric.zig");
+
 const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Uplo = types.Uplo;
-const Diag = types.Diag;
-const Order = types.Order;
-const Transpose = linalg.Transpose;
 
 /// Solves a system of linear equations whose coefficients are in a triangular
-/// packed matrix.
-///
-/// The `tpsv` routine solves one of the following systems of equations:
+/// packed matrix defined as:
 ///
 /// ```zig
-///     A * x = b,
+/// A * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     conj(A) * x = b,
+/// conj(A) * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^T * x = b,
+/// Aᵀ * x = b,
 /// ```
 ///
 /// or
 ///
 /// ```zig
-///     A^H * x = b,
+/// Aᴴ * x = b,
 /// ```
 ///
-/// where `b` and `x` are `n`-element vectors, `A` is an `n`-by-`n` unit, or
+/// where `b` and `x` are `n`-element vectors, and `A` is an `n`-by-`n` unit, or
 /// non-unit, upper or lower triangular matrix, supplied in packed form.
 ///
-/// Signature
-/// ---------
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available.
+///
+/// ## Signature
 /// ```zig
-/// fn tpsv(order: Order, uplo: Uplo, transa: Transpose, diag: Diag, n: i32, ap: [*]const A, x: [*]X, incx: i32, ctx: anytype) !void
+/// linalg.blas.tpsv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, ap: [*]const Ap, x: [*]X, incx: isize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
+///   col-major or row-major.
+/// * `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
+///   triangular matrix.
+/// * `transa` (`linalg.Transpose`): Specifies the system of equations to be
+///   solved:
+///   * `no_transpose`: `A * x = b`
+///   * `transpose`: `Aᵀ * x = b`
+///   * `conj_no_transpose`: `conj(A) * x = b`
+///   * `conj_transpose`: `Aᴴ * x = b`
+/// * `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular.
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `ap` (`anytype`): Many-item pointer, size at least `(n * (n + 1)) / 2`.
+/// * `x` (`anytype`): Mutable many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`. Before entry, the incremented array `x` must
+///   contain the n-element right-hand side vector `b`. On return, it contains
+///   the solution vector `x`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
 ///
-/// `uplo` (`Uplo`): Specifies whether the matrix `A` is an upper or lower
-/// triangular matrix:
-/// - If `uplo = upper`, then the matrix is upper triangular.
-/// - If `uplo = lower`, then the matrix is lower triangular.
+/// ## Returns
+/// `void`
 ///
-/// `transa` (`Transpose`): Specifies the system of equations to be solved:
-/// - If `transa = no_trans`, then the system is `A * x = b`.
-/// - If `transa = trans`, then the system is `A^T * x = b`.
-/// - If `transa = conj_no_trans`, then the system is `conj(A) * x = b`.
-/// - If `transa = conj_trans`, then the system is `A^H * x = b`.
-///
-/// `diag` (`Diag`): Specifies whether the matrix `A` is unit triangular:
-/// - If `diag = unit`, then the matrix is unit triangular.
-/// - If `diag = non_unit`, then the matrix is non-unit triangular.
-///
-/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
-/// or equal to 0.
-///
-/// `ap` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `(n * (n + 1)) / 2`.
-///
-/// `x` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incx)`. On entry, the incremented array `x` must
-/// contain the n-element right-hand side vector `b`. On return, it contains
-/// the solution vector `x`.
-///
-/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
-/// different from 0.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `x`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, or if `incx` is
-/// 0.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
-pub fn tpsv(
-    order: Layout,
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    n: i32,
-    ap: anytype,
-    x: anytype,
-    incx: i32,
-    ctx: anytype,
-) !void {
-    comptime var A: type = @TypeOf(ap);
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` is 0.
+pub fn tpsv(layout: Layout, uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, ap: anytype, x: anytype, incx: isize) !void {
+    comptime var Ap: type = @TypeOf(ap);
     comptime var X: type = @TypeOf(x);
 
-    comptime if (!types.isManyPointer(A))
-        @compileError("zml.linalg.blas.tpsv requires ap to be a many-item pointer, got " ++ @typeName(A));
+    comptime if (!meta.isManyItemPointer(Ap) or !meta.isNumeric(meta.Child(Ap)) or
+        !meta.isManyItemPointer(X) or meta.isConstPointer(X) or !meta.isNumeric(meta.Child(X)))
+        @compileError("zsl.linalg.blas.tpsv: ap must be a many-item pointer to numerics, and x must be a mutable many-item pointer to numerics, got \n\tap: " ++ @typeName(Ap) ++ "\n\tx: " ++ @typeName(X) ++ "\n");
 
-    A = types.Child(A);
+    Ap = meta.Child(Ap);
+    X = meta.Child(X);
 
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.tpsv requires ap's child type to numeric, got " ++ @typeName(A));
+    if (incx == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    comptime if (!types.isManyPointer(X) or types.isConstPointer(X))
-        @compileError("zml.linalg.blas.tpsv requires x to be a mutable many-item pointer, got " ++ @typeName(X));
-
-    X = types.Child(X);
-
-    comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.tpsv requires x's child type to be numeric, got " ++ @typeName(X));
-
-    comptime if (A == bool and X == bool)
-        @compileError("zml.linalg.blas.tpsv does not support a and x both being bool");
-
-    comptime if (types.isArbitraryPrecision(A) or
-        types.isArbitraryPrecision(X))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.tpsv not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == X and options.link_cblas != null) {
-        switch (comptime types.numericType(A)) {
+    if (comptime options.link_cblas != null and Ap == X) {
+        switch (comptime meta.numericType(Ap)) {
             .float => {
-                if (comptime A == f32) {
-                    return ci.cblas_stpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
-                } else if (comptime A == f64) {
-                    return ci.cblas_dtpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
-                }
+                if (comptime Ap == f32)
+                    return linalg.cblas.stpsv(layout.toInt(c_int), uplo.toInt(c_int), transa.toInt(c_int), diag.toInt(c_int), numeric.cast(isize, n), ap, x, incx)
+                else if (comptime Ap == f64)
+                    return linalg.cblas.dtpsv(layout.toInt(c_int), uplo.toInt(c_int), transa.toInt(c_int), diag.toInt(c_int), numeric.cast(isize, n), ap, x, incx);
             },
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    return ci.cblas_ctpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
-                } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_ztpsv(order.toCUInt(), uplo.toCUInt(), transa.toCUInt(), diag.toCUInt(), scast(c_int, n), ap, x, scast(c_int, incx));
-                }
+            .complex => {
+                if (comptime meta.Scalar(Ap) == f32)
+                    return linalg.cblas.ctpsv(layout.toInt(c_int), uplo.toInt(c_int), transa.toInt(c_int), diag.toInt(c_int), numeric.cast(isize, n), ap, x, incx)
+                else if (comptime meta.Scalar(Ap) == f64)
+                    return linalg.cblas.ztpsv(layout.toInt(c_int), uplo.toInt(c_int), transa.toInt(c_int), diag.toInt(c_int), numeric.cast(isize, n), ap, x, incx);
             },
             else => {},
         }
     }
 
-    return _tpsv(order, uplo, transa, diag, n, ap, x, incx, ctx);
-}
-
-fn _tpsv(
-    order: Order,
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    n: i32,
-    ap: anytype,
-    x: anytype,
-    incx: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_tpsv(
-            uplo,
-            transa,
-            diag,
-            n,
-            ap,
-            x,
-            incx,
-            ctx,
-        );
+    if (layout == .col_major) {
+        return if (transa == .no_trans or transa == .trans)
+            k_tpsv(uplo, transa, diag, n, ap, x, incx, true)
+        else
+            k_tpsv(uplo, transa, diag, n, ap, x, incx, false);
     } else {
-        return k_tpsv(
-            uplo.invert(),
-            transa.invert(),
-            diag,
-            n,
-            ap,
-            x,
-            incx,
-            ctx,
-        );
+        return if (transa == .no_trans or transa == .trans)
+            k_tpsv(uplo.invert(), transa.invert(), diag, n, ap, x, incx, true)
+        else
+            k_tpsv(uplo.invert(), transa.invert(), diag, n, ap, x, incx, false);
     }
 }
 
-fn k_tpsv(
-    uplo: Uplo,
-    transa: Transpose,
-    diag: Diag,
-    n: i32,
-    ap: anytype,
-    x: anytype,
-    incx: i32,
-    ctx: anytype,
-) !void {
-    const A: type = types.Child(@TypeOf(ap));
-    const X: type = types.Child(@TypeOf(x));
-    const C1: type = types.Coerce(A, X);
-    const CC: type = types.Coerce(A, X);
-
-    if (n < 0 or incx == 0)
-        return blas.Error.InvalidArgument;
+fn k_tpsv(uplo: Uplo, transa: linalg.Transpose, diag: Diag, n: usize, ap: anytype, x: anytype, incx: isize, comptime noconj: bool) void {
+    const Ap: type = meta.Child(@TypeOf(ap));
+    const X: type = meta.Child(@TypeOf(x));
 
     // Quick return if possible.
     if (n == 0)
         return;
 
-    const noconj: bool = transa == .no_trans or transa == .trans;
     const nounit: bool = diag == .non_unit;
 
-    var kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    var kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
 
-    if (comptime !types.isArbitraryPrecision(CC)) {
-        if (transa == .no_trans or transa == .conj_no_trans) {
-            if (uplo == .upper) {
-                var kk: i32 = int.div(n * (n + 1), 2) - 1;
-                if (incx == 1) {
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= ap[kk]
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        ap[scast(u32, kk)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+    if (transa == .no_trans or transa == .conj_no_trans) {
+        if (uplo == .upper) {
+            var kk: usize = int.div(n * (n + 1), 2) - 1;
+            if (incx == 1) {
+                var j: usize = n;
+                while (j > 0) {
+                    j -= 1;
 
-                                const temp: X = x[scast(u32, j)];
-
-                                var k: i32 = kk - 1;
-                                var i: i32 = j - 1;
-                                while (i >= 0) : (i -= 1) {
-                                    ops.sub_( // x[i] -= temp * ap[k]
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            ap[scast(u32, k)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    k -= 1;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= conj(ap[kk])
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                const temp: X = x[scast(u32, j)];
-
-                                var k: i32 = kk - 1;
-                                var i: i32 = j - 1;
-                                while (i >= 0) : (i -= 1) {
-                                    ops.sub_( // x[i] -= temp * conj(ap[k])
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    k -= 1;
-                                }
-                            }
+                    if (numeric.ne(x[j], 0)) {
+                        if (nounit) {
+                            // x[j] /= ap[kk]
+                            numeric.div_(
+                                &x[j],
+                                x[j],
+                                if (comptime noconj)
+                                    ap[kk]
+                                else
+                                    numeric.conj(ap[kk]),
+                            );
                         }
 
-                        kk -= j + 1;
-                    }
-                } else {
-                    var jx: i32 = kx + (n - 1) * incx;
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= ap[kk]
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        ap[scast(u32, kk)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                        const temp = x[j];
 
-                                const temp: X = x[scast(u32, jx)];
+                        var k: usize = kk - 1;
+                        var i: usize = j;
+                        while (i > 0) {
+                            i -= 1;
 
-                                var ix: i32 = jx;
-                                var k: i32 = kk - 1;
-                                while (k >= kk - j) : (k -= 1) {
-                                    ix -= incx;
+                            // x[i] -= temp * ap[k]
+                            numeric.fma_(
+                                &x[i],
+                                numeric.neg(temp),
+                                if (comptime noconj)
+                                    ap[k]
+                                else
+                                    numeric.conj(ap[k]),
+                                x[i],
+                            );
 
-                                    ops.sub_( // x[ix] -= temp * ap[k]
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            ap[scast(u32, k)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= conj(ap[kk])
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                const temp: X = x[scast(u32, jx)];
-
-                                var ix: i32 = jx;
-                                var k: i32 = kk - 1;
-                                while (k >= kk - j) : (k -= 1) {
-                                    ix -= incx;
-
-                                    ops.sub_( // x[ix] -= temp * conj(ap[k])
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            }
+                            k -= 1;
                         }
-
-                        jx -= incx;
-                        kk -= j + 1;
                     }
+
+                    kk -= j + 1;
                 }
             } else {
-                var kk: i32 = 0;
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= ap[kk]
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        ap[scast(u32, kk)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                var jx: usize = kx + (n - 1) * incx;
+                var j: usize = n;
+                while (j > 0) {
+                    j -= 1;
 
-                                const temp: X = x[scast(u32, j)];
-
-                                var k: i32 = kk + 1;
-                                var i: i32 = j + 1;
-                                while (i < n) : (i += 1) {
-                                    ops.sub_( // x[i] -= temp * ap[k]
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            ap[scast(u32, k)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    k += 1;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[j] /= conj(ap[kk])
-                                        &x[scast(u32, j)],
-                                        x[scast(u32, j)],
-                                        ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                const temp: X = x[scast(u32, j)];
-
-                                var k: i32 = kk + 1;
-                                var i: i32 = j + 1;
-                                while (i < n) : (i += 1) {
-                                    ops.sub_( // x[i] -= temp * conj(ap[k])
-                                        &x[scast(u32, i)],
-                                        x[scast(u32, i)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-
-                                    k += 1;
-                                }
-                            }
+                    if (numeric.ne(x[numeric.cast(usize, jx)], 0)) {
+                        if (nounit) {
+                            // x[jx] /= ap[kk]
+                            numeric.div_(
+                                &x[numeric.cast(usize, jx)],
+                                x[numeric.cast(usize, jx)],
+                                if (comptime noconj)
+                                    ap[kk]
+                                else
+                                    numeric.conj(ap[kk]),
+                            );
                         }
 
-                        kk += n - j;
-                    }
-                } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            if (noconj) {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= ap[kk]
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        ap[scast(u32, kk)],
-                                        ctx,
-                                    ) catch unreachable;
-                                }
+                        const temp = x[numeric.cast(usize, jx)];
 
-                                const temp: X = x[scast(u32, jx)];
-                                var ix: i32 = jx;
-                                var k: i32 = kk + 1;
-                                while (k < kk + n - j) : (k += 1) {
-                                    ix += incx;
+                        var ix: isize = jx;
+                        var k: usize = kk - 1;
+                        while (k >= kk - j) : (k -= 1) {
+                            ix -= incx;
 
-                                    ops.sub_( // x[ix] -= temp * ap[k]
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            ap[scast(u32, k)],
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            } else {
-                                if (nounit) {
-                                    ops.div_( // x[jx] /= conj(ap[kk])
-                                        &x[scast(u32, jx)],
-                                        x[scast(u32, jx)],
-                                        ops.conj(ap[scast(u32, kk)], ctx) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-
-                                const temp: X = x[scast(u32, jx)];
-                                var ix: i32 = jx;
-                                var k: i32 = kk + 1;
-                                while (k < kk + n - j) : (k += 1) {
-                                    ix += incx;
-
-                                    ops.sub_( // x[ix] -= temp * conj(ap[k])
-                                        &x[scast(u32, ix)],
-                                        x[scast(u32, ix)],
-                                        ops.mul(
-                                            temp,
-                                            ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                            ctx,
-                                        ) catch unreachable,
-                                        ctx,
-                                    ) catch unreachable;
-                                }
-                            }
+                            // x[ix] -= temp * ap[k]
+                            numeric.fma_(
+                                &x[numeric.cast(usize, ix)],
+                                numeric.neg(temp),
+                                if (comptime noconj)
+                                    ap[k]
+                                else
+                                    numeric.conj(ap[k]),
+                                x[numeric.cast(usize, ix)],
+                            );
                         }
-
-                        jx += incx;
-                        kk += n - j;
                     }
+
+                    jx -= incx;
+                    kk -= j + 1;
                 }
             }
         } else {
-            if (uplo == .upper) {
-                var kk: i32 = 0;
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, j)]);
-
-                        if (noconj) {
-                            var k: i32 = kk;
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.add_( // temp -= ap[k] * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ap[scast(u32, k)],
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                k += 1;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= ap[kk + j]
-                                    &temp,
-                                    temp,
-                                    ap[scast(u32, kk + j)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var k: i32 = kk;
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.add_( // temp -= conj(ap[k]) * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                k += 1;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= conj(ap[kk + j])
-                                    &temp,
-                                    temp,
-                                    ops.conj(ap[scast(u32, kk + j)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+            var kk: usize = 0;
+            if (incx == 1) {
+                var j: usize = 0;
+                while (j < n) : (j += 1) {
+                    if (numeric.ne(x[j], 0)) {
+                        if (nounit) {
+                            // x[j] /= ap[kk]
+                            numeric.div_(
+                                &x[j],
+                                x[j],
+                                if (comptime noconj)
+                                    ap[kk]
+                                else
+                                    numeric.conj(ap[kk]),
+                            );
                         }
 
-                        x[scast(u32, j)] = scast(X, temp);
+                        const temp = x[j];
 
-                        kk += j + 1;
-                    }
-                } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, jx)]);
+                        var k: usize = kk + 1;
+                        var i: usize = j + 1;
+                        while (i < n) : (i += 1) {
+                            // x[i] -= temp * ap[k]
+                            numeric.fma_(
+                                &x[i],
+                                numeric.neg(temp),
+                                if (comptime noconj)
+                                    ap[k]
+                                else
+                                    numeric.conj(ap[k]),
+                                x[i],
+                            );
 
-                        var ix: i32 = kx;
-                        if (noconj) {
-                            var k: i32 = kk;
-                            while (k < kk + j) : (k += 1) {
-                                ops.sub_( // temp -= ap[k] * x[ix]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ap[scast(u32, k)],
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix += incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= ap[kk + j]
-                                    &temp,
-                                    temp,
-                                    ap[scast(u32, kk + j)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var k: i32 = kk;
-                            while (k < kk + j) : (k += 1) {
-                                ops.sub_( // temp -= conj(ap[k]) * x[ix]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix += incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= conj(ap[kk + j])
-                                    &temp,
-                                    temp,
-                                    ops.conj(ap[scast(u32, kk + j)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+                            k += 1;
                         }
-
-                        x[scast(u32, jx)] = scast(X, temp);
-
-                        jx += incx;
-                        kk += j + 1;
                     }
+
+                    kk += n - j;
                 }
             } else {
-                var kk: i32 = int.div(n * (n + 1), 2) - 1;
-                if (incx == 1) {
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, j)]);
-
-                        var k: i32 = kk;
-                        if (noconj) {
-                            var i: i32 = n - 1;
-                            while (i > j) : (i -= 1) {
-                                ops.sub_( // temp -= ap[k] * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ap[scast(u32, k)],
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                k -= 1;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= ap[kk - (n - 1) + j]
-                                    &temp,
-                                    temp,
-                                    ap[scast(u32, kk - (n - 1) + j)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var i: i32 = n - 1;
-                            while (i > j) : (i -= 1) {
-                                ops.sub_( // temp -= conj(ap[k]) * x[i]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                        x[scast(u32, i)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                k -= 1;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= conj(ap[kk - (n - 1) + j])
-                                    &temp,
-                                    temp,
-                                    ops.conj(ap[scast(u32, kk - (n - 1) + j)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+                var jx: isize = kx;
+                var j: usize = 0;
+                while (j < n) : (j += 1) {
+                    if (numeric.ne(x[numeric.cast(usize, jx)], 0)) {
+                        if (nounit) {
+                            // x[jx] /= ap[kk]
+                            numeric.div_(
+                                &x[numeric.cast(usize, jx)],
+                                x[numeric.cast(usize, jx)],
+                                if (comptime noconj)
+                                    ap[kk]
+                                else
+                                    numeric.conj(ap[kk]),
+                            );
                         }
 
-                        x[scast(u32, j)] = scast(X, temp);
+                        const temp = x[numeric.cast(usize, jx)];
 
-                        kk -= n - j;
-                    }
-                } else {
-                    kx += (n - 1) * incx;
-                    var jx: i32 = kx;
-                    var j: i32 = n - 1;
-                    while (j >= 0) : (j -= 1) {
-                        var temp: C1 = scast(C1, x[scast(u32, jx)]);
+                        var ix: usize = jx;
+                        var k: usize = kk + 1;
+                        while (k < kk + n - j) : (k += 1) {
+                            ix += incx;
 
-                        if (noconj) {
-                            var ix: i32 = kx;
-                            var k: i32 = kk;
-                            while (k > kk - (n - (j + 1))) : (k -= 1) {
-                                ops.sub_( // temp -= ap[k] * x[ix]
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ap[scast(u32, k)],
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix -= incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= ap[kk - (n - 1) + j]
-                                    &temp,
-                                    temp,
-                                    ap[scast(u32, kk - (n - 1) + j)],
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            var ix: i32 = kx;
-                            var k: i32 = kk;
-                            while (k > kk - (n - (j + 1))) : (k -= 1) {
-                                ops.sub_( // temp -= conj(ap[k] * x[ix])
-                                    &temp,
-                                    temp,
-                                    ops.mul(
-                                        ops.conj(ap[scast(u32, k)], ctx) catch unreachable,
-                                        x[scast(u32, ix)],
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix -= incx;
-                            }
-
-                            if (nounit) {
-                                ops.div_( // temp /= conj(ap[kk - (n - 1) + j])
-                                    &temp,
-                                    temp,
-                                    ops.conj(ap[scast(u32, kk - (n - 1) + j)], ctx) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+                            // x[ix] -= temp * ap[k]
+                            numeric.fma_(
+                                &x[numeric.cast(usize, ix)],
+                                numeric.neg(temp),
+                                if (comptime noconj)
+                                    ap[k]
+                                else
+                                    numeric.conj(ap[k]),
+                                x[numeric.cast(usize, ix)],
+                            );
                         }
-
-                        x[scast(u32, jx)] = scast(X, temp);
-
-                        jx -= incx;
-                        kk -= n - j;
                     }
+
+                    jx += incx;
+                    kk += n - j;
                 }
             }
         }
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.tpsv not implemented for arbitrary precision types yet");
+        if (uplo == .upper) {
+            var kk: usize = 0;
+            if (incx == 1) {
+                var j: usize = 0;
+                while (j < n) : (j += 1) {
+                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) Ap else numeric.Conj(Ap), X)));
+                    numeric.set(&temp, x[j]);
+
+                    var k: usize = kk;
+                    var i: usize = 0;
+                    while (i < j) : (i += 1) {
+                        // temp -= ap[k] * x[i]
+                        numeric.fma_(
+                            &temp,
+                            if (comptime noconj)
+                                ap[k]
+                            else
+                                numeric.conj(ap[k]),
+                            numeric.neg(x[i]),
+                            temp,
+                        );
+
+                        k += 1;
+                    }
+
+                    if (nounit) {
+                        // temp /= ap[kk + j]
+                        numeric.div_(
+                            &temp,
+                            temp,
+                            if (comptime noconj)
+                                ap[kk + j]
+                            else
+                                numeric.conj(ap[kk + j]),
+                        );
+                    }
+
+                    // x[j] = temp
+                    numeric.set(
+                        &x[j],
+                        temp,
+                    );
+
+                    kk += j + 1;
+                }
+            } else {
+                var jx: isize = kx;
+                var j: usize = 0;
+                while (j < n) : (j += 1) {
+                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) Ap else numeric.Conj(Ap), X)));
+                    numeric.set(&temp, x[numeric.cast(usize, jx)]);
+
+                    var ix: isize = kx;
+                    var k: usize = kk;
+                    while (k < kk + j) : (k += 1) {
+                        // temp -= ap[k] * x[ix]
+                        numeric.fma_(
+                            &temp,
+                            if (comptime noconj)
+                                ap[k]
+                            else
+                                numeric.conj(ap[k]),
+                            numeric.neg(x[numeric.cast(usize, ix)]),
+                            temp,
+                        );
+
+                        ix += incx;
+                    }
+
+                    if (nounit) {
+                        // temp /= ap[kk + j]
+                        numeric.div_(
+                            &temp,
+                            temp,
+                            if (comptime noconj)
+                                ap[kk + j]
+                            else
+                                numeric.conj(ap[kk + j]),
+                        );
+                    }
+
+                    // x[jx] = temp
+                    numeric.set(
+                        &x[numeric.cast(usize, jx)],
+                        temp,
+                    );
+
+                    jx += incx;
+                    kk += j + 1;
+                }
+            }
+        } else {
+            var kk: usize = int.div(n * (n + 1), 2) - 1;
+            if (incx == 1) {
+                var j: usize = n;
+                while (j > 0) {
+                    j -= 1;
+
+                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) Ap else numeric.Conj(Ap), X)));
+                    numeric.set(&temp, x[j]);
+
+                    var k: usize = kk;
+                    var i: usize = n;
+                    while (i > j) {
+                        i -= 1;
+
+                        // temp -= ap[k] * x[i + 1]
+                        numeric.fma_(
+                            &temp,
+                            if (comptime noconj)
+                                ap[k]
+                            else
+                                numeric.conj(ap[k]),
+                            numeric.neg(x[i + 1]),
+                            temp,
+                        );
+
+                        k -= 1;
+                    }
+
+                    if (nounit) {
+                        // temp /= ap[kk - (n - 1) + j]
+                        numeric.div_(
+                            &temp,
+                            temp,
+                            if (comptime noconj)
+                                ap[kk - (n - 1) + j]
+                            else
+                                numeric.conj(ap[kk - (n - 1) + j]),
+                        );
+                    }
+
+                    // x[j] = temp
+                    numeric.set(
+                        &x[j],
+                        temp,
+                    );
+
+                    kk -= n - j;
+                }
+            } else {
+                kx += (n - 1) * incx;
+
+                var jx: isize = kx;
+                var j: usize = n;
+                while (j > 0) {
+                    j -= 1;
+
+                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) Ap else numeric.Conj(Ap), X)));
+                    numeric.set(&temp, x[numeric.cast(usize, jx)]);
+
+                    var ix: isize = kx;
+                    var k: usize = kk;
+                    while (k > kk - (n - (j + 1))) : (k -= 1) {
+                        // temp -= ap[k] * x[ix]
+                        numeric.fma_(
+                            &temp,
+                            if (comptime noconj)
+                                ap[k]
+                            else
+                                numeric.conj(ap[k]),
+                            numeric.neg(x[numeric.cast(usize, ix)]),
+                            temp,
+                        );
+
+                        ix -= incx;
+                    }
+
+                    if (nounit) {
+                        // temp /= ap[kk - (n - 1) + j]
+                        numeric.div_(
+                            &temp,
+                            temp,
+                            if (comptime noconj)
+                                ap[kk - (n - 1) + j]
+                            else
+                                numeric.conj(ap[kk - (n - 1) + j]),
+                        );
+                    }
+
+                    // x[jx] = temp
+                    numeric.set(
+                        &x[numeric.cast(usize, jx)],
+                        temp,
+                    );
+
+                    jx -= incx;
+                    kk -= n - j;
+                }
+            }
+        }
     }
 
     return;
