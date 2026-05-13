@@ -3,6 +3,7 @@ const std = @import("std");
 const zsl = @import("zsl");
 
 pub const float = @import("float.zig");
+pub const dyadic = @import("dyadic.zig");
 pub const complex = @import("complex.zig");
 
 pub const vector = @import("vector.zig");
@@ -39,18 +40,17 @@ test {
     // Individual test flags
     const test_int = false;
     const test_float = false;
-    const test_dyadic = false;
+    const test_dyadic = true;
     const test_complex = false;
     const test_numeric = false;
-    const test_vector = true;
-    const test_matrix = true;
+    const test_vector = false;
+    const test_matrix = false;
     const test_array = false;
     const test_ops = false;
     const test_linalg = false;
     const test_autodiff = false;
 
     _ = test_int;
-    _ = test_dyadic;
     _ = test_numeric;
     _ = test_array;
     _ = test_ops;
@@ -58,6 +58,9 @@ test {
 
     if (test_all or test_float)
         _ = @import("float.zig");
+
+    if (test_all or test_dyadic)
+        _ = @import("dyadic.zig");
 
     if (test_all or test_complex)
         _ = @import("complex.zig");

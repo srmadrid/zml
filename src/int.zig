@@ -458,7 +458,7 @@ pub fn maxVal(comptime Int: type) Int {
 
     const info = @typeInfo(Int);
     const bits = info.int.bits;
-    return (1 << (bits - numeric.cast(@TypeOf(bits), info.int.signedness == .signed))) - 1;
+    return (1 << (bits - numeric.cast(comptime_int, info.int.signedness == .signed))) - 1;
 }
 
 /// Returns the minimum representable value of the given int type `Int`.
