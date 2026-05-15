@@ -16,6 +16,9 @@ test {
 
     if (test_all or test_arithmetic) {
         _ = @import("dyadic/add.zig");
+        _ = @import("dyadic/sub.zig");
         _ = @import("dyadic/mul.zig");
+        _ = @import("dyadic/fma.zig");
+        _ = @import("dyadic/div.zig");
     }
 }
