@@ -91,18 +91,19 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     var e: WideExponent = 0;
                     if (msb_pos_value > msb_pos_result) {
                         var shift: u16 = msb_pos_value - msb_pos_result;
+                        const shift_minus_1 = shift - 1;
 
                         const shifted: UV = abs_value >> @intCast(shift);
-                        const mask: UV = (@as(UV, 1) << @intCast(shift)) - 1;
-                        const discarded: UV = abs_value & mask;
-                        const half: UV = @as(UV, 1) << @intCast(shift - 1);
+
+                        const round_bit = (abs_value >> @intCast(shift_minus_1)) & 1;
+                        const sticky = if (@ctz(abs_value) < shift_minus_1) @as(u1, 1) else 0;
 
                         var rounded: UV = shifted;
-                        if (discarded > half or (discarded == half and (shifted & 1) != 0))
+                        if (round_bit == 1 and (sticky == 1 or (shifted & 1) != 0))
                             rounded += 1;
 
                         if (comptime @typeInfo(UV).int.bits > mantissa_bits) {
-                            const overflow: UV = @as(UV, 1) << @intCast(mantissa_bits);
+                            const overflow = comptime 1 << mantissa_bits;
                             if (rounded == overflow) {
                                 rounded >>= 1;
                                 shift += 1;
@@ -117,9 +118,15 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                         e -|= numeric.cast(WideExponent, shift);
                     }
 
+                    // Check for overflow
                     if (e >= int.maxVal(Exponent))
-                        return if (value >= 0) .inf else neg(.inf);
+                        return .{
+                            .mantissa = 0,
+                            .exponent = int.maxVal(Exponent),
+                            .positive = value >= 0,
+                        };
 
+                    // Check for underflow
                     if (e <= int.minVal(Exponent))
                         return .{
                             .mantissa = 0,
@@ -137,65 +144,72 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                     comptime if (V == f80)
                         @compileError("zsl.Dyadic(mantissa_bits, exponent_bits).initValue: f80 not yet supported");
 
-                    if (std.math.isNan(value))
-                        return .nan;
-
-                    if (std.math.isPositiveInf(value))
-                        return .inf;
-
-                    if (std.math.isNegativeInf(value))
-                        return neg(.inf);
-
-                    const f_mantissa_bits = std.math.floatMantissaBits(V);
-                    const f_exponent_bits = std.math.floatExponentBits(V);
-                    const bias = (1 << (f_exponent_bits - 1)) - 1;
-
                     const Bits = @Int(.unsigned, @typeInfo(V).float.bits);
                     const bits: Bits = @bitCast(value);
-                    const positive = (bits >> (f_mantissa_bits + f_exponent_bits)) == 0;
 
-                    if (value == 0)
+                    const f_mantissa_bits = comptime std.math.floatMantissaBits(V);
+                    const f_exponent_bits = comptime std.math.floatExponentBits(V);
+                    const bias = comptime (1 << (f_exponent_bits - 1)) - 1;
+                    const exp_mask = comptime (1 << f_exponent_bits) - 1;
+                    const mant_mask = comptime (1 << f_mantissa_bits) - 1;
+
+                    const positive = (bits >> (f_mantissa_bits + f_exponent_bits)) == 0;
+                    const biased_exp = (bits >> f_mantissa_bits) & exp_mask;
+                    const frac = bits & mant_mask;
+
+                    //NaN / Inf check
+                    if (biased_exp == exp_mask) {
+                        if (frac != 0)
+                            return .nan;
+
+                        return if (positive) .inf else neg(.inf);
+                    }
+
+                    // Zero check
+                    if (biased_exp == 0 and frac == 0)
                         return .{
                             .mantissa = 0,
                             .exponent = int.minVal(Exponent),
                             .positive = positive,
                         };
 
-                    const biased_exp = (bits >> f_mantissa_bits) & ((@as(Bits, 1) << f_exponent_bits) - 1);
-                    const frac = bits & ((@as(Bits, 1) << f_mantissa_bits) - 1);
-
                     const ExponentRaw = @Int(.signed, int.max(@typeInfo(WideExponent).int.bits, 32));
 
                     var raw_m: Bits = undefined;
                     var raw_e: ExponentRaw = undefined;
+                    var msb_pos_value: u16 = undefined;
 
                     if (biased_exp == 0) {
+                        // Subnormal: non-normalized
                         raw_m = frac;
                         raw_e = 1 - bias - f_mantissa_bits;
+                        msb_pos_value = @typeInfo(Bits).int.bits - 1 - @clz(raw_m);
                     } else {
+                        // Normal: implicitly normalized
                         raw_m = frac | (@as(Bits, 1) << f_mantissa_bits);
                         raw_e = numeric.cast(ExponentRaw, biased_exp) - bias - f_mantissa_bits;
+                        msb_pos_value = f_mantissa_bits;
                     }
 
-                    const msb_pos_value: u16 = @typeInfo(Bits).int.bits - 1 - @clz(raw_m);
                     const msb_pos_result: u16 = mantissa_bits - 1;
-
                     var m: Mantissa = undefined;
                     var e: ExponentRaw = raw_e;
+
                     if (msb_pos_value > msb_pos_result) {
                         var shift: u16 = msb_pos_value - msb_pos_result;
+                        const shift_minus_1 = shift - 1;
 
                         const shifted: Bits = raw_m >> @intCast(shift);
-                        const mask: Bits = (@as(Bits, 1) << @intCast(shift)) - 1;
-                        const discarded: Bits = raw_m & mask;
-                        const half: Bits = @as(Bits, 1) << @intCast(shift - 1);
+
+                        const round_bit = (raw_m >> @intCast(shift_minus_1)) & 1;
+                        const sticky = if (@ctz(raw_m) < shift_minus_1) @as(u1, 1) else 0;
 
                         var rounded: Bits = shifted;
-                        if (discarded > half or (discarded == half and (shifted & 1) != 0))
+                        if (round_bit == 1 and (sticky == 1 or (shifted & 1) != 0))
                             rounded += 1;
 
                         if (comptime @typeInfo(Bits).int.bits > mantissa_bits) {
-                            const overflow: Bits = @as(Bits, 1) << @intCast(mantissa_bits);
+                            const overflow = comptime 1 << mantissa_bits;
                             if (rounded == overflow) {
                                 rounded >>= 1;
                                 shift += 1;
@@ -203,19 +217,25 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                         }
 
                         m = numeric.cast(Mantissa, rounded);
-                        e +|= shift;
+                        e += shift;
                     } else if (msb_pos_value < msb_pos_result) {
                         const shift: u16 = msb_pos_result - msb_pos_value;
                         const ShiftM = std.math.Log2Int(Mantissa);
                         m = numeric.cast(Mantissa, raw_m) << @as(ShiftM, @intCast(shift));
-                        e -|= shift;
+                        e -= shift;
                     } else {
                         m = numeric.cast(Mantissa, raw_m);
                     }
 
+                    // Check for overflow
                     if (e >= int.maxVal(Exponent))
-                        return if (value >= 0) .inf else neg(.inf);
+                        return .{
+                            .mantissa = 0,
+                            .exponent = int.maxVal(Exponent),
+                            .positive = positive,
+                        };
 
+                    // Check for underflow
                     if (e <= int.minVal(Exponent))
                         return .{
                             .mantissa = 0,
@@ -289,7 +309,11 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return x;
 
             // Addition or subtraction
-            const cmp_abs: meta.Cmp = x.abs().cmp(y.abs());
+            const cmp_abs: meta.Cmp = if (x.exponent != y.exponent)
+                int.cmp(x.exponent, y.exponent)
+            else
+                int.cmp(x.mantissa, y.mantissa);
+
             if (x.positive == y.positive) {
                 var result: Dyadic(mantissa_bits, exponent_bits) =
                     if (cmp_abs == .gt)
@@ -331,7 +355,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             } else {
                 y_shifted = y_wide >> @intCast(exp_diff);
 
-                if ((y_wide & ((@as(WideMantissa, 1) << @intCast(exp_diff)) - 1)) != 0)
+                if (@ctz(y_wide) < exp_diff)
                     sticky = 1;
             }
 
@@ -348,17 +372,12 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 exponent +|= 1;
             }
 
+            const remainder_mask = comptime ((1 << mantissa_bits) - 1);
+            const halfway_mask = comptime (1 << (mantissa_bits - 1));
+
             var mantissa: Mantissa = @truncate(sum >> @intCast(mantissa_bits));
-            const remainder: WideMantissa = sum & ((@as(WideMantissa, 1) << @intCast(mantissa_bits)) - 1);
-            const halfway: WideMantissa = @as(WideMantissa, 1) << @intCast(mantissa_bits - 1);
-            var round_up = false;
-            if (remainder > halfway) {
-                round_up = true;
-            } else if (remainder == halfway) {
-                // Tie case
-                if (sticky == 1 or (mantissa & 1) == 1)
-                    round_up = true;
-            }
+            const remainder: WideMantissa = sum & remainder_mask;
+            const round_up = (remainder > halfway_mask) or (remainder == halfway_mask and (sticky == 1 or (mantissa & 1) == 1));
 
             if (round_up) {
                 const round = @addWithOverflow(mantissa, 1);
@@ -400,7 +419,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             } else {
                 y_shifted = y_wide >> @intCast(exp_diff);
 
-                if ((y_wide & ((@as(WideMantissa, 1) << @intCast(exp_diff)) - 1)) != 0)
+                if (@ctz(y_wide) < exp_diff)
                     sticky = 1;
             }
 
@@ -414,17 +433,15 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             const lz = @clz(diff);
 
             var exponent: WideExponent = numeric.cast(WideExponent, x.exponent) - numeric.cast(WideExponent, lz);
-            var mantissa: Mantissa = @truncate((diff << @intCast(lz)) >> @intCast(mantissa_bits));
-            const remainder: WideMantissa = (diff << @intCast(lz)) & ((@as(WideMantissa, 1) << @intCast(mantissa_bits)) - 1);
-            const halfway: WideMantissa = @as(WideMantissa, 1) << @intCast(mantissa_bits - 1);
-            var round_up = false;
-            if (remainder > halfway) {
-                round_up = true;
-            } else if (remainder == halfway) {
-                // Tie case
-                if (sticky == 1 or (mantissa & 1) == 1)
-                    round_up = true;
-            }
+
+            const remainder_mask = comptime ((1 << mantissa_bits) - 1);
+            const halfway_mask = comptime (1 << (mantissa_bits - 1));
+
+            const shifted_diff = diff << @intCast(lz);
+
+            var mantissa: Mantissa = @truncate(shifted_diff >> @intCast(mantissa_bits));
+            const remainder: WideMantissa = shifted_diff & remainder_mask;
+            const round_up = (remainder > halfway_mask) or (remainder == halfway_mask and (sticky == 1 or (mantissa & 1) == 1));
 
             if (round_up) {
                 const round = @addWithOverflow(mantissa, 1);
@@ -452,25 +469,27 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             if (x.isNan() or y.isNan())
                 return .nan;
 
+            const result_positive = x.positive == y.positive;
+
             // Infinity check
             if (x.isInf()) {
                 if (y.isZero())
-                    return .nan // Inf * 0 = NaN
-                else
-                    return .{
-                        .mantissa = 0,
-                        .exponent = int.maxVal(Exponent),
-                        .positive = x.positive == y.positive,
-                    };
+                    return .nan; // Inf * 0 = NaN
+
+                return .{
+                    .mantissa = 0,
+                    .exponent = int.maxVal(Exponent),
+                    .positive = result_positive,
+                };
             } else if (y.isInf()) {
                 if (x.isZero())
-                    return .nan // 0 * Inf = NaN
-                else
-                    return .{
-                        .mantissa = 0,
-                        .exponent = int.maxVal(Exponent),
-                        .positive = x.positive == y.positive,
-                    };
+                    return .nan; // 0 * Inf = NaN
+
+                return .{
+                    .mantissa = 0,
+                    .exponent = int.maxVal(Exponent),
+                    .positive = result_positive,
+                };
             }
 
             // Zero check
@@ -478,38 +497,35 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return .{
                     .mantissa = 0,
                     .exponent = int.minVal(Exponent),
-                    .positive = x.positive == y.positive,
+                    .positive = result_positive,
                 };
 
             // Multiplication
+            var product: WideMantissa = numeric.cast(WideMantissa, x.mantissa) * numeric.cast(WideMantissa, y.mantissa);
 
-            // MSB will be at bit position mantissa_bits * 2 - 1 or mantissa_bits * 2 - 2
-            const product: WideMantissa = numeric.cast(WideMantissa, x.mantissa) * numeric.cast(WideMantissa, y.mantissa);
-            var exponent: WideExponent = numeric.cast(WideExponent, x.exponent) + numeric.cast(WideExponent, y.exponent) + numeric.cast(WideExponent, mantissa_bits - 1);
+            // Base exponent assumes the MSB landed at 2 * mantissa_bits - 1
+            var exponent: WideExponent = numeric.cast(WideExponent, x.exponent) + numeric.cast(WideExponent, y.exponent) + numeric.cast(WideExponent, mantissa_bits);
 
-            var mantissa: Mantissa = undefined;
-            var remainder: WideMantissa = undefined;
-            var halfway: WideMantissa = undefined;
-            if ((product & (@as(WideMantissa, 1) << @intCast(mantissa_bits * 2 - 1))) != 0) {
-                // MSB at mantissa_bits * 2 - 1
-                mantissa = @truncate(product >> @intCast(mantissa_bits));
-                remainder = product & ((@as(WideMantissa, 1) << @intCast(mantissa_bits)) - 1);
-                halfway = @as(WideMantissa, 1) << @intCast(mantissa_bits - 1);
-                exponent +|= 1;
-            } else {
-                // MSB at mantissa_bits * 2 - 2
-                mantissa = @truncate(product >> @intCast(mantissa_bits - 1));
-                remainder = product & ((@as(WideMantissa, 1) << @intCast(mantissa_bits - 1)) - 1);
-                halfway = @as(WideMantissa, 1) << @intCast(mantissa_bits - 2);
+            // Normalize: If the MSB is at 2 * mantissa_bits - 2, shift left to standardize it
+            if ((product >> (mantissa_bits * 2 - 1)) == 0) {
+                product <<= 1;
+                exponent -= 1;
             }
 
-            if (remainder > halfway or (remainder == halfway and (mantissa & 1) == 1)) {
+            const halfway_mask = comptime (1 << (mantissa_bits - 1));
+            const remainder_mask = comptime ((1 << mantissa_bits) - 1);
+
+            var mantissa: Mantissa = @truncate(product >> @intCast(mantissa_bits));
+            const remainder: WideMantissa = product & remainder_mask;
+
+            // Round to nearest, tie to even
+            if (remainder > halfway_mask or (remainder == halfway_mask and (mantissa & 1) == 1)) {
                 const round = @addWithOverflow(mantissa, 1);
                 mantissa = round[0];
 
                 if (round[1] != 0) {
                     mantissa = @as(Mantissa, 1) << (mantissa_bits - 1);
-                    exponent +|= 1;
+                    exponent += 1;
                 }
             }
 
@@ -518,7 +534,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return .{
                     .mantissa = 0,
                     .exponent = int.maxVal(Exponent),
-                    .positive = x.positive == y.positive,
+                    .positive = result_positive,
                 };
 
             // Check for underflow
@@ -526,13 +542,13 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return .{
                     .mantissa = 0,
                     .exponent = int.minVal(Exponent),
-                    .positive = x.positive == y.positive,
+                    .positive = result_positive,
                 };
 
             return .{
                 .mantissa = mantissa,
                 .exponent = numeric.cast(Exponent, exponent),
-                .positive = x.positive == y.positive,
+                .positive = result_positive,
             };
         }
 
@@ -578,10 +594,11 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             // Fused multiply-add (single rounding)
             var p_mant: WideMantissa = numeric.cast(WideMantissa, x.mantissa) * numeric.cast(WideMantissa, y.mantissa);
             var p_exp: WideExponent = numeric.cast(WideExponent, x.exponent) + numeric.cast(WideExponent, y.exponent);
-            if ((p_mant & (@as(WideMantissa, 1) << @intCast(2 * mantissa_bits - 1))) == 0) {
-                // Force MSB at mantissa_bits * 2 - 1
+
+            // Check for MSB position
+            if ((p_mant >> (2 * mantissa_bits - 1)) == 0) {
                 p_mant <<= 1;
-                p_exp -|= 1;
+                p_exp -= 1;
             }
 
             const z_mant: WideMantissa = numeric.cast(WideMantissa, z.mantissa) << @intCast(mantissa_bits);
@@ -599,55 +616,90 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             // Align smaller to larger
             const exp_diff: WideExponent = larger_exp - smaller_exp;
             var smaller_shifted: WideMantissa = smaller_mant;
+
+            // frac holds the exact bits shifted out of smaller_mant, aligned to the MSB
+            var frac: WideMantissa = 0;
             var sticky: u1 = 0;
+
             if (exp_diff >= 2 * mantissa_bits) {
                 smaller_shifted = 0;
-                sticky = 1; // smaller_mant is nonzero
+                sticky = 1; // smaller_mant is strictly nonzero here
             } else if (exp_diff > 0) {
                 const shift: std.math.Log2Int(WideMantissa) = @intCast(exp_diff);
-                if ((smaller_mant & ((@as(WideMantissa, 1) << shift) - 1)) != 0)
-                    sticky = 1;
                 smaller_shifted = smaller_mant >> shift;
+
+                const shifted_out = smaller_mant & ((@as(WideMantissa, 1) << shift) - 1);
+                if (shifted_out != 0) {
+                    frac = shifted_out << @intCast(2 * mantissa_bits - shift);
+                }
             }
 
             // Add (same sign) or subtract (opposite sign)
             var result_mant: WideMantissa = undefined;
             var result_exp: WideExponent = larger_exp;
+
             if (larger_pos == smaller_pos) {
                 const sum_ov = @addWithOverflow(larger_mant, smaller_shifted);
                 result_mant = sum_ov[0];
                 if (sum_ov[1] != 0) {
-                    if ((result_mant & 1) != 0)
-                        sticky = 1;
+                    // Shift right to accommodate carry, pushing LSB into frac
+                    sticky |= @intCast(frac & 1);
+                    frac = (frac >> 1) | (@as(WideMantissa, @intCast(result_mant & 1)) << @intCast(2 * mantissa_bits - 1));
                     result_mant = (result_mant >> 1) | (@as(WideMantissa, 1) << @intCast(2 * mantissa_bits - 1));
                     result_exp +|= 1;
                 }
             } else {
                 var diff: WideMantissa = larger_mant - smaller_shifted;
-                if (sticky == 1)
-                    diff -= 1;
 
-                if (diff == 0)
+                if (frac != 0 or sticky == 1) {
+                    diff -= 1; // Borrow 1 from the integer part
+
+                    // Compute the new fractional part
+                    frac = if (sticky == 1) ~frac else ~frac +% 1;
+                }
+
+                if (diff == 0 and frac == 0) {
                     return .{
                         .mantissa = 0,
                         .exponent = int.minVal(Exponent),
-                        .positive = if (sticky == 0) true else larger_pos,
+                        .positive = true, // Exact zero is +0.0
                     };
+                }
 
                 // Renormalize
-                const lz = @clz(diff);
-                diff <<= @intCast(lz);
-                result_exp -|= numeric.cast(WideExponent, lz);
-                result_mant = diff;
+                if (diff == 0) {
+                    // Massive cancellation: the result lives entirely in the fractional part
+                    const lz = @clz(frac);
+                    result_mant = frac << @intCast(lz);
+                    result_exp -|= numeric.cast(WideExponent, lz + 1);
+                    frac = 0;
+                } else {
+                    const lz = @clz(diff);
+                    diff <<= @intCast(lz);
+                    if (lz > 0) {
+                        // Pull the top lz bits of frac up into the bottom of diff
+                        diff |= frac >> @intCast(2 * mantissa_bits - lz);
+                        frac <<= @intCast(lz);
+                    }
+
+                    result_mant = diff;
+                    result_exp -|= numeric.cast(WideExponent, lz);
+                }
             }
 
-            // Round mantissa_bits * 2 bits result_mant to mantissa_bits bits, with single rounding
-            var mantissa: Mantissa = @truncate(result_mant >> @intCast(mantissa_bits));
-            const discarded: WideMantissa = result_mant & ((@as(WideMantissa, 1) << @intCast(mantissa_bits)) - 1);
-            const halfway: WideMantissa = @as(WideMantissa, 1) << @intCast(mantissa_bits - 1);
-            var final_exp: WideExponent = result_exp +| numeric.cast(WideExponent, mantissa_bits);
+            // Restore sticky
+            if (frac != 0)
+                sticky = 1;
 
-            if (discarded > halfway or (discarded == halfway and (sticky == 1 or (mantissa & 1) == 1))) {
+            const remainder_mask = comptime ((1 << mantissa_bits) - 1);
+            const halfway_mask = comptime (1 << (mantissa_bits - 1));
+
+            var mantissa: Mantissa = @truncate(result_mant >> @intCast(mantissa_bits));
+            const remainder: WideMantissa = result_mant & remainder_mask;
+            var final_exp: WideExponent = result_exp +| numeric.cast(WideExponent, mantissa_bits);
+            const round_up = (remainder > halfway_mask) or (remainder == halfway_mask and (sticky == 1 or (mantissa & 1) == 1));
+
+            if (round_up) {
                 const inc = @addWithOverflow(mantissa, 1);
                 mantissa = inc[0];
                 if (inc[1] != 0) {
@@ -684,80 +736,71 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             if (x.isNan() or y.isNan())
                 return .nan;
 
+            const result_positive = x.positive == y.positive;
+
             // Infinity check
             if (x.isInf()) {
-                if (y.isInf()) // Inf / Inf = NaN
-                    return .nan
-                else // Inf / Finite = Inf
-                    return .{
-                        .mantissa = 0,
-                        .exponent = int.maxVal(Exponent),
-                        .positive = x.positive == y.positive,
-                    };
-            } else if (y.isInf()) { // Finite / Inf = 0
+                if (y.isInf())
+                    return .nan;
+
+                return .{
+                    .mantissa = 0,
+                    .exponent = int.maxVal(Exponent),
+                    .positive = result_positive,
+                };
+            } else if (y.isInf()) {
                 return .{
                     .mantissa = 0,
                     .exponent = int.minVal(Exponent),
-                    .positive = x.positive == y.positive,
+                    .positive = result_positive,
                 };
             }
 
             // Zero check
             if (y.isZero()) {
-                if (x.isZero()) // 0 / 0 = NaN
-                    return .nan
-                else // Finite / 0 = Inf
-                    return .{
-                        .mantissa = 0,
-                        .exponent = int.maxVal(Exponent),
-                        .positive = x.positive == y.positive,
-                    };
-            } else if (x.isZero()) { // 0 / Finite = 0
+                if (x.isZero())
+                    return .nan; // 0 / 0 = NaN
+
+                return .{
+                    .mantissa = 0,
+                    .exponent = int.maxVal(Exponent),
+                    .positive = result_positive,
+                };
+            } else if (x.isZero()) {
                 return .{
                     .mantissa = 0,
                     .exponent = int.minVal(Exponent),
-                    .positive = x.positive == y.positive,
+                    .positive = result_positive,
                 };
             }
 
             // Division
             const x_wide: WideMantissa = numeric.cast(WideMantissa, x.mantissa) << @intCast(mantissa_bits);
             const y_wide: WideMantissa = numeric.cast(WideMantissa, y.mantissa);
+
             const quotient: WideMantissa = x_wide / y_wide;
             const remainder: WideMantissa = x_wide % y_wide;
 
             var exponent: WideExponent = numeric.cast(WideExponent, x.exponent) - numeric.cast(WideExponent, y.exponent) - numeric.cast(WideExponent, mantissa_bits);
             var mantissa: Mantissa = undefined;
             var round_up = false;
-            if ((quotient & (@as(WideMantissa, 1) << @intCast(mantissa_bits))) != 0) {
-                // MSB is at mantissa_bits. We must shift right by 1 to normalize.
+
+            const q_msb_mask = comptime (1 << mantissa_bits);
+
+            if ((quotient & q_msb_mask) != 0) {
+                // MSB is at mantissa_bits. We must shift right by 1 to normalize
                 mantissa = @truncate(quotient >> 1);
                 exponent +|= 1;
 
-                const dropped_bit = quotient & 1;
-
-                // If dropped_bit is 1, the discarded fraction is >= 0.5
-                if (dropped_bit == 1) {
-                    if (remainder > 0) {
-                        round_up = true; // Strictly > 0.5
-                    } else if ((mantissa & 1) == 1) {
-                        round_up = true; // Exactly 0.5, round to nearest even
-                    }
-                }
+                // Dropped bit is 1 AND (sticky remainder exists OR tie-to-even)
+                round_up = (quotient & 1) == 1 and (remainder > 0 or (mantissa & 1) == 1);
             } else {
-                // MSB is at mantissa_bits - 1. Fits perfectly.
+                // MSB is at mantissa_bits - 1. Fits perfectly
                 mantissa = @truncate(quotient);
-
-                // Discarded fraction is remainder / y_wide. Check if it's >= 0.5
                 const rem_doubled = remainder << 1;
 
-                if (rem_doubled > y_wide) {
-                    round_up = true;
-                } else if (rem_doubled == y_wide) {
-                    if ((mantissa & 1) == 1) {
-                        round_up = true; // Exactly 0.5, round to nearest even
-                    }
-                }
+                // > 0.5 OR (exactly 0.5 AND tie-to-even)
+                round_up = (rem_doubled > y_wide) or (rem_doubled == y_wide and (mantissa & 1) == 1);
             }
 
             if (round_up) {
@@ -776,7 +819,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return .{
                     .mantissa = 0,
                     .exponent = int.maxVal(Exponent),
-                    .positive = x.positive == y.positive,
+                    .positive = result_positive,
                 };
 
             // Check for underflow
@@ -784,62 +827,46 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return .{
                     .mantissa = 0,
                     .exponent = int.minVal(Exponent),
-                    .positive = x.positive == y.positive,
+                    .positive = result_positive,
                 };
 
             return .{
                 .mantissa = mantissa,
                 .exponent = numeric.cast(Exponent, exponent),
-                .positive = x.positive == y.positive,
+                .positive = result_positive,
             };
         }
 
-        pub fn cmp(x: Dyadic(mantissa_bits, exponent_bits), y: Dyadic(mantissa_bits, exponent_bits)) Cmp {
+        pub fn cmp(x: Dyadic(mantissa_bits, exponent_bits), y: Dyadic(mantissa_bits, exponent_bits)) std.math.Order {
             // NaN check
-            if (x.isNan()) {
-                if (y.isNan())
-                    return .eq
-                else
-                    return .gt;
-            } else if (y.isNan()) {
-                return .lt;
-            }
+            if (x.isNan())
+                return if (y.isNan()) .eq else .gt;
 
-            // Zero check (ignoring sign)
+            if (y.isNan()) return .lt;
+
+            // Zero check
             if (x.isZero() and y.isZero())
                 return .eq;
 
             // Sign check
-            if (x.positive != y.positive) {
-                if (x.positive)
-                    return .gt
-                else
-                    return .lt;
-            }
+            if (x.positive != y.positive)
+                return if (x.positive) .gt else .lt;
 
-            // Infinity check
+            // Signs equal, evaluate magnitude
+            var mag_order: std.math.Order = .eq;
+
             if (x.isInf()) {
-                if (y.isInf())
-                    return .eq
-                else
-                    return if (x.positive) .gt else .lt;
+                mag_order = if (y.isInf()) .eq else .gt;
             } else if (y.isInf()) {
-                return if (x.positive) .lt else .gt;
+                mag_order = .lt;
+            } else {
+                mag_order = if (x.exponent != y.exponent)
+                    std.math.order(x.exponent, y.exponent)
+                else
+                    std.math.order(x.mantissa, y.mantissa);
             }
 
-            // Exponent comparison
-            if (x.exponent > y.exponent)
-                return if (x.positive) .gt else .lt
-            else if (x.exponent < y.exponent)
-                return if (x.positive) .lt else .gt;
-
-            // Mantissa comparison
-            if (x.mantissa > y.mantissa)
-                return if (x.positive) .gt else .lt
-            else if (x.mantissa < y.mantissa)
-                return if (x.positive) .lt else .gt;
-
-            return .eq;
+            return if (x.positive) mag_order else mag_order.invert();
         }
 
         pub fn abs(self: Dyadic(mantissa_bits, exponent_bits)) Dyadic(mantissa_bits, exponent_bits) {
@@ -869,91 +896,82 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return std.math.nan(Float);
 
             if (self.isInf())
-                return if (self.positive)
-                    std.math.inf(Float)
-                else
-                    -std.math.inf(Float);
+                return if (self.positive) std.math.inf(Float) else -std.math.inf(Float);
 
             if (self.isZero())
-                return if (self.positive)
-                    0.0
-                else
-                    -0.0;
+                return if (self.positive) 0.0 else -0.0;
 
-            const f_mantissa_bits = std.math.floatMantissaBits(Float);
-            const f_exponent_bits = std.math.floatExponentBits(Float);
-            const bias = (1 << (f_exponent_bits - 1)) - 1;
-            const max_biased = (1 << f_exponent_bits) - 1;
+            const f_mantissa_bits = comptime std.math.floatMantissaBits(Float);
+            const f_exponent_bits = comptime std.math.floatExponentBits(Float);
+            const bias = comptime (1 << (f_exponent_bits - 1)) - 1;
+            const max_biased = comptime (1 << f_exponent_bits) - 1;
+            const frac_mask = comptime ((1 << f_mantissa_bits) - 1);
 
             const Bits = @Int(.unsigned, @typeInfo(Float).float.bits);
             const ExponentRaw = @Int(.signed, int.max(@typeInfo(WideExponent).int.bits, 32));
 
             const raw_e: ExponentRaw = numeric.cast(ExponentRaw, self.exponent) +| (mantissa_bits - 1);
             var biased_exp: ExponentRaw = raw_e +| bias;
-            var mantissa_shift: ExponentRaw = f_mantissa_bits + 1 - numeric.cast(ExponentRaw, mantissa_bits);
+
+            var right_shift: ExponentRaw = (numeric.cast(ExponentRaw, mantissa_bits) - 1) - f_mantissa_bits;
 
             if (biased_exp >= max_biased)
-                return if (self.positive)
-                    std.math.inf(Float)
-                else
-                    -std.math.inf(Float);
+                return if (self.positive) std.math.inf(Float) else -std.math.inf(Float);
 
             if (biased_exp <= 0) {
-                const extra_shift = 1 - biased_exp;
-                mantissa_shift -|= extra_shift;
+                // Handle subnormals: exponent gets pinned to 0, and we shift right by the deficit
+                right_shift += (1 - biased_exp);
                 biased_exp = 0;
             }
 
             const Wide = @Int(.unsigned, int.max(mantissa_bits, f_mantissa_bits + 2));
-            var m: Wide = 0;
+            var m: Wide = undefined;
 
-            if (mantissa_shift > 0) {
-                m = numeric.cast(Wide, self.mantissa) << @intCast(mantissa_shift);
-            } else if (mantissa_shift < 0) {
-                const right_shift_full: u64 = numeric.cast(u64, -mantissa_shift);
-
-                if (right_shift_full > mantissa_bits) {
+            if (right_shift < 0) {
+                // Left shift, no rounding possible
+                m = numeric.cast(Wide, self.mantissa) << @intCast(-right_shift);
+            } else if (right_shift == 0) {
+                // Exact alignment
+                m = numeric.cast(Wide, self.mantissa);
+            } else {
+                const rs: u16 = numeric.cast(u16, right_shift);
+                if (rs > mantissa_bits) {
+                    // Completely shifted out of bounds
                     m = 0;
-                } else if (right_shift_full == mantissa_bits) {
-                    m = 0;
-                    const lower_mask: Mantissa = (@as(Mantissa, 1) << (mantissa_bits - 1)) - 1;
-
-                    if ((self.mantissa & lower_mask) != 0)
-                        m = 1;
+                } else if (rs == mantissa_bits) {
+                    // Round bit is the MSB (which is 1). Sticky is the rest
+                    const sticky_mask = comptime (1 << (mantissa_bits - 1)) - 1;
+                    m = if ((self.mantissa & sticky_mask) != 0) 1 else 0;
                 } else {
-                    const shifted: Mantissa = self.mantissa >> @intCast(right_shift_full);
-                    const mask: Mantissa = (@as(Mantissa, 1) << @intCast(right_shift_full)) - 1;
-                    const discarded: Mantissa = self.mantissa & mask;
-                    const half: Mantissa = @as(Mantissa, 1) << @intCast(right_shift_full - 1);
+                    const shift_minus_1 = rs - 1;
+                    const shifted = self.mantissa >> @intCast(rs);
+
+                    const round_bit = (self.mantissa >> @intCast(shift_minus_1)) & 1;
+                    const sticky = if (@ctz(self.mantissa) < shift_minus_1) @as(u1, 1) else 0;
 
                     m = numeric.cast(Wide, shifted);
-                    if (discarded > half or (discarded == half and (shifted & 1) != 0))
+                    if (round_bit == 1 and (sticky == 1 or (shifted & 1) != 0))
                         m += 1;
                 }
-            } else {
-                m = numeric.cast(Wide, self.mantissa);
             }
 
+            // Renormalization
             if (biased_exp > 0) {
-                const normal_threshold: Wide = @as(Wide, 1) << (f_mantissa_bits + 1);
+                const normal_threshold = comptime 1 << (f_mantissa_bits + 1);
                 if (m >= normal_threshold) {
                     m >>= 1;
                     biased_exp += 1;
                     if (biased_exp >= max_biased)
-                        return if (self.positive)
-                            std.math.inf(Float)
-                        else
-                            -std.math.inf(Float);
+                        return if (self.positive) std.math.inf(Float) else -std.math.inf(Float);
                 }
             } else {
-                const subnormal_threshold: Wide = @as(Wide, 1) << f_mantissa_bits;
-                if (m == subnormal_threshold) {
+                const subnormal_threshold = comptime 1 << f_mantissa_bits;
+                if (m >= subnormal_threshold) {
+                    // Subnormal rounded up completely into a normal number
                     biased_exp = 1;
-                    m = 0;
                 }
             }
 
-            const frac_mask: Wide = (@as(Wide, 1) << f_mantissa_bits) - 1;
             const frac: Bits = numeric.cast(Bits, m & frac_mask);
             const exp_field: Bits = numeric.cast(Bits, biased_exp);
             const sign_bit: Bits = if (self.positive) 0 else 1;

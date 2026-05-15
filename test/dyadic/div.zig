@@ -545,8 +545,8 @@ test "div: randomized testing" {
 }
 
 test "div: exhaustive testing" {
-    // const D = zsl.Dyadic(11, 5);
-    const D = zsl.Dyadic(6, 4);
+    // const D = zsl.Dyadic(11, 5); // ~3.77B pairs
+    const D = zsl.Dyadic(6, 4); // ~812K pairs
     const allocator = std.testing.allocator;
 
     var values: std.ArrayList(D) = .empty;
