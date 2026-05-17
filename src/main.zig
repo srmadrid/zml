@@ -2,24 +2,20 @@ const std = @import("std");
 const zsl = @import("zsl");
 
 pub fn main(init: std.process.Init) !void {
-    try blas_lv1_threshold_calibration(init);
+    // try blas_lv1_threshold_calibration(init);
+    try blas_lv2_threshold_calibration(init);
 
     // const io = init.io;
     // var gpa: std.heap.DebugAllocator(.{}) = .{ .backing_allocator = init.gpa };
     // defer _ = gpa.deinit();
     // const allocator = gpa.allocator();
-    // const benchmark = true;
 
-    // var m: usize = 1_000_000 * (if (benchmark) 1 else 1);
+    // var m: usize = 10_000;
     // _ = &m;
-    // var n: usize = 1_500_000 * (if (benchmark) 1 else 1);
+    // var n: usize = 15_000;
     // _ = &n;
-    // var kl: usize = 500;
-    // _ = &kl;
-    // var ku: usize = 350;
-    // _ = &ku;
 
-    // const lda = kl + ku + 1;
+    // const lda = m;
     // const a = try allocator.alloc(f64, zsl.numeric.cast(usize, lda * n));
     // defer allocator.free(a);
     // const x = try allocator.alloc(f64, zsl.numeric.cast(usize, n));
@@ -31,13 +27,11 @@ pub fn main(init: std.process.Init) !void {
     // for (y) |*v| v.* = 0;
 
     // const start_time = std.Io.Clock.real.now(io);
-    // try zsl.linalg.blas.gbmv(
+    // try zsl.linalg.blas.gemv(
     //     .col_major,
     //     .no_trans,
     //     m,
     //     n,
-    //     kl,
-    //     ku,
     //     @as(f64, 2.0),
     //     a.ptr,
     //     lda,
@@ -46,15 +40,13 @@ pub fn main(init: std.process.Init) !void {
     //     @as(f64, 1.0),
     //     y.ptr,
     //     1,
+    //     .{},
     // );
     // const end_time = std.Io.Clock.real.now(io);
 
     // std.debug.print(
-    //     "zsl.linalg.blas.gbmv ({} x {}, kl={}, ku={}) took {d} seconds\n",
-    //     .{
-    //         m,                                                                                                                           n, kl, ku,
-    //         (zsl.numeric.cast(f128, end_time.toNanoseconds()) - zsl.numeric.cast(f128, start_time.toNanoseconds())) / std.time.ns_per_s,
-    //     },
+    //     "zsl.linalg.blas.gemv ({} x {}) took {d} seconds\n",
+    //     .{ m, n, (zsl.numeric.cast(f128, end_time.toNanoseconds()) - zsl.numeric.cast(f128, start_time.toNanoseconds())) / std.time.ns_per_s },
     // );
 }
 
@@ -148,7 +140,7 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
         const iters: usize =
             if (current_n < 1_000_000) 100 else if (current_n < 16_000_000) 50 else if (current_n < 256_000_000) 10 else 5;
 
-        // --- Serial baseline: force single-threaded with num_threads = 1. ---
+        // Serial baseline
         std.mem.doNotOptimizeAway(
             try zsl.linalg.blas.iamin(current_n, a.ptr, 1, .{ .num_threads = 1 }),
         );
@@ -211,7 +203,7 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
         row += 1;
     }
 
-    // --- Summary metrics ---------------------------------------------------
+    // Summary metrics
     //
     // Noise band: ratios within [1 - NOISE, 1 + NOISE] are treated as "tied
     // with serial" — neither a win nor a regression. Calibrated from the
@@ -302,6 +294,215 @@ pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
     std.debug.print("     don't matter.\n", .{});
 }
 
+pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
+    @setEvalBranchQuota(10000);
+    const io = init.io;
+    var gpa: std.heap.DebugAllocator(.{}) = .{ .backing_allocator = init.gpa };
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    const max_n: usize = 16_384;
+
+    const a = try allocator.alloc(f64, max_n * max_n);
+    const x_vec = try allocator.alloc(f64, max_n);
+    const y_vec = try allocator.alloc(f64, max_n);
+    defer allocator.free(a);
+    defer allocator.free(x_vec);
+    defer allocator.free(y_vec);
+
+    // Initialize with small values to prevent f64 infinity/NaN degradation
+    // over hundreds of operations if beta is used.
+    for (a, 0..) |*val, i| val.* = @as(f64, @floatFromInt(i % 100)) / 1000.0;
+    for (x_vec, 0..) |*val, i| val.* = @as(f64, @floatFromInt(i % 33)) / 330.0;
+    for (y_vec, 0..) |*val, i| val.* = @as(f64, @floatFromInt(i % 17)) / 170.0;
+
+    const thresholds = [_]usize{
+        16_384,
+        32_768,
+        65_536,
+        131_072,
+        262_144,
+        524_288,
+        1_048_576,
+        2_097_152,
+        4_194_304,
+        8_388_608,
+        16_777_216,
+    };
+
+    const options_max_threads = 64;
+
+    const hw_threads: usize = std.Thread.getCpuCount() catch 1;
+    const effective_cap: usize = @min(hw_threads, options_max_threads);
+
+    // Count how many N values we'll iterate over.
+    var n_rows: usize = 0;
+    {
+        var dim: usize = 64;
+        while (dim <= max_n) : (dim *= 2) n_rows += 1;
+    }
+
+    const ratios = try allocator.alloc([]f64, thresholds.len);
+    defer allocator.free(ratios);
+    const thread_counts = try allocator.alloc([]usize, thresholds.len);
+    defer allocator.free(thread_counts);
+    const row_ns = try allocator.alloc(usize, n_rows);
+    defer allocator.free(row_ns);
+    for (ratios, thread_counts) |*r, *t| {
+        r.* = try allocator.alloc(f64, n_rows);
+        t.* = try allocator.alloc(usize, n_rows);
+    }
+    defer for (ratios, thread_counts) |r, t| {
+        allocator.free(r);
+        allocator.free(t);
+    };
+
+    std.debug.print("\n=== GEMV (Level 2) Threshold Calibration ===\n", .{});
+    std.debug.print("Hardware threads: {d}, options.max_threads: {d}, effective cap: {d}\n", .{ hw_threads, options_max_threads, effective_cap });
+    std.debug.print("Automatic-mode rule: threads = max(1, min(effective_cap, (M*N) / T))\n\n", .{});
+    std.debug.print("Cell format: 'R.RRx(Nt)' -> R = parallel_time/serial_time, N = threads spawned\n", .{});
+    std.debug.print("  R < 1.00 -> parallel wins            R > 1.00 -> parallel loses\n", .{});
+    std.debug.print("  (1t)     -> (M*N)/T < 2, stayed serial\n\n", .{});
+
+    // Header
+    std.debug.print("{s:>11} | {s:>12}", .{ "Dim (NxN)", "Serial (ns)" });
+    for (thresholds) |th| {
+        var buf: [16]u8 = undefined;
+        std.debug.print(" | {s:>12}", .{fmtT(&buf, th)});
+    }
+    std.debug.print(" | {s:>22}\n", .{"Best for this Dim"});
+
+    const sep_len: usize = 11 + 3 + 12 + thresholds.len * 15 + 3 + 22;
+    var i: usize = 0;
+    while (i < sep_len) : (i += 1) std.debug.print("-", .{});
+    std.debug.print("\n", .{});
+
+    var row: usize = 0;
+    var current_n: usize = 64;
+    while (current_n <= max_n) : (current_n *= 2) {
+        row_ns[row] = current_n;
+        const current_elements = current_n * current_n;
+
+        // Scaling iterations down drastically as N grows quadratically
+        const iters: usize =
+            if (current_elements < 1_000_000) 100 else if (current_elements < 16_000_000) 50 else if (current_elements < 64_000_000) 10 else 5;
+
+        // Serial baseline
+        try zsl.linalg.blas.gemv(.col_major, .no_trans, current_n, current_n, @as(f64, 0.01), a.ptr, max_n, x_vec.ptr, 1, @as(f64, 0.01), y_vec.ptr, 1, .{ .num_threads = 1 });
+        const s0 = std.Io.Clock.real.now(io);
+        for (0..iters) |_| {
+            try zsl.linalg.blas.gemv(.col_major, .no_trans, current_n, current_n, @as(f64, 0.01), a.ptr, max_n, x_vec.ptr, 1, @as(f64, 0.01), y_vec.ptr, 1, .{ .num_threads = 1 });
+        }
+        const s1 = std.Io.Clock.real.now(io);
+        const serial_ns = (zsl.numeric.cast(f128, s1.toNanoseconds()) - zsl.numeric.cast(f128, s0.toNanoseconds())) / @as(f128, iters);
+
+        std.debug.print("{d:>11} | {d:>12.0}", .{ current_n, @as(f64, @floatCast(serial_ns)) });
+
+        var best_ratio: f128 = 1.0;
+        var best_idx: ?usize = null;
+        var best_threads: usize = 1;
+
+        for (thresholds, 0..) |T, k| {
+            try zsl.linalg.blas.gemv(.col_major, .no_trans, current_n, current_n, @as(f64, 0.01), a.ptr, max_n, x_vec.ptr, 1, @as(f64, 0.01), y_vec.ptr, 1, .{ .num_threads = 0, .parallel_threshold = T });
+            const p0 = std.Io.Clock.real.now(io);
+            for (0..iters) |_| {
+                try zsl.linalg.blas.gemv(.col_major, .no_trans, current_n, current_n, @as(f64, 0.01), a.ptr, max_n, x_vec.ptr, 1, @as(f64, 0.01), y_vec.ptr, 1, .{ .num_threads = 0, .parallel_threshold = T });
+            }
+            const p1 = std.Io.Clock.real.now(io);
+            const ns = (zsl.numeric.cast(f128, p1.toNanoseconds()) - zsl.numeric.cast(f128, p0.toNanoseconds())) / @as(f128, iters);
+            const ratio: f128 = ns / serial_ns;
+
+            const threads = @max(@as(usize, 1), @min(current_elements / T, effective_cap));
+
+            ratios[k][row] = @as(f64, @floatCast(ratio));
+            thread_counts[k][row] = threads;
+
+            std.debug.print(" | {d:>6.2}x({d:>2}t)", .{
+                @as(f64, @floatCast(ratio)), threads,
+            });
+
+            if (ratio < best_ratio) {
+                best_ratio = ratio;
+                best_idx = k;
+                best_threads = threads;
+            }
+        }
+
+        if (best_idx) |k| {
+            var tbuf: [16]u8 = undefined;
+            var sbuf: [48]u8 = undefined;
+            const tl = fmtT(&tbuf, thresholds[k]);
+            const sum = std.fmt.bufPrint(&sbuf, "{s} @ {d}t ({d:.2}x)", .{ tl, best_threads, @as(f64, @floatCast(best_ratio)) }) catch "?";
+            std.debug.print(" | {s:>22}\n", .{sum});
+        } else {
+            std.debug.print(" | {s:>22}\n", .{"serial (no parallel won)"});
+        }
+
+        row += 1;
+    }
+
+    // Summary metrics
+    const NOISE: f64 = 0.05;
+    const REGRESSION: f64 = 1.10;
+
+    std.debug.print("\n=== Summary (noise band = ±{d:.0}%, regression = >{d:.0}%) ===\n\n", .{
+        NOISE * 100, (REGRESSION - 1.0) * 100,
+    });
+
+    std.debug.print("{s:>10} | {s:>9} | {s:>9} | {s:>9} | {s:>12} | {s:>9} | {s:>14}\n", .{
+        "Threshold", "Geomean*", "Best", "Worst", "Worst @ Dim", "Reg. Dim", "First win @ N",
+    });
+    var j: usize = 0;
+    while (j < 10 + 3 + 9 + 3 + 9 + 3 + 9 + 3 + 12 + 3 + 9 + 3 + 14) : (j += 1) std.debug.print("-", .{});
+    std.debug.print("\n", .{});
+
+    for (thresholds, 0..) |T, k| {
+        var buf: [16]u8 = undefined;
+        const label = fmtT(&buf, T);
+
+        var log_sum: f64 = 0;
+        var spawn_count: usize = 0;
+        var best: f64 = std.math.inf(f64);
+        var worst: f64 = -std.math.inf(f64);
+        var worst_n: usize = 0;
+        var regression_count: usize = 0;
+        var first_win_n: ?usize = null;
+
+        for (0..n_rows) |r| {
+            const ratio = ratios[k][r];
+            const threads = thread_counts[k][r];
+
+            if (threads <= 1) continue;
+
+            spawn_count += 1;
+            log_sum += @log(ratio);
+            if (ratio < best) best = ratio;
+            if (ratio > worst) {
+                worst = ratio;
+                worst_n = row_ns[r];
+            }
+            if (ratio > REGRESSION) regression_count += 1;
+            if (first_win_n == null and ratio < 1.0 - NOISE) first_win_n = row_ns[r];
+        }
+
+        if (spawn_count == 0) {
+            std.debug.print("{s:>10} | {s:>71}\n", .{ label, "never spawned" });
+            continue;
+        }
+
+        const geo = @exp(log_sum / @as(f64, @floatFromInt(spawn_count)));
+
+        var nbuf: [24]u8 = undefined;
+        const worst_n_str = fmtN(&nbuf, worst_n);
+        var nbuf2: [24]u8 = undefined;
+        const first_win_str = if (first_win_n) |n_| fmtN(&nbuf2, n_) else "never";
+
+        std.debug.print("{s:>10} | {d:>8.3}x | {d:>8.2}x | {d:>8.2}x | {s:>12} | {d:>4}/{d:<4} | {s:>14}\n", .{
+            label, geo, best, worst, worst_n_str, regression_count, spawn_count, first_win_str,
+        });
+    }
+}
+
 fn fmtT(buf: []u8, x: usize) []const u8 {
     if (x >= 1024 * 1024)
         return std.fmt.bufPrint(buf, "T={d}Mi", .{x / (1024 * 1024)}) catch "?";
@@ -317,6 +518,167 @@ fn fmtN(buf: []u8, x: usize) []const u8 {
     if (ux >= 1024)
         return std.fmt.bufPrint(buf, "{d}Ki", .{ux / 1024}) catch "?";
     return std.fmt.bufPrint(buf, "{d}", .{ux}) catch "?";
+}
+
+/// Formats the dyadic exactly into a base-10 string.
+/// The caller takes ownership of the returned slice and must free it.
+pub fn dyadicToString(allocator: std.mem.Allocator, x: anytype) ![]u8 {
+    // Handle edge cases
+    if (x.isNan())
+        return allocator.dupe(u8, "NaN");
+
+    if (x.isInf())
+        return allocator.dupe(u8, if (x.positive) "Inf" else "-Inf");
+
+    if (x.isZero())
+        return allocator.dupe(u8, if (x.positive) "0.0" else "-0.0");
+
+    const Mantissa = @TypeOf(x).Mantissa;
+    const bits = @typeInfo(Mantissa).int.bits;
+
+    // Calculate max significant figures at compile time
+    const calculated_sig_figs = comptime @as(usize, @intFromFloat(@as(f64, @floatFromInt(bits)) * 0.3010299956639812 * 1.05));
+    const max_sig_figs: usize = if (calculated_sig_figs == 0) 1 else calculated_sig_figs;
+
+    const Helpers = struct {
+        // Add two base-10 digit arrays
+        fn addDigits(alloc: std.mem.Allocator, dest: *std.ArrayList(u8), src: []const u8) !void {
+            var carry: u8 = 0;
+            var i: usize = 0;
+            while (i < src.len or carry > 0) : (i += 1) {
+                if (i >= dest.items.len) {
+                    try dest.append(alloc, 0);
+                }
+                const a = dest.items[i];
+                const b = if (i < src.len) src[i] else 0;
+                const sum = a + b + carry;
+                dest.items[i] = sum % 10;
+                carry = sum / 10;
+            }
+        }
+
+        // Multiply a base-10 digit array by a small scalar
+        fn mulByDigit(alloc: std.mem.Allocator, dest: *std.ArrayList(u8), multiplier: u32) !void {
+            var carry: u32 = 0;
+            for (dest.items) |*digit| {
+                const prod = @as(u32, digit.*) * multiplier + carry;
+                digit.* = @intCast(prod % 10);
+                carry = prod / 10;
+            }
+            while (carry > 0) {
+                try dest.append(alloc, @intCast(carry % 10));
+                carry /= 10;
+            }
+        }
+    };
+
+    var num: std.ArrayList(u8) = .empty;
+    defer num.deinit(allocator);
+    try num.append(allocator, 0);
+
+    var power_of_2: std.ArrayList(u8) = .empty;
+    defer power_of_2.deinit(allocator);
+    try power_of_2.append(allocator, 1);
+
+    // Step 1: Load the base mantissa into the `num` bignum array
+    var i: u16 = 0;
+    while (i < bits) : (i += 1) {
+        const shift: std.math.Log2Int(Mantissa) = @intCast(i);
+        const bit = (x.mantissa >> shift) & 1;
+        if (bit == 1) {
+            try Helpers.addDigits(allocator, &num, power_of_2.items);
+        }
+        try Helpers.mulByDigit(allocator, &power_of_2, 2);
+    }
+
+    // Step 2: Apply the exponent
+    const e_i32: i32 = x.exponent;
+    const abs_e: u32 = @intCast(if (e_i32 < 0) -e_i32 else e_i32);
+
+    if (e_i32 > 0) {
+        // Number is Mantissa * 2^E
+        var j: u32 = 0;
+        while (j < abs_e) : (j += 1) {
+            try Helpers.mulByDigit(allocator, &num, 2);
+        }
+    } else if (e_i32 < 0) {
+        // Number is Mantissa * 5^|E| / 10^|E|
+        // We compute the numerator exactly to avoid floating-point logic
+        var j: u32 = 0;
+        while (j < abs_e) : (j += 1) {
+            try Helpers.mulByDigit(allocator, &num, 5);
+        }
+    }
+
+    // Pad with trailing zeros to guarantee we safely cross the decimal point
+    if (e_i32 < 0) {
+        while (num.items.len <= abs_e) {
+            try num.append(allocator, 0);
+        }
+    }
+
+    // Step 3: Format the final string
+    var result: std.ArrayList(u8) = .empty;
+    if (!x.positive) {
+        try result.append(allocator, '-');
+    }
+
+    var sig_figs: usize = 0;
+    var started_counting = false;
+
+    if (e_i32 >= 0) {
+        // Integer representation
+        var idx: usize = num.items.len;
+        while (idx > 0) {
+            idx -= 1;
+            const digit = num.items[idx];
+
+            if (digit != 0) started_counting = true;
+            if (started_counting) sig_figs += 1;
+
+            if (sig_figs <= max_sig_figs) {
+                try result.append(allocator, digit + '0');
+            } else {
+                // Cap exceeded: Pad integer part with zeros for magnitude safety
+                try result.append(allocator, '0');
+            }
+        }
+        try result.appendSlice(allocator, ".0");
+    } else {
+        // Fractional representation, inject decimal point
+        var idx: usize = num.items.len;
+        while (idx > 0) {
+            idx -= 1;
+            const digit = num.items[idx];
+
+            if (digit != 0 and !started_counting) started_counting = true;
+            if (started_counting) sig_figs += 1;
+
+            if (sig_figs <= max_sig_figs or !started_counting) {
+                try result.append(allocator, digit + '0');
+            } else {
+                // Cap exceeded
+                if (idx >= abs_e) {
+                    // Haven't hit the decimal yet, pad to preserve scale
+                    try result.append(allocator, '0');
+                } else {
+                    // Safely right of the decimal point, just truncate
+                    break;
+                }
+            }
+
+            if (idx == abs_e) {
+                try result.append(allocator, '.');
+            }
+        }
+
+        // Cleanup: If the cap caused the string to stop exactly on the decimal, append a '0'
+        if (result.items.len > 0 and result.items[result.items.len - 1] == '.') {
+            try result.append(allocator, '0');
+        }
+    }
+
+    return result.toOwnedSlice(allocator);
 }
 
 // fn avg(values: []const f64) f64 {

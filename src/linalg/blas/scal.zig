@@ -147,61 +147,92 @@ pub fn scal(
         return err;
 }
 
-fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
+pub fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
     const Al: type = @TypeOf(alpha);
     const X: type = meta.Child(@TypeOf(x));
-
-    if (n == 0)
-        return;
 
     const unroll = 2 * (std.simd.suggestVectorLength(numeric.Mul(Al, X)) orelse 2);
 
     if (incx == 1) {
-        var i: usize = 0;
-        while (i < (n / unroll) * unroll) : (i += unroll) {
-            inline for (0..unroll) |u| {
-                // x[i + u] *= alpha
+        if (numeric.eq(alpha, 0)) {
+            var i: usize = 0;
+            while (i < (n / unroll) * unroll) : (i += unroll) {
+                inline for (0..unroll) |u| {
+                    // x[i + u] = 0
+                    x[i + u] = numeric.zero(X);
+                }
+            }
+
+            while (i < n) : (i += 1) {
+                // x[i] = 0
+                x[i] = numeric.zero(X);
+            }
+        } else {
+            var i: usize = 0;
+            while (i < (n / unroll) * unroll) : (i += unroll) {
+                inline for (0..unroll) |u| {
+                    // x[i + u] *= alpha
+                    numeric.mul_(
+                        &x[i + u],
+                        alpha,
+                        x[i + u],
+                    );
+                }
+            }
+
+            while (i < n) : (i += 1) {
+                // x[i] *= alpha
                 numeric.mul_(
-                    &x[i + u],
+                    &x[i],
                     alpha,
-                    x[i + u],
+                    x[i],
                 );
             }
-        }
-
-        while (i < n) : (i += 1) {
-            // x[i] *= alpha
-            numeric.mul_(
-                &x[i],
-                alpha,
-                x[i],
-            );
         }
     } else {
         var ix: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
-        var i: usize = 0;
-        while (i < (n / unroll) * unroll) : (i += unroll) {
-            inline for (0..unroll) |u| {
-                // x[ix + u * incx] *= alpha
-                numeric.mul_(
-                    &x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
-                    alpha,
-                    x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
-                );
+        if (numeric.eq(alpha, 0)) {
+            var i: usize = 0;
+            while (i < (n / unroll) * unroll) : (i += unroll) {
+                inline for (0..unroll) |u| {
+                    // x[ix + u * incx] = 0
+                    x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)] = numeric.zero(X);
+                }
+
+                ix += numeric.cast(isize, unroll) * incx;
             }
 
-            ix += numeric.cast(isize, unroll) * incx;
-        }
+            while (i < n) : (i += 1) {
+                // x[ix] *= alpha
+                x[numeric.cast(usize, ix)] = numeric.zero(X);
 
-        while (i < n) : (i += 1) {
-            // x[ix] *= alpha
-            numeric.mul_(
-                &x[numeric.cast(usize, ix)],
-                alpha,
-                x[numeric.cast(usize, ix)],
-            );
+                ix += incx;
+            }
+        } else {
+            var i: usize = 0;
+            while (i < (n / unroll) * unroll) : (i += unroll) {
+                inline for (0..unroll) |u| {
+                    // x[ix + u * incx] *= alpha
+                    numeric.mul_(
+                        &x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
+                        alpha,
+                        x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
+                    );
+                }
 
-            ix += incx;
+                ix += numeric.cast(isize, unroll) * incx;
+            }
+
+            while (i < n) : (i += 1) {
+                // x[ix] *= alpha
+                numeric.mul_(
+                    &x[numeric.cast(usize, ix)],
+                    alpha,
+                    x[numeric.cast(usize, ix)],
+                );
+
+                ix += incx;
+            }
         }
     }
 }

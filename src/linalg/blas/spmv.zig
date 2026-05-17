@@ -100,50 +100,8 @@ fn k_spmv(uplo: Uplo, n: usize, alpha: anytype, ap: anytype, x: anytype, incx: i
     const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
 
     // First form  y = beta * y.
-    if (numeric.ne(beta, 1)) {
-        if (incy == 1) {
-            if (numeric.eq(beta, 0)) {
-                var i: usize = 0;
-                while (i < n) : (i += 1) {
-                    // y[i] = 0
-                    numeric.set(&y[i], 0);
-                }
-            } else {
-                var i: usize = 0;
-                while (i < n) : (i += 1) {
-                    // y[i] *= beta
-                    numeric.mul_(
-                        &y[i],
-                        y[i],
-                        beta,
-                    );
-                }
-            }
-        } else {
-            var iy: isize = ky;
-            if (numeric.eq(beta, 0)) {
-                var i: usize = 0;
-                while (i < n) : (i += 1) {
-                    // y[iy] = 0
-                    numeric.set(&y[numeric.cast(usize, iy)], 0);
-
-                    iy += incy;
-                }
-            } else {
-                var i: usize = 0;
-                while (i < n) : (i += 1) {
-                    // y[iy] *= beta
-                    numeric.mul_(
-                        &y[numeric.cast(usize, iy)],
-                        y[numeric.cast(usize, iy)],
-                        beta,
-                    );
-
-                    iy += incy;
-                }
-            }
-        }
-    }
+    if (numeric.ne(beta, 1))
+        @import("scal.zig").k_scal(n, beta, y, incy);
 
     if (numeric.eq(alpha, 0))
         return;

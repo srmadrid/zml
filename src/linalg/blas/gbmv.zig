@@ -77,7 +77,7 @@ const linalg = @import("../../linalg.zig");
 /// `void`
 ///
 /// ## Errors
-/// * `linalg.blas.Error.InvalidArgument`: Ff `lda` is less than `kl + ku + 1`,
+/// * `linalg.blas.Error.InvalidArgument`: If `lda` is less than `kl + ku + 1`,
 ///   or if `incx` or `incy` is 0.
 pub fn gbmv(layout: Layout, transa: linalg.Transpose, m: usize, n: usize, kl: usize, ku: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize) !void {
     const Al: type = @TypeOf(alpha);
@@ -154,50 +154,8 @@ fn k_gbmv(transa: linalg.Transpose, m: usize, n: usize, kl: usize, ku: usize, al
     var ky: isize = if (incy < 0) (-numeric.cast(isize, leny) + 1) * incy else 0;
 
     // First form y = beta * y.
-    if (numeric.ne(beta, 1)) {
-        if (incy == 1) {
-            if (numeric.eq(beta, 0)) {
-                var i: usize = 0;
-                while (i < leny) : (i += 1) {
-                    // y[i] = 0
-                    numeric.set(&y[i], 0);
-                }
-            } else {
-                var i: usize = 0;
-                while (i < leny) : (i += 1) {
-                    // y[i] *= beta
-                    numeric.mul_(
-                        &y[i],
-                        y[i],
-                        beta,
-                    );
-                }
-            }
-        } else {
-            var iy: isize = ky;
-            if (numeric.eq(beta, 0)) {
-                var i: usize = 0;
-                while (i < leny) : (i += 1) {
-                    // y[iy] = 0
-                    numeric.set(&y[numeric.cast(usize, iy)], 0);
-
-                    iy += incy;
-                }
-            } else {
-                var i: usize = 0;
-                while (i < leny) : (i += 1) {
-                    // y[iy] *= beta
-                    numeric.mul_(
-                        &y[numeric.cast(usize, iy)],
-                        y[numeric.cast(usize, iy)],
-                        beta,
-                    );
-
-                    iy += incy;
-                }
-            }
-        }
-    }
+    if (numeric.ne(beta, 1))
+        @import("scal.zig").k_scal(leny, beta, y, incy);
 
     if (numeric.eq(alpha, 0))
         return;
