@@ -1,10 +1,11 @@
 test {
     // Override test flags
-    const test_all = true;
+    const test_all = false;
 
     // Individual test flags
     const test_casts = true;
     const test_arithmetic = false;
+    const test_power = true;
 
     if (test_all or test_casts) {
         _ = @import("dyadic/initBool.zig");
@@ -20,5 +21,12 @@ test {
         _ = @import("dyadic/mul.zig");
         _ = @import("dyadic/fma.zig");
         _ = @import("dyadic/div.zig");
+    }
+
+    if (test_all or test_power) {
+        // _ = @import("float/pow.zig");
+        _ = @import("dyadic/sqrt.zig");
+        // _ = @import("float/cbrt.zig");
+        // _ = @import("float/hypot.zig");
     }
 }

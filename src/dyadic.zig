@@ -39,9 +39,9 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
         };
 
         pub const Mantissa = @Int(.unsigned, mantissa_bits);
-        const WideMantissa = @Int(.unsigned, 2 * mantissa_bits);
+        pub const WideMantissa = @Int(.unsigned, 2 * mantissa_bits);
         pub const Exponent = @Int(.signed, exponent_bits);
-        const WideExponent = @Int(.signed, 2 * exponent_bits);
+        pub const WideExponent = @Int(.signed, 2 * exponent_bits);
 
         // Constants
         pub const inf: Dyadic(mantissa_bits, exponent_bits) = .{ .mantissa = 0, .exponent = int.maxVal(Exponent), .positive = true };
@@ -309,7 +309,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return x;
 
             // Addition or subtraction
-            const cmp_abs: meta.Cmp = if (x.exponent != y.exponent)
+            const cmp_abs: Cmp = if (x.exponent != y.exponent)
                 int.cmp(x.exponent, y.exponent)
             else
                 int.cmp(x.mantissa, y.mantissa);
@@ -1011,6 +1011,41 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `dyadic.Add(@TypeOf(x), @TypeOf(y))`: The result of the addition.
+///
+/// ## Method
+/// The algorithm implements exact floating-point addition and subtraction of
+/// `x: Dyadic(N, E)` and `y: Dyadic(N, E)`, ensuring exact rounding and
+/// graceful handling of catastrophic cancellation [1]:
+/// 1. Magnitude Ordering: The operands are evaluated by absolute magnitude. The
+///    operation is delegated to either absolute addition (`_addAbs`) or
+///    absolute subtraction (`_subAbs`) such that the larger magnitude operand
+///    is always processed first.
+/// 2. Alignment & Sticky Bit: To add or subtract mantissas, their exponents
+///    must align. Both mantissas are upcast to a `WideMantissa` representation
+///    (shifted left by `N` bits) to act as guard digits. The smaller operand's
+///    wide mantissa is right-shifted by the exponent difference. Any non-zero
+///    bits shifted entirely out of the representable range are logically OR'd
+///    into a single sticky bit. This bit acts as a mathematical proxy for all
+///    lost precision, strictly required for exact rounding [2].
+/// 3. Execution & Renormalization:
+///    * Addition: The aligned mantissas are added. If the sum overflows
+///      (produces a carry bit), the result is right-shifted by one, the sticky
+///      bit is updated, the most significant bit is restored, and the exponent
+///      is incremented.
+///    * Subtraction: The smaller aligned mantissa is subtracted from the
+///      larger. If the sticky bit is set, a `1` is borrowed (subtracted) from
+///      the difference. Because subtraction of similar magnitudes can result in
+///      massive precision loss (catastrophic cancellation), the result is
+///      rapidly renormalized by counting leading zeros, shifting the mantissa
+///      left, and decrementing the exponent accordingly [1].
+/// 4. Rounding: The result is rounded using the standard "round to nearest,
+///    ties to even" mode. This is achieved by inspecting the remainder against
+///    a halfway mask alongside the sticky bit. If rounding causes the mantissa
+///    to overflow, a final post-normalization shift is applied [1].
+///
+/// ## References
+/// [1] Muller, J.-M., et al. (2018). Handbook of Floating-Point Arithmetic (2nd ed.). Birkhäuser. https://doi.org/10.1007/978-3-319-76526-6
+/// [2] Goldberg, D. (1991). What Every Computer Scientist Should Know About Floating-Point Arithmetic. ACM Computing Surveys, 23(1), 5-48. https://doi.org/10.1145/103162.103163
 pub fn add(x: anytype, y: anytype) dyadic.Add(@TypeOf(x), @TypeOf(y)) {
     const R: type = Add(@TypeOf(x), @TypeOf(y));
 
@@ -1043,6 +1078,16 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `dyadic.Sub(@TypeOf(x), @TypeOf(y))`: The result of the subtraction.
+///
+/// ## Method
+/// The algorithm implements exact floating-point subtraction of
+/// `x: Dyadic(N, E)` and `y: Dyadic(N, E)` by algebraically reducing it to
+/// addition: `x - y = x + (-y)`. Because floating-point negation is an exact,
+/// bitwise operation (simply flipping the sign flag) that incurs no loss of
+/// precision, this reduction is mathematically lossless [1].
+///
+/// ## References
+/// [1] Muller, J.-M., et al. (2018). Handbook of Floating-Point Arithmetic (2nd ed.). Birkhäuser. https://doi.org/10.1007/978-3-319-76526-6
 pub fn sub(x: anytype, y: anytype) Sub(@TypeOf(x), @TypeOf(y)) {
     const R: type = Sub(@TypeOf(x), @TypeOf(y));
 
@@ -1062,7 +1107,7 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 /// Performs multiplication between two operands of dyadic, float, int or bool
 /// types, where at least one operand must be of dyadic type. The result type is
 /// determined by coercing the operand types, and the operation is performed by
-/// casting both operands to the result type, then multiplication them.
+/// casting both operands to the result type, then multiplying them.
 ///
 /// ## Signature
 /// ```zig
@@ -1075,6 +1120,30 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `dyadic.Mul(@TypeOf(x), @TypeOf(y))`: The result of the multiplication.
+///
+/// ## Method
+/// The algorithm implements exact floating-point multiplication of
+/// `x: Dyadic(N, E)` and `y: Dyadic(N, E)` by computing the full-width product
+/// of the integer mantissas and strictly normalizing [1]:
+/// 1. Full-Width Multiplication: The `N`-bit normalized mantissas are
+///    multiplied to form a complete, exact `2N`-bit wide product. Because the
+///    input mantissas mathematically fall within the normalized bounds of
+///    `[2ᴺ⁻¹, 2ᴺ)`, their algebraic product is strictly bounded within
+///    `[2²ᴺ⁻², 2²ᴺ)`. The sign of the result is determined independently.
+/// 2. Renormalization: Due to the bounds established in step 1, the most
+///    significant bit (MSB) of the product is mathematically guaranteed to land
+///    at either index `2N - 1` or `2N - 2`. If it lands at `2N - 2`, a `1`-bit
+///    left shift renormalizes the mantissa, and the working exponent is
+///    decremented by `1`. No iterative shifting or leading-zero counting is
+///    required [1].
+/// 3. Exact Rounding: Because the operation computes the exact `2N`-bit
+///    product, no precision is lost during the calculation. The lower `N` bits
+///    act as an exact remainder. This remainder is checked against a halfway
+///    mask to apply standard "round to nearest, ties to even" logic before
+///    truncation.
+///
+/// ## References
+/// [1] Muller, J.-M., et al. (2018). Handbook of Floating-Point Arithmetic (2nd ed.). Birkhäuser. https://doi.org/10.1007/978-3-319-76526-6
 pub fn mul(x: anytype, y: anytype) Mul(@TypeOf(x), @TypeOf(y)) {
     const R: type = Mul(@TypeOf(x), @TypeOf(y));
 
@@ -1110,6 +1179,37 @@ pub fn Fma(comptime X: type, comptime Y: type, comptime Z: type) type {
 /// ## Returns
 /// `dyadic.Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z))`: The result of the fused
 /// multiplication and addition.
+///
+/// ## Method
+/// The algorithm implements exact fused multiply-add for `x: Dyadic(N, E)`,
+/// `y: Dyadic(N, E)`, and `z: Dyadic(N, E)` computing the infinitely precise
+/// mathematical result with only a single final rounding step to eliminate
+/// double-rounding errors [1]:
+/// 1. Exact Product: The `N`-bit mantissas of `x` and `y` are multiplied to
+///    form an exact `2N`-bit product. Because the input mantissas
+///    mathematically fall within `[2ᴺ⁻¹, 2ᴺ)`, the unrounded algebraic product
+///    is strictly bounded within `[2²ᴺ⁻², 2²ᴺ)`. No truncation or rounding
+///    occurs here.
+/// 2. Alignment & Fractional Tracking: The exact product and the addend `z` are
+///    ordered by absolute magnitude. To align the exponents, the smaller
+///    operand is right-shifted. Any exact bits shifted out of the primary `2N`
+///    working width are perfectly preserved in a frac register. Bits shifted
+///    entirely beyond `frac` are logically OR'd into a single sticky bit. This
+///    architecture evaluates the true sum without requiring hardware registers
+///    of infinite width [1].
+/// 3. Execution & Renormalization: The aligned operands are added or
+///    subtracted. If a subtraction of similar magnitudes triggers massive
+///    precision loss (catastrophic cancellation), the result is rapidly
+///    renormalized by counting leading zeros. The exact bits stored in the
+///    `frac` register are pulled back up into the primary mantissa to fully
+///    recover the mathematically exact difference [1].
+/// 4. Single Exact Rounding: The single, final rounding step evaluates the
+///    primary remainder alongside the `frac` and sticky bits. This applies
+///    standard "round to nearest, ties to even" logic to the exact algebraic
+///    outcome before standardizing the exponent.
+///
+/// ## References
+/// [1] Muller, J.-M., et al. (2018). Handbook of Floating-Point Arithmetic (2nd ed.). Birkhäuser. https://doi.org/10.1007/978-3-319-76526-6
 pub fn fma(x: anytype, y: anytype, z: anytype) dyadic.Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z)) {
     const R: type = dyadic.Fma(@TypeOf(x), @TypeOf(y), @TypeOf(z));
 
@@ -1142,6 +1242,32 @@ pub fn Div(comptime X: type, comptime Y: type) type {
 ///
 /// ## Returns
 /// `dyadic.Div(@TypeOf(x), @TypeOf(y))`: The result of the division.
+///
+/// ## Method
+/// The algorithm implements exact floating-point division of
+/// `x: Dyadic(N, E)` and `y: Dyadic(N, E)` by leveraging exact integer division
+/// of the scaled mantissas [1]:
+/// 1. Scaled Integer Division: The dividend mantissa `x` is shifted left by `N`
+///    bits, producing a `2N`-bit wide integer. This is divided by the `N`-bit
+///    divisor mantissa `y` to yield an exact integer quotient and remainder.
+///    Because the normalized inputs mathematically fall within the bounds of
+///    `[2ᴺ⁻¹, 2ᴺ)`, the resulting quotient is strictly bounded within
+///    `[2ᴺ⁻¹, 2ᴺ⁺¹)`.
+/// 2. Reormalization: Due to the bounds established in step 1, the most
+///    significant bit (MSB) of the quotient is mathematically guaranteed to
+///    land at either index `N` or `N - 1`. If it lands at `N`, a `1`-bit right
+///    shift renormalizes the mantissa, and the working exponent is incremented
+///    by `1`.
+/// 3. Exact Rounding: The exact mathematical remainder is used to apply
+///    standard "round to nearest, ties to even" logic without any loss of
+///    floating-point precision. If the quotient required a right shift, the
+///    dropped bit and the presence of a non-zero remainder (acting as a sticky
+///    bit) dictate the rounding. If no shift was required, the remainder is
+///    algebraically doubled and compared directly against the divisor to
+///    determine if the fractional part exceeds exactly `0.5` [1].
+///
+/// ## References
+/// [1] Muller, J.-M., et al. (2018). Handbook of Floating-Point Arithmetic (2nd ed.). Birkhäuser. https://doi.org/10.1007/978-3-319-76526-6
 pub fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
     const R: type = Div(@TypeOf(x), @TypeOf(y));
 
@@ -1149,3 +1275,5 @@ pub fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
 }
 
 pub const sign = @import("dyadic/sign.zig").sign;
+
+pub const sqrt = @import("dyadic/sqrt.zig").sqrt;
