@@ -142,11 +142,10 @@ pub fn ger(
 
     const Worker = struct {
         fn execute(worker_layout: Layout, worker_m: usize, worker_n: usize, worker_alpha: Al, worker_x: [*]const X, worker_incx: isize, worker_y: [*]const Y, worker_incy: isize, worker_a: [*]A, worker_lda: usize) void {
-            if (worker_layout == .col_major) {
-                k_ger(worker_m, worker_n, worker_alpha, worker_x, worker_incx, worker_y, worker_incy, worker_a, worker_lda) catch unreachable;
-            } else {
-                k_ger(worker_n, worker_m, worker_alpha, worker_y, worker_incy, worker_x, worker_incx, worker_a, worker_lda) catch unreachable;
-            }
+            return if (worker_layout == .col_major)
+                k_ger(worker_m, worker_n, worker_alpha, worker_x, worker_incx, worker_y, worker_incy, worker_a, worker_lda)
+            else
+                k_ger(worker_n, worker_m, worker_alpha, worker_y, worker_incy, worker_x, worker_incx, worker_a, worker_lda);
         }
     };
 
@@ -194,7 +193,7 @@ pub fn ger(
         return err;
 }
 
-fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize, a: anytype, lda: usize) !void {
+fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize, a: anytype, lda: usize) void {
     const Al: type = @TypeOf(alpha);
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));

@@ -357,7 +357,7 @@ pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
         allocator.free(t);
     };
 
-    std.debug.print("\n=== GER (Level 2) Threshold Calibration ===\n", .{});
+    std.debug.print("\n=== GERC (Level 2) Threshold Calibration ===\n", .{});
     std.debug.print("Hardware threads: {d}, options.max_threads: {d}, effective cap: {d}\n", .{ hw_threads, options_max_threads, effective_cap });
     std.debug.print("Automatic-mode rule: threads = max(1, min(effective_cap, (M*N) / T))\n\n", .{});
     std.debug.print("Cell format: 'R.RRx(Nt)' -> R = parallel_time/serial_time, N = threads spawned\n", .{});
@@ -388,10 +388,10 @@ pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
             if (current_elements < 1_000_000) 100 else if (current_elements < 16_000_000) 50 else if (current_elements < 64_000_000) 10 else 5;
 
         // Serial baseline
-        try zsl.linalg.blas.ger(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 1 });
+        try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 1 });
         const s0 = std.Io.Clock.real.now(io);
         for (0..iters) |_| {
-            try zsl.linalg.blas.ger(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 1 });
+            try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 1 });
         }
         const s1 = std.Io.Clock.real.now(io);
         const serial_ns = (zsl.numeric.cast(f128, s1.toNanoseconds()) - zsl.numeric.cast(f128, s0.toNanoseconds())) / @as(f128, iters);
@@ -403,10 +403,10 @@ pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
         var best_threads: usize = 1;
 
         for (thresholds, 0..) |T, k| {
-            try zsl.linalg.blas.ger(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 0, .parallel_threshold = T });
+            try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 0, .parallel_threshold = T });
             const p0 = std.Io.Clock.real.now(io);
             for (0..iters) |_| {
-                try zsl.linalg.blas.ger(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 0, .parallel_threshold = T });
+                try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 0, .parallel_threshold = T });
             }
             const p1 = std.Io.Clock.real.now(io);
             const ns = (zsl.numeric.cast(f128, p1.toNanoseconds()) - zsl.numeric.cast(f128, p0.toNanoseconds())) / @as(f128, iters);
