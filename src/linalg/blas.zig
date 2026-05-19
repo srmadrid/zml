@@ -21,7 +21,7 @@ pub const iamin = @import("blas/iamin.zig").iamin;
 // Level 2
 pub const gbmv = @import("blas/gbmv.zig").gbmv;
 pub const gemv = @import("blas/gemv.zig").gemv;
-// pub const ger = @import("blas/ger.zig").ger;
+pub const ger = @import("blas/ger.zig").ger;
 // pub const gerc = @import("blas/gerc.zig").gerc;
 pub const hbmv = @import("blas/hbmv.zig").hbmv;
 // pub const hemv = @import("blas/hemv.zig").hemv;

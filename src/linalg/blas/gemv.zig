@@ -109,7 +109,7 @@ pub fn gemv(
     incy: isize,
     opts: struct {
         num_threads: usize = 0,
-        parallel_threshold: usize = 8_388_608 / @sizeOf(meta.Child(@TypeOf(y))),
+        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(y))),
     },
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -153,6 +153,8 @@ pub fn gemv(
     const eff_m = if (layout == .col_major) m else n;
     const eff_n = if (layout == .col_major) n else m;
     const noconj = transa == .no_trans or transa == .trans;
+    const no_trans = eff_transa == .no_trans or eff_transa == .conj_no_trans;
+    const leny = if (no_trans) eff_m else eff_n;
 
     if (opts.num_threads == 1)
         return if (noconj)
@@ -168,6 +170,7 @@ pub fn gemv(
     } else opts.num_threads;
 
     num_threads = int.min(num_threads, options.max_threads);
+    num_threads = int.min(num_threads, leny);
 
     if (num_threads <= 1)
         return if (noconj)
@@ -176,6 +179,7 @@ pub fn gemv(
             k_gemv(eff_transa, eff_m, eff_n, alpha, a, lda, x, incx, beta, y, incy, false);
 
     num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
+    num_threads = int.min(num_threads, leny);
 
     if (num_threads <= 1)
         return if (noconj)
@@ -194,8 +198,6 @@ pub fn gemv(
         }
     };
 
-    const no_trans = eff_transa == .no_trans or eff_transa == .conj_no_trans;
-    const leny = if (no_trans) eff_m else eff_n;
     const chunk_size = int.div(leny, num_threads);
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;
