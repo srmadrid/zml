@@ -241,7 +241,7 @@ pub fn gemv(
         return err;
 }
 
-fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
+pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: anytype, lda: usize, x: anytype, incx: isize, beta: anytype, y: anytype, incy: isize, comptime noconj: bool) void {
     const Al: type = @TypeOf(alpha);
     const A: type = meta.Child(@TypeOf(a));
     const X: type = meta.Child(@TypeOf(x));

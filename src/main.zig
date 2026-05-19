@@ -3,51 +3,50 @@ const zsl = @import("zsl");
 
 pub fn main(init: std.process.Init) !void {
     // try blas_lv1_threshold_calibration(init);
-    try blas_lv2_threshold_calibration(init);
+    // try blas_lv2_threshold_calibration(init);
 
-    // const io = init.io;
-    // var gpa: std.heap.DebugAllocator(.{}) = .{ .backing_allocator = init.gpa };
-    // defer _ = gpa.deinit();
-    // const allocator = gpa.allocator();
+    const io = init.io;
+    var gpa: std.heap.DebugAllocator(.{}) = .{ .backing_allocator = init.gpa };
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
 
-    // var m: usize = 12_500;
-    // _ = &m;
-    // var n: usize = 17_500;
-    // _ = &n;
+    var m: usize = 12_500;
+    _ = &m;
+    var n: usize = 12_500;
+    _ = &n;
 
-    // const lda = m;
-    // const a = try allocator.alloc(f64, zsl.numeric.cast(usize, lda * n));
-    // defer allocator.free(a);
-    // const x = try allocator.alloc(f64, zsl.numeric.cast(usize, n));
-    // defer allocator.free(x);
-    // const y = try allocator.alloc(f64, zsl.numeric.cast(usize, m));
-    // defer allocator.free(y);
-    // for (a, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 100)) / 100.0;
-    // for (x, 0..) |*v, i| v.* = @as(f64, @floatFromInt(i % 33)) / 100.0;
-    // for (y) |*v| v.* = 0;
+    const lda = m;
+    const a = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, lda * n));
+    defer allocator.free(a);
+    const x = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, n));
+    defer allocator.free(x);
+    const y = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, m));
+    defer allocator.free(y);
+    for (a, 0..) |*v, i| v.* = .{ .re = @as(f64, @floatFromInt(i % 100)) / 100.0, .im = @as(f64, @floatFromInt(i % 66)) / 100.0 };
+    for (x, 0..) |*v, i| v.* = .{ .re = @as(f64, @floatFromInt(i % 33)) / 100.0, .im = @as(f64, @floatFromInt(i % 13)) / 100.0 };
+    for (y) |*v| v.* = .{ .re = 0.0, .im = 0.0 };
 
-    // const start_time = std.Io.Clock.real.now(io);
-    // try zsl.linalg.blas.gemv(
-    //     .col_major,
-    //     .no_trans,
-    //     m,
-    //     n,
-    //     @as(f64, 2.0),
-    //     a.ptr,
-    //     lda,
-    //     x.ptr,
-    //     1,
-    //     @as(f64, 1.0),
-    //     y.ptr,
-    //     1,
-    //     .{},
-    // );
-    // const end_time = std.Io.Clock.real.now(io);
+    const start_time = std.Io.Clock.real.now(io);
+    try zsl.linalg.blas.hemv(
+        .col_major,
+        .upper,
+        m,
+        @as(zsl.cf64, .{ .re = 2.0, .im = 3.0 }),
+        a.ptr,
+        lda,
+        x.ptr,
+        1,
+        @as(zsl.cf64, .{ .re = 1.0, .im = 4.0 }),
+        y.ptr,
+        1,
+        .{},
+    );
+    const end_time = std.Io.Clock.real.now(io);
 
-    // std.debug.print(
-    //     "zsl.linalg.blas.gemv ({} x {}) took {d} seconds\n",
-    //     .{ m, n, (zsl.numeric.cast(f128, end_time.toNanoseconds()) - zsl.numeric.cast(f128, start_time.toNanoseconds())) / std.time.ns_per_s },
-    // );
+    std.debug.print(
+        "zsl.linalg.blas.hemv ({} x {}) took {d} seconds\n",
+        .{ m, n, (zsl.numeric.cast(f128, end_time.toNanoseconds()) - zsl.numeric.cast(f128, start_time.toNanoseconds())) / std.time.ns_per_s },
+    );
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
@@ -303,18 +302,18 @@ pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
 
     const max_n: usize = 16_384;
 
-    const a = try allocator.alloc(f64, max_n * max_n);
-    const x_vec = try allocator.alloc(f64, max_n);
-    const y_vec = try allocator.alloc(f64, max_n);
+    const a = try allocator.alloc(zsl.cf64, max_n * max_n);
+    const x_vec = try allocator.alloc(zsl.cf64, max_n);
+    const y_vec = try allocator.alloc(zsl.cf64, max_n);
     defer allocator.free(a);
     defer allocator.free(x_vec);
     defer allocator.free(y_vec);
 
     // Initialize with small values to prevent f64 infinity/NaN degradation
     // over hundreds of operations if beta is used.
-    for (a, 0..) |*val, i| val.* = @as(f64, @floatFromInt(i % 100)) / 1000.0;
-    for (x_vec, 0..) |*val, i| val.* = @as(f64, @floatFromInt(i % 33)) / 330.0;
-    for (y_vec, 0..) |*val, i| val.* = @as(f64, @floatFromInt(i % 17)) / 170.0;
+    for (a, 0..) |*val, i| val.* = .{ .re = @as(f64, @floatFromInt(i % 100)) / 1000.0, .im = @as(f64, @floatFromInt(i % 66)) / 660.0 };
+    for (x_vec, 0..) |*val, i| val.* = .{ .re = @as(f64, @floatFromInt(i % 33)) / 330.0, .im = @as(f64, @floatFromInt(i % 17)) / 170.0 };
+    for (y_vec, 0..) |*val, i| val.* = .{ .re = @as(f64, @floatFromInt(i % 8)) / 80.0, .im = @as(f64, @floatFromInt(i % 4)) / 40.0 };
 
     const thresholds = [_]usize{
         16_384,
@@ -357,7 +356,7 @@ pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
         allocator.free(t);
     };
 
-    std.debug.print("\n=== GERC (Level 2) Threshold Calibration ===\n", .{});
+    std.debug.print("\n=== HEMV (Level 2) Threshold Calibration ===\n", .{});
     std.debug.print("Hardware threads: {d}, options.max_threads: {d}, effective cap: {d}\n", .{ hw_threads, options_max_threads, effective_cap });
     std.debug.print("Automatic-mode rule: threads = max(1, min(effective_cap, (M*N) / T))\n\n", .{});
     std.debug.print("Cell format: 'R.RRx(Nt)' -> R = parallel_time/serial_time, N = threads spawned\n", .{});
@@ -388,10 +387,10 @@ pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
             if (current_elements < 1_000_000) 100 else if (current_elements < 16_000_000) 50 else if (current_elements < 64_000_000) 10 else 5;
 
         // Serial baseline
-        try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 1 });
+        try zsl.linalg.blas.hemv(.col_major, .upper, current_n, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), a.ptr, max_n, x_vec.ptr, 1, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), y_vec.ptr, 1, .{ .num_threads = 1 });
         const s0 = std.Io.Clock.real.now(io);
         for (0..iters) |_| {
-            try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 1 });
+            try zsl.linalg.blas.hemv(.col_major, .upper, current_n, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), a.ptr, max_n, x_vec.ptr, 1, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), y_vec.ptr, 1, .{ .num_threads = 1 });
         }
         const s1 = std.Io.Clock.real.now(io);
         const serial_ns = (zsl.numeric.cast(f128, s1.toNanoseconds()) - zsl.numeric.cast(f128, s0.toNanoseconds())) / @as(f128, iters);
@@ -403,10 +402,10 @@ pub fn blas_lv2_threshold_calibration(init: std.process.Init) !void {
         var best_threads: usize = 1;
 
         for (thresholds, 0..) |T, k| {
-            try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 0, .parallel_threshold = T });
+            try zsl.linalg.blas.hemv(.col_major, .upper, current_n, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), a.ptr, max_n, x_vec.ptr, 1, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), y_vec.ptr, 1, .{ .num_threads = 0, .parallel_threshold = T });
             const p0 = std.Io.Clock.real.now(io);
             for (0..iters) |_| {
-                try zsl.linalg.blas.gerc(.col_major, current_n, current_n, @as(f64, 0.01), x_vec.ptr, 1, y_vec.ptr, 1, a.ptr, max_n, .{ .num_threads = 0, .parallel_threshold = T });
+                try zsl.linalg.blas.hemv(.col_major, .upper, current_n, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), a.ptr, max_n, x_vec.ptr, 1, @as(zsl.cf64, .{ .re = 0.01, .im = 0.01 }), y_vec.ptr, 1, .{ .num_threads = 0, .parallel_threshold = T });
             }
             const p1 = std.Io.Clock.real.now(io);
             const ns = (zsl.numeric.cast(f128, p1.toNanoseconds()) - zsl.numeric.cast(f128, p0.toNanoseconds())) / @as(f128, iters);
