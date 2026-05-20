@@ -156,7 +156,7 @@ pub fn copy(
         return err;
 }
 
-fn k_copy(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) void {
+pub fn k_copy(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) void {
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 

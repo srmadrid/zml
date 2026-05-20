@@ -1,5 +1,4 @@
 pub const meta = @import("meta.zig");
-pub const Cmp = meta.Cmp;
 pub const Layout = meta.Layout;
 pub const Uplo = meta.Uplo;
 pub const Diag = meta.Diag;

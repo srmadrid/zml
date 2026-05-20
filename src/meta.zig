@@ -14,20 +14,6 @@ pub const standard_integer_types: [10]type = .{
     i64,  i128,
 };
 
-pub const Cmp = enum(u2) {
-    gt,
-    eq,
-    lt,
-
-    pub fn invert(self: Cmp) Cmp {
-        return switch (self) {
-            .gt => .lt,
-            .eq => .eq,
-            .lt => .gt,
-        };
-    }
-};
-
 pub const Layout = enum(u1) {
     row_major,
     col_major,

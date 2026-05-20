@@ -2,6 +2,8 @@ const std = @import("std");
 const zsl = @import("zsl");
 
 pub fn main(init: std.process.Init) !void {
+    @setEvalBranchQuota(10_000);
+
     // try blas_lv1_threshold_calibration(init);
     // try blas_lv2_threshold_calibration(init);
 
@@ -17,14 +19,20 @@ pub fn main(init: std.process.Init) !void {
 
     const lda = m;
     const a = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, lda * n));
+    // const a = try allocator.alloc(zsl.Complex(zsl.Dyadic(64, 32)), zsl.numeric.cast(usize, lda * n));
     defer allocator.free(a);
     const x = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, n));
+    // const x = try allocator.alloc(zsl.Complex(zsl.Dyadic(64, 32)), zsl.numeric.cast(usize, n));
     defer allocator.free(x);
     const y = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, m));
+    // const y = try allocator.alloc(zsl.Complex(zsl.Dyadic(64, 32)), zsl.numeric.cast(usize, m));
     defer allocator.free(y);
     for (a, 0..) |*v, i| v.* = .{ .re = @as(f64, @floatFromInt(i % 100)) / 100.0, .im = @as(f64, @floatFromInt(i % 66)) / 100.0 };
+    // for (a, 0..) |*v, i| v.* = .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 100)) / 100.0), .im = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 66)) / 100.0) };
     for (x, 0..) |*v, i| v.* = .{ .re = @as(f64, @floatFromInt(i % 33)) / 100.0, .im = @as(f64, @floatFromInt(i % 13)) / 100.0 };
+    // for (x, 0..) |*v, i| v.* = .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 33)) / 100.0), .im = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 13)) / 100.0) };
     for (y) |*v| v.* = .{ .re = 0.0, .im = 0.0 };
+    // for (y) |*v| v.* = .{ .re = zsl.Dyadic(64, 32).zero, .im = zsl.Dyadic(64, 32).zero };
 
     const start_time = std.Io.Clock.real.now(io);
     try zsl.linalg.blas.hemv(
@@ -32,11 +40,13 @@ pub fn main(init: std.process.Init) !void {
         .upper,
         m,
         @as(zsl.cf64, .{ .re = 2.0, .im = 3.0 }),
+        // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 2.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 3.0)) }),
         a.ptr,
         lda,
         x.ptr,
         1,
         @as(zsl.cf64, .{ .re = 1.0, .im = 4.0 }),
+        // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 1.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 4.0)) }),
         y.ptr,
         1,
         .{},

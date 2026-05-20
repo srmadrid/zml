@@ -8,10 +8,14 @@ const Uplo = meta.Uplo;
 const numeric = @import("../../numeric.zig");
 
 const int = @import("../../int.zig");
+const float = @import("../../float.zig");
 
 const linalg = @import("../../linalg.zig");
 
 const k_gemv = @import("gemv.zig").k_gemv;
+
+/// Size of tiles to use when multithreading.
+const tile_size = 128;
 
 /// Computes a matrix-vector product with a Hermitian matrix defined as:
 ///
@@ -138,245 +142,251 @@ pub fn hemv(
         else
             k_hemv(eff_uplo, n, alpha, a, lda, x, incx, beta, y, incy, false);
 
+    // Scale y before threading because threads will only accumulate onto y.
+    if (numeric.ne(beta, 1))
+        @import("scal.zig").k_scal(n, beta, y, incy);
+
+    const k = (n + tile_size - 1) / tile_size;
+    const num_tiles = k * (k + 1) / 2;
+
+    var atomic_counter = std.atomic.Value(usize).init(0);
     var threads: [options.max_threads]std.Thread = undefined;
 
     const Worker = struct {
-        fn execute(worker_uplo: Uplo, worker_n: usize, worker_chunk_start: usize, worker_chunk_end: usize, worker_alpha: Al, worker_a: [*]const A, worker_lda: usize, worker_x: [*]const X, worker_incx: isize, worker_beta: Be, worker_y: [*]Y, worker_incy: isize, worker_noconj: bool) void {
-            // chunk = chunk_start..chunk_end
-            const chunk_len = worker_chunk_end - worker_chunk_start;
+        fn execute(
+            worker_uplo: Uplo,
+            worker_n: usize,
+            worker_alpha: Al,
+            worker_a: [*]const A,
+            worker_lda: usize,
+            worker_x: [*]const X,
+            worker_incx: isize,
+            worker_y: [*]Y,
+            worker_incy: isize,
+            comptime worker_noconj: bool,
+            counter: *std.atomic.Value(usize),
+            comptime worker_tile_size: comptime_int,
+            worker_num_tiles: usize,
+        ) void {
+            const kx: isize = if (worker_incx < 0) (-numeric.cast(isize, worker_n) + 1) * worker_incx else 0;
+            const ky: isize = if (worker_incy < 0) (-numeric.cast(isize, worker_n) + 1) * worker_incy else 0;
 
-            // Sub-vector pointers for x[chunk] and y[chunk].
-            const y_chunk_ptr = worker_y + numeric.cast(usize, if (worker_incy > 0)
-                numeric.cast(isize, worker_chunk_start) * worker_incy
-            else
-                (numeric.cast(isize, worker_chunk_end) - numeric.cast(isize, worker_n)) * worker_incy);
-            const x_chunk_ptr = worker_x + numeric.cast(usize, if (worker_incx > 0)
-                numeric.cast(isize, worker_chunk_start) * worker_incx
-            else
-                (numeric.cast(isize, worker_chunk_end) - numeric.cast(isize, worker_n)) * worker_incx);
+            while (true) {
+                const idx = counter.fetchAdd(1, .monotonic);
 
-            // Hemv on the diagonal block A[chunk, chunk].
-            // y[chunk] = beta * y[chunk] + alpha * A[chunk, chunk_end..n] * x[chunk_end..n].
-            if (worker_noconj)
-                k_hemv(
-                    worker_uplo,
-                    chunk_len,
-                    worker_alpha,
-                    worker_a + worker_chunk_start + worker_chunk_start * worker_lda,
-                    worker_lda,
-                    x_chunk_ptr,
-                    worker_incx,
-                    worker_beta,
-                    y_chunk_ptr,
-                    worker_incy,
-                    true,
-                )
-            else
-                k_hemv(
-                    worker_uplo,
-                    chunk_len,
-                    worker_alpha,
-                    worker_a + worker_chunk_start + worker_chunk_start * worker_lda,
-                    worker_lda,
-                    x_chunk_ptr,
-                    worker_incx,
-                    worker_beta,
-                    y_chunk_ptr,
-                    worker_incy,
-                    false,
-                );
+                if (idx >= worker_num_tiles) // When all tiles have been assigned, break.
+                    break;
 
-            if (worker_uplo == .upper) {
-                // Gemv on the right rectangular block A[chunk, chunk_end..n].
-                // y[chunk] += alpha * A[chunk, chunk_end..n] * x[chunk_end..n].
-                if (worker_chunk_end < worker_n) {
-                    const right_len = worker_n - worker_chunk_end;
-                    const x_right_ptr = worker_x + numeric.cast(usize, if (worker_incx > 0)
-                        numeric.cast(isize, worker_chunk_end) * worker_incx
-                    else
-                        0);
+                // Map 1D atomic index to 2D upper triangular coordinates (tile_i, tile_j) using triangular numbers.
+                var tile_j = numeric.cast(usize, (float.sqrt(1.0 + 8.0 * numeric.cast(f64, idx)) - 1.0) / 2.0);
 
-                    if (worker_noconj)
-                        k_gemv(
-                            .no_trans,
-                            chunk_len,
-                            right_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_start + worker_chunk_end * worker_lda,
-                            worker_lda,
-                            x_right_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            true,
-                        )
-                    else
-                        k_gemv(
-                            .conj_no_trans,
-                            chunk_len,
-                            right_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_start + worker_chunk_end * worker_lda,
-                            worker_lda,
-                            x_right_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            false,
+                while (tile_j * (tile_j + 1) / 2 > idx)
+                    tile_j -= 1;
+
+                while ((tile_j + 1) * (tile_j + 2) / 2 <= idx)
+                    tile_j += 1;
+
+                const tile_i = idx - tile_j * (tile_j + 1) / 2;
+
+                const phys_r = if (worker_uplo == .upper) tile_i else tile_j;
+                const phys_c = if (worker_uplo == .upper) tile_j else tile_i;
+
+                const r_start = phys_r * worker_tile_size;
+                const c_start = phys_c * worker_tile_size;
+                const r_len = int.min(worker_tile_size, worker_n - r_start);
+                const c_len = int.min(worker_tile_size, worker_n - c_start);
+
+                if (tile_i == tile_j) {
+                    // Diagonal tile
+                    var local_x: [worker_tile_size]X = undefined;
+                    var local_y: [worker_tile_size]Y = .{numeric.zero(Y)} ** worker_tile_size;
+
+                    @import("copy.zig").k_copy(
+                        r_len,
+                        worker_x + numeric.cast(usize, kx + numeric.cast(isize, r_start) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x),
+                        1,
+                    );
+
+                    k_hemv(
+                        worker_uplo,
+                        r_len,
+                        worker_alpha,
+                        worker_a + r_start + c_start * worker_lda,
+                        worker_lda,
+                        @as([]const X, &local_x),
+                        1,
+                        numeric.one(Be),
+                        @as([]Y, &local_y),
+                        1,
+                        worker_noconj,
+                    );
+
+                    // Flush back y to global memory.
+                    var i: usize = 0;
+                    while (i < r_len) : (i += 1) {
+                        // y += local_y[ky + (r_start + i) * incy]
+                        numeric.atomicAdd_(
+                            &worker_y[numeric.cast(usize, ky + numeric.cast(isize, r_start + i) * worker_incy)],
+                            local_y[i],
                         );
-                }
+                    }
+                } else {
+                    const unroll = 2 * int.min(
+                        std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2,
+                        std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(if (comptime worker_noconj) A else numeric.Conj(A), X))) orelse 2,
+                    );
 
-                // Gemv on the top rectangular block A[0..chunk_start, chunk].
-                // y[chunk] += alpha * (A[0..chunk_start, chunk])ᴴ * x[0..chunk_start].
-                if (worker_chunk_start > 0) {
-                    const top_len = worker_chunk_start;
-                    const x_top_ptr = worker_x + numeric.cast(usize, if (worker_incx > 0)
-                        0
-                    else
-                        (numeric.cast(isize, top_len) - numeric.cast(isize, worker_n)) * worker_incx);
+                    // Off-diagonal tile
+                    var local_x_r: [worker_tile_size]X = undefined;
+                    var local_y_r: [worker_tile_size]Y = .{numeric.zero(Y)} ** worker_tile_size;
+                    var local_x_c: [worker_tile_size]X = undefined;
+                    var local_y_c: [worker_tile_size]Y = .{numeric.zero(Y)} ** worker_tile_size;
 
-                    if (worker_noconj)
-                        k_gemv(
-                            .conj_trans,
-                            top_len,
-                            chunk_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_start * worker_lda,
-                            worker_lda,
-                            x_top_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            false,
-                        )
-                    else
-                        k_gemv(
-                            .trans,
-                            top_len,
-                            chunk_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_start * worker_lda,
-                            worker_lda,
-                            x_top_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            true,
+                    @import("copy.zig").k_copy(
+                        r_len,
+                        worker_x + numeric.cast(usize, kx + numeric.cast(isize, r_start) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x_r),
+                        1,
+                    );
+
+                    @import("copy.zig").k_copy(
+                        c_len,
+                        worker_x + numeric.cast(usize, kx + numeric.cast(isize, c_start) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x_c),
+                        1,
+                    );
+
+                    var j: usize = 0;
+                    while (j < c_len) : (j += 1) {
+                        // temp1 = worker_alpha * local_x_c[j]
+                        const temp1 = numeric.mul(worker_alpha, local_x_c[j]);
+
+                        var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime worker_noconj) A else numeric.Conj(A), X)));
+
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(if (worker_noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime worker_noconj) A else numeric.Conj(A), X)))} ** unroll;
+
+                        var i: usize = 0;
+                        while (i < (r_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // local_y_r[i + u] += temp1 * worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]
+                                numeric.fma_(
+                                    &local_y_r[i + u],
+                                    temp1,
+                                    if (comptime worker_noconj)
+                                        worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]
+                                    else
+                                        numeric.conj(worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]),
+                                    local_y_r[i],
+                                );
+
+                                // sums[u] += conj(worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]) * local_x_r[i + u]
+                                numeric.fma_(
+                                    &sums[u],
+                                    if (comptime worker_noconj)
+                                        numeric.conj(worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda])
+                                    else
+                                        worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                    local_x_r[i + u],
+                                    sums[u],
+                                );
+                            }
+                        }
+
+                        inline for (0..unroll) |u| {
+                            numeric.add_(&temp2, temp2, sums[u]);
+                        }
+
+                        while (i < r_len) : (i += 1) {
+                            // local_y_r[i] += temp1 * worker_a[r_start + c_start * worker_lda + i + j * worker_lda]
+                            numeric.fma_(
+                                &local_y_r[i],
+                                temp1,
+                                if (comptime worker_noconj)
+                                    worker_a[r_start + c_start * worker_lda + i + j * worker_lda]
+                                else
+                                    numeric.conj(worker_a[r_start + c_start * worker_lda + i + j * worker_lda]),
+                                local_y_r[i],
+                            );
+
+                            // temp2 += conj(worker_a[r_start + c_start * worker_lda + i + j * worker_lda]) * local_x_r[i]
+                            numeric.fma_(
+                                &temp2,
+                                if (comptime worker_noconj)
+                                    numeric.conj(worker_a[r_start + c_start * worker_lda + i + j * worker_lda])
+                                else
+                                    worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                                local_x_r[i],
+                                temp2,
+                            );
+                        }
+
+                        numeric.fma_(&local_y_c[j], worker_alpha, temp2, local_y_c[j]);
+                    }
+
+                    // Flush y back to global memory.
+                    var i: usize = 0;
+                    while (i < r_len) : (i += 1) {
+                        // y += local_y_r[ky + (r_start + i) * incy]
+                        numeric.atomicAdd_(
+                            &worker_y[numeric.cast(usize, ky + numeric.cast(isize, r_start + i) * worker_incy)],
+                            local_y_r[i],
                         );
-                }
-            } else {
-                // Gemv on the left rectangular block A[chunk, 0..chunk_start].
-                // y[chunk] += alpha * A[chunk, 0..chunk_start] * x[0..chunk_start].
-                if (worker_chunk_start > 0) {
-                    const left_len = worker_chunk_start;
-                    const x_left_ptr = worker_x + numeric.cast(usize, if (worker_incx > 0)
-                        0
-                    else
-                        (numeric.cast(isize, left_len) - numeric.cast(isize, worker_n)) * worker_incx);
+                    }
 
-                    if (worker_noconj)
-                        k_gemv(
-                            .no_trans,
-                            chunk_len,
-                            left_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_start,
-                            worker_lda,
-                            x_left_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            true,
-                        )
-                    else
-                        k_gemv(
-                            .conj_no_trans,
-                            chunk_len,
-                            left_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_start,
-                            worker_lda,
-                            x_left_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            false,
+                    j = 0;
+                    while (j < c_len) : (j += 1) {
+                        // y += local_y_c[ky + (c_start + j) * incy]
+                        numeric.atomicAdd_(
+                            &worker_y[numeric.cast(usize, ky + numeric.cast(isize, c_start + j) * worker_incy)],
+                            local_y_c[j],
                         );
-                }
-
-                // Gemv on the bottom rectangular block A[chunk_end..n, chunk].
-                // y[chunk] += alpha * (A[chunk_end..n, chunk])ᴴ * x[chunk_end..n].
-                if (worker_chunk_end < worker_n) {
-                    const bottom_len = worker_n - worker_chunk_end;
-                    const x_bottom_ptr = worker_x + numeric.cast(usize, if (worker_incx > 0)
-                        numeric.cast(isize, worker_chunk_end) * worker_incx
-                    else
-                        0);
-
-                    if (worker_noconj)
-                        k_gemv(
-                            .conj_trans,
-                            bottom_len,
-                            chunk_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_end + worker_chunk_start * worker_lda,
-                            worker_lda,
-                            x_bottom_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            false,
-                        )
-                    else
-                        k_gemv(
-                            .trans,
-                            bottom_len,
-                            chunk_len,
-                            worker_alpha,
-                            worker_a + worker_chunk_end + worker_chunk_start * worker_lda,
-                            worker_lda,
-                            x_bottom_ptr,
-                            worker_incx,
-                            numeric.one(Be),
-                            y_chunk_ptr,
-                            worker_incy,
-                            true,
-                        );
+                    }
                 }
             }
         }
     };
 
-    const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;
     var i: usize = 0;
     while (i < num_threads) : (i += 1) {
-        const chunk_start = i * chunk_size;
-        const chunk_end = if (i == num_threads - 1) n else chunk_start + chunk_size;
-
-        if (std.Thread.spawn(.{}, Worker.execute, .{
-            eff_uplo,
-            n,
-            chunk_start,
-            chunk_end,
-            alpha,
-            a,
-            lda,
-            x,
-            incx,
-            beta,
-            y,
-            incy,
-            noconj,
-        })) |th| {
+        if (if (noconj)
+            std.Thread.spawn(.{}, Worker.execute, .{
+                eff_uplo,
+                n,
+                alpha,
+                a,
+                lda,
+                x,
+                incx,
+                y,
+                incy,
+                true,
+                &atomic_counter,
+                tile_size,
+                num_tiles,
+            })
+        else
+            std.Thread.spawn(.{}, Worker.execute, .{
+                eff_uplo,
+                n,
+                alpha,
+                a,
+                lda,
+                x,
+                incx,
+                y,
+                incy,
+                false,
+                &atomic_counter,
+                tile_size,
+                num_tiles,
+            })) |th|
+        {
             threads[i] = th;
             spawned_count += 1;
         } else |err| {

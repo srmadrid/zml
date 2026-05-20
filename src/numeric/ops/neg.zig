@@ -58,7 +58,7 @@ pub fn neg(x: anytype) numeric.Neg(@TypeOf(x)) {
         .bool => return !x,
         .int => return -x,
         .float => return -x,
-        .dyadic => return dyadic.neg(x),
+        .dyadic => return x.neg(),
         .complex => return x.neg(),
         .custom => {
             const Impl: type = comptime meta.anyHasMethod(

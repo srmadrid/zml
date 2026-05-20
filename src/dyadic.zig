@@ -5,7 +5,6 @@ const dyadic = @This();
 const std = @import("std");
 
 const meta = @import("meta.zig");
-const Cmp = meta.Cmp;
 
 const numeric = @import("numeric.zig");
 
@@ -20,7 +19,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             .{ int.maxVal(u16) / 2, mantissa_bits, exponent_bits },
         ));
 
-    return struct {
+    return extern struct {
         mantissa: Mantissa,
         exponent: Exponent,
         positive: bool,
@@ -309,14 +308,14 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return x;
 
             // Addition or subtraction
-            const cmp_abs: Cmp = if (x.exponent != y.exponent)
-                int.cmp(x.exponent, y.exponent)
+            const order_abs: std.math.Order = if (x.exponent != y.exponent)
+                int.order(x.exponent, y.exponent)
             else
-                int.cmp(x.mantissa, y.mantissa);
+                int.order(x.mantissa, y.mantissa);
 
             if (x.positive == y.positive) {
                 var result: Dyadic(mantissa_bits, exponent_bits) =
-                    if (cmp_abs == .gt)
+                    if (order_abs == .gt)
                         _addAbs(x, y)
                     else
                         _addAbs(y, x);
@@ -324,15 +323,15 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 return result;
             }
 
-            if (cmp_abs == .eq)
+            if (order_abs == .eq)
                 return .zero;
 
             var result: Dyadic(mantissa_bits, exponent_bits) =
-                if (cmp_abs == .gt)
+                if (order_abs == .gt)
                     _subAbs(x, y)
                 else
                     _subAbs(y, x);
-            result.positive = if (cmp_abs == .gt) x.positive else y.positive;
+            result.positive = if (order_abs == .gt) x.positive else y.positive;
             return result;
         }
 
@@ -837,7 +836,7 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
             };
         }
 
-        pub fn cmp(x: Dyadic(mantissa_bits, exponent_bits), y: Dyadic(mantissa_bits, exponent_bits)) std.math.Order {
+        pub fn order(x: Dyadic(mantissa_bits, exponent_bits), y: Dyadic(mantissa_bits, exponent_bits)) std.math.Order {
             // NaN check
             if (x.isNan())
                 return if (y.isNan()) .eq else .gt;
@@ -861,9 +860,9 @@ pub fn Dyadic(mantissa_bits: u16, exponent_bits: u16) type {
                 mag_order = .lt;
             } else {
                 mag_order = if (x.exponent != y.exponent)
-                    std.math.order(x.exponent, y.exponent)
+                    int.order(x.exponent, y.exponent)
                 else
-                    std.math.order(x.mantissa, y.mantissa);
+                    int.order(x.mantissa, y.mantissa);
             }
 
             return if (x.positive) mag_order else mag_order.invert();
@@ -1272,6 +1271,210 @@ pub fn div(x: anytype, y: anytype) Div(@TypeOf(x), @TypeOf(y)) {
     const R: type = Div(@TypeOf(x), @TypeOf(y));
 
     return numeric.cast(R, x).div(numeric.cast(R, y));
+}
+
+/// Compares two operands of dyadic, float, int or bool types, where at least
+/// one operand must be of dyadic type, for ordering. The operation is performed
+/// by casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// dyadic.order(x: X, y: Y) std.math.Order
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `std.math.Order`: The result of the comparison.
+pub fn order(x: anytype, y: anytype) std.math.Order {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
+        !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
+        (meta.numericType(X) != .dyadic and meta.numericType(Y) != .dyadic))
+        @compileError("zsl.dyadic.order: at least one of x or y must be a dyadic, the other must be a bool, an int, a float or a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    const C: type = dyadic.Coerce(X, Y);
+
+    return C.order(numeric.cast(C, x), numeric.cast(C, y));
+}
+
+/// Compares two operands of dyadic, float, int or bool types, where at least
+/// one operand must be of dyadic type, for equality. The operation is performed
+/// by casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// dyadic.eq(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if the operands are equal, `false` otherwise.
+pub fn eq(x: anytype, y: anytype) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
+        !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
+        (meta.numericType(X) != .dyadic and meta.numericType(Y) != .dyadic))
+        @compileError("zsl.dyadic.eq: at least one of x or y must be a dyadic, the other must be a bool, an int, a float or a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return dyadic.order(x, y) == .eq;
+}
+
+/// Compares two operands of dyadic, float, int or bool types, where at least
+/// one operand must be of dyadic type, for inequality. The operation is
+/// performed by casting both operands to the coerced type, then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// dyadic.ne(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if the operands are not equal, `false` otherwise.
+pub fn ne(x: anytype, y: anytype) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
+        !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
+        (meta.numericType(X) != .dyadic and meta.numericType(Y) != .dyadic))
+        @compileError("zsl.dyadic.ne: at least one of x or y must be a dyadic, the other must be a bool, an int, a float or a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return dyadic.order(x, y) != .eq;
+}
+
+/// Compares two operands of dyadic, float, int or bool types, where at least
+/// one operand must be of dyadic type, for for less-than ordering. The
+/// operation is performed by casting both operands to the coerced type, then
+/// comparing them.
+///
+/// ## Signature
+/// ```zig
+/// dyadic.lt(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is less than `y`, `false` otherwise.
+pub fn lt(x: anytype, y: anytype) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
+        !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
+        (meta.numericType(X) != .dyadic and meta.numericType(Y) != .dyadic))
+        @compileError("zsl.dyadic.lt: at least one of x or y must be a dyadic, the other must be a bool, an int, a float or a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return dyadic.order(x, y) == .lt;
+}
+
+/// Compares two operands of dyadic, float, int or bool types, where at least
+/// one operand must be of dyadic type, for less-than or equal ordering. The
+/// operation is performed by casting both operands to the coerced type, then
+/// comparing them.
+///
+/// ## Signature
+/// ```zig
+/// dyadic.le(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is less than or equal to `y`, `false` otherwise.
+pub fn le(x: anytype, y: anytype) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
+        !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
+        (meta.numericType(X) != .dyadic and meta.numericType(Y) != .dyadic))
+        @compileError("zsl.dyadic.le: at least one of x or y must be a dyadic, the other must be a bool, an int, a float or a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    const order_xy = dyadic.order(x, y);
+    return order_xy == .eq or order_xy == .lt;
+}
+
+/// Compares two operands of dyadic, float, int or bool types, where at least
+/// one operand must be of dyadic type, for greater-than ordering. The operation
+/// is performed by casting both operands to the coerced type, then comparing
+/// them.
+///
+/// ## Signature
+/// ```zig
+/// dyadic.gt(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is greater than `y`, `false` otherwise.
+pub fn gt(x: anytype, y: anytype) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
+        !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
+        (meta.numericType(X) != .dyadic and meta.numericType(Y) != .dyadic))
+        @compileError("zsl.dyadic.gt: at least one of x or y must be a dyadic, the other must be a bool, an int, a float or a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    return dyadic.order(x, y) == .gt;
+}
+
+/// Compares two operands of dyadic, float, int or bool types, where at least
+/// one operand must be of dyadic type, for greater-than or equality ordering.
+/// The operation is performed by casting both operands to the coerced type,
+/// then comparing them.
+///
+/// ## Signature
+/// ```zig
+/// dyadic.ge(x: X, y: Y) bool
+/// ```
+///
+/// ## Arguments
+/// * `x` (`anytype`): The left operand.
+/// * `y` (`anytype`): The right operand.
+///
+/// ## Returns
+/// `bool`: `true` if `x` is greater than or equal to `y`, `false` otherwise.
+pub fn ge(x: anytype, y: anytype) bool {
+    const X: type = @TypeOf(x);
+    const Y: type = @TypeOf(y);
+
+    comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
+        !meta.numericType(X).le(.dyadic) or !meta.numericType(Y).le(.dyadic) or
+        (meta.numericType(X) != .dyadic and meta.numericType(Y) != .dyadic))
+        @compileError("zsl.dyadic.le: at least one of x or y must be a dyadic, the other must be a bool, an int, a float or a dyadic, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+
+    const order_xy = dyadic.order(x, y);
+    return order_xy == .eq or order_xy == .gt;
 }
 
 pub const sign = @import("dyadic/sign.zig").sign;

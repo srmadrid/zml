@@ -2,10 +2,11 @@
 
 const int = @This();
 
+const std = @import("std");
+
 const options = @import("options");
 
 const meta = @import("meta.zig");
-const Cmp = meta.Cmp;
 const numeric = @import("numeric.zig");
 
 pub const Coerce = @import("int/coerce.zig").Coerce;
@@ -175,7 +176,7 @@ pub fn div(x: anytype, y: anytype) int.Div(@TypeOf(x), @TypeOf(y)) {
 ///
 /// ## Signature
 /// ```zig
-/// int.cmp(x: X, y: Y) Cmp
+/// int.order(x: X, y: Y) std.math.Order
 /// ```
 ///
 /// ## Arguments
@@ -183,15 +184,15 @@ pub fn div(x: anytype, y: anytype) int.Div(@TypeOf(x), @TypeOf(y)) {
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Cmp`: The result of the comparison.
-pub fn cmp(x: anytype, y: anytype) Cmp {
+/// `std.math.Order`: The result of the comparison.
+pub fn order(x: anytype, y: anytype) std.math.Order {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.int) or !meta.numericType(Y).le(.int) or
         (meta.numericType(X) != .int and meta.numericType(Y) != .int))
-        @compileError("zsl.int.cmp: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
+        @compileError("zsl.int.order: at least one of x or y must be an int, the other must be a bool or an int, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y));
 
     const C: type = int.Coerce(X, Y);

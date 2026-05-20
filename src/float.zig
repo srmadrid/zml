@@ -2,8 +2,9 @@
 
 const float = @This();
 
+const std = @import("std");
+
 const meta = @import("meta.zig");
-const Cmp = meta.Cmp;
 const numeric = @import("numeric.zig");
 
 pub const Coerce = @import("float/coerce.zig").Coerce;
@@ -193,7 +194,7 @@ pub fn div(x: anytype, y: anytype) float.Div(@TypeOf(x), @TypeOf(y)) {
 ///
 /// ## Signature
 /// ```zig
-/// float.cmp(x: X, y: Y) Cmp
+/// float.order(x: X, y: Y) std.math.Order
 /// ```
 ///
 /// ## Arguments
@@ -201,15 +202,15 @@ pub fn div(x: anytype, y: anytype) float.Div(@TypeOf(x), @TypeOf(y)) {
 /// * `y` (`anytype`): The right operand.
 ///
 /// ## Returns
-/// `Cmp`: The result of the comparison.
-pub fn cmp(x: anytype, y: anytype) Cmp {
+/// `std.math.Order`: The result of the comparison.
+pub fn order(x: anytype, y: anytype) std.math.Order {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
     comptime if (!meta.isNumeric(X) or !meta.isNumeric(Y) or
         !meta.numericType(X).le(.float) or !meta.numericType(Y).le(.float) or
         (meta.numericType(X) != .float and meta.numericType(Y) != .float))
-        @compileError("zsl.float.cmp: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
+        @compileError("zsl.float.order: at least one of x or y must be a float, the other must be a bool, an int or a float, got\n\tx: " ++
             @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     const C: type = float.Coerce(X, Y);
