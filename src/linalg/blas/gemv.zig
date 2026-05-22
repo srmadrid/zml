@@ -84,7 +84,7 @@ const linalg = @import("../../linalg.zig");
 ///     * N >= 2: use exactly N threads, clamped by
 ///       std.Thread.getCpuCount() and options.max_threads as a hard safety
 ///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 8_388_608 / @sizeOf(meta.Child(Y))):
+///   * parallel_threshold (usize = 4_124_304 / @sizeOf(meta.Child(Y))):
 ///     Minimum number of matrix elements (`m * n`) required to trigger
 ///     multithreaded execution.
 ///
@@ -155,6 +155,17 @@ pub fn gemv(
     const noconj = transa == .no_trans or transa == .trans;
     const no_trans = eff_transa == .no_trans or eff_transa == .conj_no_trans;
     const leny = if (no_trans) eff_m else eff_n;
+
+    // Quick return if possible.
+    if (m == 0 or n == 0)
+        return;
+
+    if (numeric.eq(alpha, 0)) {
+        if (numeric.ne(beta, 1))
+            @import("scal.zig").k_scal(leny, beta, y, incy);
+
+        return;
+    }
 
     if (opts.num_threads == 1)
         return if (noconj)
@@ -248,16 +259,12 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
     const Y: type = meta.Child(@TypeOf(y));
 
     // Quick return if possible.
-    if (m == 0 or n == 0 or (numeric.eq(alpha, 0) and numeric.eq(beta, 1)))
+    if (m == 0 or n == 0)
         return;
 
-    // Set lenx and leny, the lengths of the vectors x and y, and set up the
-    // start points in x and y.
+    // Set lenx and leny, the lengths of the vectors x and y.
     const lenx: usize = if (transa == .no_trans or transa == .conj_no_trans) n else m;
     const leny: usize = if (transa == .no_trans or transa == .conj_no_trans) m else n;
-
-    const kx: isize = if (incx < 0) (-numeric.cast(isize, lenx) + 1) * incx else 0;
-    const ky: isize = if (incy < 0) (-numeric.cast(isize, leny) + 1) * incy else 0;
 
     // First form  y = beta * y.
     if (numeric.ne(beta, 1))
@@ -265,6 +272,10 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
 
     if (numeric.eq(alpha, 0))
         return;
+
+    // Set up the start points in x and y.
+    const kx: isize = if (incx < 0) (-numeric.cast(isize, lenx) + 1) * incx else 0;
+    const ky: isize = if (incy < 0) (-numeric.cast(isize, leny) + 1) * incy else 0;
 
     if (transa == .no_trans or transa == .conj_no_trans) {
         const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2);

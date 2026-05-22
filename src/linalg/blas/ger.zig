@@ -45,6 +45,20 @@ const linalg = @import("../../linalg.zig");
 /// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
 ///   calling (sub)program. Must be greater than or equal to `max(1, m)` when
 ///   `layout` is `col_major`, or `max(1, n)` when `layout` is `row_major`.
+/// * `opts`: Optional parameters:
+///   * `num_threads` (`usize = 0`): Number of threads to spawn:
+///     * `0`: automatic. The thread count is derived from `m * n` and
+///       `parallel_threshold`:
+///       ```zig
+///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (m * n) / parallel_threshold))
+///       ```
+///     * 1: force serial execution. parallel_threshold is ignored.
+///     * N >= 2: use exactly N threads, clamped by
+///       std.Thread.getCpuCount() and options.max_threads as a hard safety
+///       ceiling. parallel_threshold is ignored.
+///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(Y))):
+///     Minimum number of matrix elements (`m * n`) required to trigger
+///     multithreaded execution.
 ///
 /// ## Returns
 /// `void`
@@ -65,7 +79,7 @@ pub fn ger(
     lda: usize,
     opts: struct {
         num_threads: usize = 0,
-        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(y))),
+        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(a))),
     },
 ) !void {
     const Al: type = @TypeOf(alpha);
@@ -106,6 +120,10 @@ pub fn ger(
 
     const eff_m = if (layout == .col_major) m else n;
     const eff_n = if (layout == .col_major) n else m;
+
+    // Quick return if possible.
+    if (m == 0 or n == 0 or numeric.eq(alpha, 0))
+        return;
 
     if (opts.num_threads == 1)
         return if (layout == .col_major)

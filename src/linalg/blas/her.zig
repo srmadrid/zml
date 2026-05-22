@@ -1,563 +1,664 @@
 const std = @import("std");
+const options = @import("options");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
+const meta = @import("../../meta.zig");
+const Layout = meta.Layout;
+const Uplo = meta.Uplo;
+
+const numeric = @import("../../numeric.zig");
+
 const int = @import("../../int.zig");
+const float = @import("../../float.zig");
 
 const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Order = types.Order;
-const Uplo = types.Uplo;
 
-/// Performs a rank-1 update of a Hermitian matrix.
-///
-/// The `her` routine performs a matrix-vector operation defined as:
+/// Size of tiles to use when multithreading.
+const tile_size = 128;
+
+/// Performs a rank-1 update of a Hermitian matrix defined as:
 ///
 /// ```zig
-///     A = alpha * x * conj(x^T) + A,
+/// A = alpha * x * xᴴ + A,
 /// ```
 ///
-/// where `alpha` is a real scalar, `x` is an `n`-element vector, and `A` is an
+/// where `alpha` is a real numeric, `x` is an `n`-element vector, and `A` is an
 /// `n`-by-`n` Hermitian matrix.
 ///
-/// Signature
-/// ---------
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available.
+///
+/// ## Signature
 /// ```zig
-/// fn her(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// linalg.blas.her(layout: Layout, uplo: Uplo, n: usize, alpha: Al, x: [*]const X, incx: isize, a: [*]A, lda: usize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
+///   col-major or row-major.
+/// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
+///   the Hermitian packed matrix `A` is used.
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `x` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `a` (`anytype`): Mutable many-item pointer, size at least `lda * n`. On
+///   return, contains the result of the operation.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
+/// * `opts`: Optional parameters:
+///   * `num_threads` (`usize = 0`): Number of threads to spawn:
+///     * `0`: automatic. The thread count is derived from `m * n` and
+///       `parallel_threshold`:
+///       ```zig
+///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (m * n) / parallel_threshold))
+///       ```
+///     * 1: force serial execution. parallel_threshold is ignored.
+///     * N >= 2: use exactly N threads, clamped by
+///       std.Thread.getCpuCount() and options.max_threads as a hard safety
+///       ceiling. parallel_threshold is ignored.
+///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(Y))):
+///     Minimum number of matrix elements (`n * n`) required to trigger
+///     multithreaded execution.
 ///
-/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian matrix `A` is used:
-/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
-/// used.
-/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
-/// used.
+/// ## Returns
+/// `void`
 ///
-/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
-/// or equal to 0.
-///
-/// `alpha` (`bool`, `int`, `float`, `integer`, `rational`, `real` or
-/// `expression`): Specifies the scalar `alpha`.
-///
-/// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incx)`.
-///
-/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
-/// different from 0.
-///
-/// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `lda * n`. On return, contains the result of the operation.
-///
-/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `a`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` is 0, or if `lda` is less
+///   than `max(1, n)`.
 pub fn her(
-    order: Layout,
+    layout: Layout,
     uplo: Uplo,
-    n: i32,
+    n: usize,
     alpha: anytype,
     x: anytype,
-    incx: i32,
+    incx: isize,
     a: anytype,
-    lda: i32,
-    ctx: anytype,
+    lda: usize,
+    opts: struct {
+        num_threads: usize = 0,
+        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(a))),
+    },
 ) !void {
     const Al: type = @TypeOf(alpha);
     comptime var X: type = @TypeOf(x);
     comptime var A: type = @TypeOf(a);
 
-    comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.her requires alpha to be numeric, got " ++ @typeName(Al));
+    comptime if (!meta.isNumeric(Al) or meta.isComplex(Al) or
+        !meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
+        !meta.isManyItemPointer(A) or meta.isConstPointer(A) or !meta.isNumeric(meta.Child(A)))
+        @compileError("zsl.linalg.blas.her: alpha must be a real numeric, x must be a many-item pointers to numerics, and a must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ta: " ++ @typeName(A) ++ "\n");
 
-    comptime if (types.isComplex(Al))
-        @compileError("zml.linalg.blas.her does not support complex alpha, got " ++ @typeName(Al));
+    X = meta.Child(X);
+    A = meta.Child(A);
 
-    comptime if (!types.isManyPointer(X))
-        @compileError("zml.linalg.blas.her requires x to be a many-item pointer, got " ++ @typeName(X));
+    if (lda < int.max(1, n) or incx == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    X = types.Child(X);
-
-    comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.her requires x's child type to be numeric, got " ++ @typeName(X));
-
-    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
-        @compileError("zml.linalg.blas.her requires a to be a mutable many-item pointer, got " ++ @typeName(A));
-
-    A = types.Child(A);
-
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.her requires a's child type to numeric, got " ++ @typeName(A));
-
-    comptime if (Al == bool and X == bool and A == bool)
-        @compileError("zml.linalg.blas.her does not support alpha, a, x, beta and y all being bool");
-
-    comptime if (types.isArbitraryPrecision(Al) or
-        types.isArbitraryPrecision(X) or
-        types.isArbitraryPrecision(A))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.her not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == X and types.canCoerce(Al, Scalar(A)) and options.link_cblas != null) {
-        switch (comptime types.numericType(A)) {
-            .cfloat => {
-                if (comptime Scalar(A) == f32) {
-                    return ci.cblas_cher(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
-                } else if (comptime Scalar(A) == f64) {
-                    return ci.cblas_zher(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(Scalar(A), alpha), x, scast(c_int, incx), a, scast(c_int, lda));
-                }
+    if (comptime options.link_cblas != null and meta.Real(X) == Al and X == A) {
+        switch (comptime meta.numericType(X)) {
+            .complex => {
+                if (comptime meta.Scalar(X) == f32)
+                    return linalg.cblas.cher(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), alpha, x, incx, a, numeric.cast(isize, lda))
+                else if (comptime meta.Scalar(X) == f64)
+                    return linalg.cblas.zher(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), alpha, x, incx, a, numeric.cast(isize, lda));
             },
             else => {},
         }
     }
 
-    return _her(order, uplo, n, alpha, x, incx, a, lda, ctx);
-}
-
-fn _her(
-    order: Order,
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    x: anytype,
-    incx: i32,
-    a: anytype,
-    lda: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_her(uplo, n, alpha, x, incx, a, lda, true, ctx);
-    } else {
-        return k_her(uplo.invert(), n, alpha, x, incx, a, lda, false, ctx);
-    }
-}
-
-fn k_her(
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    x: anytype,
-    incx: i32,
-    a: anytype,
-    lda: i32,
-    noconj: bool,
-    ctx: anytype,
-) !void {
-    const Al: type = @TypeOf(alpha);
-    const X: type = types.Child(@TypeOf(x));
-    const C1: type = types.Coerce(Al, X);
-    const A: type = types.Child(@TypeOf(a));
-    const CC: type = types.Coerce(Al, types.Coerce(X, A));
-
-    if (n < 0 or lda < int.max(1, n) or incx == 0)
-        return blas.Error.InvalidArgument;
+    const eff_uplo = if (layout == .col_major) uplo else uplo.invert();
+    const noconj = layout == .col_major;
 
     // Quick return if possible.
-    if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
+    if (n == 0 or numeric.eq(alpha, 0))
         return;
 
-    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
+    if (opts.num_threads == 1)
+        return if (noconj)
+            k_her(eff_uplo, n, alpha, x, incx, a, lda, true)
+        else
+            k_her(eff_uplo, n, alpha, x, incx, a, lda, false);
 
-    if (comptime !types.isArbitraryPrecision(CC)) {
-        if (uplo == .upper) {
-            if (noconj) {
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * conj(x[j])
-                                ops.conj(x[scast(u32, j)], ctx) catch unreachable,
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
+    var num_threads: usize = if (opts.num_threads == 0) blk: {
+        if (opts.parallel_threshold == 0)
+            break :blk options.max_threads;
 
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.add_( // a[i + j * lda] += x[i] * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        x[scast(u32, i)],
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
+        break :blk int.max(1, (n * n) / opts.parallel_threshold);
+    } else opts.num_threads;
 
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[j] * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    x[scast(u32, j)],
-                                    temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
+    num_threads = int.min(num_threads, options.max_threads);
+    num_threads = int.min(num_threads, n);
+
+    if (num_threads <= 1)
+        return if (noconj)
+            k_her(eff_uplo, n, alpha, x, incx, a, lda, true)
+        else
+            k_her(eff_uplo, n, alpha, x, incx, a, lda, false);
+
+    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
+    num_threads = int.min(num_threads, n);
+
+    if (num_threads <= 1)
+        return if (noconj)
+            k_her(eff_uplo, n, alpha, x, incx, a, lda, true)
+        else
+            k_her(eff_uplo, n, alpha, x, incx, a, lda, false);
+
+    const k = (n + tile_size - 1) / tile_size;
+    const num_tiles = k * (k + 1) / 2;
+
+    var atomic_counter = std.atomic.Value(usize).init(0);
+    var threads: [options.max_threads]std.Thread = undefined;
+
+    const Worker = struct {
+        fn execute(
+            worker_uplo: Uplo,
+            worker_n: usize,
+            worker_alpha: Al,
+            worker_a: [*]A,
+            worker_lda: usize,
+            worker_x: [*]const X,
+            worker_incx: isize,
+            comptime worker_noconj: bool,
+            counter: *std.atomic.Value(usize),
+            comptime worker_tile_size: comptime_int,
+            worker_num_tiles: usize,
+        ) void {
+            while (true) {
+                const idx = counter.fetchAdd(1, .monotonic);
+
+                if (idx >= worker_num_tiles) // When all tiles have been assigned, break.
+                    break;
+
+                // Map 1D atomic index to 2D upper triangular coordinates (tile_i, tile_j) using triangular numbers.
+                var tile_j = numeric.cast(usize, (float.sqrt(1.0 + 8.0 * numeric.cast(f64, idx)) - 1.0) / 2.0);
+
+                while (tile_j * (tile_j + 1) / 2 > idx)
+                    tile_j -= 1;
+
+                while ((tile_j + 1) * (tile_j + 2) / 2 <= idx)
+                    tile_j += 1;
+
+                const tile_i = idx - tile_j * (tile_j + 1) / 2;
+
+                const phys_r = if (worker_uplo == .upper) tile_i else tile_j;
+                const phys_c = if (worker_uplo == .upper) tile_j else tile_i;
+
+                const r_start = phys_r * worker_tile_size;
+                const c_start = phys_c * worker_tile_size;
+                const r_len = int.min(worker_tile_size, worker_n - r_start);
+                const c_len = int.min(worker_tile_size, worker_n - c_start);
+
+                if (tile_i == tile_j) {
+                    // Diagonal tile
+                    var local_x: [worker_tile_size]X = undefined;
+
+                    @import("copy.zig").k_copy(
+                        r_len,
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, r_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x),
+                        1,
+                    );
+
+                    k_her(
+                        worker_uplo,
+                        r_len,
+                        worker_alpha,
+                        @as([*]const X, &local_x),
+                        1,
+                        worker_a + r_start + c_start * worker_lda,
+                        worker_lda,
+                        worker_noconj,
+                    );
                 } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * conj(x[jx])
-                                ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
+                    const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(if (comptime worker_noconj) numeric.Conj(X) else X, numeric.Mul(Al, if (comptime worker_noconj) X else numeric.Conj(X)), A)) orelse 2);
 
-                            var ix: i32 = kx;
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.add_( // a[i + j * lda] += x[ix] * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        x[scast(u32, ix)],
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
+                    // Off-diagonal tile
+                    var local_x_r: [worker_tile_size]X = undefined;
+                    var local_x_c: [worker_tile_size]X = undefined;
 
-                                ix += incx;
-                            }
+                    @import("copy.zig").k_copy(
+                        r_len,
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, r_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x_r),
+                        1,
+                    );
 
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[jx] * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    x[scast(u32, jx)],
+                    @import("copy.zig").k_copy(
+                        c_len,
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, c_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x_c),
+                        1,
+                    );
+
+                    var j: usize = 0;
+                    while (j < c_len) : (j += 1) {
+                        // temp = worker_alpha * conj(local_x_c[j])
+                        const temp = numeric.mul(
+                            worker_alpha,
+                            if (worker_noconj)
+                                numeric.conj(local_x_c[j])
+                            else
+                                local_x_c[j],
+                        );
+
+                        var i: usize = 0;
+                        while (i < (r_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp * local_x_r[i + u]
+                                numeric.fma_(
+                                    &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
                                     temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
+                                    if (comptime worker_noconj)
+                                        local_x_r[i + u]
+                                    else
+                                        numeric.conj(local_x_r[i + u]),
+                                    worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                );
+                            }
                         }
 
-                        jx += incx;
-                    }
-                }
-            } else {
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * x[j]
-                                x[scast(u32, j)],
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
-
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.add_( // a[i + j * lda] += conj(x[i]) * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        ops.conj(x[scast(u32, i)], ctx) catch unreachable,
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[j]) * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    ops.conj(x[scast(u32, j)], ctx) catch unreachable,
-                                    temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
+                        while (i < r_len) : (i += 1) {
+                            // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp * local_x_r[i]
+                            numeric.fma_(
+                                &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                                temp,
+                                if (comptime worker_noconj)
+                                    local_x_r[i]
+                                else
+                                    numeric.conj(local_x_r[i]),
+                                worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                            );
                         }
-                    }
-                } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * x[jx]
-                                x[scast(u32, jx)],
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
-
-                            var ix: i32 = kx;
-                            var i: i32 = 0;
-                            while (i < j) : (i += 1) {
-                                ops.add_( // a[i + j * lda] += conj(x[ix]) * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-
-                                ix += incx;
-                            }
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[jx]) * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
-                                    temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-
-                        jx += incx;
-                    }
-                }
-            }
-        } else {
-            if (noconj) {
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * conj(x[j])
-                                ops.conj(x[scast(u32, j)], ctx) catch unreachable,
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[j] * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    x[scast(u32, j)],
-                                    temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-
-                            var i: i32 = j + 1;
-                            while (i < n) : (i += 1) {
-                                ops.add_( // a[i + j * lda] += x[i] * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        x[scast(u32, i)],
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-                } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * conj(x[jx])
-                                ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(x[jx] * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    x[scast(u32, jx)],
-                                    temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-
-                            var ix: i32 = jx;
-                            var i: i32 = j + 1;
-                            while (i < n) : (i += 1) {
-                                ix += incx;
-
-                                ops.add_( // a[i + j * lda] += x[ix] * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        x[scast(u32, ix)],
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                        jx += incx;
-                    }
-                }
-            } else {
-                if (incx == 1) {
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * x[j]
-                                x[scast(u32, j)],
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[j]) * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    ops.conj(x[scast(u32, j)], ctx) catch unreachable,
-                                    temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-
-                            var i: i32 = j + 1;
-                            while (i < n) : (i += 1) {
-                                ops.add_( // a[i + j * lda] += conj(x[i]) * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        ops.conj(x[scast(u32, i)], ctx) catch unreachable,
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-                } else {
-                    var jx: i32 = kx;
-                    var j: i32 = 0;
-                    while (j < n) : (j += 1) {
-                        if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable) {
-                            const temp: C1 = ops.mul( // temp = alpha * x[jx]
-                                x[scast(u32, jx)],
-                                alpha,
-                                ctx,
-                            ) catch unreachable;
-
-                            ops.add_( // a[j + j * lda] = re(a[j + j * lda]) + re(conj(x[jx]) * temp)
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ops.re(ops.mul(
-                                    ops.conj(x[scast(u32, jx)], ctx) catch unreachable,
-                                    temp,
-                                    ctx,
-                                ) catch unreachable, ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-
-                            var ix: i32 = jx;
-                            var i: i32 = j + 1;
-                            while (i < n) : (i += 1) {
-                                ix += incx;
-
-                                ops.add_( // a[i + j * lda] += conj(x[ix]) * temp
-                                    &a[scast(u32, i + j * lda)],
-                                    a[scast(u32, i + j * lda)],
-                                    ops.mul(
-                                        ops.conj(x[scast(u32, ix)], ctx) catch unreachable,
-                                        temp,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable;
-                            }
-                        } else {
-                            ops.set( // a[j + j * lda] = re(a[j + j * lda])
-                                &a[scast(u32, j + j * lda)],
-                                ops.re(a[scast(u32, j + j * lda)], ctx) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                        jx += incx;
                     }
                 }
             }
         }
+    };
+
+    var spawn_err: ?anyerror = null;
+    var spawned_count: usize = 0;
+    var i: usize = 0;
+
+    while (i < num_threads) : (i += 1) {
+        if (if (noconj)
+            std.Thread.spawn(.{}, Worker.execute, .{
+                eff_uplo,
+                n,
+                alpha,
+                a,
+                lda,
+                x,
+                incx,
+                true,
+                &atomic_counter,
+                tile_size,
+                num_tiles,
+            })
+        else
+            std.Thread.spawn(.{}, Worker.execute, .{
+                eff_uplo,
+                n,
+                alpha,
+                a,
+                lda,
+                x,
+                incx,
+                false,
+                &atomic_counter,
+                tile_size,
+                num_tiles,
+            })) |th|
+        {
+            threads[i] = th;
+            spawned_count += 1;
+        } else |err| {
+            spawn_err = err;
+            break;
+        }
+    }
+
+    var t: usize = 0;
+    while (t < spawned_count) : (t += 1) {
+        threads[t].join();
+    }
+
+    if (spawn_err) |err|
+        return err;
+}
+
+fn k_her(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anytype, lda: usize, comptime noconj: bool) void {
+    const Al: type = @TypeOf(alpha);
+    const A: type = meta.Child(@TypeOf(a));
+    const X: type = meta.Child(@TypeOf(x));
+
+    // Quick return if possible.
+    if (n == 0 or numeric.eq(alpha, 0))
+        return;
+
+    const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+
+    if (uplo == .upper) {
+        const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(if (comptime noconj) X else numeric.Conj(X), numeric.Mul(Al, if (comptime noconj) numeric.Conj(X) else X), A)) orelse 2);
+
+        if (incx == 1) {
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                if (numeric.ne(x[j], 0)) {
+                    // temp = alpha * conj(x[j])
+                    const temp = numeric.mul(
+                        alpha,
+                        if (comptime noconj)
+                            numeric.conj(x[j])
+                        else
+                            x[j],
+                    );
+
+                    var i: usize = 0;
+                    while (i < (j / unroll) * unroll) : (i += unroll) {
+                        inline for (0..unroll) |u| {
+                            // a[i + u + j * lda] += x[i + u] * temp
+                            numeric.fma_(
+                                &a[i + u + j * lda],
+                                if (comptime noconj)
+                                    x[i + u]
+                                else
+                                    numeric.conj(x[i + u]),
+                                temp,
+                                a[i + u + j * lda],
+                            );
+                        }
+                    }
+
+                    while (i < j) : (i += 1) {
+                        // a[i + j * lda] += x[i] * temp
+                        numeric.fma_(
+                            &a[i + j * lda],
+                            if (comptime noconj)
+                                x[i]
+                            else
+                                numeric.conj(x[i]),
+                            temp,
+                            a[i + j * lda],
+                        );
+                    }
+
+                    // a[j + j * lda] = re(a[j + j * lda]) + re(x[j] * temp)
+                    numeric.fma_(
+                        &a[j + j * lda],
+                        if (comptime noconj)
+                            numeric.neg(numeric.im(x[j]))
+                        else
+                            numeric.im(x[j]),
+                        numeric.im(temp),
+                        numeric.fma(
+                            numeric.re(x[j]),
+                            numeric.re(temp),
+                            numeric.re(a[j + j * lda]),
+                        ),
+                    );
+                } else {
+                    // a[j + j * lda] = re(a[j + j * lda])
+                    numeric.set(
+                        &a[j + j * lda],
+                        numeric.re(a[j + j * lda]),
+                    );
+                }
+            }
+        } else {
+            var jx: isize = kx;
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                if (numeric.ne(x[numeric.cast(usize, jx)], 0)) {
+                    // temp = alpha * conj(x[jx])
+                    const temp = numeric.mul(
+                        alpha,
+                        if (comptime noconj)
+                            numeric.conj(x[numeric.cast(usize, jx)])
+                        else
+                            x[numeric.cast(usize, jx)],
+                    );
+
+                    var ix: isize = kx;
+                    var i: usize = 0;
+                    while (i < (j / unroll) * unroll) : (i += unroll) {
+                        inline for (0..unroll) |u| {
+                            // a[i + u + j * lda] += x[ix + u * incx] * temp
+                            numeric.fma_(
+                                &a[i + u + j * lda],
+                                if (comptime noconj)
+                                    x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)]
+                                else
+                                    numeric.conj(x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)]),
+                                temp,
+                                a[i + u + j * lda],
+                            );
+                        }
+
+                        ix += numeric.cast(isize, unroll) * incx;
+                    }
+
+                    while (i < j) : (i += 1) {
+                        // a[i + j * lda] += x[ix] * temp
+                        numeric.fma_(
+                            &a[i + j * lda],
+                            if (comptime noconj)
+                                x[numeric.cast(usize, ix)]
+                            else
+                                numeric.conj(x[numeric.cast(usize, ix)]),
+                            temp,
+                            a[i + j * lda],
+                        );
+
+                        ix += incx;
+                    }
+
+                    // a[j + j * lda] = re(a[j + j * lda]) + re(x[jx] * temp)
+                    numeric.fma_(
+                        &a[j + j * lda],
+                        if (comptime noconj)
+                            numeric.neg(numeric.im(x[numeric.cast(usize, ix)]))
+                        else
+                            numeric.im(x[numeric.cast(usize, ix)]),
+                        numeric.im(temp),
+                        numeric.fma(
+                            numeric.re(x[numeric.cast(usize, ix)]),
+                            numeric.re(temp),
+                            numeric.re(a[j + j * lda]),
+                        ),
+                    );
+                } else {
+                    // a[j + j * lda] = re(a[j + j * lda])
+                    numeric.set(
+                        &a[j + j * lda],
+                        numeric.re(a[j + j * lda]),
+                    );
+                }
+
+                jx += incx;
+            }
+        }
     } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.her not implemented for arbitrary precision types yet");
+        const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(if (comptime noconj) numeric.Conj(X) else X, numeric.Mul(Al, if (comptime noconj) X else numeric.Conj(X)), A)) orelse 2);
+
+        if (incx == 1) {
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                if (numeric.ne(x[j], 0)) {
+                    // temp = alpha * conj(x[j])
+                    const temp = numeric.mul(
+                        alpha,
+                        if (comptime noconj)
+                            numeric.conj(x[j])
+                        else
+                            x[j],
+                    );
+
+                    // a[j + j * lda] = re(a[j + j * lda]) + re(x[j] * temp)
+                    numeric.fma_(
+                        &a[j + j * lda],
+                        if (comptime !noconj)
+                            numeric.im(x[j])
+                        else
+                            numeric.neg(numeric.im(x[j])),
+                        numeric.im(temp),
+                        numeric.fma(
+                            numeric.re(x[j]),
+                            numeric.re(temp),
+                            numeric.re(a[j + j * lda]),
+                        ),
+                    );
+
+                    var i: usize = j + 1;
+                    while (i < n and i % unroll != 0) : (i += 1) {
+                        // a[i + j * lda] += x[i] * temp
+                        numeric.fma_(
+                            &a[i + j * lda],
+                            if (comptime noconj)
+                                x[i]
+                            else
+                                numeric.conj(x[i]),
+                            temp,
+                            a[i + j * lda],
+                        );
+                    }
+
+                    while (i < (n / unroll) * unroll) : (i += unroll) {
+                        inline for (0..unroll) |u| {
+                            // a[i + u + j * lda] += x[i + u] * temp
+                            numeric.fma_(
+                                &a[i + u + j * lda],
+                                if (comptime noconj)
+                                    x[i + u]
+                                else
+                                    numeric.conj(x[i + u]),
+                                temp,
+                                a[i + u + j * lda],
+                            );
+                        }
+                    }
+
+                    while (i < n) : (i += 1) {
+                        // a[i + j * lda] += x[i] * temp
+                        numeric.fma_(
+                            &a[i + j * lda],
+                            if (comptime noconj)
+                                x[i]
+                            else
+                                numeric.conj(x[i]),
+                            temp,
+                            a[i + j * lda],
+                        );
+                    }
+                } else {
+                    // a[j + j * lda] = re(a[j + j * lda])
+                    numeric.set(
+                        &a[j + j * lda],
+                        numeric.re(a[j + j * lda]),
+                    );
+                }
+            }
+        } else {
+            var jx: isize = kx;
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                if (numeric.ne(x[numeric.cast(usize, jx)], 0)) {
+                    // temp = alpha * conj(x[jx])
+                    const temp = numeric.mul(
+                        alpha,
+                        if (comptime noconj)
+                            numeric.conj(x[numeric.cast(usize, jx)])
+                        else
+                            x[numeric.cast(usize, jx)],
+                    );
+
+                    // a[j + j * lda] = re(a[j + j * lda]) + re(x[jx] * temp)
+                    numeric.fma_(
+                        &a[j + j * lda],
+                        if (comptime !noconj)
+                            numeric.im(x[numeric.cast(usize, jx)])
+                        else
+                            numeric.neg(numeric.im(x[numeric.cast(usize, jx)])),
+                        numeric.im(temp),
+                        numeric.fma(
+                            numeric.re(x[numeric.cast(usize, jx)]),
+                            numeric.re(temp),
+                            numeric.re(a[j + j * lda]),
+                        ),
+                    );
+
+                    var ix: isize = jx + incx;
+                    var i: usize = j + 1;
+                    while (i < n and i % unroll != 0) : (i += 1) {
+                        // a[i + j * lda] += x[ix] * temp
+                        numeric.fma_(
+                            &a[i + j * lda],
+                            if (comptime noconj)
+                                x[numeric.cast(usize, ix)]
+                            else
+                                numeric.conj(x[numeric.cast(usize, ix)]),
+                            temp,
+                            a[i + j * lda],
+                        );
+
+                        ix += incx;
+                    }
+
+                    while (i < (n / unroll) * unroll) : (i += unroll) {
+                        inline for (0..unroll) |u| {
+                            // a[i + u + j * lda] += x[ix + u * incx] * temp
+                            numeric.fma_(
+                                &a[i + u + j * lda],
+                                if (comptime noconj)
+                                    x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)]
+                                else
+                                    numeric.conj(x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)]),
+                                temp,
+                                a[i + u + j * lda],
+                            );
+                        }
+
+                        ix += numeric.cast(isize, unroll) * incx;
+                    }
+
+                    while (i < n) : (i += 1) {
+                        // a[i + j * lda] += x[ix] * temp
+                        numeric.fma_(
+                            &a[i + j * lda],
+                            if (comptime noconj)
+                                x[numeric.cast(usize, ix)]
+                            else
+                                numeric.conj(x[numeric.cast(usize, ix)]),
+                            temp,
+                            a[i + j * lda],
+                        );
+
+                        ix += incx;
+                    }
+                } else {
+                    // a[j + j * lda] = re(a[j + j * lda])
+                    numeric.set(
+                        &a[j + j * lda],
+                        numeric.re(a[j + j * lda]),
+                    );
+                }
+                jx += incx;
+            }
+        }
     }
 
     return;

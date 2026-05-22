@@ -12,8 +12,6 @@ const float = @import("../../float.zig");
 
 const linalg = @import("../../linalg.zig");
 
-const k_gemv = @import("gemv.zig").k_gemv;
-
 /// Size of tiles to use when multithreading.
 const tile_size = 128;
 
@@ -53,6 +51,20 @@ const tile_size = 128;
 ///   `1 + (n - 1) * abs(incy)`. On return, contains the result of the
 ///   operation.
 /// * `incy` (`isize`): Indexing increment for `y`. Must be different from 0.
+/// * `opts`: Optional parameters:
+///   * `num_threads` (`usize = 0`): Number of threads to spawn:
+///     * `0`: automatic. The thread count is derived from `m * n` and
+///       `parallel_threshold`:
+///       ```zig
+///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (m * n) / parallel_threshold))
+///       ```
+///     * 1: force serial execution. parallel_threshold is ignored.
+///     * N >= 2: use exactly N threads, clamped by
+///       std.Thread.getCpuCount() and options.max_threads as a hard safety
+///       ceiling. parallel_threshold is ignored.
+///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(Y))):
+///     Minimum number of matrix elements (`n * n`) required to trigger
+///     multithreaded execution.
 ///
 /// ## Returns
 /// `void`
@@ -111,6 +123,17 @@ pub fn hemv(
     const eff_uplo = if (layout == .col_major) uplo else uplo.invert();
     const noconj = layout == .col_major;
 
+    // Quick return if possible.
+    if (n == 0)
+        return;
+
+    if (numeric.eq(alpha, 0)) {
+        if (numeric.ne(beta, 1))
+            @import("scal.zig").k_scal(n, beta, y, incy);
+
+        return;
+    }
+
     if (opts.num_threads == 1)
         return if (noconj)
             k_hemv(eff_uplo, n, alpha, a, lda, x, incx, beta, y, incy, true)
@@ -146,6 +169,9 @@ pub fn hemv(
     if (numeric.ne(beta, 1))
         @import("scal.zig").k_scal(n, beta, y, incy);
 
+    if (numeric.eq(alpha, 0))
+        return;
+
     const k = (n + tile_size - 1) / tile_size;
     const num_tiles = k * (k + 1) / 2;
 
@@ -168,7 +194,6 @@ pub fn hemv(
             comptime worker_tile_size: comptime_int,
             worker_num_tiles: usize,
         ) void {
-            const kx: isize = if (worker_incx < 0) (-numeric.cast(isize, worker_n) + 1) * worker_incx else 0;
             const ky: isize = if (worker_incy < 0) (-numeric.cast(isize, worker_n) + 1) * worker_incy else 0;
 
             while (true) {
@@ -203,7 +228,10 @@ pub fn hemv(
 
                     @import("copy.zig").k_copy(
                         r_len,
-                        worker_x + numeric.cast(usize, kx + numeric.cast(isize, r_start) * worker_incx),
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, r_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
                         worker_incx,
                         @as([*]X, &local_x),
                         1,
@@ -246,7 +274,10 @@ pub fn hemv(
 
                     @import("copy.zig").k_copy(
                         r_len,
-                        worker_x + numeric.cast(usize, kx + numeric.cast(isize, r_start) * worker_incx),
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, r_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
                         worker_incx,
                         @as([*]X, &local_x_r),
                         1,
@@ -254,7 +285,10 @@ pub fn hemv(
 
                     @import("copy.zig").k_copy(
                         c_len,
-                        worker_x + numeric.cast(usize, kx + numeric.cast(isize, c_start) * worker_incx),
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, c_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx),
                         worker_incx,
                         @as([*]X, &local_x_c),
                         1,
@@ -420,6 +454,9 @@ fn k_hemv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
     // First form  y = beta * y.
     if (numeric.ne(beta, 1))
         @import("scal.zig").k_scal(n, beta, y, incy);
+
+    if (numeric.eq(alpha, 0))
+        return;
 
     if (uplo == .upper) {
         const unroll = 2 * int.min(

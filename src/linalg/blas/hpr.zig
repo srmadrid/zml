@@ -134,7 +134,8 @@ fn k_hpr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anyt
                         ),
                     );
                 } else {
-                    numeric.set( // ap[kk + j] = re(ap[kk + j])
+                    // ap[kk + j] = re(ap[kk + j])
+                    numeric.set(
                         &ap[kk + j],
                         numeric.re(ap[kk + j]),
                     );
@@ -160,7 +161,7 @@ fn k_hpr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anyt
                     var k: usize = kk;
                     while (k < kk + j) : (k += 1) {
                         // ap[k] += x[ix] * temp
-                        numeric.fma(
+                        numeric.fma_(
                             &ap[k],
                             if (comptime noconj)
                                 x[numeric.cast(usize, ix)]
@@ -244,7 +245,8 @@ fn k_hpr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anyt
                         k += 1;
                     }
                 } else {
-                    numeric.set( // ap[kk] = re(ap[kk])
+                    // ap[kk] = re(ap[kk])
+                    numeric.set(
                         &ap[kk],
                         numeric.re(ap[kk]),
                     );
@@ -298,7 +300,8 @@ fn k_hpr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, ap: anyt
                         );
                     }
                 } else {
-                    numeric.set( // ap[kk] = re(ap[kk])
+                    // ap[kk] = re(ap[kk])
+                    numeric.set(
                         &ap[kk],
                         numeric.re(ap[kk]),
                     );
