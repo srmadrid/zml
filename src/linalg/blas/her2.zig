@@ -1,217 +1,380 @@
 const std = @import("std");
+const options = @import("options");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
+const meta = @import("../../meta.zig");
+const Layout = meta.Layout;
+const Uplo = meta.Uplo;
+
+const numeric = @import("../../numeric.zig");
+
 const int = @import("../../int.zig");
+const float = @import("../../float.zig");
 
 const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Order = types.Order;
-const Uplo = types.Uplo;
 
-/// Performs a rank-2 update of a Hermitian matrix.
-///
-/// The `her2` routine performs a matrix-vector operation defined as:
+/// Size of tiles to use when multithreading.
+const tile_size = 128;
+
+/// Performs a rank-2 update of a Hermitian matrix defined as:
 ///
 /// ```zig
-///     A = alpha * x * conjg(y^T) + conjg(alpha) * y * conjg(x^T) + A,
+/// A = alpha * x * yᴴ + conjg(alpha) * y * xᴴ + A,
 /// ```
 ///
-/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// where `alpha` is a numeric, `x` and `y` are `n`-element vectors, and `A` is
 /// an `n`-by-`n` Hermitian matrix.
 ///
-/// Signature
-/// ---------
+/// If the `link_cblas` option is not `null`, the function will try to call the
+/// corresponding CBLAS function, if available.
+///
+/// ## Signature
 /// ```zig
-/// fn her2(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// linalg.blas.her2(layout: Layout, uplo: Uplo, n: usize, alpha: Al, x: [*]const X, incx: isize, y: [*]const Y, incy: isize, a: [*]A, lda: usize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
+///   col-major or row-major.
+/// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
+///   the Hermitian packed matrix `A` is used.
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `x` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `y` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incy)`.
+/// * `incy` (`isize`): Indexing increment for `y`. Must be different from 0.
+/// * `a` (`anytype`): Mutable many-item pointer, size at least `lda * n`. On
+///   return, contains the result of the operation.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
+/// * `opts`: Optional parameters:
+///   * `num_threads` (`usize = 0`): Number of threads to spawn:
+///     * `0`: automatic. The thread count is derived from `m * n` and
+///       `parallel_threshold`:
+///       ```zig
+///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (n * n) / parallel_threshold))
+///       ```
+///     * 1: force serial execution. parallel_threshold is ignored.
+///     * N >= 2: use exactly N threads, clamped by
+///       std.Thread.getCpuCount() and options.max_threads as a hard safety
+///       ceiling. parallel_threshold is ignored.
+///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(A))):
+///     Minimum number of matrix elements (`n * n`) required to trigger
+///     multithreaded execution.
 ///
-/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// Hermitian matrix `A` is used:
-/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
-/// used.
-/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
-/// used.
+/// ## Returns
+/// `void`
 ///
-/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
-/// or equal to 0.
-///
-/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): Specifies the scalar `alpha`.
-///
-/// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incx)`.
-///
-/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
-/// different from 0.
-///
-/// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incy)`.
-///
-/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
-/// different from 0.
-///
-/// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `lda * n`. On return, contains the result of the operation.
-///
-/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `a`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` or `incy` is 0, or if `lda`
+///   is less than `max(1, n)`.
 pub fn her2(
-    order: Layout,
+    layout: Layout,
     uplo: Uplo,
-    n: i32,
+    n: usize,
     alpha: anytype,
     x: anytype,
-    incx: i32,
+    incx: isize,
     y: anytype,
-    incy: i32,
+    incy: isize,
     a: anytype,
-    lda: i32,
-    ctx: anytype,
+    lda: usize,
+    opts: struct {
+        num_threads: usize = 0,
+        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(a))),
+    },
 ) !void {
     const Al: type = @TypeOf(alpha);
     comptime var X: type = @TypeOf(x);
     comptime var Y: type = @TypeOf(y);
     comptime var A: type = @TypeOf(a);
 
-    comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.her2 requires alpha to be numeric, got " ++ @typeName(Al));
+    comptime if (!meta.isNumeric(Al) or
+        !meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
+        !meta.isManyItemPointer(Y) or !meta.isNumeric(meta.Child(Y)) or
+        !meta.isManyItemPointer(A) or meta.isConstPointer(A) or !meta.isNumeric(meta.Child(A)))
+        @compileError("zsl.linalg.blas.her2: alpha must be a real numeric, x and y must be many-item pointers to numerics, and a must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\ta: " ++ @typeName(A) ++ "\n");
 
-    comptime if (!types.isManyPointer(X))
-        @compileError("zml.linalg.blas.her2 requires x to be a many-item pointer, got " ++ @typeName(X));
+    X = meta.Child(X);
+    Y = meta.Child(Y);
+    A = meta.Child(A);
 
-    X = types.Child(X);
+    if (lda < int.max(1, n) or incx == 0 or incy == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.her2 requires x's child type to be numeric, got " ++ @typeName(X));
-
-    comptime if (!types.isManyPointer(Y))
-        @compileError("zml.linalg.blas.her2 requires y to be a many-item pointer, got " ++ @typeName(Y));
-
-    Y = types.Child(Y);
-
-    comptime if (!types.isNumeric(Y))
-        @compileError("zml.linalg.blas.her2 requires y's child type to be numeric, got " ++ @typeName(Y));
-
-    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
-        @compileError("zml.linalg.blas.her2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
-
-    A = types.Child(A);
-
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.her2 requires a's child type to numeric, got " ++ @typeName(A));
-
-    comptime if (Al == bool and X == bool and Y == bool and A == bool)
-        @compileError("zml.linalg.blas.her2 does not support alpha, a, x, beta and y all being bool");
-
-    comptime if (types.isArbitraryPrecision(Al) or
-        types.isArbitraryPrecision(X) or
-        types.isArbitraryPrecision(Y) or
-        types.isArbitraryPrecision(A))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.her2 not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
-        switch (comptime types.numericType(Al)) {
-            .cfloat => {
-                if (comptime Scalar(Al) == f32) {
-                    const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_cher2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (comptime Scalar(Al) == f64) {
-                    const alpha_casted: A = scast(A, alpha);
-                    return ci.cblas_zher2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), &alpha_casted, x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                }
+    if (comptime options.link_cblas != null and Al == X and Al == Y and Al == A) {
+        switch (comptime meta.numericType(Al)) {
+            .complex => {
+                if (comptime meta.Scalar(Al) == f32)
+                    return linalg.cblas.cher(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, x, incx, y, incy, a, numeric.cast(isize, lda))
+                else if (comptime meta.Scalar(Al) == f64)
+                    return linalg.cblas.zher(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, x, incx, y, incy, a, numeric.cast(isize, lda));
             },
             else => {},
         }
     }
 
-    return _her2(order, uplo, n, alpha, x, incx, y, incy, a, lda, ctx);
-}
+    const eff_uplo = if (layout == .col_major) uplo else uplo.invert();
+    const noconj = layout == .col_major;
 
-fn _her2(
-    order: Order,
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    x: anytype,
-    incx: i32,
-    y: anytype,
-    incy: i32,
-    a: anytype,
-    lda: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_her2(
-            uplo,
-            n,
-            alpha,
-            x,
-            incx,
-            y,
-            incy,
-            a,
-            lda,
-            true,
-            ctx,
-        );
-    } else {
-        return k_her2(
-            uplo.invert(),
-            n,
-            alpha,
-            y,
-            incy,
-            x,
-            incx,
-            a,
-            lda,
-            false,
-            ctx,
-        );
+    // Quick return if possible.
+    if (n == 0 or numeric.eq(alpha, 0))
+        return;
+
+    if (opts.num_threads == 1)
+        return if (noconj)
+            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, true)
+        else
+            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, false);
+
+    var num_threads: usize = if (opts.num_threads == 0) blk: {
+        if (opts.parallel_threshold == 0)
+            break :blk options.max_threads;
+
+        break :blk int.max(1, (n * n) / opts.parallel_threshold);
+    } else opts.num_threads;
+
+    num_threads = int.min(num_threads, options.max_threads);
+    num_threads = int.min(num_threads, n);
+
+    if (num_threads <= 1)
+        return if (noconj)
+            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, true)
+        else
+            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, false);
+
+    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
+    num_threads = int.min(num_threads, n);
+
+    if (num_threads <= 1)
+        return if (noconj)
+            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, true)
+        else
+            k_her2(eff_uplo, n, alpha, x, incx, y, incy, a, lda, false);
+
+    const k = (n + tile_size - 1) / tile_size;
+    const num_tiles = k * (k + 1) / 2;
+
+    var atomic_counter = std.atomic.Value(usize).init(0);
+    var threads: [options.max_threads]std.Thread = undefined;
+
+    const Worker = struct {
+        fn execute(
+            worker_uplo: Uplo,
+            worker_n: usize,
+            worker_alpha: Al,
+            worker_a: [*]A,
+            worker_lda: usize,
+            worker_x: [*]const X,
+            worker_incx: isize,
+            worker_y: [*]const Y,
+            worker_incy: isize,
+            comptime worker_noconj: bool,
+            counter: *std.atomic.Value(usize),
+            comptime worker_tile_size: comptime_int,
+            worker_num_tiles: usize,
+        ) void {
+            while (true) {
+                const idx = counter.fetchAdd(1, .monotonic);
+
+                if (idx >= worker_num_tiles) // When all tiles have been assigned, break.
+                    break;
+
+                // Map 1D atomic index to 2D upper triangular coordinates (tile_i, tile_j) using triangular numbers.
+                var tile_j = numeric.cast(usize, (float.sqrt(1.0 + 8.0 * numeric.cast(f64, idx)) - 1.0) / 2.0);
+
+                while (tile_j * (tile_j + 1) / 2 > idx)
+                    tile_j -= 1;
+
+                while ((tile_j + 1) * (tile_j + 2) / 2 <= idx)
+                    tile_j += 1;
+
+                const tile_i = idx - tile_j * (tile_j + 1) / 2;
+
+                const phys_r = if (worker_uplo == .upper) tile_i else tile_j;
+                const phys_c = if (worker_uplo == .upper) tile_j else tile_i;
+
+                const r_start = phys_r * worker_tile_size;
+                const c_start = phys_c * worker_tile_size;
+                const r_len = int.min(worker_tile_size, worker_n - r_start);
+                const c_len = int.min(worker_tile_size, worker_n - c_start);
+
+                if (tile_i == tile_j) {
+                    // Diagonal tile
+                    var local_x: [worker_tile_size]X = undefined;
+                    var local_y: [worker_tile_size]Y = undefined;
+
+                    @import("copy.zig").k_copy(
+                        r_len,
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, r_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x),
+                        1,
+                    );
+
+                    @import("copy.zig").k_copy(
+                        c_len,
+                        worker_y + numeric.cast(usize, if (worker_incy > 0)
+                            numeric.cast(isize, r_start) * worker_incy
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incy),
+                        worker_incy,
+                        @as([*]Y, &local_y),
+                        1,
+                    );
+
+                    k_her2(
+                        worker_uplo,
+                        r_len,
+                        worker_alpha,
+                        @as([*]const X, &local_x),
+                        1,
+                        @as([*]const Y, &local_y),
+                        1,
+                        worker_a + r_start + c_start * worker_lda,
+                        worker_lda,
+                        worker_noconj,
+                    );
+                } else {
+                    const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(if (comptime worker_noconj) numeric.Conj(X) else X, numeric.Mul(Al, if (comptime worker_noconj) X else numeric.Conj(X)), A)) orelse 2);
+
+                    // Off-diagonal tile
+                    var local_x_r: [worker_tile_size]X = undefined;
+                    var local_x_c: [worker_tile_size]X = undefined;
+
+                    @import("copy.zig").k_copy(
+                        r_len,
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, r_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x_r),
+                        1,
+                    );
+
+                    @import("copy.zig").k_copy(
+                        c_len,
+                        worker_x + numeric.cast(usize, if (worker_incx > 0)
+                            numeric.cast(isize, c_start) * worker_incx
+                        else
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx),
+                        worker_incx,
+                        @as([*]X, &local_x_c),
+                        1,
+                    );
+
+                    var j: usize = 0;
+                    while (j < c_len) : (j += 1) {
+                        // temp = worker_alpha * conj(local_x_c[j])
+                        const temp = numeric.mul(
+                            worker_alpha,
+                            if (worker_noconj)
+                                numeric.conj(local_x_c[j])
+                            else
+                                local_x_c[j],
+                        );
+
+                        var i: usize = 0;
+                        while (i < (r_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp * local_x_r[i + u]
+                                numeric.fma_(
+                                    &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                    temp,
+                                    if (comptime worker_noconj)
+                                        local_x_r[i + u]
+                                    else
+                                        numeric.conj(local_x_r[i + u]),
+                                    worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                );
+                            }
+                        }
+
+                        while (i < r_len) : (i += 1) {
+                            // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp * local_x_r[i]
+                            numeric.fma_(
+                                &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                                temp,
+                                if (comptime worker_noconj)
+                                    local_x_r[i]
+                                else
+                                    numeric.conj(local_x_r[i]),
+                                worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    var spawn_err: ?anyerror = null;
+    var spawned_count: usize = 0;
+    var i: usize = 0;
+
+    while (i < num_threads) : (i += 1) {
+        if (if (noconj)
+            std.Thread.spawn(.{}, Worker.execute, .{
+                eff_uplo,
+                n,
+                alpha,
+                a,
+                lda,
+                x,
+                incx,
+                true,
+                &atomic_counter,
+                tile_size,
+                num_tiles,
+            })
+        else
+            std.Thread.spawn(.{}, Worker.execute, .{
+                eff_uplo,
+                n,
+                alpha,
+                a,
+                lda,
+                x,
+                incx,
+                false,
+                &atomic_counter,
+                tile_size,
+                num_tiles,
+            })) |th|
+        {
+            threads[i] = th;
+            spawned_count += 1;
+        } else |err| {
+            spawn_err = err;
+            break;
+        }
     }
+
+    var t: usize = 0;
+    while (t < spawned_count) : (t += 1) {
+        threads[t].join();
+    }
+
+    if (spawn_err) |err|
+        return err;
 }
 
 fn k_her2(
     uplo: Uplo,
-    n: i32,
+    n: isize,
     alpha: anytype,
     x: anytype,
-    incx: i32,
+    incx: isize,
     y: anytype,
-    incy: i32,
+    incy: isize,
     a: anytype,
-    lda: i32,
+    lda: isize,
     noconj: bool,
     ctx: anytype,
 ) !void {
@@ -230,14 +393,14 @@ fn k_her2(
     if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
         return;
 
-    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
-    const ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
+    const kx: isize = if (incx < 0) (-n + 1) * incx else 0;
+    const ky: isize = if (incy < 0) (-n + 1) * incy else 0;
 
     if (comptime !types.isArbitraryPrecision(CC)) {
         if (uplo == .upper) {
             if (noconj) {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
@@ -253,7 +416,7 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var i: i32 = 0;
+                            var i: isize = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += x[i] * temp1 + y[i] * temp2
                                     &a[scast(u32, i + j * lda)],
@@ -302,9 +465,9 @@ fn k_her2(
                         }
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
@@ -320,9 +483,9 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var ix: i32 = kx;
-                            var iy: i32 = ky;
-                            var i: i32 = 0;
+                            var ix: isize = kx;
+                            var iy: isize = ky;
+                            var i: isize = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += x[ix] * temp1 + y[iy] * temp2
                                     &a[scast(u32, i + j * lda)],
@@ -379,7 +542,7 @@ fn k_her2(
                 }
             } else {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
@@ -395,7 +558,7 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var i: i32 = 0;
+                            var i: isize = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += conj(x[i]) * temp1 + conj(y[i]) * temp2
                                     &a[scast(u32, i + j * lda)],
@@ -444,9 +607,9 @@ fn k_her2(
                         }
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
@@ -462,9 +625,9 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable, ctx) catch unreachable;
 
-                            var ix: i32 = kx;
-                            var iy: i32 = ky;
-                            var i: i32 = 0;
+                            var ix: isize = kx;
+                            var iy: isize = ky;
+                            var i: isize = 0;
                             while (i < j) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += conj(x[ix]) * temp1 + conj(y[iy]) * temp2
                                     &a[scast(u32, i + j * lda)],
@@ -523,7 +686,7 @@ fn k_her2(
         } else {
             if (noconj) {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
@@ -558,7 +721,7 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable;
 
-                            var i: i32 = j + 1;
+                            var i: isize = j + 1;
                             while (i < n) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += x[i] * temp1 + y[i] * temp2
                                     &a[scast(u32, i + j * lda)],
@@ -588,9 +751,9 @@ fn k_her2(
                         }
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
@@ -625,9 +788,9 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: i32 = jx;
-                            var iy: i32 = jy;
-                            var i: i32 = j + 1;
+                            var ix: isize = jx;
+                            var iy: isize = jy;
+                            var i: isize = j + 1;
                             while (i < n) : (i += 1) {
                                 ix += incx;
                                 iy += incy;
@@ -665,7 +828,7 @@ fn k_her2(
                 }
             } else {
                 if (incx == 1 and incy == 1) {
-                    var j: i32 = 0;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
@@ -700,7 +863,7 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable;
 
-                            var i: i32 = j + 1;
+                            var i: isize = j + 1;
                             while (i < n) : (i += 1) {
                                 ops.add_( // a[i + j * lda] += conj(x[i]) * temp1 + conj(y[i]) * temp2
                                     &a[scast(u32, i + j * lda)],
@@ -730,9 +893,9 @@ fn k_her2(
                         }
                     }
                 } else {
-                    var jx: i32 = kx;
-                    var jy: i32 = ky;
-                    var j: i32 = 0;
+                    var jx: isize = kx;
+                    var jy: isize = ky;
+                    var j: isize = 0;
                     while (j < n) : (j += 1) {
                         if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
                             ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
@@ -767,9 +930,9 @@ fn k_her2(
                                 ctx,
                             ) catch unreachable;
 
-                            var ix: i32 = jx;
-                            var iy: i32 = jy;
-                            var i: i32 = j + 1;
+                            var ix: isize = jx;
+                            var iy: isize = jy;
+                            var i: isize = j + 1;
                             while (i < n) : (i += 1) {
                                 ix += incx;
                                 iy += incy;

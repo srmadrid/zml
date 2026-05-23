@@ -10,6 +10,10 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 
+fn tileSize(comptime N: type) comptime_int {
+    return int.max(1, 16_384 / @sizeOf(N));
+}
+
 /// Performs a rank-1 update of a general matrix defined as:
 ///
 /// ```zig
@@ -56,7 +60,7 @@ const linalg = @import("../../linalg.zig");
 ///     * N >= 2: use exactly N threads, clamped by
 ///       std.Thread.getCpuCount() and options.max_threads as a hard safety
 ///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(Y))):
+///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(A))):
 ///     Minimum number of matrix elements (`m * n`) required to trigger
 ///     multithreaded execution.
 ///
@@ -223,8 +227,8 @@ fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype
     if (m == 0 or n == 0 or numeric.eq(alpha, 0))
         return;
 
-    var jy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
     if (incx == 1) {
+        var jy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
         var j: usize = 0;
         while (j < n) : (j += 1) {
             if (numeric.ne(y[numeric.cast(usize, jy)], 0)) {
@@ -261,47 +265,60 @@ fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype
             jy += incy;
         }
     } else {
-        const kx: isize = if (incx < 0) (-numeric.cast(isize, m) + 1) * incx else 0;
+        const tile_size = tileSize(X);
 
-        var j: usize = 0;
-        while (j < n) : (j += 1) {
-            if (numeric.ne(y[numeric.cast(usize, jy)], 0)) {
-                // temp = alpha * y[jy]
-                const temp = numeric.mul(
-                    alpha,
-                    y[numeric.cast(usize, jy)],
-                );
+        var tile_i: usize = 0;
+        while (tile_i < m) : (tile_i += tile_size) {
+            const b_len = int.min(tile_size, m - tile_i);
+            var local_x: [tile_size]X = undefined;
 
-                var ix: isize = kx;
-                var i: usize = 0;
-                while (i < (m / unroll) * unroll) : (i += unroll) {
-                    inline for (0..unroll) |u| {
-                        // a[i + u + j * lda] += x[ix + u * incx] * temp
-                        numeric.fma_(
-                            &a[i + u + j * lda],
-                            x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
-                            temp,
-                            a[i + u + j * lda],
-                        );
-                    }
+            @import("copy.zig").k_copy(
+                b_len,
+                x + numeric.cast(usize, if (incx > 0)
+                    numeric.cast(isize, tile_i) * incx
+                else
+                    (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incx),
+                incx,
+                @as([*]X, &local_x),
+                1,
+            );
 
-                    ix += numeric.cast(isize, unroll) * incx;
-                }
-
-                while (i < m) : (i += 1) {
-                    // a[i + j * lda] += x[ix] * temp
-                    numeric.fma_(
-                        &a[i + j * lda],
-                        x[numeric.cast(usize, ix)],
-                        temp,
-                        a[i + j * lda],
+            var jy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                if (numeric.ne(y[numeric.cast(usize, jy)], 0)) {
+                    // temp = alpha * y[jy]
+                    const temp = numeric.mul(
+                        alpha,
+                        y[numeric.cast(usize, jy)],
                     );
 
-                    ix += incx;
-                }
-            }
+                    var i: usize = 0;
+                    while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                        inline for (0..unroll) |u| {
+                            // a[tile_i + i + u + j * lda] += local_x[i + u] * temp
+                            numeric.fma_(
+                                &a[tile_i + i + u + j * lda],
+                                local_x[i + u],
+                                temp,
+                                a[tile_i + i + u + j * lda],
+                            );
+                        }
+                    }
 
-            jy += incy;
+                    while (i < b_len) : (i += 1) {
+                        // a[tile_i + i + j * lda] += local_x[i] * temp
+                        numeric.fma_(
+                            &a[tile_i + i + j * lda],
+                            local_x[i],
+                            temp,
+                            a[tile_i + i + j * lda],
+                        );
+                    }
+                }
+
+                jy += incy;
+            }
         }
     }
 

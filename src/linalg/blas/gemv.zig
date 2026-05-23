@@ -10,6 +10,10 @@ const int = @import("../../int.zig");
 
 const linalg = @import("../../linalg.zig");
 
+fn tileSize(comptime N: type) comptime_int {
+    return int.max(1, 16_384 / @sizeOf(N));
+}
+
 /// Computes a matrix-vector product with a general matrix defined as:
 ///
 /// ```zig
@@ -281,17 +285,17 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
         const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2);
 
         // Form  y = alpha * A * x + y  or  y = alpha * conj(A) * x + y.
-        var jx: isize = kx;
-        var j: usize = 0;
-        while (j < n) : (j += 1) {
-            // temp = alpha * x[jx]
-            const temp = numeric.mul(
-                alpha,
-                x[numeric.cast(usize, jx)],
-            );
+        if (incy == 1) {
+            var jx: isize = kx;
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                // temp = alpha * x[jx]
+                const temp = numeric.mul(
+                    alpha,
+                    x[numeric.cast(usize, jx)],
+                );
 
-            var i: usize = 0;
-            if (incy == 1) {
+                var i: usize = 0;
                 while (i < (m / unroll) * unroll) : (i += unroll) {
                     inline for (0..unroll) |u| {
                         // y[i + u] += temp * a[i + u + j * lda]
@@ -319,54 +323,92 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
                         y[i],
                     );
                 }
-            } else {
-                var iy: isize = ky;
-                while (i < (m / unroll) * unroll) : (i += unroll) {
-                    inline for (0..unroll) |u| {
-                        // y[iy + u * incy] += temp * a[i + u + j * lda]
+
+                jx += incx;
+            }
+        } else {
+            const tile_size = tileSize(Y);
+
+            var tile_i: usize = 0;
+            while (tile_i < m) : (tile_i += tile_size) {
+                const b_len = int.min(tile_size, m - tile_i);
+                var local_y: [tile_size]Y = undefined;
+
+                @import("copy.zig").k_copy(
+                    b_len,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
+                    @as([*]Y, &local_y),
+                    1,
+                );
+
+                var jx: isize = kx;
+                var j: usize = 0;
+                while (j < n) : (j += 1) {
+                    // temp = alpha * x[jx]
+                    const temp = numeric.mul(
+                        alpha,
+                        x[numeric.cast(usize, jx)],
+                    );
+
+                    var i: usize = 0;
+                    while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                        inline for (0..unroll) |u| {
+                            // local_y[i + u] += temp * a[tile_i + i + u + j * lda]
+                            numeric.fma_(
+                                &local_y[i + u],
+                                temp,
+                                if (comptime noconj)
+                                    a[tile_i + i + u + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + u + j * lda]),
+                                local_y[i + u],
+                            );
+                        }
+                    }
+
+                    while (i < b_len) : (i += 1) {
+                        // local_y[i] += temp * a[tile_i + i + j * lda]
                         numeric.fma_(
-                            &y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
+                            &local_y[i],
                             temp,
                             if (comptime noconj)
-                                a[i + u + j * lda]
+                                a[tile_i + i + j * lda]
                             else
-                                numeric.conj(a[i + u + j * lda]),
-                            y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
+                                numeric.conj(a[tile_i + i + j * lda]),
+                            local_y[i],
                         );
                     }
 
-                    iy += numeric.cast(isize, unroll) * incy;
+                    jx += incx;
                 }
 
-                while (i < m) : (i += 1) {
-                    // y[iy] += temp * a[i + j * lda]
-                    numeric.fma_(
-                        &y[numeric.cast(usize, iy)],
-                        temp,
-                        if (comptime noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        y[numeric.cast(usize, iy)],
-                    );
-
-                    iy += incy;
-                }
+                @import("copy.zig").k_copy(
+                    b_len,
+                    @as([*]Y, &local_y),
+                    1,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
+                );
             }
-
-            jx += incx;
         }
     } else {
         const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(numeric.Mul(A, X))) orelse 2);
 
         // Form  y = alpha * Aᵀ * x + y  or  y = alpha * Aᴴ * x + y.
-        var jy: isize = ky;
-        var j: usize = 0;
-        while (j < n) : (j += 1) {
-            var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+        if (incx == 1) {
+            var jy: isize = ky;
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
 
-            var i: usize = 0;
-            if (incx == 1) {
+                var i: usize = 0;
                 var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
 
                 while (i < (m / unroll) * unroll) : (i += unroll) {
@@ -400,56 +442,87 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
                         temp,
                     );
                 }
-            } else {
-                var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
 
-                var ix: isize = kx;
-                while (i < (m / unroll) * unroll) : (i += unroll) {
+                // y[jy] += alpha * temp
+                numeric.fma_(
+                    &y[numeric.cast(usize, jy)],
+                    alpha,
+                    temp,
+                    y[numeric.cast(usize, jy)],
+                );
+
+                jy += incy;
+            }
+        } else {
+            const tile_size = tileSize(X);
+
+            var tile_i: usize = 0;
+            while (tile_i < m) : (tile_i += tile_size) {
+                const b_len = int.min(tile_size, m - tile_i);
+                var local_x: [tile_size]X = undefined;
+
+                @import("copy.zig").k_copy(
+                    b_len,
+                    x + numeric.cast(usize, if (incx > 0)
+                        numeric.cast(isize, tile_i) * incx
+                    else
+                        (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incx),
+                    incx,
+                    @as([*]X, &local_x),
+                    1,
+                );
+
+                var jy: isize = ky;
+                var j: usize = 0;
+                while (j < n) : (j += 1) {
+                    var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
+
+                    var sums: [unroll]meta.Accumulator(numeric.Mul(A, X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(A, X)))} ** unroll;
+
+                    var i: usize = 0;
+                    while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                        inline for (0..unroll) |u| {
+                            // sums[u] += a[tile_i + i + u + j * lda] * x[i + u]
+                            numeric.fma_(
+                                &sums[u],
+                                if (comptime noconj)
+                                    a[tile_i + i + u + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + u + j * lda]),
+                                local_x[i + u],
+                                sums[u],
+                            );
+                        }
+                    }
+
                     inline for (0..unroll) |u| {
-                        // sums[u] += a[i + u + j * lda] * x[ix + u * incx]
+                        numeric.add_(&temp, temp, sums[u]);
+                    }
+
+                    while (i < b_len) : (i += 1) {
+                        // temp += a[tile_i + i + j * lda] * x[i]
                         numeric.fma_(
-                            &sums[u],
+                            &temp,
                             if (comptime noconj)
-                                a[i + u + j * lda]
+                                a[tile_i + i + j * lda]
                             else
-                                numeric.conj(a[i + u + j * lda]),
-                            x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
-                            sums[u],
+                                numeric.conj(a[tile_i + i + j * lda]),
+                            local_x[i],
+                            temp,
                         );
                     }
 
-                    ix += numeric.cast(isize, unroll) * incx;
-                }
-
-                inline for (0..unroll) |u| {
-                    numeric.add_(&temp, temp, sums[u]);
-                }
-
-                while (i < m) : (i += 1) {
-                    // temp += a[i + j * lda] * x[ix]
+                    // y[jy] += alpha * temp
                     numeric.fma_(
-                        &temp,
-                        if (comptime noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        x[numeric.cast(usize, ix)],
+                        &y[numeric.cast(usize, jy)],
+                        alpha,
                         temp,
+                        y[numeric.cast(usize, jy)],
                     );
 
-                    ix += incx;
+                    jy += incy;
                 }
             }
-
-            // y[jy] += alpha * temp
-            numeric.fma_(
-                &y[numeric.cast(usize, jy)],
-                alpha,
-                temp,
-                y[numeric.cast(usize, jy)],
-            );
-
-            jy += incy;
         }
     }
 

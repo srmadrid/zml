@@ -12,8 +12,9 @@ const float = @import("../../float.zig");
 
 const linalg = @import("../../linalg.zig");
 
-/// Size of tiles to use when multithreading.
-const tile_size = 128;
+fn tileSize(comptime N: type) comptime_int {
+    return int.max(1, 16_384 / @sizeOf(N));
+}
 
 /// Computes a matrix-vector product with a Hermitian matrix defined as:
 ///
@@ -56,7 +57,7 @@ const tile_size = 128;
 ///     * `0`: automatic. The thread count is derived from `m * n` and
 ///       `parallel_threshold`:
 ///       ```zig
-///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (m * n) / parallel_threshold))
+///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (n * n) / parallel_threshold))
 ///       ```
 ///     * 1: force serial execution. parallel_threshold is ignored.
 ///     * N >= 2: use exactly N threads, clamped by
@@ -172,6 +173,8 @@ pub fn hemv(
     if (numeric.eq(alpha, 0))
         return;
 
+    const tile_size = int.min(tileSize(X), tileSize(Y)) / 2;
+
     const k = (n + tile_size - 1) / tile_size;
     const num_tiles = k * (k + 1) / 2;
 
@@ -226,16 +229,25 @@ pub fn hemv(
                     var local_x: [worker_tile_size]X = undefined;
                     var local_y: [worker_tile_size]Y = .{numeric.zero(Y)} ** worker_tile_size;
 
-                    @import("copy.zig").k_copy(
-                        r_len,
+                    const px = if (worker_incx == 1)
                         worker_x + numeric.cast(usize, if (worker_incx > 0)
                             numeric.cast(isize, r_start) * worker_incx
                         else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
-                        worker_incx,
-                        @as([*]X, &local_x),
-                        1,
-                    );
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                    else blk: {
+                        @import("copy.zig").k_copy(
+                            r_len,
+                            worker_x + numeric.cast(usize, if (worker_incx > 0)
+                                numeric.cast(isize, r_start) * worker_incx
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                            worker_incx,
+                            @as([*]X, &local_x),
+                            1,
+                        );
+
+                        break :blk @as([*]const X, &local_x);
+                    };
 
                     k_hemv(
                         worker_uplo,
@@ -243,10 +255,10 @@ pub fn hemv(
                         worker_alpha,
                         worker_a + r_start + c_start * worker_lda,
                         worker_lda,
-                        @as([]const X, &local_x),
+                        px,
                         1,
                         numeric.one(Be),
-                        @as([]Y, &local_y),
+                        @as([*]Y, &local_y),
                         1,
                         worker_noconj,
                     );
@@ -272,32 +284,50 @@ pub fn hemv(
                     var local_x_c: [worker_tile_size]X = undefined;
                     var local_y_c: [worker_tile_size]Y = .{numeric.zero(Y)} ** worker_tile_size;
 
-                    @import("copy.zig").k_copy(
-                        r_len,
+                    const px_r = if (worker_incx == 1)
                         worker_x + numeric.cast(usize, if (worker_incx > 0)
                             numeric.cast(isize, r_start) * worker_incx
                         else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
-                        worker_incx,
-                        @as([*]X, &local_x_r),
-                        1,
-                    );
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                    else blk: {
+                        @import("copy.zig").k_copy(
+                            r_len,
+                            worker_x + numeric.cast(usize, if (worker_incx > 0)
+                                numeric.cast(isize, r_start) * worker_incx
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                            worker_incx,
+                            @as([*]X, &local_x_r),
+                            1,
+                        );
 
-                    @import("copy.zig").k_copy(
-                        c_len,
+                        break :blk @as([*]const X, &local_x_r);
+                    };
+
+                    const px_c = if (worker_incx == 1)
                         worker_x + numeric.cast(usize, if (worker_incx > 0)
                             numeric.cast(isize, c_start) * worker_incx
                         else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx),
-                        worker_incx,
-                        @as([*]X, &local_x_c),
-                        1,
-                    );
+                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx)
+                    else blk: {
+                        @import("copy.zig").k_copy(
+                            c_len,
+                            worker_x + numeric.cast(usize, if (worker_incx > 0)
+                                numeric.cast(isize, c_start) * worker_incx
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx),
+                            worker_incx,
+                            @as([*]X, &local_x_c),
+                            1,
+                        );
+
+                        break :blk @as([*]const X, &local_x_c);
+                    };
 
                     var j: usize = 0;
                     while (j < c_len) : (j += 1) {
                         // temp1 = worker_alpha * local_x_c[j]
-                        const temp1 = numeric.mul(worker_alpha, local_x_c[j]);
+                        const temp1 = numeric.mul(worker_alpha, px_c[j]);
 
                         var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime worker_noconj) A else numeric.Conj(A), X)));
 
@@ -314,7 +344,7 @@ pub fn hemv(
                                         worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]
                                     else
                                         numeric.conj(worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]),
-                                    local_y_r[i],
+                                    local_y_r[i + u],
                                 );
 
                                 // sums[u] += conj(worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]) * local_x_r[i + u]
@@ -324,7 +354,7 @@ pub fn hemv(
                                         numeric.conj(worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda])
                                     else
                                         worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
-                                    local_x_r[i + u],
+                                    px_r[i + u],
                                     sums[u],
                                 );
                             }
@@ -353,7 +383,7 @@ pub fn hemv(
                                     numeric.conj(worker_a[r_start + c_start * worker_lda + i + j * worker_lda])
                                 else
                                     worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
-                                local_x_r[i],
+                                px_r[i],
                                 temp2,
                             );
                         }
@@ -540,91 +570,200 @@ fn k_hemv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                 );
             }
         } else {
-            var jx: isize = kx;
-            var jy: isize = ky;
-            var j: usize = 0;
-            while (j < n) : (j += 1) {
-                // temp1 = alpha * x[jx]
-                const temp1 = numeric.mul(
-                    alpha,
-                    x[numeric.cast(usize, jx)],
+            const tile_size = int.min(tileSize(X), tileSize(Y));
+
+            var tile_i: usize = 0;
+            while (tile_i < n) : (tile_i += tile_size) {
+                const b_len = int.min(tile_size, n - tile_i);
+                var local_x: [tile_size]X = undefined;
+                var local_y: [tile_size]Y = undefined;
+
+                @import("copy.zig").k_copy(
+                    b_len,
+                    x + numeric.cast(usize, if (incx > 0)
+                        numeric.cast(isize, tile_i) * incx
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx),
+                    incx,
+                    @as([*]X, &local_x),
+                    1,
                 );
 
-                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+                @import("copy.zig").k_copy(
+                    b_len,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
+                    @as([*]Y, &local_y),
+                    1,
+                );
 
-                var ix: isize = kx;
-                var iy: isize = ky;
-                var i: usize = 0;
-                while (i < (j / unroll) * unroll) : (i += unroll) {
-                    inline for (0..unroll) |u| {
-                        // y[iy + u * incy] += temp1 * a[i + u + j * lda]
+                var j: usize = tile_i;
+                var jx: isize = kx + numeric.cast(isize, tile_i) * incx;
+                var jy: isize = ky + numeric.cast(isize, tile_i) * incy;
+                while (j < n) : (j += 1) {
+                    if (j < tile_i + b_len) {
+                        // temp1 = alpha * local_x[j - tile_i]
+                        const temp1 = numeric.mul(alpha, local_x[j - tile_i]);
+
+                        var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+
+                        var i: usize = 0;
+                        while (i < ((j - tile_i) / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // local_y[i + u] += temp1 * a[tile_i + i + u + j * lda]
+                                numeric.fma_(
+                                    &local_y[i + u],
+                                    temp1,
+                                    if (comptime noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_y[i + u],
+                                );
+
+                                // sums[u] += conj(a[tile_i + i + u + j * lda]) * local_x[i + u]
+                                numeric.fma_(
+                                    &sums[u],
+                                    if (comptime !noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_x[i + u],
+                                    sums[u],
+                                );
+                            }
+                        }
+
+                        inline for (0..unroll) |u| {
+                            numeric.add_(&temp2, temp2, sums[u]);
+                        }
+
+                        while (i < j - tile_i) : (i += 1) {
+                            // local_y[i] += temp1 * a[tile_i + i + j * lda]
+                            numeric.fma_(
+                                &local_y[i],
+                                temp1,
+                                if (comptime noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_y[i],
+                            );
+
+                            // temp2 += conj(a[tile_i + i + j * lda]) * local_x[i]
+                            numeric.fma_(
+                                &temp2,
+                                if (comptime !noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_x[i],
+                                temp2,
+                            );
+                        }
+
+                        // local_y[j - tile_i] += temp1 * re(a[j + j * lda]) + alpha * temp2
                         numeric.fma_(
-                            &y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
+                            &local_y[j - tile_i],
                             temp1,
-                            if (comptime noconj)
-                                a[i + u + j * lda]
-                            else
-                                numeric.conj(a[i + u + j * lda]),
-                            y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
+                            numeric.re(a[j + j * lda]),
+                            numeric.fma(
+                                alpha,
+                                temp2,
+                                local_y[j - tile_i],
+                            ),
                         );
+                    } else {
+                        // temp1 = alpha * x[jx]
+                        const temp1 = numeric.mul(alpha, x[numeric.cast(usize, jx)]);
 
-                        // temp2 += conj(a[i + u + j * lda]) * x[ix + u * incx]
+                        var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+
+                        var i: usize = 0;
+                        while (i + unroll <= b_len) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // local_y[i + u] += temp1 * a[tile_i + i + u + j * lda]
+                                numeric.fma_(
+                                    &local_y[i + u],
+                                    temp1,
+                                    if (comptime noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_y[i + u],
+                                );
+
+                                // sums[u] += conj(a[tile_i + i + u + j * lda])
+                                numeric.fma_(
+                                    &sums[u],
+                                    if (comptime !noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_x[i + u],
+                                    sums[u],
+                                );
+                            }
+                        }
+
+                        inline for (0..unroll) |u| {
+                            numeric.add_(&temp2, temp2, sums[u]);
+                        }
+
+                        while (i < b_len) : (i += 1) {
+                            // local_y[i] += temp1 * a[tile_i + i + j * lda]
+                            numeric.fma_(
+                                &local_y[i],
+                                temp1,
+                                if (comptime noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_y[i],
+                            );
+
+                            // temp2 += conj(a[tile_i + i + j * lda])
+                            numeric.fma_(
+                                &temp2,
+                                if (comptime !noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_x[i],
+                                temp2,
+                            );
+                        }
+
+                        // y[jy] += alpha * temp2
                         numeric.fma_(
-                            &temp2,
-                            if (comptime !noconj)
-                                a[i + u + j * lda]
-                            else
-                                numeric.conj(a[i + u + j * lda]),
-                            x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
+                            &y[numeric.cast(usize, jy)],
+                            alpha,
                             temp2,
+                            y[numeric.cast(usize, jy)],
                         );
                     }
 
-                    ix += numeric.cast(isize, unroll) * incx;
-                    iy += numeric.cast(isize, unroll) * incy;
+                    jx += incx;
+                    jy += incy;
                 }
 
-                while (i < j) : (i += 1) {
-                    // y[iy] += temp1 * a[i + j * lda]
-                    numeric.fma_(
-                        &y[numeric.cast(usize, iy)],
-                        temp1,
-                        if (comptime noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        y[numeric.cast(usize, iy)],
-                    );
-
-                    // temp2 += conj(a[i + j * lda]) * x[ix]
-                    numeric.fma_(
-                        &temp2,
-                        if (comptime !noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        x[numeric.cast(usize, ix)],
-                        temp2,
-                    );
-
-                    ix += incx;
-                    iy += incy;
-                }
-
-                // y[jy] += temp1 * re(a[j + j * lda]) + alpha * temp2
-                numeric.fma_(
-                    &y[numeric.cast(usize, jy)],
-                    temp1,
-                    numeric.re(a[j + j * lda]),
-                    numeric.fma(
-                        alpha,
-                        temp2,
-                        y[numeric.cast(usize, jy)],
-                    ),
+                @import("copy.zig").k_copy(
+                    b_len,
+                    @as([*]Y, &local_y),
+                    1,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
                 );
-
-                jx += incx;
-                jy += incy;
             }
         }
     } else {
@@ -634,7 +773,7 @@ fn k_hemv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
         );
 
         // Form  y  when lower triangle of A is stored.
-        if (incx == 1 and incy == 1) {
+        if (false) {
             var j: usize = 0;
             while (j < n) : (j += 1) {
                 // temp1 = alpha * x[j]
@@ -743,128 +882,234 @@ fn k_hemv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                 );
             }
         } else {
-            var jx: isize = kx;
-            var jy: isize = ky;
-            var j: usize = 0;
-            while (j < n) : (j += 1) {
-                // temp1 = alpha * x[jx]
-                const temp1 = numeric.mul(
-                    alpha,
-                    x[numeric.cast(usize, jx)],
+            const tile_size = int.min(tileSize(X), tileSize(Y));
+
+            var tile_i: usize = 0;
+            while (tile_i < n) : (tile_i += tile_size) {
+                const b_len = int.min(tile_size, n - tile_i);
+                var local_x: [tile_size]X = undefined;
+                var local_y: [tile_size]Y = undefined;
+
+                @import("copy.zig").k_copy(
+                    b_len,
+                    x + numeric.cast(usize, if (incx > 0)
+                        numeric.cast(isize, tile_i) * incx
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx),
+                    incx,
+                    @as([*]X, &local_x),
+                    1,
                 );
 
-                var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
-
-                // y[jy] += temp1 * re(a[j + j * lda])
-                numeric.fma_(
-                    &y[numeric.cast(usize, jy)],
-                    temp1,
-                    numeric.re(a[j + j * lda]),
-                    y[numeric.cast(usize, jy)],
+                @import("copy.zig").k_copy(
+                    b_len,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
+                    @as([*]Y, &local_y),
+                    1,
                 );
 
-                var ix: isize = jx + incx;
-                var iy: isize = jy + incy;
-                var i: usize = j + 1;
-                while (i < n and i % unroll != 0) : (i += 1) {
-                    // y[iy] += temp1 * a[i + j * lda]
-                    numeric.fma_(
-                        &y[numeric.cast(usize, iy)],
-                        temp1,
-                        if (comptime noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        y[numeric.cast(usize, iy)],
-                    );
-
-                    // temp2 += conj(a[i + j * lda]) * x[ix]
-                    numeric.fma_(
-                        &temp2,
-                        if (comptime !noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        x[numeric.cast(usize, ix)],
-                        temp2,
-                    );
-
-                    ix += incx;
-                    iy += incy;
-                }
-
-                var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
-
-                while (i < (n / unroll) * unroll) : (i += unroll) {
-                    inline for (0..unroll) |u| {
-                        // y[iy + u * incy] += temp1 * a[i + u + j * lda]
-                        numeric.fma_(
-                            &y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
-                            temp1,
-                            if (comptime noconj)
-                                a[i + u + j * lda]
-                            else
-                                numeric.conj(a[i + u + j * lda]),
-                            y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
+                var j: usize = 0;
+                var jx: isize = kx;
+                var jy: isize = ky;
+                while (j < tile_i + b_len) : (j += 1) {
+                    if (j >= tile_i) {
+                        // temp1 = alpha * local_x[j - tile_i]
+                        const temp1 = numeric.mul(
+                            alpha,
+                            local_x[j - tile_i],
                         );
 
-                        // sums[u] += conj(a[i + u + j * lda]) * x[ix + u * incx]
+                        var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+
+                        // local_y[j - tile_i] += temp1 * re(a[j + j * lda])
                         numeric.fma_(
-                            &sums[u],
-                            if (comptime !noconj)
-                                a[i + u + j * lda]
-                            else
-                                numeric.conj(a[i + u + j * lda]),
-                            x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
-                            sums[u],
+                            &local_y[j - tile_i],
+                            temp1,
+                            numeric.re(a[j + j * lda]),
+                            local_y[j - tile_i],
+                        );
+
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+
+                        var i: usize = j - tile_i + 1;
+                        while (i < b_len and i % unroll != 0) : (i += 1) {
+                            // local_y[i] += temp1 * a[tile_i + i + j * lda]
+                            numeric.fma_(
+                                &local_y[i],
+                                temp1,
+                                if (comptime noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_y[i],
+                            );
+
+                            // temp2 += conj(a[tile_i + i + j * lda]) * local_x[i]
+                            numeric.fma_(
+                                &temp2,
+                                if (comptime !noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_x[i],
+                                temp2,
+                            );
+                        }
+
+                        while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // local_y[i + u] += temp1 * a[tile_i + i + u + j * lda]
+                                numeric.fma_(
+                                    &local_y[i + u],
+                                    temp1,
+                                    if (comptime noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_y[i + u],
+                                );
+
+                                // sums[u] += conj(a[tile_i + i + u + j * lda]) * local_x[i + u]
+                                numeric.fma_(
+                                    &sums[u],
+                                    if (comptime !noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_x[i + u],
+                                    sums[u],
+                                );
+                            }
+                        }
+
+                        inline for (0..unroll) |u| {
+                            numeric.add_(&temp2, temp2, sums[u]);
+                        }
+
+                        while (i < b_len) : (i += 1) {
+                            // local_y[i] += temp1 * a[tile_i + i + j * lda]
+                            numeric.fma_(
+                                &local_y[i],
+                                temp1,
+                                if (comptime noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_y[i],
+                            );
+
+                            // temp2 += conj(a[tile_i + i + j * lda]) * local_x[i]
+                            numeric.fma_(
+                                &temp2,
+                                if (comptime !noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_x[i],
+                                temp2,
+                            );
+                        }
+
+                        // local_y[j - tile_i] += alpha * temp2
+                        numeric.fma_(
+                            &local_y[j - tile_i],
+                            alpha,
+                            temp2,
+                            local_y[j - tile_i],
+                        );
+                    } else {
+                        // temp1 = alpha * x[jx]
+                        const temp1 = numeric.mul(
+                            alpha,
+                            x[numeric.cast(usize, jx)],
+                        );
+
+                        var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)));
+
+                        var sums: [unroll]meta.Accumulator(numeric.Mul(if (noconj) A else numeric.Conj(A), X)) = .{numeric.zero(meta.Accumulator(numeric.Mul(if (comptime noconj) A else numeric.Conj(A), X)))} ** unroll;
+
+                        var i: usize = 0;
+                        while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // local_y[i + u] += temp1 * a[tile_i + i + u + j * lda]
+                                numeric.fma_(
+                                    &local_y[i + u],
+                                    temp1,
+                                    if (comptime noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_y[i + u],
+                                );
+
+                                // sums[u] += conj(a[tile_i + i + u + j * lda])
+                                numeric.fma_(
+                                    &sums[u],
+                                    if (comptime !noconj)
+                                        a[tile_i + i + u + j * lda]
+                                    else
+                                        numeric.conj(a[tile_i + i + u + j * lda]),
+                                    local_x[i + u],
+                                    sums[u],
+                                );
+                            }
+                        }
+
+                        inline for (0..unroll) |u| {
+                            numeric.add_(&temp2, temp2, sums[u]);
+                        }
+
+                        while (i < b_len) : (i += 1) {
+                            // local_y[i] += temp1 * a[tile_i + i + j * lda]
+                            numeric.fma_(
+                                &local_y[i],
+                                temp1,
+                                if (comptime noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_y[i],
+                            );
+
+                            // temp2 += conj(a[tile_i + i + j * lda])
+                            numeric.fma_(
+                                &temp2,
+                                if (comptime !noconj)
+                                    a[tile_i + i + j * lda]
+                                else
+                                    numeric.conj(a[tile_i + i + j * lda]),
+                                local_x[i],
+                                temp2,
+                            );
+                        }
+
+                        // y[jy] += alpha * temp2
+                        numeric.fma_(
+                            &y[numeric.cast(usize, jy)],
+                            alpha,
+                            temp2,
+                            y[numeric.cast(usize, jy)],
                         );
                     }
 
-                    ix += numeric.cast(isize, unroll) * incx;
-                    iy += numeric.cast(isize, unroll) * incy;
+                    jx += incx;
+                    jy += incy;
                 }
 
-                inline for (0..unroll) |u| {
-                    numeric.add_(&temp2, temp2, sums[u]);
-                }
-
-                while (i < n) : (i += 1) {
-                    // y[iy] += temp1 * a[i + j * lda]
-                    numeric.fma_(
-                        &y[numeric.cast(usize, iy)],
-                        temp1,
-                        if (comptime noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        y[numeric.cast(usize, iy)],
-                    );
-
-                    // temp2 += conj(a[i + j * lda]) * x[ix]
-                    numeric.fma_(
-                        &temp2,
-                        if (comptime !noconj)
-                            a[i + j * lda]
-                        else
-                            numeric.conj(a[i + j * lda]),
-                        x[numeric.cast(usize, ix)],
-                        temp2,
-                    );
-
-                    ix += incx;
-                    iy += incy;
-                }
-
-                // y[jy] += alpha * temp2
-                numeric.fma_(
-                    &y[numeric.cast(usize, jy)],
-                    alpha,
-                    temp2,
-                    y[numeric.cast(usize, jy)],
+                @import("copy.zig").k_copy(
+                    b_len,
+                    @as([*]Y, &local_y),
+                    1,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
                 );
-
-                jx += incx;
-                jy += incy;
             }
         }
     }

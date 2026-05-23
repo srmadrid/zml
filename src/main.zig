@@ -21,13 +21,13 @@ pub fn main(init: std.process.Init) !void {
     const a = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, lda * n));
     // const a = try allocator.alloc(zsl.Complex(zsl.Dyadic(64, 32)), zsl.numeric.cast(usize, lda * n));
     defer allocator.free(a);
-    const x = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, n));
+    const x = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, n * 256));
     // const x = try allocator.alloc(zsl.Complex(zsl.Dyadic(64, 32)), zsl.numeric.cast(usize, n));
     defer allocator.free(x);
-    const y = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, m));
+    const y = try allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, m * 256));
     // const y = try allocator.alloc(zsl.Complex(zsl.Dyadic(64, 32)), zsl.numeric.cast(usize, m));
     defer allocator.free(y);
-    for (a, 0..) |*v, i| v.* = .{ .re = @as(f64, @floatFromInt(i % 100)) / 100.0, .im = @as(f64, @floatFromInt(i % 66)) / 100.0 };
+    // for (a, 0..) |*v, i| v.* = .{ .re = @as(f64, @floatFromInt(i % 100)) / 100.0, .im = @as(f64, @floatFromInt(i % 66)) / 100.0 };
     // for (a, 0..) |*v, i| v.* = .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 100)) / 100.0), .im = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 66)) / 100.0) };
     for (x, 0..) |*v, i| v.* = .{ .re = @as(f64, @floatFromInt(i % 33)) / 100.0, .im = @as(f64, @floatFromInt(i % 13)) / 100.0 };
     // for (x, 0..) |*v, i| v.* = .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 33)) / 100.0), .im = zsl.Dyadic(64, 32).initValue(@as(f64, @floatFromInt(i % 13)) / 100.0) };
@@ -35,35 +35,37 @@ pub fn main(init: std.process.Init) !void {
     // for (y) |*v| v.* = .{ .re = zsl.Dyadic(64, 32).zero, .im = zsl.Dyadic(64, 32).zero };
 
     const start_time = std.Io.Clock.real.now(io);
-    // try zsl.linalg.blas.hemv(
-    //     .col_major,
-    //     .upper,
-    //     m,
-    //     @as(zsl.cf64, .{ .re = 2.0, .im = 3.0 }),
-    //     // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 2.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 3.0)) }),
-    //     a.ptr,
-    //     lda,
-    //     x.ptr,
-    //     1,
-    //     @as(zsl.cf64, .{ .re = 1.0, .im = 4.0 }),
-    //     // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 1.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 4.0)) }),
-    //     y.ptr,
-    //     1,
-    //     .{},
-    // );
-    try zsl.linalg.blas.her(
+    try zsl.linalg.blas.hemv(
         .col_major,
-        .upper,
-        n,
-        @as(f64, 3.0),
+        .lower,
+        m,
+        @as(zsl.cf64, .{ .re = 2.0, .im = 3.0 }),
         // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 2.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 3.0)) }),
-        x.ptr,
-        1,
-        // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 1.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 4.0)) }),
         a.ptr,
         lda,
+        x.ptr,
+        256,
+        @as(zsl.cf64, .{ .re = 1.0, .im = 4.0 }),
+        // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 1.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 4.0)) }),
+        y.ptr,
+        -256,
         .{},
     );
+    // try zsl.linalg.blas.gerc(
+    //     .col_major,
+    //     m,
+    //     n,
+    //     // @as(f64, 3.0),
+    //     @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 2.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 3.0)) }),
+    //     x.ptr,
+    //     1,
+    //     y.ptr,
+    //     1,
+    //     // @as(zsl.Complex(zsl.Dyadic(64, 32)), .{ .re = zsl.Dyadic(64, 32).initValue(@as(f64, 1.0)), .im = zsl.Dyadic(64, 32).initValue(@as(f64, 4.0)) }),
+    //     a.ptr,
+    //     lda,
+    //     .{},
+    // );
     const end_time = std.Io.Clock.real.now(io);
 
     std.debug.print(

@@ -51,13 +51,13 @@ const tile_size = 128;
 ///     * `0`: automatic. The thread count is derived from `m * n` and
 ///       `parallel_threshold`:
 ///       ```zig
-///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (m * n) / parallel_threshold))
+///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (n * n) / parallel_threshold))
 ///       ```
 ///     * 1: force serial execution. parallel_threshold is ignored.
 ///     * N >= 2: use exactly N threads, clamped by
 ///       std.Thread.getCpuCount() and options.max_threads as a hard safety
 ///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(Y))):
+///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(A))):
 ///     Minimum number of matrix elements (`n * n`) required to trigger
 ///     multithreaded execution.
 ///
@@ -88,7 +88,7 @@ pub fn her(
     comptime if (!meta.isNumeric(Al) or meta.isComplex(Al) or
         !meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
         !meta.isManyItemPointer(A) or meta.isConstPointer(A) or !meta.isNumeric(meta.Child(A)))
-        @compileError("zsl.linalg.blas.her: alpha must be a real numeric, x must be a many-item pointers to numerics, and a must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ta: " ++ @typeName(A) ++ "\n");
+        @compileError("zsl.linalg.blas.her: alpha must be a real numeric, x must be a many-item pointer to numerics, and a must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ta: " ++ @typeName(A) ++ "\n");
 
     X = meta.Child(X);
     A = meta.Child(A);
