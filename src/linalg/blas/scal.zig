@@ -70,10 +70,10 @@ pub fn scal(
 
     X = meta.Child(X);
 
-    if (n == 0 or incx == 0)
+    if (incx == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and Al == X) {
+    if (comptime options.link_cblas != null and !@import("builtin").is_test and Al == X) {
         switch (comptime meta.numericType(Al)) {
             .float => {
                 if (comptime Al == f32)
@@ -90,6 +90,9 @@ pub fn scal(
             else => {},
         }
     }
+
+    if (n == 0)
+        return;
 
     if (opts.num_threads == 1)
         return k_scal(n, alpha, x, incx);
@@ -150,6 +153,9 @@ pub fn scal(
 pub fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
     const Al: type = @TypeOf(alpha);
     const X: type = meta.Child(@TypeOf(x));
+
+    if (n == 0)
+        return;
 
     const unroll = 2 * (std.simd.suggestVectorLength(numeric.Mul(Al, X)) orelse 2);
 

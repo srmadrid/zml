@@ -9,13 +9,13 @@ pub const Dotc = @import("blas/dotc.zig").Dotc;
 pub const dotc = @import("blas/dotc.zig").dotc;
 pub const Nrm2 = @import("blas/nrm2.zig").Nrm2;
 pub const nrm2 = @import("blas/nrm2.zig").nrm2;
-pub const rot = @import("blas/rot.zig").rot;
+pub const rot = @import("blas/rot.zig").rot; // Untested and unbenchmarked
 // pub const rotg = @import("blas/rotg.zig").rotg;
 // pub const rotm = @import("blas/rotm.zig").rotm;
 // pub const rotmg = @import("blas/rotmg.zig").rotmg;
 pub const scal = @import("blas/scal.zig").scal;
 pub const swap = @import("blas/swap.zig").swap;
-pub const iamax = @import("blas/iamax.zig").iamax;
+pub const iamax = @import("blas/iamax.zig").iamax; // Test from here
 pub const iamin = @import("blas/iamin.zig").iamin;
 
 // Level 2

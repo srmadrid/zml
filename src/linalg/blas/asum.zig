@@ -71,10 +71,10 @@ pub fn asum(
 ) !linalg.blas.Asum(@TypeOf(x)) {
     const X: type = @TypeOf(x);
 
-    if (n == 0 or incx == 0)
+    if (incx == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if ((comptime options.link_cblas != null) and incx > 0) {
+    if (comptime options.link_cblas != null and !@import("builtin").is_test) {
         switch (comptime meta.numericType(meta.Child(X))) {
             .float => {
                 if (comptime meta.Child(X) == f32)
@@ -91,6 +91,9 @@ pub fn asum(
             else => {},
         }
     }
+
+    if (n == 0)
+        return numeric.zero(linalg.blas.Asum(X));
 
     if (opts.num_threads == 1)
         return numeric.cast(linalg.blas.Asum(X), k_asum(n, x, incx));
@@ -161,6 +164,9 @@ pub fn asum(
 
 fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@TypeOf(x))) {
     const X: type = @TypeOf(x);
+
+    if (n == 0)
+        return numeric.zero(linalg.blas.Asum(X));
 
     const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(linalg.blas.Asum(X))) orelse 2);
 

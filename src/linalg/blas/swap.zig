@@ -70,10 +70,10 @@ pub fn swap(
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (n == 0 or incx == 0 or incy == 0)
+    if (incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and X == Y) {
+    if (comptime options.link_cblas != null and !@import("builtin").is_test and X == Y) {
         switch (comptime meta.numericType(X)) {
             .float => {
                 if (comptime X == f32)
@@ -90,6 +90,9 @@ pub fn swap(
             else => {},
         }
     }
+
+    if (n == 0)
+        return;
 
     if (opts.num_threads == 1)
         return k_swap(n, x, incx, y, incy);
@@ -154,6 +157,9 @@ pub fn swap(
 fn k_swap(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) void {
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
+
+    if (n == 0)
+        return;
 
     const unroll = 2 * (int.min(
         std.simd.suggestVectorLength(X) orelse 2,

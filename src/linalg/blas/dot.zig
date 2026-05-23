@@ -76,10 +76,10 @@ pub fn dot(
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
 
-    if (n == 0 or incx == 0 or incy == 0)
+    if (incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if ((comptime options.link_cblas != null) and meta.Child(X) == meta.Child(Y)) {
+    if ((comptime options.link_cblas != null) and !@import("builtin").is_test and meta.Child(X) == meta.Child(Y)) {
         switch (comptime meta.numericType(meta.Child(X))) {
             .float => {
                 if (comptime meta.Child(X) == f32)
@@ -99,6 +99,9 @@ pub fn dot(
             else => {},
         }
     }
+
+    if (n == 0)
+        return numeric.zero(linalg.blas.Dot(X, Y));
 
     if (opts.num_threads == 1)
         return numeric.cast(linalg.blas.Dot(X, Y), k_dot(n, x, incx, y, incy));
@@ -175,6 +178,9 @@ pub fn dot(
 fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumulator(linalg.blas.Dot(@TypeOf(x), @TypeOf(y))) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
+
+    if (n == 0)
+        return numeric.zero(linalg.blas.Dot(X, Y));
 
     const unroll = 2 * (std.simd.suggestVectorLength(meta.Accumulator(linalg.blas.Dot(X, Y))) orelse 2);
 

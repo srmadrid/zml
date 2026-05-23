@@ -40,14 +40,14 @@ test {
     // Individual test flags
     const test_int = false;
     const test_float = false;
-    const test_dyadic = true;
+    const test_dyadic = false;
     const test_complex = false;
     const test_numeric = false;
     const test_vector = false;
     const test_matrix = false;
     const test_array = false;
     const test_ops = false;
-    const test_linalg = false;
+    const test_linalg = true;
     const test_autodiff = false;
 
     _ = test_int;

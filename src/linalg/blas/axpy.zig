@@ -80,10 +80,10 @@ pub fn axpy(
     X = meta.Child(X);
     Y = meta.Child(Y);
 
-    if (n == 0 or incx == 0 or incy == 0)
+    if (incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and Al == X and Al == Y) {
+    if (comptime options.link_cblas != null and !@import("builtin").is_test and Al == X and Al == Y) {
         switch (comptime meta.numericType(Al)) {
             .float => {
                 if (comptime Al == f32)
@@ -100,6 +100,9 @@ pub fn axpy(
             else => {},
         }
     }
+
+    if (n == 0)
+        return;
 
     if (opts.num_threads == 1)
         return k_axpy(n, alpha, x, incx, y, incy);
@@ -167,7 +170,7 @@ fn k_axpy(n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    if (numeric.eq(alpha, 0))
+    if (n == 0 or numeric.eq(alpha, 0))
         return;
 
     const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(Al, X, Y)) orelse 2);
