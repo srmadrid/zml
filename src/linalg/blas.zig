@@ -19,27 +19,15 @@ pub const iamax = @import("blas/level1/iamax.zig").iamax;
 pub const iamin = @import("blas/level1/iamin.zig").iamin;
 
 // Level 2
-pub const gbmv = @import("blas/level2/gbmv.zig").gbmv;
 pub const gemv = @import("blas/level2/gemv.zig").gemv;
 pub const ger = @import("blas/level2/ger.zig").ger;
 pub const gerc = @import("blas/level2/gerc.zig").gerc;
-pub const hbmv = @import("blas/level2/hbmv.zig").hbmv;
 pub const hemv = @import("blas/level2/hemv.zig").hemv;
 pub const her = @import("blas/level2/her.zig").her;
 //pub const her2 = @import("blas/level2/her2.zig").her2;
-pub const hpmv = @import("blas/level2/hpmv.zig").hpmv;
-pub const hpr = @import("blas/level2/hpr.zig").hpr;
-pub const hpr2 = @import("blas/level2/hpr2.zig").hpr2;
-pub const sbmv = @import("blas/level2/sbmv.zig").sbmv;
-pub const spmv = @import("blas/level2/spmv.zig").spmv;
-pub const spr = @import("blas/level2/spr.zig").spr;
-pub const spr2 = @import("blas/level2/spr2.zig").spr2;
 // pub const symv = @import("blas/level2/symv.zig").symv;
 // pub const syr = @import("blas/level2/syr.zig").syr;
 // pub const syr2 = @import("blas/level2/syr2.zig").syr2;
-pub const tbmv = @import("blas/level2/tbmv.zig").tbmv;
-pub const tbsv = @import("blas/level2/tbsv.zig").tbsv;
-pub const tpmv = @import("blas/level2/tpmv.zig").tpmv;
 // pub const tpsv = @import("blas/level2/tpsv.zig").tpsv;
 // pub const trmv = @import("blas/level2/trmv.zig").trmv;
 // pub const trsv = @import("blas/level2/trsv.zig").trsv;
