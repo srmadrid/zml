@@ -72,24 +72,6 @@ pub fn nrm2(
     if (incx == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and !@import("builtin").is_test) {
-        switch (comptime meta.numericType(meta.Child(X))) {
-            .float => {
-                if (comptime meta.Child(X) == f32)
-                    return linalg.cblas.snrm2(numeric.cast(isize, n), x, incx)
-                else if (comptime meta.Child(X) == f64)
-                    return linalg.cblas.dnrm2(numeric.cast(isize, n), x, incx);
-            },
-            .complex => {
-                if (comptime meta.Scalar(meta.Child(X)) == f32)
-                    return linalg.cblas.scnrm2(numeric.cast(isize, n), x, incx)
-                else if (comptime meta.Scalar(meta.Child(X)) == f64)
-                    return linalg.cblas.dznrm2(numeric.cast(isize, n), x, incx);
-            },
-            else => {},
-        }
-    }
-
     if (n == 0)
         return numeric.zero(linalg.blas.Nrm2(X));
 

@@ -87,31 +87,6 @@ pub fn rot(
     if (n == 0 or incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and X == Y and meta.Real(X) == C and meta.Real(X) == S) {
-        switch (comptime meta.numericType(X)) {
-            .float => {
-                if (comptime X == f32)
-                    return linalg.cblas.srot(numeric.cast(isize, n), x, incx, y, incy, c, s)
-                else if (comptime X == f64)
-                    return linalg.cblas.drot(numeric.cast(isize, n), x, incx, y, incy, c, s);
-            },
-            .complex => {
-                if (comptime !meta.isComplex(S)) {
-                    if (comptime meta.Scalar(X) == f32)
-                        return linalg.cblas.csrot(numeric.cast(isize, n), x, incx, y, incy, c, s)
-                    else if (comptime meta.Scalar(X) == f64)
-                        return linalg.cblas.zdrot(numeric.cast(isize, n), x, incx, y, incy, c, s);
-                } else {
-                    if (comptime meta.Scalar(X) == f32)
-                        return linalg.cblas.crot(numeric.cast(isize, n), x, incx, y, incy, c, &s)
-                    else if (comptime meta.Scalar(X) == f64)
-                        return linalg.cblas.zrot(numeric.cast(isize, n), x, incx, y, incy, c, &s);
-                }
-            },
-            else => {},
-        }
-    }
-
     if (opts.num_threads == 1)
         return k_rot(n, x, incx, y, incy, c, s);
 

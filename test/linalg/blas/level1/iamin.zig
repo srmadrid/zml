@@ -15,32 +15,30 @@ const combinations = .{
     .{ @as(usize, 1), @as(isize, 2), null, null },
     .{ @as(usize, 1), @as(isize, -1), null, null },
 
-    // SIMD aligned
-    .{ @as(usize, 16), @as(isize, 1), null, null },
+    // unroll aligned
     .{ @as(usize, 32), @as(isize, 1), null, null },
+    .{ @as(usize, 64), @as(isize, 1), null, null },
 
-    // SIMD unaligned / remainder loops
-    .{ @as(usize, 7), @as(isize, 1), null, null },
-    .{ @as(usize, 33), @as(isize, 1), null, null },
+    // unroll unaligned / remainder loops
+    .{ @as(usize, 37), @as(isize, 1), null, null },
+    .{ @as(usize, 69), @as(isize, 1), null, null },
 
-    // Strided dense (incx > 1)
-    .{ @as(usize, 16), @as(isize, 2), null, null },
-    .{ @as(usize, 33), @as(isize, 3), null, null },
-
-    // Reverse strides (incx < 0)
-    .{ @as(usize, 16), @as(isize, -1), null, null },
-    .{ @as(usize, 33), @as(isize, -2), null, null },
+    // Strided
+    .{ @as(usize, 32), @as(isize, 2), null, null },
+    .{ @as(usize, 65), @as(isize, 3), null, null },
+    .{ @as(usize, 32), @as(isize, -1), null, null },
+    .{ @as(usize, 65), @as(isize, -2), null, null },
 
     // Lowering parallel_threshold to test threading logic on small data chunks
-    .{ @as(usize, 32), @as(isize, 1), @as(usize, 2), @as(usize, 10) },
-    .{ @as(usize, 33), @as(isize, 1), @as(usize, 4), @as(usize, 8) },
+    .{ @as(usize, 32), @as(isize, 1), null, @as(usize, 10) },
+    .{ @as(usize, 33), @as(isize, 1), null, @as(usize, 8) },
 
-    // Forced multithreaded + strided
-    .{ @as(usize, 33), @as(isize, 2), @as(usize, 2), @as(usize, 10) },
-    .{ @as(usize, 33), @as(isize, -1), @as(usize, 4), @as(usize, 8) },
-    .{ @as(usize, 33), @as(isize, -3), @as(usize, 2), @as(usize, 10) },
+    // Forced multithreaded
+    .{ @as(usize, 65), @as(isize, 2), @as(usize, 2), null },
+    .{ @as(usize, 65), @as(isize, -1), @as(usize, 4), null },
+    .{ @as(usize, 65), @as(isize, -3), @as(usize, 2), null },
 
-    // Default threading behavior (opts.num_threads = 0)
+    // Default threading behavior
     .{ @as(usize, 1_500_000), @as(isize, 1), null, null },
     .{ @as(usize, 1_500_000), @as(isize, 2), null, null },
     .{ @as(usize, 1_500_000), @as(isize, -1), null, null },
@@ -69,19 +67,22 @@ test iamin {
     const rand = prng.random();
 
     inline for (combinations) |combo| {
-        const n = combo[0];
-        const incx = combo[1];
-        const num_threads = combo[2];
-        const parallel_threshold = combo[3];
-
-        inline for (.{ f64, zsl.cf64 }) |T| {
-            try executeIaminTest(T, allocator, rand, n, incx, num_threads, parallel_threshold);
+        inline for (.{ f64, zsl.cf64 }) |N| {
+            try executeIaminTest(
+                N,
+                allocator,
+                rand,
+                combo[0],
+                combo[1],
+                combo[2],
+                combo[3],
+            );
         }
     }
 }
 
 fn executeIaminTest(
-    comptime T: type,
+    comptime N: type,
     allocator: std.mem.Allocator,
     rand: std.Random,
     n: usize,
@@ -91,35 +92,35 @@ fn executeIaminTest(
 ) !void {
     const abs_incx = @abs(incx);
 
-    const x = try allocator.alloc(T, if (n == 0) 0 else 1 + (n - 1) * abs_incx);
+    const x = try allocator.alloc(N, if (n == 0) 0 else 1 + (n - 1) * abs_incx);
     defer allocator.free(x);
 
-    for (x) |*elem| {
-        if (T == f64) {
-            elem.* = rand.float(f64) * 20.0 - 10.0;
-        } else {
-            elem.* = .{
-                .re = rand.float(f64) * 20.0 - 10.0,
-                .im = rand.float(f64) * 20.0 - 10.0,
-            };
-        }
-    }
+    for (x) |*elem|
+        elem.* = tzsl.randomNumber(N, rand);
 
     if (n > 0) {
         const target_logical_idx = rand.intRangeLessThan(usize, 0, n);
         const mem_idx = if (incx < 0) (n - 1 - target_logical_idx) * abs_incx else target_logical_idx * abs_incx;
 
-        if (T == f64) {
+        if (N == f64) {
             x[mem_idx] = 0.0;
         } else {
             x[mem_idx] = .{ .re = 0.0, .im = 0.0 };
         }
     }
 
-    const cblas_idx_raw = if (T == f64)
-        zsl.linalg.cblas.idamin(zsl.numeric.cast(isize, n), @ptrCast(x.ptr), zsl.numeric.cast(isize, abs_incx))
+    const cblas_idx_raw = if (N == f64)
+        zsl.linalg.cblas.idamin(
+            zsl.numeric.cast(isize, n),
+            x.ptr,
+            zsl.numeric.cast(isize, abs_incx),
+        )
     else
-        zsl.linalg.cblas.izamin(zsl.numeric.cast(isize, n), @ptrCast(x.ptr), zsl.numeric.cast(isize, abs_incx));
+        zsl.linalg.cblas.izamin(
+            zsl.numeric.cast(isize, n),
+            x.ptr,
+            zsl.numeric.cast(isize, abs_incx),
+        );
 
     const expected = if (n == 0) @as(usize, 0) else if (incx < 0) n - 1 - zsl.numeric.cast(usize, cblas_idx_raw) else zsl.numeric.cast(usize, cblas_idx_raw);
 
@@ -142,8 +143,8 @@ fn executeIaminTest(
         else
             .{},
     ) catch |e| {
-        std.debug.print("\n\tIAMIN Test Failed (Exception)\n", .{});
-        std.debug.print("Type: {s} | n: {} | incx: {}\n", .{ @typeName(T), n, incx });
+        std.debug.print("\n\tIAMIN Test Failed\n", .{});
+        std.debug.print("Type: {s} | n: {} | incx: {}\n", .{ @typeName(N), n, incx });
 
         return e;
     };
@@ -155,7 +156,7 @@ fn executeIaminTest(
 
     if (expected != actual) {
         std.debug.print("\n\tIAMIN Test Failed\n", .{});
-        std.debug.print("Type: {s} | n: {} | incx: {}\n", .{ @typeName(T), n, incx });
+        std.debug.print("Type: {s} | n: {} | incx: {}\n", .{ @typeName(N), n, incx });
         std.debug.print("Expected (CBLAS mapped): {}\n", .{expected});
         std.debug.print("Actual (zsl):            {}\n", .{actual});
 

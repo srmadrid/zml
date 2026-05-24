@@ -78,24 +78,6 @@ pub fn copy(
     if (incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and !@import("builtin").is_test and X == Y) {
-        switch (comptime meta.numericType(X)) {
-            .float => {
-                if (comptime X == f32)
-                    return linalg.cblas.scopy(numeric.cast(isize, n), x, incx, y, incy)
-                else if (comptime X == f64)
-                    return linalg.cblas.dcopy(numeric.cast(isize, n), x, incx, y, incy);
-            },
-            .complex => {
-                if (comptime meta.Scalar(X) == f32)
-                    return linalg.cblas.ccopy(numeric.cast(isize, n), x, incx, y, incy)
-                else if (comptime meta.Scalar(X) == f64)
-                    return linalg.cblas.zcopy(numeric.cast(isize, n), x, incx, y, incy);
-            },
-            else => {},
-        }
-    }
-
     if (n == 0)
         return;
 

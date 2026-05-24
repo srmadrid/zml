@@ -68,24 +68,6 @@ pub fn iamin(
     if (incx == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and !@import("builtin").is_test) {
-        switch (comptime meta.numericType(meta.Child(X))) {
-            .float => {
-                if (comptime meta.Child(X) == f32)
-                    return linalg.cblas.isamin(numeric.cast(isize, n), x, incx)
-                else if (comptime meta.Child(X) == f64)
-                    return linalg.cblas.idamin(numeric.cast(isize, n), x, incx);
-            },
-            .complex => {
-                if (comptime meta.Scalar(meta.Child(X)) == f32)
-                    return linalg.cblas.icamin(numeric.cast(isize, n), x, incx)
-                else if (comptime meta.Scalar(meta.Child(X)) == f64)
-                    return linalg.cblas.izamin(numeric.cast(isize, n), x, incx);
-            },
-            else => {},
-        }
-    }
-
     if (n == 0)
         return 0;
 

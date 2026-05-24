@@ -79,27 +79,6 @@ pub fn dot(
     if (incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if ((comptime options.link_cblas != null) and !@import("builtin").is_test and meta.Child(X) == meta.Child(Y)) {
-        switch (comptime meta.numericType(meta.Child(X))) {
-            .float => {
-                if (comptime meta.Child(X) == f32)
-                    return linalg.cblas.sdot(numeric.cast(isize, n), x, incx, y, incy)
-                else if (comptime meta.Child(X) == f64)
-                    return linalg.cblas.ddot(numeric.cast(isize, n), x, incx, y, incy);
-            },
-            .complex => {
-                var result: linalg.blas.Dot(X, Y) = undefined;
-                if (comptime meta.Scalar(meta.Child(X)) == f32)
-                    linalg.cblas.cdotu_sub(numeric.cast(isize, n), x, incx, y, incy, &result)
-                else if (comptime meta.Scalar(meta.Child(X)) == f64)
-                    linalg.cblas.zdotu_sub(numeric.cast(isize, n), x, incx, y, incy, &result);
-
-                return result;
-            },
-            else => {},
-        }
-    }
-
     if (n == 0)
         return numeric.zero(linalg.blas.Dot(X, Y));
 

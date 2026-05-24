@@ -74,24 +74,6 @@ pub fn asum(
     if (incx == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and !@import("builtin").is_test) {
-        switch (comptime meta.numericType(meta.Child(X))) {
-            .float => {
-                if (comptime meta.Child(X) == f32)
-                    return linalg.cblas.sasum(numeric.cast(isize, n), x, incx)
-                else if (comptime meta.Child(X) == f64)
-                    return linalg.cblas.dasum(numeric.cast(isize, n), x, incx);
-            },
-            .complex => {
-                if (comptime meta.Scalar(meta.Child(X)) == f32)
-                    return linalg.cblas.scasum(numeric.cast(isize, n), x, incx)
-                else if (comptime meta.Scalar(meta.Child(X)) == f64)
-                    return linalg.cblas.dzasum(numeric.cast(isize, n), x, incx);
-            },
-            else => {},
-        }
-    }
-
     if (n == 0)
         return numeric.zero(linalg.blas.Asum(X));
 

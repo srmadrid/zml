@@ -73,24 +73,6 @@ pub fn scal(
     if (incx == 0)
         return linalg.blas.Error.InvalidArgument;
 
-    if (comptime options.link_cblas != null and !@import("builtin").is_test and Al == X) {
-        switch (comptime meta.numericType(Al)) {
-            .float => {
-                if (comptime Al == f32)
-                    return linalg.cblas.sscal(numeric.cast(isize, n), alpha, x, incx)
-                else if (comptime Al == f64)
-                    return linalg.cblas.dscal(numeric.cast(isize, n), alpha, x, incx);
-            },
-            .complex => {
-                if (comptime meta.Scalar(Al) == f32)
-                    return linalg.cblas.cscal(numeric.cast(isize, n), &alpha, x, incx)
-                else if (comptime meta.Scalar(Al) == f64)
-                    return linalg.cblas.zscal(numeric.cast(isize, n), &alpha, x, incx);
-            },
-            else => {},
-        }
-    }
-
     if (n == 0)
         return;
 

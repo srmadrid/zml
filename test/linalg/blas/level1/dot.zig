@@ -15,34 +15,32 @@ const combinations = .{
     .{ @as(usize, 1), @as(isize, 2), @as(isize, -1), null, null },
     .{ @as(usize, 1), @as(isize, -1), @as(isize, 2), null, null },
 
-    // SIMD aligned
-    .{ @as(usize, 16), @as(isize, 1), @as(isize, 1), null, null },
+    // unroll aligned
     .{ @as(usize, 32), @as(isize, 1), @as(isize, 1), null, null },
+    .{ @as(usize, 64), @as(isize, 1), @as(isize, 1), null, null },
 
-    // SIMD unaligned / remainder loops
-    .{ @as(usize, 7), @as(isize, 1), @as(isize, 1), null, null },
-    .{ @as(usize, 33), @as(isize, 1), @as(isize, 1), null, null },
+    // unroll unaligned / remainder loops
+    .{ @as(usize, 37), @as(isize, 1), @as(isize, 1), null, null },
+    .{ @as(usize, 69), @as(isize, 1), @as(isize, 1), null, null },
 
-    // Mixed Strides
-    .{ @as(usize, 16), @as(isize, 2), @as(isize, 1), null, null },
-    .{ @as(usize, 16), @as(isize, 1), @as(isize, 2), null, null },
-    .{ @as(usize, 33), @as(isize, 3), @as(isize, 3), null, null },
-
-    // Reverse strides
-    .{ @as(usize, 16), @as(isize, -1), @as(isize, 1), null, null },
-    .{ @as(usize, 33), @as(isize, 1), @as(isize, -2), null, null },
-    .{ @as(usize, 33), @as(isize, -2), @as(isize, -1), null, null },
+    // Strides
+    .{ @as(usize, 32), @as(isize, 2), @as(isize, 1), null, null },
+    .{ @as(usize, 32), @as(isize, 1), @as(isize, 2), null, null },
+    .{ @as(usize, 65), @as(isize, 3), @as(isize, 3), null, null },
+    .{ @as(usize, 32), @as(isize, -1), @as(isize, 1), null, null },
+    .{ @as(usize, 65), @as(isize, 1), @as(isize, -2), null, null },
+    .{ @as(usize, 65), @as(isize, -2), @as(isize, -1), null, null },
 
     // Lowering parallel_threshold to test threading logic on small data chunks
-    .{ @as(usize, 32), @as(isize, 1), @as(isize, 1), @as(usize, 2), @as(usize, 10) },
-    .{ @as(usize, 33), @as(isize, 1), @as(isize, 1), @as(usize, 4), @as(usize, 8) },
+    .{ @as(usize, 64), @as(isize, 1), @as(isize, 1), null, @as(usize, 10) },
+    .{ @as(usize, 65), @as(isize, 1), @as(isize, 1), null, @as(usize, 8) },
 
-    // Forced multithreaded + strided
-    .{ @as(usize, 33), @as(isize, 2), @as(isize, -1), @as(usize, 2), @as(usize, 10) },
-    .{ @as(usize, 33), @as(isize, -1), @as(isize, 2), @as(usize, 4), @as(usize, 8) },
-    .{ @as(usize, 33), @as(isize, -3), @as(isize, -3), @as(usize, 2), @as(usize, 10) },
+    // Forced multithreaded
+    .{ @as(usize, 65), @as(isize, 2), @as(isize, -1), @as(usize, 2), null },
+    .{ @as(usize, 65), @as(isize, -1), @as(isize, 2), @as(usize, 4), null },
+    .{ @as(usize, 65), @as(isize, -3), @as(isize, -3), @as(usize, 2), null },
 
-    // Default threading behavior (opts.num_threads = 0)
+    // Default threading behavior
     .{ @as(usize, 1_500_000), @as(isize, 1), @as(isize, 1), null, null },
     .{ @as(usize, 1_500_000), @as(isize, 2), @as(isize, 1), null, null },
     .{ @as(usize, 1_500_000), @as(isize, -1), @as(isize, -1), null, null },
@@ -71,20 +69,23 @@ test dot {
     const rand = prng.random();
 
     inline for (combinations) |combo| {
-        const n = combo[0];
-        const incx = combo[1];
-        const incy = combo[2];
-        const num_threads = combo[3];
-        const parallel_threshold = combo[4];
-
-        inline for (.{ f64, zsl.cf64 }) |T| {
-            try executeDotTest(T, allocator, rand, n, incx, incy, num_threads, parallel_threshold);
+        inline for (.{ f64, zsl.cf64 }) |N| {
+            try executeDotTest(
+                N,
+                allocator,
+                rand,
+                combo[0],
+                combo[1],
+                combo[2],
+                combo[3],
+                combo[4],
+            );
         }
     }
 }
 
 fn executeDotTest(
-    comptime T: type,
+    comptime N: type,
     allocator: std.mem.Allocator,
     rand: std.Random,
     n: usize,
@@ -96,42 +97,37 @@ fn executeDotTest(
     const abs_incx = @abs(incx);
     const abs_incy = @abs(incy);
 
-    const len_x = if (n == 0) 0 else 1 + (n - 1) * abs_incx;
-    const len_y = if (n == 0) 0 else 1 + (n - 1) * abs_incy;
-
-    const x = try allocator.alloc(T, len_x);
+    const x = try allocator.alloc(N, if (n == 0) 0 else 1 + (n - 1) * abs_incx);
     defer allocator.free(x);
 
-    const y = try allocator.alloc(T, len_y);
+    const y = try allocator.alloc(N, if (n == 0) 0 else 1 + (n - 1) * abs_incy);
     defer allocator.free(y);
 
-    for (x) |*elem| {
-        if (T == f64) {
-            elem.* = rand.float(f64) * 20.0 - 10.0;
-        } else {
-            elem.* = .{
-                .re = rand.float(f64) * 20.0 - 10.0,
-                .im = rand.float(f64) * 20.0 - 10.0,
-            };
-        }
-    }
+    for (x) |*elem|
+        elem.* = tzsl.randomNumber(N, rand);
 
-    for (y) |*elem| {
-        if (T == f64) {
-            elem.* = rand.float(f64) * 20.0 - 10.0;
-        } else {
-            elem.* = .{
-                .re = rand.float(f64) * 20.0 - 10.0,
-                .im = rand.float(f64) * 20.0 - 10.0,
-            };
-        }
-    }
+    for (y) |*elem|
+        elem.* = tzsl.randomNumber(N, rand);
 
-    const expected = if (T == f64)
-        zsl.linalg.cblas.ddot(zsl.numeric.cast(isize, n), @ptrCast(x.ptr), zsl.numeric.cast(isize, incx), @ptrCast(y.ptr), zsl.numeric.cast(isize, incy))
+    const expected = if (N == f64)
+        zsl.linalg.cblas.ddot(
+            zsl.numeric.cast(isize, n),
+            x.ptr,
+            zsl.numeric.cast(isize, incx),
+            y.ptr,
+            zsl.numeric.cast(isize, incy),
+        )
     else blk: {
         var result: zsl.linalg.blas.Dot([*]zsl.cf64, [*]zsl.cf64) = undefined;
-        zsl.linalg.cblas.zdotu_sub(zsl.numeric.cast(isize, n), @ptrCast(x.ptr), zsl.numeric.cast(isize, incx), @ptrCast(y.ptr), zsl.numeric.cast(isize, incy), &result);
+        zsl.linalg.cblas.zdotu_sub(
+            zsl.numeric.cast(isize, n),
+            x.ptr,
+            zsl.numeric.cast(isize, incx),
+            y.ptr,
+            zsl.numeric.cast(isize, incy),
+            &result,
+        );
+
         break :blk result;
     };
 
@@ -156,24 +152,25 @@ fn executeDotTest(
         else
             .{},
     ) catch |e| {
-        std.debug.print("\n\tDOT Test Failed (Exception)\n", .{});
-        std.debug.print("Type: {s} | n: {} | incx: {} | incy: {}\n", .{ @typeName(T), n, incx, incy });
+        std.debug.print("\n\tDOT Test Failed\n", .{});
+        std.debug.print("Type: {s} | n: {} | incx: {} | incy: {}\n", .{ @typeName(N), n, incx, incy });
         return e;
     };
 
     if (n == 0) {
-        if (T == f64) {
+        if (N == f64) {
             try std.testing.expectEqual(@as(f64, 0.0), actual);
         } else {
             try std.testing.expectEqual(@as(f64, 0.0), actual.re);
             try std.testing.expectEqual(@as(f64, 0.0), actual.im);
         }
+
         return;
     }
 
-    const rel_tol = 1e-13 * zsl.numeric.cast(f64, n);
+    const rel_tol = 1e-14 * zsl.numeric.cast(f64, n);
     const abs_tol = 1e-10;
-    if (T == f64) {
+    if (N == f64) {
         const diff = zsl.float.abs(expected - actual);
         if (diff > abs_tol and diff > zsl.float.abs(expected) * rel_tol) {
             std.debug.print("\n\tDOT Test Failed\n", .{});
@@ -181,6 +178,7 @@ fn executeDotTest(
             std.debug.print("Expected (CBLAS): {d}\n", .{expected});
             std.debug.print("Actual (zsl):     {d}\n", .{actual});
             std.debug.print("Diff:             {d}\n", .{diff});
+
             return error.TestFailed;
         }
     } else {
@@ -195,6 +193,7 @@ fn executeDotTest(
             std.debug.print("Expected (CBLAS): {d} + {d}i\n", .{ expected.re, expected.im });
             std.debug.print("Actual (zsl):     {d} + {d}i\n", .{ actual.re, actual.im });
             std.debug.print("Diff:             {d} + {d}i\n", .{ diff_re, diff_im });
+
             return error.TestFailed;
         }
     }
