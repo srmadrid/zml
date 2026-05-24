@@ -35,7 +35,7 @@ pub fn main(init: std.process.Init) !void {
     // for (y) |*v| v.* = .{ .re = zsl.Dyadic(64, 32).zero, .im = zsl.Dyadic(64, 32).zero };
 
     const start_time = std.Io.Clock.real.now(io);
-    try zsl.linalg.blas.swap(m, x.ptr, 256, y.ptr, -256, .{});
+    std.mem.doNotOptimizeAway(try zsl.linalg.blas.iamax(m, x.ptr, 256, .{}));
     // try zsl.linalg.blas.hemv(
     //     .col_major,
     //     .lower,
