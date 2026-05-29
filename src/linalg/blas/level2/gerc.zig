@@ -10,10 +10,6 @@ const int = @import("../../../int.zig");
 
 const linalg = @import("../../../linalg.zig");
 
-fn tileSize(comptime N: type) comptime_int {
-    return int.max(1, 16_384 / @sizeOf(N));
-}
-
 /// Performs a rank-1 update (conjugated) of a general matrix defined as:
 ///
 /// ```zig
@@ -221,13 +217,40 @@ fn k_gerc(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytyp
     const X: type = meta.Child(@TypeOf(x));
     const Y: type = meta.Child(@TypeOf(y));
 
-    const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(if (comptime noconj) X else numeric.Conj(X), numeric.Mul(Al, if (comptime noconj) numeric.Conj(Y) else Y), A)) orelse 2);
-
     // Quick return if possible.
     if (m == 0 or n == 0 or numeric.eq(alpha, 0))
         return;
 
-    if (incx == 1) {
+    // Form  A = alpha * x * yᴴ + A
+    const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(if (comptime noconj) X else numeric.Conj(X), numeric.Mul(Al, if (comptime noconj) numeric.Conj(Y) else Y), A)) orelse 2);
+    comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(A)));
+    tile_size = comptime int.max(1, tile_size -| tile_size % unroll);
+
+    var tile_i: usize = 0;
+    while (tile_i < m) : (tile_i += tile_size) {
+        const b_len = int.min(tile_size, m - tile_i);
+        var local_x: [tile_size]X = undefined;
+
+        const px = if (incx == 1)
+            x + numeric.cast(usize, if (incx > 0)
+                numeric.cast(isize, tile_i) * incx
+            else
+                (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incx)
+        else blk: {
+            @import("../level1/copy.zig").k_copy(
+                b_len,
+                x + numeric.cast(usize, if (incx > 0)
+                    numeric.cast(isize, tile_i) * incx
+                else
+                    (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incx),
+                incx,
+                @as([*]X, &local_x),
+                1,
+            );
+
+            break :blk @as([*]X, &local_x);
+        };
+
         var jy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
         var j: usize = 0;
         while (j < n) : (j += 1) {
@@ -242,101 +265,36 @@ fn k_gerc(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytyp
                 );
 
                 var i: usize = 0;
-                while (i < (m / unroll) * unroll) : (i += unroll) {
+                while (i < (b_len / unroll) * unroll) : (i += unroll) {
                     inline for (0..unroll) |u| {
-                        // a[i + u + j * lda] += x[i + u] * temp
+                        // a[tile_i + i + u + j * lda] += px[i + u] * temp
                         numeric.fma_(
-                            &a[i + u + j * lda],
+                            &a[tile_i + i + u + j * lda],
                             if (comptime noconj)
-                                x[i + u]
+                                px[i + u]
                             else
-                                numeric.conj(x[i + u]),
+                                numeric.conj(px[i + u]),
                             temp,
-                            a[i + u + j * lda],
+                            a[tile_i + i + u + j * lda],
                         );
                     }
                 }
 
-                while (i < m) : (i += 1) {
-                    // a[i + j * lda] += x[i] * temp
+                while (i < b_len) : (i += 1) {
+                    // a[tile_i + i + j * lda] += px[i] * temp
                     numeric.fma_(
-                        &a[i + j * lda],
+                        &a[tile_i + i + j * lda],
                         if (comptime noconj)
-                            x[i]
+                            px[i]
                         else
-                            numeric.conj(x[i]),
+                            numeric.conj(px[i]),
                         temp,
-                        a[i + j * lda],
+                        a[tile_i + i + j * lda],
                     );
                 }
             }
 
             jy += incy;
-        }
-    } else {
-        const tile_size = tileSize(X);
-
-        var tile_i: usize = 0;
-        while (tile_i < m) : (tile_i += tile_size) {
-            const b_len = int.min(tile_size, m - tile_i);
-            var local_x: [tile_size]X = undefined;
-
-            @import("../level1/copy.zig").k_copy(
-                b_len,
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incx),
-                incx,
-                @as([*]X, &local_x),
-                1,
-            );
-
-            var jy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
-            var j: usize = 0;
-            while (j < n) : (j += 1) {
-                if (numeric.ne(y[numeric.cast(usize, jy)], 0)) {
-                    // temp = alpha * conj(y[jy])
-                    const temp = numeric.mul(
-                        alpha,
-                        if (comptime noconj)
-                            numeric.conj(y[numeric.cast(usize, jy)])
-                        else
-                            y[numeric.cast(usize, jy)],
-                    );
-
-                    var i: usize = 0;
-                    while (i < (b_len / unroll) * unroll) : (i += unroll) {
-                        inline for (0..unroll) |u| {
-                            // a[tile_i + i + u + j * lda] += local_x[i + u] * temp
-                            numeric.fma_(
-                                &a[tile_i + i + u + j * lda],
-                                if (comptime noconj)
-                                    local_x[i + u]
-                                else
-                                    numeric.conj(local_x[i + u]),
-                                temp,
-                                a[tile_i + i + u + j * lda],
-                            );
-                        }
-                    }
-
-                    while (i < b_len) : (i += 1) {
-                        // a[tile_i + i + j * lda] += local_x[i] * temp
-                        numeric.fma_(
-                            &a[tile_i + i + j * lda],
-                            if (comptime noconj)
-                                local_x[i]
-                            else
-                                numeric.conj(local_x[i]),
-                            temp,
-                            a[tile_i + i + j * lda],
-                        );
-                    }
-                }
-
-                jy += incy;
-            }
         }
     }
 

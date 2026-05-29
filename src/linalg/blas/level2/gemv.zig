@@ -263,7 +263,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
         // Form  y = alpha * A * x + y  or  y = alpha * conj(A) * x + y.
         const unroll = 2 * (std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), A, Y)) orelse 2);
         comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(Y) + @sizeOf(A)));
-        tile_size -|= tile_size % unroll;
+        tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
 
         var tile_i: usize = 0;
         while (tile_i < m) : (tile_i += tile_size) {
