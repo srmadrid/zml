@@ -1,6 +1,6 @@
 test {
-    const test_level_1 = true;
-    const test_level_2 = false;
+    const test_level_1 = false;
+    const test_level_2 = true;
     const test_level_3 = false;
 
     if (test_level_1) {
@@ -21,7 +21,7 @@ test {
     }
 
     if (test_level_2) {
-        // _ = @import("blas/level2/gemv.zig");
+        _ = @import("blas/level2/gemv.zig");
         // _ = @import("blas/level2/ger.zig");
         // _ = @import("blas/level2/gerc.zig");
         // _ = @import("blas/level2/hemv.zig");

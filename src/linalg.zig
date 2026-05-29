@@ -86,8 +86,8 @@ pub const Transpose = enum(u2) {
         return switch (self) {
             .no_trans => if (comptime Int == u8) 'N' else 111,
             .trans => if (comptime Int == u8) 'T' else 112,
-            .conj_no_trans => if (comptime Int == u8) 0 else 113,
-            .conj_trans => if (comptime Int == u8) 'C' else 114,
+            .conj_trans => if (comptime Int == u8) 'C' else 113,
+            .conj_no_trans => if (comptime Int == u8) 0 else 114,
         };
     }
 

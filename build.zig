@@ -59,6 +59,12 @@ pub fn build(b: *std.Build) void {
     });
     module.addOptions("options", options);
 
+    if (opt_link_cblas != null)
+        module.linkSystemLibrary(opt_link_cblas.?, .{});
+
+    if (opt_link_lapacke != null)
+        module.linkSystemLibrary(opt_link_lapacke.?, .{});
+
     // Executable (for testing)
     const exe = b.addExecutable(.{
         .name = "main",
@@ -70,14 +76,6 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.root_module.addImport("zsl", module);
-
-    if (opt_link_cblas != null) {
-        exe.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
-    }
-
-    if (opt_link_lapacke != null) {
-        exe.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
-    }
 
     b.installArtifact(exe);
 
@@ -94,6 +92,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = b.path("src/cblas.zig"),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
         }),
     });
 
@@ -117,14 +116,6 @@ pub fn build(b: *std.Build) void {
     });
 
     lib_unit_tests.root_module.addImport("zsl", module);
-
-    if (opt_link_cblas != null) {
-        lib_unit_tests.root_module.linkSystemLibrary(opt_link_cblas.?, .{});
-    }
-
-    if (opt_link_lapacke != null) {
-        lib_unit_tests.root_module.linkSystemLibrary(opt_link_lapacke.?, .{});
-    }
 
     const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
     const test_step = b.step("test", "Run unit tests");

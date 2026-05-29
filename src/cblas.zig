@@ -290,22 +290,22 @@ export fn cblas_izamin(n: isize, x: *const anyopaque, incx: isize) c_uint {
 //     return zsl.linalg.blas.zgbmv(layout.to_zsl(), transa.to_zsl(), m, n, kl, ku, alpha_.*, @ptrCast(@alignCast(a)), lda, x, incx, beta_.*, y, incy);
 // }
 
-// export fn cblas_sgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: f32, a: [*c]const f32, lda: isize, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
-//     return zsl.linalg.blas.sgemv(layout.to_zsl(), transa.to_zsl(), m, n, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
-// export fn cblas_dgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: f64, a: [*c]const f64, lda: isize, x: [*c]const f64, incx: isize, beta: f64, y: [*c]f64, incy: isize) void {
-//     return zsl.linalg.blas.dgemv(layout.to_zsl(), transa.to_zsl(), m, n, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
-// export fn cblas_cgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf32 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.cgemv(layout.to_zsl(), transa.to_zsl(), m, n, alpha_.*, @ptrCast(@alignCast(a)), lda, x, incx, beta_.*, y, incy);
-// }
-// export fn cblas_zgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf64 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf64 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.zgemv(layout.to_zsl(), transa.to_zsl(), m, n, alpha_.*, @ptrCast(@alignCast(a)), lda, x, incx, beta_.*, y, incy);
-// }
+export fn cblas_sgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: f32, a: [*c]const f32, lda: isize, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
+    return zsl.linalg.blas.gemv(layout.to_zsl(), transa.to_zsl(), zsl.numeric.cast(usize, m), zsl.numeric.cast(usize, n), alpha, @as([*]const f32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const f32, @ptrCast(@alignCast(x))), zsl.numeric.cast(isize, incx), beta, @as([*]f32, @ptrCast(@alignCast(y))), zsl.numeric.cast(isize, incy), .{}) catch {};
+}
+export fn cblas_dgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: f64, a: [*c]const f64, lda: isize, x: [*c]const f64, incx: isize, beta: f64, y: [*c]f64, incy: isize) void {
+    return zsl.linalg.blas.gemv(layout.to_zsl(), transa.to_zsl(), zsl.numeric.cast(usize, m), zsl.numeric.cast(usize, n), alpha, @as([*]const f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const f64, @ptrCast(@alignCast(x))), zsl.numeric.cast(isize, incx), beta, @as([*]f64, @ptrCast(@alignCast(y))), zsl.numeric.cast(isize, incy), .{}) catch {};
+}
+export fn cblas_cgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
+    const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
+    const beta_: *const zsl.cf32 = @ptrCast(@alignCast(beta));
+    return zsl.linalg.blas.gemv(layout.to_zsl(), transa.to_zsl(), zsl.numeric.cast(usize, m), zsl.numeric.cast(usize, n), alpha_.*, @as([*]const zsl.cf32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const zsl.cf32, @ptrCast(@alignCast(x))), zsl.numeric.cast(isize, incx), beta_.*, @as([*]zsl.cf32, @ptrCast(@alignCast(y))), zsl.numeric.cast(isize, incy), .{}) catch {};
+}
+export fn cblas_zgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
+    const alpha_: *const zsl.cf64 = @ptrCast(@alignCast(alpha));
+    const beta_: *const zsl.cf64 = @ptrCast(@alignCast(beta));
+    return zsl.linalg.blas.gemv(layout.to_zsl(), transa.to_zsl(), zsl.numeric.cast(usize, m), zsl.numeric.cast(usize, n), alpha_.*, @as([*]const zsl.cf64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const zsl.cf64, @ptrCast(@alignCast(x))), zsl.numeric.cast(isize, incx), beta_.*, @as([*]zsl.cf64, @ptrCast(@alignCast(y))), zsl.numeric.cast(isize, incy), .{}) catch {};
+}
 
 // export fn cblas_sger(layout: CBLAS_LAYOUT, m: isize, n: isize, alpha: f32, x: [*c]const f32, incx: isize, y: [*c]const f32, incy: isize, a: [*c]f32, lda: isize) void {
 //     return zsl.linalg.blas.sger(layout.to_zsl(), m, n, alpha, x, incx, y, incy, @ptrCast(@alignCast(a)), lda);

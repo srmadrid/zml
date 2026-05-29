@@ -3,5 +3,6 @@ zig-out/
 .zig-cache/
 
 lines.sh
+benchmarks/
 
 TODO.md
