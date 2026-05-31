@@ -109,7 +109,7 @@ pub fn gemv(
     incy: isize,
     opts: struct {
         num_threads: usize = 0,
-        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(y))),
+        parallel_threshold: usize = 2_097_152 / @sizeOf(meta.Child(@TypeOf(y))),
     },
 ) !void {
     const Al: type = @TypeOf(alpha);

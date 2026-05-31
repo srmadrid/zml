@@ -79,7 +79,7 @@ pub fn ger(
     lda: usize,
     opts: struct {
         num_threads: usize = 0,
-        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(a))),
+        parallel_threshold: usize = 2_097_152 / @sizeOf(meta.Child(@TypeOf(a))),
     },
 ) !void {
     const Al: type = @TypeOf(alpha);

@@ -24,7 +24,7 @@ test {
         _ = @import("blas/level2/gemv.zig");
         _ = @import("blas/level2/ger.zig");
         _ = @import("blas/level2/gerc.zig");
-        // _ = @import("blas/level2/hemv.zig");
+        _ = @import("blas/level2/hemv.zig");
         // _ = @import("blas/level2/her.zig");
         // _ = @import("blas/level2/her2.zig");
         // _ = @import("blas/level2/symv.zig");
