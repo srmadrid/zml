@@ -18,9 +18,6 @@ const linalg = @import("../../../linalg.zig");
 /// If multiple elements share the minimum value, the smallest index is
 /// returned.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call
-/// the corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.iamin(n: usize, x: [*]const X, incx: isize) !usize

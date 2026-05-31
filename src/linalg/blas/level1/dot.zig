@@ -25,9 +25,6 @@ pub fn Dot(X: type, Y: type) type {
 ///
 /// where `x` and `y` are vectors.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.dot(n: isize, x: [*]const X, incx: isize, y: [*]const Y, incy: isize) !linalg.blas.Dot([*]const X, [*]const Y)

@@ -11,9 +11,6 @@ const linalg = @import("../../../linalg.zig");
 
 /// Swaps a vector with another vector.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.swap(n: usize, x: [*]X, incx: isize, y: [*]Y, incy: isize) !void

@@ -17,9 +17,6 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// where `alpha` is a numeric, and `x` is a vector with `n` elements.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.scal(n: usize, alpha: Al, x: [*]X, incx: isize) !void

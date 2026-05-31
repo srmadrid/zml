@@ -19,9 +19,6 @@ const linalg = @import("../../../linalg.zig");
 /// where `alpha` is a numeric, `x` is an `m`-element vector, `y` is an
 /// `n`-element vector, and `A` is an `m`-by-`n` general matrix.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.gerc(layout: Layout, m: usize, n: usize, alpha: Al, x: [*]const X, incx: isize, y: [*]const Y, incy: isize, a: [*]A, lda: usize) !void
@@ -56,7 +53,7 @@ const linalg = @import("../../../linalg.zig");
 ///     * N >= 2: use exactly N threads, clamped by
 ///       std.Thread.getCpuCount() and options.max_threads as a hard safety
 ///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(A))):
+///   * parallel_threshold (usize = 2_097_152 / @sizeOf(meta.Child(A))):
 ///     Minimum number of matrix elements (`m * n`) required to trigger
 ///     multithreaded execution.
 ///
@@ -99,24 +96,6 @@ pub fn gerc(
 
     if (lda < int.max(1, if (layout == .col_major) m else n) or incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
-
-    if (comptime options.link_cblas != null and Al == X and Al == Y and Al == A) {
-        switch (comptime meta.numericType(Al)) {
-            .float => {
-                if (comptime Al == f32)
-                    return linalg.cblas.sger(layout.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), alpha, x, incx, y, incy, a, numeric.cast(isize, lda))
-                else if (comptime Al == f64)
-                    return linalg.cblas.dger(layout.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), alpha, x, incx, y, incy, a, numeric.cast(isize, lda));
-            },
-            .complex => {
-                if (comptime meta.Scalar(Al) == f32)
-                    return linalg.cblas.cgerc(layout.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), &alpha, x, incx, y, incy, a, numeric.cast(isize, lda))
-                else if (comptime meta.Scalar(Al) == f64)
-                    return linalg.cblas.zgerc(layout.toInt(c_int), numeric.cast(isize, m), numeric.cast(isize, n), &alpha, x, incx, y, incy, a, numeric.cast(isize, lda));
-            },
-            else => {},
-        }
-    }
 
     const eff_m = if (layout == .col_major) m else n;
     const eff_n = if (layout == .col_major) n else m;

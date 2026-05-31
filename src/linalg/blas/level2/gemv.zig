@@ -37,9 +37,6 @@ const linalg = @import("../../../linalg.zig");
 /// where `alpha` and `beta` are numerics, `x` and `y` are vectors, and `A` is an
 /// `m`-by-`n` matrix.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.gemv(layout: Layout, transa: linalg.Transpose, m: usize, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
@@ -84,7 +81,7 @@ const linalg = @import("../../../linalg.zig");
 ///     * N >= 2: use exactly N threads, clamped by
 ///       std.Thread.getCpuCount() and options.max_threads as a hard safety
 ///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 4_124_304 / @sizeOf(meta.Child(Y))):
+///   * parallel_threshold (usize = 2_097_152 / @sizeOf(meta.Child(Y))):
 ///     Minimum number of matrix elements (`m * n`) required to trigger
 ///     multithreaded execution.
 ///

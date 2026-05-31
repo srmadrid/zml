@@ -24,9 +24,6 @@ pub fn Nrm2(X: type) type {
 ///
 /// where `x` is a vector with `n` elements.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.nrm2(n: usize, x: [*]const X, incx: isize) !linalg.blas.Nrm2([*]const X)

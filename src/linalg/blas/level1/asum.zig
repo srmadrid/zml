@@ -26,9 +26,6 @@ pub fn Asum(X: type) type {
 ///
 /// where `x` is a vector with `n` elements.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.asum(n: usize, x: [*]const X, incx: isize, opts: Opts) !linalg.blas.Asum([*]const X)

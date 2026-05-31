@@ -17,9 +17,6 @@ const linalg = @import("../../../linalg.zig");
 ///
 /// where `x` and `y` are vectors.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.copy(n: usize, x: [*]const X, incx: isize, y: [*]Y, incy: isize) !void

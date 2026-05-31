@@ -21,9 +21,6 @@ const linalg = @import("../../../linalg.zig");
 /// where `alpha` and `beta` are numerics, `x` and `y` are `n`-element vectors,
 /// and `A` is an `n`-by-`n` Hermitian matrix.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.hemv(layout: Layout, uplo: Uplo, n: usize, alpha: Al, a: [*]const A, lda: usize, x: [*]const X, incx: isize, beta: Be, y: [*]Y, incy: isize) !void
@@ -33,7 +30,7 @@ const linalg = @import("../../../linalg.zig");
 /// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
 ///   col-major or row-major.
 /// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
-///   the Hermitian packed matrix `A` is used.
+///   the Hermitian matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `a` (`anytype`): Many-item pointer, size at least `lda * n`.
@@ -59,7 +56,7 @@ const linalg = @import("../../../linalg.zig");
 ///     * N >= 2: use exactly N threads, clamped by
 ///       std.Thread.getCpuCount() and options.max_threads as a hard safety
 ///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(Y))):
+///   * parallel_threshold (usize = 2_097_152 / @sizeOf(meta.Child(Y))):
 ///     Minimum number of matrix elements (`n * n`) required to trigger
 ///     multithreaded execution.
 ///
@@ -104,18 +101,6 @@ pub fn hemv(
 
     if (lda < int.max(1, n) or incx == 0 or incy == 0)
         return linalg.blas.Error.InvalidArgument;
-
-    if (comptime options.link_cblas != null and Al == A and Al == X and Al == Y and Al == Be) {
-        switch (comptime meta.numericType(Al)) {
-            .complex => {
-                if (comptime meta.Scalar(Al) == f32)
-                    return linalg.cblas.chemv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, a, numeric.cast(isize, lda), x, incx, &beta, y, incy)
-                else if (comptime meta.Scalar(Al) == f64)
-                    return linalg.cblas.zhemv(layout.toInt(c_int), uplo.toInt(c_int), numeric.cast(isize, n), &alpha, a, numeric.cast(isize, lda), x, incx, &beta, y, incy);
-            },
-            else => {},
-        }
-    }
 
     const eff_uplo = if (layout == .col_major) uplo else uplo.invert();
     const noconj = layout == .col_major;
