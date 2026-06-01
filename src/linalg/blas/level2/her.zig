@@ -21,9 +21,6 @@ const linalg = @import("../../../linalg.zig");
 /// where `alpha` is a real numeric, `x` is an `n`-element vector, and `A` is an
 /// `n`-by-`n` Hermitian matrix.
 ///
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available.
-///
 /// ## Signature
 /// ```zig
 /// linalg.blas.her(layout: Layout, uplo: Uplo, n: usize, alpha: Al, x: [*]const X, incx: isize, a: [*]A, lda: usize) !void
@@ -33,7 +30,7 @@ const linalg = @import("../../../linalg.zig");
 /// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
 ///   col-major or row-major.
 /// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
-///   the Hermitian packed matrix `A` is used.
+///   the Hermitian matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `x` (`anytype`): Many-item pointer, size at least

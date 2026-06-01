@@ -349,12 +349,12 @@ export fn cblas_dsymv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f
     return zsl.linalg.blas.symv(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const f64, @ptrCast(@alignCast(x))), incx, beta, @as([*]f64, @ptrCast(@alignCast(y))), incy, .{}) catch {};
 }
 
-// export fn cblas_ssyr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, a: [*c]f32, lda: isize) void {
-//     return zsl.linalg.blas.ssyr(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(a)), lda);
-// }
-// export fn cblas_dsyr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: [*c]const f64, incx: isize, a: [*c]f64, lda: isize) void {
-//     return zsl.linalg.blas.dsyr(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(a)), lda);
-// }
+export fn cblas_ssyr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, a: [*c]f32, lda: isize) void {
+    return zsl.linalg.blas.syr(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f32, @ptrCast(@alignCast(x))), incx, @as([*]f32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
+}
+export fn cblas_dsyr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: [*c]const f64, incx: isize, a: [*c]f64, lda: isize) void {
+    return zsl.linalg.blas.syr(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f64, @ptrCast(@alignCast(x))), incx, @as([*]f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
+}
 
 // export fn cblas_ssyr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, y: [*c]const f32, incy: isize, a: [*c]f32, lda: isize) void {
 //     return zsl.linalg.blas.ssyr2(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, y, incy, @ptrCast(@alignCast(a)), lda);
