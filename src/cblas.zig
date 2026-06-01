@@ -272,24 +272,7 @@ export fn cblas_izamin(n: isize, x: *const anyopaque, incx: isize) c_uint {
     return zsl.numeric.cast(c_uint, zsl.linalg.blas.iamin(zsl.numeric.cast(usize, n), @as([*]const zsl.cf64, @ptrCast(@alignCast(x))), incx, .{}) catch 0);
 }
 
-// // Level 2
-// export fn cblas_sgbmv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, kl: isize, ku: isize, alpha: f32, a: [*c]const f32, lda: isize, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
-//     return zsl.linalg.blas.sgbmv(layout.to_zsl(), transa.to_zsl(), m, n, kl, ku, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
-// export fn cblas_dgbmv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, kl: isize, ku: isize, alpha: f64, a: [*c]const f64, lda: isize, x: [*c]const f64, incx: isize, beta: f64, y: [*c]f64, incy: isize) void {
-//     return zsl.linalg.blas.dgbmv(layout.to_zsl(), transa.to_zsl(), m, n, kl, ku, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
-// export fn cblas_cgbmv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, kl: isize, ku: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf32 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.cgbmv(layout.to_zsl(), transa.to_zsl(), m, n, kl, ku, alpha_.*, @ptrCast(@alignCast(a)), lda, x, incx, beta_.*, y, incy);
-// }
-// export fn cblas_zgbmv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, kl: isize, ku: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf64 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf64 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.zgbmv(layout.to_zsl(), transa.to_zsl(), m, n, kl, ku, alpha_.*, @ptrCast(@alignCast(a)), lda, x, incx, beta_.*, y, incy);
-// }
-
+// Level 2
 export fn cblas_sgemv(layout: CBLAS_LAYOUT, transa: CBLAS_TRANSPOSE, m: isize, n: isize, alpha: f32, a: [*c]const f32, lda: isize, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
     return zsl.linalg.blas.gemv(layout.to_zsl(), transa.to_zsl(), zsl.numeric.cast(usize, m), zsl.numeric.cast(usize, n), alpha, @as([*]const f32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const f32, @ptrCast(@alignCast(x))), zsl.numeric.cast(isize, incx), beta, @as([*]f32, @ptrCast(@alignCast(y))), zsl.numeric.cast(isize, incy), .{}) catch {};
 }
@@ -332,17 +315,6 @@ export fn cblas_zgerc(layout: CBLAS_LAYOUT, m: isize, n: isize, alpha: *const an
     return zsl.linalg.blas.gerc(layout.to_zsl(), zsl.numeric.cast(usize, m), zsl.numeric.cast(usize, n), alpha_.*, @as([*]const zsl.cf64, @ptrCast(@alignCast(x))), incx, @as([*]const zsl.cf64, @ptrCast(@alignCast(y))), incy, @as([*]zsl.cf64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
 }
 
-// export fn cblas_chbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, k: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf32 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.chbmv(layout.to_zsl(), uplo.to_zsl(), n, k, alpha_.*, @ptrCast(@alignCast(a)), lda, x, incx, beta_.*, y, incy);
-// }
-// export fn cblas_zhbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, k: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf64 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf64 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.zhbmv(layout.to_zsl(), uplo.to_zsl(), n, k, alpha_.*, @ptrCast(@alignCast(a)), lda, x, incx, beta_.*, y, incy);
-// }
-
 export fn cblas_chemv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *const anyopaque, a: *const anyopaque, lda: isize, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
     const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
     const beta_: *const zsl.cf32 = @ptrCast(@alignCast(beta));
@@ -354,12 +326,12 @@ export fn cblas_zhemv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *
     return zsl.linalg.blas.hemv(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha_.*, @as([*]const zsl.cf64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const zsl.cf64, @ptrCast(@alignCast(x))), incx, beta_.*, @as([*]zsl.cf64, @ptrCast(@alignCast(y))), incy, .{}) catch {};
 }
 
-// export fn cblas_cher(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: *const anyopaque, incx: isize, a: *anyopaque, lda: isize) void {
-//     return zsl.linalg.blas.cher(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(a)), lda);
-// }
-// export fn cblas_zher(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: *const anyopaque, incx: isize, a: *anyopaque, lda: isize) void {
-//     return zsl.linalg.blas.zher(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(a)), lda);
-// }
+export fn cblas_cher(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: *const anyopaque, incx: isize, a: *anyopaque, lda: isize) void {
+    return zsl.linalg.blas.her(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const zsl.cf32, @ptrCast(@alignCast(x))), incx, @as([*]zsl.cf32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
+}
+export fn cblas_zher(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: *const anyopaque, incx: isize, a: *anyopaque, lda: isize) void {
+    return zsl.linalg.blas.her(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const zsl.cf64, @ptrCast(@alignCast(x))), incx, @as([*]zsl.cf64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
+}
 
 // export fn cblas_cher2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *const anyopaque, x: *const anyopaque, incx: isize, y: *const anyopaque, incy: isize, a: *anyopaque, lda: isize) void {
 //     const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
@@ -370,67 +342,12 @@ export fn cblas_zhemv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *
 //     return zsl.linalg.blas.zher2(layout.to_zsl(), uplo.to_zsl(), n, alpha_.*, x, incx, y, incy, @ptrCast(@alignCast(a)), lda);
 // }
 
-// export fn cblas_chpmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *const anyopaque, ap: *const anyopaque, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf32 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.chpmv(layout.to_zsl(), uplo.to_zsl(), n, alpha_.*, @ptrCast(@alignCast(ap)), x, incx, beta_.*, y, incy);
-// }
-// export fn cblas_zhpmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *const anyopaque, ap: *const anyopaque, x: *const anyopaque, incx: isize, beta: *const anyopaque, y: *anyopaque, incy: isize) void {
-//     const alpha_: *const zsl.cf64 = @ptrCast(@alignCast(alpha));
-//     const beta_: *const zsl.cf64 = @ptrCast(@alignCast(beta));
-//     return zsl.linalg.blas.zhpmv(layout.to_zsl(), uplo.to_zsl(), n, alpha_.*, @ptrCast(@alignCast(ap)), x, incx, beta_.*, y, incy);
-// }
-
-// export fn cblas_chpr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: *const anyopaque, incx: isize, ap: *anyopaque) void {
-//     return zsl.linalg.blas.chpr(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(ap)));
-// }
-// export fn cblas_zhpr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: *const anyopaque, incx: isize, ap: *anyopaque) void {
-//     return zsl.linalg.blas.zhpr(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(ap)));
-// }
-
-// export fn cblas_chpr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *const anyopaque, x: *const anyopaque, incx: isize, y: *const anyopaque, incy: isize, ap: *anyopaque) void {
-//     const alpha_: *const zsl.cf32 = @ptrCast(@alignCast(alpha));
-//     return zsl.linalg.blas.chpr2(layout.to_zsl(), uplo.to_zsl(), n, alpha_.*, x, incx, y, incy, @ptrCast(@alignCast(ap)));
-// }
-// export fn cblas_zhpr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *const anyopaque, x: *const anyopaque, incx: isize, y: *const anyopaque, incy: isize, ap: *anyopaque) void {
-//     const alpha_: *const zsl.cf64 = @ptrCast(@alignCast(alpha));
-//     return zsl.linalg.blas.zhpr2(layout.to_zsl(), uplo.to_zsl(), n, alpha_.*, x, incx, y, incy, @ptrCast(@alignCast(ap)));
-// }
-
-// export fn cblas_ssbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, k: isize, alpha: f32, a: [*c]const f32, lda: isize, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
-//     return zsl.linalg.blas.ssbmv(layout.to_zsl(), uplo.to_zsl(), n, k, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
-// export fn cblas_dsbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, k: isize, alpha: f64, a: [*c]const f64, lda: isize, x: [*c]const f64, incx: isize, beta: f64, y: [*c]f64, incy: isize) void {
-//     return zsl.linalg.blas.dsbmv(layout.to_zsl(), uplo.to_zsl(), n, k, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
-
-// export fn cblas_sspmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, ap: [*c]const f32, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
-//     return zsl.linalg.blas.sspmv(layout.to_zsl(), uplo.to_zsl(), n, alpha, @ptrCast(@alignCast(ap)), x, incx, beta, y, incy);
-// }
-// export fn cblas_dspmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, ap: [*c]const f64, x: [*c]const f64, incx: isize, beta: f64, y: [*c]f64, incy: isize) void {
-//     return zsl.linalg.blas.dspmv(layout.to_zsl(), uplo.to_zsl(), n, alpha, @ptrCast(@alignCast(ap)), x, incx, beta, y, incy);
-// }
-
-// export fn cblas_sspr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, ap: [*c]f32) void {
-//     return zsl.linalg.blas.sspr(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(ap)));
-// }
-// export fn cblas_dspr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: [*c]const f64, incx: isize, ap: [*c]f64) void {
-//     return zsl.linalg.blas.dspr(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(ap)));
-// }
-
-// export fn cblas_sspr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, y: [*c]const f32, incy: isize, ap: [*c]f32) void {
-//     return zsl.linalg.blas.sspr2(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, y, incy, @ptrCast(@alignCast(ap)));
-// }
-// export fn cblas_dspr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: [*c]const f64, incx: isize, y: [*c]const f64, incy: isize, ap: [*c]f64) void {
-//     return zsl.linalg.blas.dspr2(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, y, incy, @ptrCast(@alignCast(ap)));
-// }
-
-// export fn cblas_ssymv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, a: [*c]const f32, lda: isize, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
-//     return zsl.linalg.blas.ssymv(layout.to_zsl(), uplo.to_zsl(), n, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
-// export fn cblas_dsymv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, a: [*c]const f64, lda: isize, x: [*c]const f64, incx: isize, beta: f64, y: [*c]f64, incy: isize) void {
-//     return zsl.linalg.blas.dsymv(layout.to_zsl(), uplo.to_zsl(), n, alpha, @ptrCast(@alignCast(a)), lda, x, incx, beta, y, incy);
-// }
+export fn cblas_ssymv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, a: [*c]const f32, lda: isize, x: [*c]const f32, incx: isize, beta: f32, y: [*c]f32, incy: isize) void {
+    return zsl.linalg.blas.symv(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const f32, @ptrCast(@alignCast(x))), incx, beta, @as([*]f32, @ptrCast(@alignCast(y))), incy, .{}) catch {};
+}
+export fn cblas_dsymv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, a: [*c]const f64, lda: isize, x: [*c]const f64, incx: isize, beta: f64, y: [*c]f64, incy: isize) void {
+    return zsl.linalg.blas.symv(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]const f64, @ptrCast(@alignCast(x))), incx, beta, @as([*]f64, @ptrCast(@alignCast(y))), incy, .{}) catch {};
+}
 
 // export fn cblas_ssyr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, a: [*c]f32, lda: isize) void {
 //     return zsl.linalg.blas.ssyr(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, @ptrCast(@alignCast(a)), lda);
@@ -444,58 +361,6 @@ export fn cblas_zhemv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: *
 // }
 // export fn cblas_dsyr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: [*c]const f64, incx: isize, y: [*c]const f64, incy: isize, a: [*c]f64, lda: isize) void {
 //     return zsl.linalg.blas.dsyr2(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, y, incy, @ptrCast(@alignCast(a)), lda);
-// }
-
-// export fn cblas_stbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: [*c]const f32, lda: isize, x: [*c]f32, incx: isize) void {
-//     return zsl.linalg.blas.stbmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_dtbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: [*c]const f64, lda: isize, x: [*c]f64, incx: isize) void {
-//     return zsl.linalg.blas.dtbmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_ctbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ctbmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_ztbmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ztbmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-
-// export fn cblas_stbsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: [*c]const f32, lda: isize, x: [*c]f32, incx: isize) void {
-//     return zsl.linalg.blas.stbsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_dtbsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: [*c]const f64, lda: isize, x: [*c]f64, incx: isize) void {
-//     return zsl.linalg.blas.dtbsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_ctbsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ctbsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_ztbsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, k: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ztbsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, k, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-
-// export fn cblas_stpmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: [*c]const f32, x: [*c]f32, incx: isize) void {
-//     return zsl.linalg.blas.stpmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
-// }
-// export fn cblas_dtpmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: [*c]const f64, x: [*c]f64, incx: isize) void {
-//     return zsl.linalg.blas.dtpmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
-// }
-// export fn cblas_ctpmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: *const anyopaque, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ctpmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
-// }
-// export fn cblas_ztpmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: *const anyopaque, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ztpmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
-// }
-
-// export fn cblas_stpsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: [*c]const f32, x: [*c]f32, incx: isize) void {
-//     return zsl.linalg.blas.stpsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
-// }
-// export fn cblas_dtpsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: [*c]const f64, x: [*c]f64, incx: isize) void {
-//     return zsl.linalg.blas.dtpsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
-// }
-// export fn cblas_ctpsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: *const anyopaque, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ctpsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
-// }
-// export fn cblas_ztpsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, ap: *const anyopaque, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ztpsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(ap)), x, incx);
 // }
 
 // export fn cblas_strmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: [*c]const f32, lda: isize, x: [*c]f32, incx: isize) void {

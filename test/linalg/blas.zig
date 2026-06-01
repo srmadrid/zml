@@ -1,9 +1,13 @@
 test {
+    // Override test flags
+    const test_all = false;
+
+    // Individual test flags
     const test_level_1 = false;
     const test_level_2 = true;
     const test_level_3 = false;
 
-    if (test_level_1) {
+    if (test_all or test_level_1) {
         _ = @import("blas/level1/asum.zig");
         _ = @import("blas/level1/axpy.zig");
         _ = @import("blas/level1/copy.zig");
@@ -20,12 +24,12 @@ test {
         _ = @import("blas/level1/iamin.zig");
     }
 
-    if (test_level_2) {
+    if (test_all or test_level_2) {
         _ = @import("blas/level2/gemv.zig");
         _ = @import("blas/level2/ger.zig");
         _ = @import("blas/level2/gerc.zig");
         _ = @import("blas/level2/hemv.zig");
-        // _ = @import("blas/level2/her.zig");
+        _ = @import("blas/level2/her.zig");
         // _ = @import("blas/level2/her2.zig");
         _ = @import("blas/level2/symv.zig");
         // _ = @import("blas/level2/syr.zig");
@@ -34,7 +38,7 @@ test {
         // _ = @import("blas/level2/trsv.zig");
     }
 
-    if (test_level_3) {
+    if (test_all or test_level_3) {
         // _ = @import("blas/level3/gemm.zig");
         // _ = @import("blas/level3/gemmtr.zig");
         // _ = @import("blas/level3/hemm.zig");
