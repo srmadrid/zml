@@ -94,14 +94,14 @@ pub fn asum(
     if (num_threads <= 1)
         return numeric.cast(linalg.blas.Asum(X), k_asum(n, x, incx));
 
-    var threads: [options.max_threads]std.Thread = undefined;
-    var sums: [options.max_threads]meta.Accumulator(linalg.blas.Asum(X)) = .{numeric.zero(meta.Accumulator(linalg.blas.Asum(X)))} ** options.max_threads;
-
     const Worker = struct {
         fn execute(out: *meta.Accumulator(linalg.blas.Asum(X)), worker_n: usize, worker_x: X, worker_incx: isize) void {
             out.* = k_asum(worker_n, worker_x, worker_incx);
         }
     };
+
+    var threads: [options.max_threads]std.Thread = undefined;
+    var sums: [options.max_threads]meta.Accumulator(linalg.blas.Asum(X)) = .{numeric.zero(meta.Accumulator(linalg.blas.Asum(X)))} ** options.max_threads;
 
     const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;

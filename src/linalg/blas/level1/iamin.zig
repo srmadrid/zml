@@ -88,15 +88,15 @@ pub fn iamin(
     if (num_threads <= 1)
         return k_iamin(n, x, incx).index;
 
-    var threads: [options.max_threads]std.Thread = undefined;
-    var results: [options.max_threads]IaminResult(numeric.Abs1(meta.Child(X))) = .{IaminResult(numeric.Abs1(meta.Child(X))){ .value = numeric.zero(numeric.Abs1(meta.Child(X))), .index = 0 }} ** options.max_threads;
-    var chunk_bases: [options.max_threads]usize = .{0} ** options.max_threads;
-
     const Worker = struct {
         fn execute(out: *IaminResult(numeric.Abs1(meta.Child(X))), worker_n: usize, worker_x: X, worker_incx: isize) void {
             out.* = k_iamin(worker_n, worker_x, worker_incx);
         }
     };
+
+    var threads: [options.max_threads]std.Thread = undefined;
+    var results: [options.max_threads]IaminResult(numeric.Abs1(meta.Child(X))) = .{IaminResult(numeric.Abs1(meta.Child(X))){ .value = numeric.zero(numeric.Abs1(meta.Child(X))), .index = 0 }} ** options.max_threads;
+    var chunk_bases: [options.max_threads]usize = .{0} ** options.max_threads;
 
     const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;

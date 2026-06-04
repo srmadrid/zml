@@ -128,9 +128,6 @@ pub fn her(
         else
             k_her(eff_uplo, n, alpha, x, incx, a, lda, false);
 
-    var atomic_counter = std.atomic.Value(usize).init(0);
-    var threads: [options.max_threads]std.Thread = undefined;
-
     const Worker = struct {
         fn execute(
             worker_uplo: Uplo,
@@ -302,6 +299,9 @@ pub fn her(
 
     const k = (n + tile_size - 1) / tile_size;
     const num_tiles = k * (k + 1) / 2;
+
+    var atomic_counter = std.atomic.Value(usize).init(0);
+    var threads: [options.max_threads]std.Thread = undefined;
 
     var spawn_err: ?anyerror = null;
     var spawned_count: usize = 0;

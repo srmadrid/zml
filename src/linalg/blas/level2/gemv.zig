@@ -177,8 +177,6 @@ pub fn gemv(
         else
             k_gemv(eff_transa, eff_m, eff_n, alpha, a, lda, x, incx, beta, y, incy, false);
 
-    var threads: [options.max_threads]std.Thread = undefined;
-
     const Worker = struct {
         fn execute(worker_transa: linalg.Transpose, worker_m: usize, worker_n: usize, worker_alpha: Al, worker_a: [*]const A, worker_lda: usize, worker_x: [*]const X, worker_incx: isize, worker_beta: Be, worker_y: [*]Y, worker_incy: isize, worker_noconj: bool) void {
             return if (worker_noconj)
@@ -187,6 +185,8 @@ pub fn gemv(
                 k_gemv(worker_transa, worker_m, worker_n, worker_alpha, worker_a, worker_lda, worker_x, worker_incx, worker_beta, worker_y, worker_incy, false);
         }
     };
+
+    var threads: [options.max_threads]std.Thread = undefined;
 
     const chunk_size = int.div(leny, num_threads);
     var spawn_err: ?anyerror = null;

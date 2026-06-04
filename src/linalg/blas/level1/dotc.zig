@@ -99,14 +99,14 @@ pub fn dotc(
     if (num_threads <= 1)
         return numeric.cast(linalg.blas.Dotc(X, Y), k_dotc(n, x, incx, y, incy));
 
-    var threads: [options.max_threads]std.Thread = undefined;
-    var sums: [options.max_threads]meta.Accumulator(linalg.blas.Dotc(X, Y)) = .{numeric.zero(meta.Accumulator(linalg.blas.Dotc(X, Y)))} ** options.max_threads;
-
     const Worker = struct {
         fn execute(out: *meta.Accumulator(linalg.blas.Dotc(X, Y)), worker_n: usize, worker_x: X, worker_incx: isize, worker_y: Y, worker_incy: isize) void {
             out.* = k_dotc(worker_n, worker_x, worker_incx, worker_y, worker_incy);
         }
     };
+
+    var threads: [options.max_threads]std.Thread = undefined;
+    var sums: [options.max_threads]meta.Accumulator(linalg.blas.Dotc(X, Y)) = .{numeric.zero(meta.Accumulator(linalg.blas.Dotc(X, Y)))} ** options.max_threads;
 
     const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;

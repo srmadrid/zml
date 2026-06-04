@@ -135,8 +135,6 @@ pub fn ger(
         else
             k_ger(n, m, alpha, y, incy, x, incx, a, lda);
 
-    var threads: [options.max_threads]std.Thread = undefined;
-
     const Worker = struct {
         fn execute(worker_layout: Layout, worker_m: usize, worker_n: usize, worker_alpha: Al, worker_x: [*]const X, worker_incx: isize, worker_y: [*]const Y, worker_incy: isize, worker_a: [*]A, worker_lda: usize) void {
             return if (worker_layout == .col_major)
@@ -145,6 +143,8 @@ pub fn ger(
                 k_ger(worker_n, worker_m, worker_alpha, worker_y, worker_incy, worker_x, worker_incx, worker_a, worker_lda);
         }
     };
+
+    var threads: [options.max_threads]std.Thread = undefined;
 
     const chunk_size = int.div(eff_n, num_threads);
     var spawn_err: ?anyerror = null;

@@ -92,14 +92,14 @@ pub fn nrm2(
     if (num_threads <= 1)
         return numeric.cast(linalg.blas.Nrm2(X), numeric.sqrt(k_nrm2_ssq(n, x, incx)));
 
-    var threads: [options.max_threads]std.Thread = undefined;
-    var sums: [options.max_threads]meta.Accumulator(linalg.blas.Nrm2(X)) = .{numeric.zero(meta.Accumulator(linalg.blas.Nrm2(X)))} ** options.max_threads;
-
     const Worker = struct {
         fn execute(out: *meta.Accumulator(linalg.blas.Nrm2(X)), worker_n: usize, worker_x: X, worker_incx: isize) void {
             out.* = k_nrm2_ssq(worker_n, worker_x, worker_incx);
         }
     };
+
+    var threads: [options.max_threads]std.Thread = undefined;
+    var sums: [options.max_threads]meta.Accumulator(linalg.blas.Nrm2(X)) = .{numeric.zero(meta.Accumulator(linalg.blas.Nrm2(X)))} ** options.max_threads;
 
     const chunk_size = int.div(n, num_threads);
     var spawn_err: ?anyerror = null;

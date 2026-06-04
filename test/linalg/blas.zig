@@ -30,7 +30,7 @@ test {
         _ = @import("blas/level2/gerc.zig");
         _ = @import("blas/level2/hemv.zig");
         _ = @import("blas/level2/her.zig");
-        // _ = @import("blas/level2/her2.zig");
+        _ = @import("blas/level2/her2.zig");
         _ = @import("blas/level2/symv.zig");
         _ = @import("blas/level2/syr.zig");
         // _ = @import("blas/level2/syr2.zig");
