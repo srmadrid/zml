@@ -1,477 +1,769 @@
 const std = @import("std");
+const options = @import("options");
 
-const types = @import("../../types.zig");
-const scast = types.scast;
-const ops = @import("../../ops.zig");
-const constants = @import("../../constants.zig");
-const int = @import("../../int.zig");
+const meta = @import("../../../meta.zig");
+const Layout = meta.Layout;
+const Uplo = meta.Uplo;
 
-const linalg = @import("../../linalg.zig");
-const blas = @import("../blas.zig");
-const Order = types.Order;
-const Uplo = types.Uplo;
+const numeric = @import("../../../numeric.zig");
 
-/// Performs a rank-2 update of a symmetric matrix.
-///
-/// The `syr2` routine performs a matrix-vector operation defined as:
+const int = @import("../../../int.zig");
+const float = @import("../../../float.zig");
+
+const linalg = @import("../../../linalg.zig");
+
+/// Performs a rank-2 update of a symmetric matrix defined as:
 ///
 /// ```zig
-///     A = alpha * x * y^T + alpha * y * x^T + A,
+/// A = alpha * x * yᵀ + alpha * y * xᵀ + A,
 /// ```
 ///
-/// where `alpha` is a scalar, `x` and `y` are `n`-element vectors, and `A` is
+/// where `alpha` is a numeric, `x` and `y` are `n`-element vectors, and `A` is
 /// an `n`-by-`n` symmetric matrix.
 ///
-/// Signature
-/// ---------
+/// ## Signature
 /// ```zig
-/// fn syr2(order: Order, uplo: Uplo, n: i32, alpha: Al, x: [*]const X, incx: i32, y: [*]const Y, incy: i32, a: [*]A, lda: i32, ctx: anytype) !void
+/// linalg.blas.syr2(layout: Layout, uplo: Uplo, n: usize, alpha: Al, x: [*]const X, incx: isize, y: [*]const Y, incy: isize, a: [*]A, lda: usize) !void
 /// ```
 ///
-/// Parameters
-/// ----------
-/// `order` (`Order`): Specifies whether two-dimensional array storage is
-/// row-major or column-major.
+/// ## Arguments
+/// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
+///   col-major or row-major.
+/// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
+///   the symmetric matrix `A` is used.
+/// * `n` (`usize`): Specifies the size of the matrix `A`.
+/// * `alpha` (`anytype`): Specifies the numeric `alpha`.
+/// * `x` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incx)`.
+/// * `incx` (`isize`): Indexing increment for `x`. Must be different from 0.
+/// * `y` (`anytype`): Many-item pointer, size at least
+///   `1 + (n - 1) * abs(incy)`.
+/// * `incy` (`isize`): Indexing increment for `y`. Must be different from 0.
+/// * `a` (`anytype`): Mutable many-item pointer, size at least `lda * n`. On
+///   return, contains the result of the operation.
+/// * `lda` (`usize`): Specifies the leading dimension of `a` as declared in the
+///   calling (sub)program. Must be greater than or equal to `max(1, n)`.
+/// * `opts`: Optional parameters:
+///   * `num_threads` (`usize = 0`): Number of threads to spawn:
+///     * `0`: automatic. The thread count is derived from `m * n` and
+///       `parallel_threshold`:
+///       ```zig
+///       threads = max(1, min(std.Thread.getCpuCount(), options.max_threads, (n * n) / parallel_threshold))
+///       ```
+///     * 1: force serial execution. parallel_threshold is ignored.
+///     * N >= 2: use exactly N threads, clamped by
+///       std.Thread.getCpuCount() and options.max_threads as a hard safety
+///       ceiling. parallel_threshold is ignored.
+///   * parallel_threshold (usize = 2_097_152 / @sizeOf(meta.Child(A))):
+///     Minimum number of matrix elements (`n * n`) required to trigger
+///     multithreaded execution.
 ///
-/// `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of the
-/// symmetric matrix `A` is used:
-/// - If `uplo = upper`, then the upper triangular part of the matrix `A` is
-/// used.
-/// - If `uplo = lower`, then the lower triangular part of the matrix `A` is
-/// used.
+/// ## Returns
+/// `void`
 ///
-/// `n` (`i32`): Specifies the order of the matrix `A`. Must be greater than
-/// or equal to 0.
-///
-/// `alpha` (`bool`, `int`, `float`, `cfloat`, `integer`, `rational`, `real`,
-/// `complex` or `expression`): Specifies the scalar `alpha`.
-///
-/// `x` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incx)`.
-///
-/// `incx` (`i32`): Specifies the increment for indexing vector `x`. Must be
-/// different from 0.
-///
-/// `y` (many-item pointer to `int`, `float`, `cfloat`, `integer`, `rational`,
-/// `real`, `complex` or `expression`): Array, size at least
-/// `1 + (n - 1) * abs(incy)`.
-///
-/// `incy` (`i32`): Specifies the increment for indexing vector `y`. Must be
-/// different from 0.
-///
-/// `a` (mutable many-item pointer to `int`, `float`, `cfloat`, `integer`,
-/// `rational`, `real`, `complex` or `expression`): Array, size at least
-/// `lda * n`. On return, contains the result of the operation.
-///
-/// `lda` (`i32`): Specifies the leading dimension of `a` as declared in the
-/// calling (sub)program. Must be greater than or equal to `max(1, n)`.
-///
-/// Returns
-/// -------
-/// `void`: The result is stored in `a`.
-///
-/// Errors
-/// ------
-/// `linalg.blas.Error.InvalidArgument`: If `n` is less than 0, if `lda` is less
-/// than `max(1, n)`, or if `incx` or `incy` are 0.
-///
-/// Notes
-/// -----
-/// If the `link_cblas` option is not `null`, the function will try to call the
-/// corresponding CBLAS function, if available. In that case, no errors will be
-/// raised even if the arguments are invalid.
+/// ## Errors
+/// * `linalg.blas.Error.InvalidArgument`: If `incx` or `incy` is 0, or if `lda`
+///   is less than `max(1, n)`.
 pub fn syr2(
-    order: Layout,
+    layout: Layout,
     uplo: Uplo,
-    n: i32,
+    n: usize,
     alpha: anytype,
     x: anytype,
-    incx: i32,
+    incx: isize,
     y: anytype,
-    incy: i32,
+    incy: isize,
     a: anytype,
-    lda: i32,
-    ctx: anytype,
+    lda: usize,
+    opts: struct {
+        num_threads: usize = 0,
+        parallel_threshold: usize = 2_097_152 / @sizeOf(meta.Child(@TypeOf(a))),
+    },
 ) !void {
     const Al: type = @TypeOf(alpha);
     comptime var X: type = @TypeOf(x);
     comptime var Y: type = @TypeOf(y);
     comptime var A: type = @TypeOf(a);
 
-    comptime if (!types.isNumeric(Al))
-        @compileError("zml.linalg.blas.syr2 requires alpha to be numeric, got " ++ @typeName(Al));
+    comptime if (!meta.isNumeric(Al) or
+        !meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
+        !meta.isManyItemPointer(Y) or !meta.isNumeric(meta.Child(Y)) or
+        !meta.isManyItemPointer(A) or meta.isConstPointer(A) or !meta.isNumeric(meta.Child(A)))
+        @compileError("zsl.linalg.blas.syr2: alpha must be a real numeric, x and y must be many-item pointers to numerics, and a must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\ta: " ++ @typeName(A) ++ "\n");
 
-    comptime if (!types.isManyPointer(X))
-        @compileError("zml.linalg.blas.syr2 requires x to be a many-item pointer, got " ++ @typeName(X));
+    X = meta.Child(X);
+    Y = meta.Child(Y);
+    A = meta.Child(A);
 
-    X = types.Child(X);
+    if (lda < int.max(1, n) or incx == 0 or incy == 0)
+        return linalg.blas.Error.InvalidArgument;
 
-    comptime if (!types.isNumeric(X))
-        @compileError("zml.linalg.blas.syr2 requires x's child type to be numeric, got " ++ @typeName(X));
-
-    comptime if (!types.isManyPointer(Y))
-        @compileError("zml.linalg.blas.syr2 requires y to be a many-item pointer, got " ++ @typeName(Y));
-
-    Y = types.Child(Y);
-
-    comptime if (!types.isNumeric(Y))
-        @compileError("zml.linalg.blas.syr2 requires y's child type to be numeric, got " ++ @typeName(Y));
-
-    comptime if (!types.isManyPointer(A) or types.isConstPointer(A))
-        @compileError("zml.linalg.blas.syr2 requires a to be a mutable many-item pointer, got " ++ @typeName(A));
-
-    A = types.Child(A);
-
-    comptime if (!types.isNumeric(A))
-        @compileError("zml.linalg.blas.syr2 requires a's child type to numeric, got " ++ @typeName(A));
-
-    comptime if (Al == bool and X == bool and Y == bool and A == bool)
-        @compileError("zml.linalg.blas.syr2 does not support alpha, a, x, beta and y all being bool");
-
-    comptime if (types.isArbitraryPrecision(Al) or
-        types.isArbitraryPrecision(X) or
-        types.isArbitraryPrecision(Y) or
-        types.isArbitraryPrecision(A))
-    {
-        // When implemented, expand if
-        @compileError("zml.linalg.blas.syr2 not implemented for arbitrary precision types yet");
-    } else {
-        types.validateContext(@TypeOf(ctx), .{});
-    };
-
-    if (comptime A == X and A == Y and types.canCoerce(Al, A) and options.link_cblas != null) {
-        switch (comptime types.numericType(A)) {
-            .float => {
-                if (comptime A == f32) {
-                    return ci.cblas_ssyr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                } else if (comptime A == f64) {
-                    return ci.cblas_dsyr2(order.toCUInt(), uplo.toCUInt(), scast(c_int, n), scast(A, alpha), x, scast(c_int, incx), y, scast(c_int, incy), a, scast(c_int, lda));
-                }
-            },
-            else => {},
-        }
-    }
-
-    return _syr2(order, uplo, n, alpha, x, incx, y, incy, a, lda, ctx);
-}
-
-fn _syr2(
-    order: Order,
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    x: anytype,
-    incx: i32,
-    y: anytype,
-    incy: i32,
-    a: anytype,
-    lda: i32,
-    ctx: anytype,
-) !void {
-    if (order == .col_major) {
-        return k_syr2(uplo, n, alpha, x, incx, y, incy, a, lda, ctx);
-    } else {
-        return k_syr2(uplo.invert(), n, alpha, y, incy, x, incx, a, lda, ctx);
-    }
-}
-
-fn k_syr2(
-    uplo: Uplo,
-    n: i32,
-    alpha: anytype,
-    x: anytype,
-    incx: i32,
-    y: anytype,
-    incy: i32,
-    a: anytype,
-    lda: i32,
-    ctx: anytype,
-) !void {
-    const Al: type = @TypeOf(alpha);
-    const X: type = types.Child(@TypeOf(x));
-    const C2: type = types.Coerce(Al, X);
-    const Y: type = types.Child(@TypeOf(y));
-    const C1: type = types.Coerce(Al, Y);
-    const A: type = types.Child(@TypeOf(a));
-    const CC: type = types.Coerce(Al, types.Coerce(X, types.Coerce(Y, A)));
-
-    if (n < 0 or lda < int.max(1, n) or incx == 0 or incy == 0)
-        return blas.Error.InvalidArgument;
+    const eff_uplo = if (layout == .col_major) uplo else uplo.invert();
 
     // Quick return if possible.
-    if (n == 0 or ops.eq(alpha, 0, ctx) catch unreachable)
+    if (n == 0 or numeric.eq(alpha, 0))
         return;
 
-    const kx: i32 = if (incx < 0) (-n + 1) * incx else 0;
-    const ky: i32 = if (incy < 0) (-n + 1) * incy else 0;
+    if (opts.num_threads == 1)
+        return k_syr2(eff_uplo, n, alpha, x, incx, y, incy, a, lda);
 
-    if (comptime !types.isArbitraryPrecision(CC)) {
-        if (uplo == .upper) {
-            if (incx == 1 and incy == 1) {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
-                    {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * y[j]
-                            y[scast(u32, j)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
-                        const temp2: C2 = ops.mul( // temp2 = alpha * x[j]
-                            x[scast(u32, j)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
+    var num_threads: usize = if (opts.num_threads == 0) blk: {
+        if (opts.parallel_threshold == 0)
+            break :blk options.max_threads;
 
-                        var i: i32 = 0;
-                        while (i < j) : (i += 1) {
-                            ops.add_( // a[i + j * lda] += x[i] * temp1 + y[i] * temp2
-                                &a[scast(u32, i + j * lda)],
-                                a[scast(u32, i + j * lda)],
-                                ops.add(
-                                    ops.mul(
-                                        x[scast(u32, i)],
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        y[scast(u32, i)],
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
+        break :blk int.max(1, (n * n) / opts.parallel_threshold);
+    } else opts.num_threads;
+
+    num_threads = int.min(num_threads, options.max_threads);
+    num_threads = int.min(num_threads, n);
+
+    if (num_threads <= 1)
+        return k_syr2(eff_uplo, n, alpha, x, incx, y, incy, a, lda);
+
+    num_threads = int.min(num_threads, std.Thread.getCpuCount() catch 1);
+    num_threads = int.min(num_threads, n);
+
+    if (num_threads <= 1)
+        return k_syr2(eff_uplo, n, alpha, x, incx, y, incy, a, lda);
+
+    const Worker = struct {
+        fn execute(
+            worker_uplo: Uplo,
+            worker_n: usize,
+            worker_alpha: Al,
+            worker_a: [*]A,
+            worker_lda: usize,
+            worker_x: [*]const X,
+            worker_incx: isize,
+            worker_y: [*]const Y,
+            worker_incy: isize,
+            counter: *std.atomic.Value(usize),
+            comptime worker_tile_size: comptime_int,
+            worker_num_tiles: usize,
+        ) void {
+            while (true) {
+                const idx = counter.fetchAdd(1, .monotonic);
+
+                if (idx >= worker_num_tiles) // When all tiles have been assigned, break.
+                    break;
+
+                // Map 1D atomic index to 2D upper triangular coordinates (tile_i, tile_j) using triangular numbers.
+                var tile_j = numeric.cast(usize, (float.sqrt(1.0 + 8.0 * numeric.cast(f64, idx)) - 1.0) / 2.0);
+
+                while (tile_j * (tile_j + 1) / 2 > idx)
+                    tile_j -= 1;
+
+                while ((tile_j + 1) * (tile_j + 2) / 2 <= idx)
+                    tile_j += 1;
+
+                const tile_i = idx - tile_j * (tile_j + 1) / 2;
+
+                const phys_r = if (worker_uplo == .upper) tile_i else tile_j;
+                const phys_c = if (worker_uplo == .upper) tile_j else tile_i;
+
+                const r_start = phys_r * worker_tile_size;
+                const c_start = phys_c * worker_tile_size;
+                const r_len = int.min(worker_tile_size, worker_n - r_start);
+                const c_len = int.min(worker_tile_size, worker_n - c_start);
+
+                if (tile_i == tile_j) {
+                    // Diagonal tile
+                    var local_x: [worker_tile_size]X = undefined;
+                    var local_y: [worker_tile_size]Y = undefined;
+
+                    const px = if (worker_incx == 1)
+                        worker_x + r_start
+                    else blk: {
+                        @import("../level1/copy.zig").k_copy(
+                            r_len,
+                            worker_x + numeric.cast(usize, if (worker_incx > 0)
+                                numeric.cast(isize, r_start) * worker_incx
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                            worker_incx,
+                            @as([*]X, &local_x),
+                            1,
+                        );
+
+                        break :blk @as([*]const X, &local_x);
+                    };
+
+                    const py = if (worker_incy == 1)
+                        worker_y + c_start
+                    else blk: {
+                        @import("../level1/copy.zig").k_copy(
+                            c_len,
+                            worker_y + numeric.cast(usize, if (worker_incy > 0)
+                                numeric.cast(isize, c_start) * worker_incy
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + r_len)) * worker_incy),
+                            worker_incy,
+                            @as([*]Y, &local_y),
+                            1,
+                        );
+
+                        break :blk @as([*]const Y, &local_y);
+                    };
+
+                    k_syr2(
+                        worker_uplo,
+                        r_len,
+                        worker_alpha,
+                        px,
+                        1,
+                        py,
+                        1,
+                        worker_a + r_start + c_start * worker_lda,
+                        worker_lda,
+                    );
+                } else {
+                    const unroll = 2 * int.min(
+                        std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, Y), X, A)) orelse 2,
+                        std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), Y, A)) orelse 2,
+                    );
+
+                    // Off-diagonal tile
+                    var local_x_r: [worker_tile_size]X = undefined;
+                    var local_x_c: [worker_tile_size]X = undefined;
+                    var local_y_r: [worker_tile_size]Y = undefined;
+                    var local_y_c: [worker_tile_size]Y = undefined;
+
+                    const px_r = if (worker_incx == 1)
+                        worker_x + r_start
+                    else blk: {
+                        @import("../level1/copy.zig").k_copy(
+                            r_len,
+                            worker_x + numeric.cast(usize, if (worker_incx > 0)
+                                numeric.cast(isize, r_start) * worker_incx
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx),
+                            worker_incx,
+                            @as([*]X, &local_x_r),
+                            1,
+                        );
+
+                        break :blk @as([*]const X, &local_x_r);
+                    };
+
+                    const px_c = if (worker_incx == 1)
+                        worker_x + c_start
+                    else blk: {
+                        @import("../level1/copy.zig").k_copy(
+                            c_len,
+                            worker_x + numeric.cast(usize, if (worker_incx > 0)
+                                numeric.cast(isize, c_start) * worker_incx
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx),
+                            worker_incx,
+                            @as([*]X, &local_x_c),
+                            1,
+                        );
+
+                        break :blk @as([*]const X, &local_x_c);
+                    };
+
+                    const py_r = if (worker_incy == 1)
+                        worker_y + r_start
+                    else blk: {
+                        @import("../level1/copy.zig").k_copy(
+                            r_len,
+                            worker_y + numeric.cast(usize, if (worker_incy > 0)
+                                numeric.cast(isize, r_start) * worker_incy
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incy),
+                            worker_incy,
+                            @as([*]Y, &local_y_r),
+                            1,
+                        );
+
+                        break :blk @as([*]const Y, &local_y_r);
+                    };
+
+                    const py_c = if (worker_incy == 1)
+                        worker_y + c_start
+                    else blk: {
+                        @import("../level1/copy.zig").k_copy(
+                            c_len,
+                            worker_y + numeric.cast(usize, if (worker_incy > 0)
+                                numeric.cast(isize, c_start) * worker_incy
+                            else
+                                (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incy),
+                            worker_incy,
+                            @as([*]Y, &local_y_c),
+                            1,
+                        );
+
+                        break :blk @as([*]const Y, &local_y_c);
+                    };
+
+                    var j: usize = 0;
+                    while (j < c_len) : (j += 1) {
+                        // temp1 = worker_alpha * py_c[j]
+                        const temp1 = numeric.mul(
+                            worker_alpha,
+                            py_c[j],
+                        );
+
+                        // temp2 = worker_alpha * px_c[j]
+                        const temp2 = numeric.mul(
+                            worker_alpha,
+                            px_c[j],
+                        );
+
+                        var i: usize = 0;
+                        while (i < (r_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp1 * px_r[i + u]
+                                numeric.fma_(
+                                    &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                    temp1,
+                                    px_r[i + u],
+                                    worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                );
+
+                                // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp2 * py_r[i + u]
+                                numeric.fma_(
+                                    &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                    temp2,
+                                    py_r[i + u],
+                                    worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
+                                );
+                            }
                         }
 
-                        ops.add_( // a[j + j * lda] += x[j] * temp1 + y[j] * temp2
-                            &a[scast(u32, j + j * lda)],
-                            a[scast(u32, j + j * lda)],
-                            ops.add(
-                                ops.mul(
-                                    x[scast(u32, j)],
-                                    temp1,
-                                    ctx,
-                                ) catch unreachable,
-                                ops.mul(
-                                    y[scast(u32, j)],
-                                    temp2,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-                    }
-                }
-            } else {
-                var jx: i32 = kx;
-                var jy: i32 = ky;
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
-                    {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * y[jy]
-                            y[scast(u32, jy)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
-                        const temp2: C2 = ops.mul( // temp2 = alpha * x[jx]
-                            x[scast(u32, jx)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
+                        while (i < r_len) : (i += 1) {
+                            // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp1 * px_r[i]
+                            numeric.fma_(
+                                &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                                temp1,
+                                px_r[i],
+                                worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                            );
 
-                        var ix: i32 = kx;
-                        var iy: i32 = ky;
-                        var i: i32 = 0;
-                        while (i < j) : (i += 1) {
-                            ops.add_( // a[i + j * lda] += x[ix] * temp1 + y[iy] * temp2
-                                &a[scast(u32, i + j * lda)],
-                                a[scast(u32, i + j * lda)],
-                                ops.add(
-                                    ops.mul(
-                                        x[scast(u32, ix)],
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        y[scast(u32, iy)],
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-
-                            ix += incx;
-                            iy += incy;
-                        }
-
-                        ops.add_( // a[j + j * lda] += x[jx] * temp1 + y[jy] * temp2
-                            &a[scast(u32, j + j * lda)],
-                            a[scast(u32, j + j * lda)],
-                            ops.add(
-                                ops.mul(
-                                    x[scast(u32, jx)],
-                                    temp1,
-                                    ctx,
-                                ) catch unreachable,
-                                ops.mul(
-                                    y[scast(u32, jy)],
-                                    temp2,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-                    }
-
-                    jx += incx;
-                    jy += incy;
-                }
-            }
-        } else {
-            if (incx == 1 and incy == 1) {
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(u32, j)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(u32, j)], 0, ctx) catch unreachable)
-                    {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * y[j]
-                            y[scast(u32, j)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
-                        const temp2: C2 = ops.mul( // temp2 = alpha * x[j]
-                            x[scast(u32, j)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
-
-                        ops.add_( // a[j + j * lda] += x[j] * temp1 + y[j] * temp2
-                            &a[scast(u32, j + j * lda)],
-                            a[scast(u32, j + j * lda)],
-                            ops.add(
-                                ops.mul(
-                                    x[scast(u32, j)],
-                                    temp1,
-                                    ctx,
-                                ) catch unreachable,
-                                ops.mul(
-                                    y[scast(u32, j)],
-                                    temp2,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        var i: i32 = j + 1;
-                        while (i < n) : (i += 1) {
-                            ops.add_( // a[i + j * lda] += x[i] * temp1 + y[i] * temp2
-                                &a[scast(u32, i + j * lda)],
-                                a[scast(u32, i + j * lda)],
-                                ops.add(
-                                    ops.mul(
-                                        x[scast(u32, i)],
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        y[scast(u32, i)],
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
+                            // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp2 * py_r[i]
+                            numeric.fma_(
+                                &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                                temp2,
+                                py_r[i],
+                                worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
+                            );
                         }
                     }
-                }
-            } else {
-                var jx: i32 = kx;
-                var jy: i32 = ky;
-                var j: i32 = 0;
-                while (j < n) : (j += 1) {
-                    if (ops.ne(x[scast(u32, jx)], 0, ctx) catch unreachable or
-                        ops.ne(y[scast(u32, jy)], 0, ctx) catch unreachable)
-                    {
-                        const temp1: C1 = ops.mul( // temp1 = alpha * y[jx]
-                            y[scast(u32, jy)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
-                        const temp2: C2 = ops.mul( // temp2 = alpha * x[jx]
-                            x[scast(u32, jx)],
-                            alpha,
-                            ctx,
-                        ) catch unreachable;
-
-                        ops.add_( // a[j + j * lda] += x[jx] * temp1 + y[jy] * temp2
-                            &a[scast(u32, j + j * lda)],
-                            a[scast(u32, j + j * lda)],
-                            ops.add(
-                                ops.mul(
-                                    x[scast(u32, jx)],
-                                    temp1,
-                                    ctx,
-                                ) catch unreachable,
-                                ops.mul(
-                                    y[scast(u32, jy)],
-                                    temp2,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable,
-                            ctx,
-                        ) catch unreachable;
-
-                        var ix: i32 = jx;
-                        var iy: i32 = jy;
-                        var i: i32 = j + 1;
-                        while (i < n) : (i += 1) {
-                            ix += incx;
-                            iy += incy;
-
-                            ops.add_( // a[i + j * lda] += x[ix] * temp1 + y[iy] * temp2
-                                &a[scast(u32, i + j * lda)],
-                                a[scast(u32, i + j * lda)],
-                                ops.add(
-                                    ops.mul(
-                                        x[scast(u32, ix)],
-                                        temp1,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ops.mul(
-                                        y[scast(u32, iy)],
-                                        temp2,
-                                        ctx,
-                                    ) catch unreachable,
-                                    ctx,
-                                ) catch unreachable,
-                                ctx,
-                            ) catch unreachable;
-                        }
-                    }
-
-                    jx += incx;
-                    jy += incy;
                 }
             }
         }
-    } else {
-        // Arbitrary precision types not supported yet
-        @compileError("zml.linalg.blas.syr2 not implemented for arbitrary precision types yet");
+    };
+
+    const unroll = 2 * int.min(
+        std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, Y), X, A)) orelse 2,
+        std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), Y, A)) orelse 2,
+    );
+    comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (2 * @sizeOf(X) + 2 * @sizeOf(Y) + @sizeOf(A)));
+    tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
+
+    const k = (n + tile_size - 1) / tile_size;
+    const num_tiles = k * (k + 1) / 2;
+
+    var atomic_counter = std.atomic.Value(usize).init(0);
+    var threads: [options.max_threads]std.Thread = undefined;
+
+    var spawn_err: ?anyerror = null;
+    var spawned_count: usize = 0;
+    var i: usize = 0;
+    while (i < num_threads) : (i += 1) {
+        if (std.Thread.spawn(.{}, Worker.execute, .{
+            eff_uplo,
+            n,
+            alpha,
+            a,
+            lda,
+            x,
+            incx,
+            y,
+            incy,
+            &atomic_counter,
+            tile_size,
+            num_tiles,
+        })) |th| {
+            threads[i] = th;
+            spawned_count += 1;
+        } else |err| {
+            spawn_err = err;
+            break;
+        }
     }
 
-    return;
+    var t: usize = 0;
+    while (t < spawned_count) : (t += 1) {
+        threads[t].join();
+    }
+
+    if (spawn_err) |err|
+        return err;
+}
+
+fn k_syr2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: isize, a: anytype, lda: usize) void {
+    const Al: type = @TypeOf(alpha);
+    const A: type = meta.Child(@TypeOf(a));
+    const X: type = meta.Child(@TypeOf(x));
+    const Y: type = meta.Child(@TypeOf(y));
+
+    // Quick return if possible.
+    if (n == 0 or numeric.eq(alpha, 0))
+        return;
+
+    const kx: isize = if (incx < 0) (-numeric.cast(isize, n) + 1) * incx else 0;
+    const ky: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;
+
+    if (uplo == .upper) {
+        const unroll = 2 * int.min(
+            std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, Y), X, A)) orelse 2,
+            std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), Y, A)) orelse 2,
+        );
+        comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(Y) + @sizeOf(A)));
+        tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
+
+        var tile_i: usize = 0;
+        while (tile_i < n) : (tile_i += tile_size) {
+            const b_len = int.min(tile_size, n - tile_i);
+            var local_x: [tile_size]X = undefined;
+            var local_y: [tile_size]Y = undefined;
+
+            const px = if (incx == 1)
+                x + tile_i
+            else blk: {
+                @import("../level1/copy.zig").k_copy(
+                    b_len,
+                    x + numeric.cast(usize, if (incx > 0)
+                        numeric.cast(isize, tile_i) * incx
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx),
+                    incx,
+                    @as([*]X, &local_x),
+                    1,
+                );
+
+                break :blk @as([*]const X, &local_x);
+            };
+
+            const py = if (incy == 1)
+                y + tile_i
+            else blk: {
+                @import("../level1/copy.zig").k_copy(
+                    b_len,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
+                    @as([*]Y, &local_y),
+                    1,
+                );
+
+                break :blk @as([*]const Y, &local_y);
+            };
+
+            var j: usize = tile_i;
+            var jx: isize = kx + numeric.cast(isize, tile_i) * incx;
+            var jy: isize = ky + numeric.cast(isize, tile_i) * incy;
+            while (j < n) : (j += 1) {
+                if (numeric.ne(x[numeric.cast(usize, jx)], 0) or numeric.ne(y[numeric.cast(usize, jy)], 0)) {
+                    // temp1 = alpha * y[jy]
+                    const temp1 = numeric.mul(
+                        alpha,
+                        y[numeric.cast(usize, jy)],
+                    );
+
+                    // temp2 = alpha * x[jx]
+                    const temp2 = numeric.mul(
+                        alpha,
+                        x[numeric.cast(usize, jx)],
+                    );
+
+                    if (j < tile_i + b_len) {
+                        var i: usize = 0;
+                        while (i < ((j - tile_i) / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp1,
+                                    px[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+
+                                // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp2,
+                                    py[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+                            }
+                        }
+
+                        while (i < j - tile_i) : (i += 1) {
+                            // a[tile_i + i + j * lda] += temp1 * px[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp1,
+                                px[i],
+                                a[tile_i + i + j * lda],
+                            );
+
+                            // a[tile_i + i + j * lda] += temp2 * py[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp2,
+                                py[i],
+                                a[tile_i + i + j * lda],
+                            );
+                        }
+
+                        // a[j + j * lda] += px[j - tile_i] * temp1
+                        numeric.fma_(
+                            &a[j + j * lda],
+                            px[j - tile_i],
+                            temp1,
+                            a[j + j * lda],
+                        );
+
+                        // a[j + j * lda] += py[j - tile_i] * temp2
+                        numeric.fma_(
+                            &a[j + j * lda],
+                            py[j - tile_i],
+                            temp2,
+                            a[j + j * lda],
+                        );
+                    } else {
+                        var i: usize = 0;
+                        while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp1,
+                                    px[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+
+                                // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp2,
+                                    py[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+                            }
+                        }
+
+                        while (i < b_len) : (i += 1) {
+                            // a[tile_i + i + j * lda] += temp1 * px[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp1,
+                                px[i],
+                                a[tile_i + i + j * lda],
+                            );
+
+                            // a[tile_i + i + j * lda] += temp2 * py[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp2,
+                                py[i],
+                                a[tile_i + i + j * lda],
+                            );
+                        }
+                    }
+                }
+
+                jx += incx;
+                jy += incy;
+            }
+        }
+    } else {
+        const unroll = 2 * int.min(
+            std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, Y), X, A)) orelse 2,
+            std.simd.suggestVectorLength(numeric.Fma(numeric.Mul(Al, X), Y, A)) orelse 2,
+        );
+        comptime var tile_size = int.max(1, ((3 * options.l1_size) / 4) / (@sizeOf(X) + @sizeOf(Y) + @sizeOf(A)));
+        tile_size = comptime int.max(1, tile_size -| (tile_size % unroll));
+
+        var tile_i: usize = 0;
+        while (tile_i < n) : (tile_i += tile_size) {
+            const b_len = int.min(tile_size, n - tile_i);
+            var local_x: [tile_size]X = undefined;
+            var local_y: [tile_size]Y = undefined;
+
+            const px = if (incx == 1)
+                x + tile_i
+            else blk: {
+                @import("../level1/copy.zig").k_copy(
+                    b_len,
+                    x + numeric.cast(usize, if (incx > 0)
+                        numeric.cast(isize, tile_i) * incx
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx),
+                    incx,
+                    @as([*]X, &local_x),
+                    1,
+                );
+
+                break :blk @as([*]const X, &local_x);
+            };
+
+            const py = if (incy == 1)
+                y + tile_i
+            else blk: {
+                @import("../level1/copy.zig").k_copy(
+                    b_len,
+                    y + numeric.cast(usize, if (incy > 0)
+                        numeric.cast(isize, tile_i) * incy
+                    else
+                        (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy),
+                    incy,
+                    @as([*]Y, &local_y),
+                    1,
+                );
+
+                break :blk @as([*]const Y, &local_y);
+            };
+
+            var j: usize = 0;
+            var jx: isize = kx;
+            var jy: isize = ky;
+            while (j < tile_i + b_len) : (j += 1) {
+                if (numeric.ne(x[numeric.cast(usize, jx)], 0) or numeric.ne(y[numeric.cast(usize, jy)], 0)) {
+                    // temp1 = alpha * y[jy]
+                    const temp1 = numeric.mul(
+                        alpha,
+                        y[numeric.cast(usize, jy)],
+                    );
+
+                    // temp2 = alpha * x[jx]
+                    const temp2 = numeric.mul(
+                        alpha,
+                        x[numeric.cast(usize, jx)],
+                    );
+
+                    if (j >= tile_i) {
+                        // a[j + j * lda] += px[j - tile_i]) * temp1
+                        numeric.fma_(
+                            &a[j + j * lda],
+                            px[j - tile_i],
+                            temp1,
+                            a[j + j * lda],
+                        );
+
+                        // a[j + j * lda] += py[j - tile_i]) * temp2
+                        numeric.fma_(
+                            &a[j + j * lda],
+                            py[j - tile_i],
+                            temp2,
+                            a[j + j * lda],
+                        );
+
+                        var i: usize = j - tile_i + 1;
+                        while (i < b_len and i % unroll != 0) : (i += 1) {
+                            // a[tile_i + i + j * lda] += temp1 * px[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp1,
+                                px[i],
+                                a[tile_i + i + j * lda],
+                            );
+
+                            // a[tile_i + i + j * lda] += temp2 * py[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp2,
+                                py[i],
+                                a[tile_i + i + j * lda],
+                            );
+                        }
+
+                        while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp1,
+                                    px[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+
+                                // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp2,
+                                    py[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+                            }
+                        }
+
+                        while (i < b_len) : (i += 1) {
+                            // a[tile_i + i + j * lda] += temp1 * px[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp1,
+                                px[i],
+                                a[tile_i + i + j * lda],
+                            );
+
+                            // a[tile_i + i + j * lda] += temp2 * py[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp2,
+                                py[i],
+                                a[tile_i + i + j * lda],
+                            );
+                        }
+                    } else {
+                        var i: usize = 0;
+                        while (i < (b_len / unroll) * unroll) : (i += unroll) {
+                            inline for (0..unroll) |u| {
+                                // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp1,
+                                    px[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+
+                                // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
+                                numeric.fma_(
+                                    &a[tile_i + i + u + j * lda],
+                                    temp2,
+                                    py[i + u],
+                                    a[tile_i + i + u + j * lda],
+                                );
+                            }
+                        }
+
+                        while (i < b_len) : (i += 1) {
+                            // a[tile_i + i + j * lda] += temp1 * px[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp1,
+                                px[i],
+                                a[tile_i + i + j * lda],
+                            );
+
+                            // a[tile_i + i + j * lda] += temp2 * py[i]
+                            numeric.fma_(
+                                &a[tile_i + i + j * lda],
+                                temp2,
+                                py[i],
+                                a[tile_i + i + j * lda],
+                            );
+                        }
+                    }
+                }
+
+                jx += incx;
+                jy += incy;
+            }
+        }
+    }
 }

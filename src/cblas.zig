@@ -356,12 +356,12 @@ export fn cblas_dsyr(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f6
     return zsl.linalg.blas.syr(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f64, @ptrCast(@alignCast(x))), incx, @as([*]f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
 }
 
-// export fn cblas_ssyr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, y: [*c]const f32, incy: isize, a: [*c]f32, lda: isize) void {
-//     return zsl.linalg.blas.ssyr2(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, y, incy, @ptrCast(@alignCast(a)), lda);
-// }
-// export fn cblas_dsyr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: [*c]const f64, incx: isize, y: [*c]const f64, incy: isize, a: [*c]f64, lda: isize) void {
-//     return zsl.linalg.blas.dsyr2(layout.to_zsl(), uplo.to_zsl(), n, alpha, x, incx, y, incy, @ptrCast(@alignCast(a)), lda);
-// }
+export fn cblas_ssyr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f32, x: [*c]const f32, incx: isize, y: [*c]const f32, incy: isize, a: [*c]f32, lda: isize) void {
+    return zsl.linalg.blas.syr2(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f32, @ptrCast(@alignCast(x))), incx, @as([*]const f32, @ptrCast(@alignCast(y))), incy, @as([*]f32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
+}
+export fn cblas_dsyr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f64, x: [*c]const f64, incx: isize, y: [*c]const f64, incy: isize, a: [*c]f64, lda: isize) void {
+    return zsl.linalg.blas.syr2(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f64, @ptrCast(@alignCast(x))), incx, @as([*]const f64, @ptrCast(@alignCast(y))), incy, @as([*]f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
+}
 
 // export fn cblas_strmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: [*c]const f32, lda: isize, x: [*c]f32, incx: isize) void {
 //     return zsl.linalg.blas.strmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(a)), lda, x, incx);

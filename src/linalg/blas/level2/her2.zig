@@ -30,7 +30,7 @@ const linalg = @import("../../../linalg.zig");
 /// * `layout` (`Layout`): Specifies whether two-dimensional array storage is
 ///   col-major or row-major.
 /// * `uplo` (`Uplo`): Specifies whether the upper or lower triangular part of
-///   the Hermitian packed matrix `A` is used.
+///   the Hermitian matrix `A` is used.
 /// * `n` (`usize`): Specifies the size of the matrix `A`.
 /// * `alpha` (`anytype`): Specifies the numeric `alpha`.
 /// * `x` (`anytype`): Many-item pointer, size at least
@@ -54,7 +54,7 @@ const linalg = @import("../../../linalg.zig");
 ///     * N >= 2: use exactly N threads, clamped by
 ///       std.Thread.getCpuCount() and options.max_threads as a hard safety
 ///       ceiling. parallel_threshold is ignored.
-///   * parallel_threshold (usize = 4_194_304 / @sizeOf(meta.Child(A))):
+///   * parallel_threshold (usize = 2_097_152 / @sizeOf(meta.Child(A))):
 ///     Minimum number of matrix elements (`n * n`) required to trigger
 ///     multithreaded execution.
 ///
@@ -77,7 +77,7 @@ pub fn her2(
     lda: usize,
     opts: struct {
         num_threads: usize = 0,
-        parallel_threshold: usize = 4_194_304 / @sizeOf(meta.Child(@TypeOf(a))),
+        parallel_threshold: usize = 2_097_152 / @sizeOf(meta.Child(@TypeOf(a))),
     },
 ) !void {
     const Al: type = @TypeOf(alpha);
