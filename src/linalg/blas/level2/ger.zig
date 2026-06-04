@@ -211,10 +211,7 @@ fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype
         var local_x: [tile_size]X = undefined;
 
         const px = if (incx == 1)
-            x + numeric.cast(usize, if (incx > 0)
-                numeric.cast(isize, tile_i) * incx
-            else
-                (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incx)
+            x + tile_i
         else blk: {
             @import("../level1/copy.zig").k_copy(
                 b_len,
@@ -227,7 +224,7 @@ fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype
                 1,
             );
 
-            break :blk @as([*]X, &local_x);
+            break :blk @as([*]const X, &local_x);
         };
 
         var jy: isize = if (incy < 0) (-numeric.cast(isize, n) + 1) * incy else 0;

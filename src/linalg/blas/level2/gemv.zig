@@ -268,10 +268,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
             var local_y: [tile_size]Y = undefined;
 
             const py = if (incy == 1)
-                y + numeric.cast(usize, if (incy > 0)
-                    numeric.cast(isize, tile_i) * incy
-                else
-                    (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incy)
+                y + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -353,10 +350,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
             var local_x: [tile_size]X = undefined;
 
             const px = if (incx == 1)
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, m) + numeric.cast(isize, tile_i + b_len)) * incx)
+                x + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -369,7 +363,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
                     1,
                 );
 
-                break :blk @as([*]X, &local_x);
+                break :blk @as([*]const X, &local_x);
             };
 
             var jy: isize = ky;

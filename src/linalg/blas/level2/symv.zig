@@ -192,10 +192,7 @@ pub fn symv(
                     var local_y: [worker_tile_size]Y = .{numeric.zero(Y)} ** worker_tile_size;
 
                     const px = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, r_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                        worker_x + r_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             r_len,
@@ -246,10 +243,7 @@ pub fn symv(
                     var local_y_c: [worker_tile_size]Y = .{numeric.zero(Y)} ** worker_tile_size;
 
                     const px_r = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, r_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                        worker_x + r_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             r_len,
@@ -266,10 +260,7 @@ pub fn symv(
                     };
 
                     const px_c = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, c_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx)
+                        worker_x + c_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             c_len,
@@ -447,10 +438,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
             var local_y: [tile_size]Y = undefined;
 
             const px = if (incx == 1)
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx)
+                x + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -463,14 +451,11 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     1,
                 );
 
-                break :blk @as([*]X, &local_x);
+                break :blk @as([*]const X, &local_x);
             };
 
             const py = if (incy == 1)
-                y + numeric.cast(usize, if (incy > 0)
-                    numeric.cast(isize, tile_i) * incy
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy)
+                y + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -645,10 +630,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
             var local_y: [tile_size]Y = undefined;
 
             const px = if (incx == 1)
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx)
+                x + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -661,14 +643,11 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     1,
                 );
 
-                break :blk @as([*]X, &local_x);
+                break :blk @as([*]const X, &local_x);
             };
 
             const py = if (incy == 1)
-                y + numeric.cast(usize, if (incy > 0)
-                    numeric.cast(isize, tile_i) * incy
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy)
+                y + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,

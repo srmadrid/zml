@@ -183,10 +183,7 @@ pub fn her2(
                     var local_y: [worker_tile_size]Y = undefined;
 
                     const px = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, r_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                        worker_x + r_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             r_len,
@@ -203,10 +200,7 @@ pub fn her2(
                     };
 
                     const py = if (worker_incy == 1)
-                        worker_y + numeric.cast(usize, if (worker_incy > 0)
-                            numeric.cast(isize, c_start) * worker_incy
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + r_len)) * worker_incy)
+                        worker_y + c_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             c_len,
@@ -247,10 +241,7 @@ pub fn her2(
                     var local_y_c: [worker_tile_size]Y = undefined;
 
                     const px_r = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, r_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                        worker_x + r_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             r_len,
@@ -267,10 +258,7 @@ pub fn her2(
                     };
 
                     const px_c = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, c_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx)
+                        worker_x + c_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             c_len,
@@ -287,10 +275,7 @@ pub fn her2(
                     };
 
                     const py_r = if (worker_incy == 1)
-                        worker_y + numeric.cast(usize, if (worker_incy > 0)
-                            numeric.cast(isize, r_start) * worker_incy
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incy)
+                        worker_y + r_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             r_len,
@@ -307,10 +292,7 @@ pub fn her2(
                     };
 
                     const py_c = if (worker_incy == 1)
-                        worker_y + numeric.cast(usize, if (worker_incy > 0)
-                            numeric.cast(isize, c_start) * worker_incy
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incy)
+                        worker_y + c_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             c_len,
@@ -497,10 +479,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
             var local_y: [tile_size]Y = undefined;
 
             const px = if (incx == 1)
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx)
+                x + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -517,10 +496,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
             };
 
             const py = if (incy == 1)
-                y + numeric.cast(usize, if (incy > 0)
-                    numeric.cast(isize, tile_i) * incy
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy)
+                y + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -721,10 +697,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
             var local_y: [tile_size]Y = undefined;
 
             const px = if (incx == 1)
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx)
+                x + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -741,10 +714,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
             };
 
             const py = if (incy == 1)
-                y + numeric.cast(usize, if (incy > 0)
-                    numeric.cast(isize, tile_i) * incy
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incy)
+                y + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,

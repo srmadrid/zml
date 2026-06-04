@@ -161,10 +161,7 @@ pub fn syr(
                     var local_x: [worker_tile_size]X = undefined;
 
                     const px = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, r_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                        worker_x + r_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             r_len,
@@ -197,10 +194,7 @@ pub fn syr(
                     var local_x_c: [worker_tile_size]X = undefined;
 
                     const px_r = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, r_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, r_start + r_len)) * worker_incx)
+                        worker_x + r_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             r_len,
@@ -213,14 +207,11 @@ pub fn syr(
                             1,
                         );
 
-                        break :blk @as([*]X, &local_x_r);
+                        break :blk @as([*]const X, &local_x_r);
                     };
 
                     const px_c = if (worker_incx == 1)
-                        worker_x + numeric.cast(usize, if (worker_incx > 0)
-                            numeric.cast(isize, c_start) * worker_incx
-                        else
-                            (-numeric.cast(isize, worker_n) + numeric.cast(isize, c_start + c_len)) * worker_incx)
+                        worker_x + c_start
                     else blk: {
                         @import("../level1/copy.zig").k_copy(
                             c_len,
@@ -233,7 +224,7 @@ pub fn syr(
                             1,
                         );
 
-                        break :blk @as([*]X, &local_x_c);
+                        break :blk @as([*]const X, &local_x_c);
                     };
 
                     var j: usize = 0;
@@ -337,10 +328,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
             var local_x: [tile_size]X = undefined;
 
             const px = if (incx == 1)
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx)
+                x + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
@@ -436,10 +424,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
             var local_x: [tile_size]X = undefined;
 
             const px = if (incx == 1)
-                x + numeric.cast(usize, if (incx > 0)
-                    numeric.cast(isize, tile_i) * incx
-                else
-                    (-numeric.cast(isize, n) + numeric.cast(isize, tile_i + b_len)) * incx)
+                x + tile_i
             else blk: {
                 @import("../level1/copy.zig").k_copy(
                     b_len,
