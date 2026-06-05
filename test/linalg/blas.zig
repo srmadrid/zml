@@ -34,7 +34,7 @@ test {
         _ = @import("blas/level2/symv.zig");
         _ = @import("blas/level2/syr.zig");
         _ = @import("blas/level2/syr2.zig");
-        // _ = @import("blas/level2/trmv.zig");
+        _ = @import("blas/level2/trmv.zig");
         // _ = @import("blas/level2/trsv.zig");
     }
 

@@ -25,7 +25,7 @@ pub const her2 = @import("blas/level2/her2.zig").her2;
 pub const symv = @import("blas/level2/symv.zig").symv;
 pub const syr = @import("blas/level2/syr.zig").syr;
 pub const syr2 = @import("blas/level2/syr2.zig").syr2;
-// pub const trmv = @import("blas/level2/trmv.zig").trmv;
+pub const trmv = @import("blas/level2/trmv.zig").trmv;
 // pub const trsv = @import("blas/level2/trsv.zig").trsv;
 
 // Level 3

@@ -363,18 +363,38 @@ export fn cblas_dsyr2(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, n: isize, alpha: f
     return zsl.linalg.blas.syr2(layout.to_zsl(), uplo.to_zsl(), zsl.numeric.cast(usize, n), alpha, @as([*]const f64, @ptrCast(@alignCast(x))), incx, @as([*]const f64, @ptrCast(@alignCast(y))), incy, @as([*]f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), .{}) catch {};
 }
 
-// export fn cblas_strmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: [*c]const f32, lda: isize, x: [*c]f32, incx: isize) void {
-//     return zsl.linalg.blas.strmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_dtrmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: [*c]const f64, lda: isize, x: [*c]f64, incx: isize) void {
-//     return zsl.linalg.blas.dtrmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_ctrmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ctrmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
-// export fn cblas_ztrmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
-//     return zsl.linalg.blas.ztrmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(a)), lda, x, incx);
-// }
+export fn cblas_strmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: [*c]const f32, lda: isize, x: [*c]f32, incx: isize) void {
+    const work: ?[]f32 = if (@divTrunc(n * n + n, 2) > 524_288)
+        std.heap.c_allocator.alloc(f32, zsl.numeric.cast(usize, n)) catch @panic("libblas.so: work allocation failed in strmv")
+    else
+        null;
+    defer if (work) |w| std.heap.c_allocator.free(w);
+    return zsl.linalg.blas.trmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), zsl.numeric.cast(usize, n), @as([*]const f32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]f32, @ptrCast(@alignCast(x))), incx, .{ .work = if (work) |w| w.ptr else null }) catch {};
+}
+export fn cblas_dtrmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: [*c]const f64, lda: isize, x: [*c]f64, incx: isize) void {
+    const work: ?[]f64 = if (@divTrunc(n * n + n, 2) > 262_144)
+        std.heap.c_allocator.alloc(f64, zsl.numeric.cast(usize, n)) catch @panic("libblas.so: work allocation failed in strmv")
+    else
+        null;
+    defer if (work) |w| std.heap.c_allocator.free(w);
+    return zsl.linalg.blas.trmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), zsl.numeric.cast(usize, n), @as([*]const f64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]f64, @ptrCast(@alignCast(x))), incx, .{ .work = if (work) |w| w.ptr else null }) catch {};
+}
+export fn cblas_ctrmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
+    const work: ?[]zsl.cf32 = if (@divTrunc(n * n + n, 2) > 262_144)
+        std.heap.c_allocator.alloc(zsl.cf32, zsl.numeric.cast(usize, n)) catch @panic("libblas.so: work allocation failed in strmv")
+    else
+        null;
+    defer if (work) |w| std.heap.c_allocator.free(w);
+    return zsl.linalg.blas.trmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), zsl.numeric.cast(usize, n), @as([*]const zsl.cf32, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]zsl.cf32, @ptrCast(@alignCast(x))), incx, .{ .work = if (work) |w| w.ptr else null }) catch {};
+}
+export fn cblas_ztrmv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: *const anyopaque, lda: isize, x: *anyopaque, incx: isize) void {
+    const work: ?[]zsl.cf64 = if (@divTrunc(n * n + n, 2) > 131_072)
+        std.heap.c_allocator.alloc(zsl.cf64, zsl.numeric.cast(usize, n)) catch @panic("libblas.so: work allocation failed in strmv")
+    else
+        null;
+    defer if (work) |w| std.heap.c_allocator.free(w);
+    return zsl.linalg.blas.trmv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), zsl.numeric.cast(usize, n), @as([*]const zsl.cf64, @ptrCast(@alignCast(a))), zsl.numeric.cast(usize, lda), @as([*]zsl.cf64, @ptrCast(@alignCast(x))), incx, .{ .work = if (work) |w| w.ptr else null }) catch {};
+}
 
 // export fn cblas_strsv(layout: CBLAS_LAYOUT, uplo: CBLAS_UPLO, transa: CBLAS_TRANSPOSE, diag: CBLAS_DIAG, n: isize, a: [*c]const f32, lda: isize, x: [*c]f32, incx: isize) void {
 //     return zsl.linalg.blas.strsv(layout.to_zsl(), uplo.to_zsl(), transa.to_zsl(), diag.to_zsl(), n, @ptrCast(@alignCast(a)), lda, x, incx);

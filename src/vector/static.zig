@@ -37,6 +37,18 @@ pub fn Static(len_: comptime_int, N: type) type {
             return .{ .data = @splat(value) };
         }
 
+        /// Initializes a new `vector.Static(len, N)`, with all elements set
+        /// from the specified values.
+        ///
+        /// ## Arguments
+        /// * `values` (`[len]N`): The values to fill the vector with.
+        ///
+        /// ## Returns
+        /// `vector.Static(len, N)`: The newly initialized vector.
+        pub fn initArray(values: [len]N) vector.Static(len, N) {
+            return .{ .data = values };
+        }
+
         /// Initializes a new `vector.Static(len, N)`, with all elements set by
         /// calling the specified function with the given arguments.
         ///
