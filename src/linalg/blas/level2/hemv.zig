@@ -93,7 +93,7 @@ pub fn hemv(
         !meta.isManyItemPointer(A) or !meta.isNumeric(meta.Child(A)) or
         !meta.isManyItemPointer(X) or !meta.isNumeric(meta.Child(X)) or
         !meta.isManyItemPointer(Y) or meta.isConstPointer(Y) or !meta.isNumeric(meta.Child(Y)))
-        @compileError("zsl.linalg.blas.hemv: alpha and beta must be numerics, ap and x must be many-item pointers to numerics, and y must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\ta: " ++ @typeName(A) ++ "\n\tx: " ++ @typeName(X) ++ "\n\tbeta: " ++ @typeName(Be) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
+        @compileError("zsl.linalg.blas.hemv: alpha and beta must be numerics, a and x must be many-item pointers to numerics, and y must be a mutable many-item pointer to numerics, got \n\talpha: " ++ @typeName(Al) ++ "\n\ta: " ++ @typeName(A) ++ "\n\tx: " ++ @typeName(X) ++ "\n\tbeta: " ++ @typeName(Be) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
     A = meta.Child(A);
     X = meta.Child(X);

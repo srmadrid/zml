@@ -163,7 +163,7 @@ pub fn Dense(N: type) type {
         /// `void`
         pub fn deinit(self: *vector.Dense(N), allocator: std.mem.Allocator) void {
             if (self.flags.owns_data) {
-                allocator.free(self.data[0..self.len]);
+                allocator.free(self.data[0 .. self.len * numeric.cast(usize, int.abs(self.inc))]);
             }
 
             self.* = undefined;

@@ -18,6 +18,9 @@ pub fn Mul(comptime X: type, comptime Y: type) type {
 
 /// Performs multiplication between a vector and a numeric.
 ///
+/// For two static vectors, the allocator is not used and can be set to
+/// undefined, and the function cannot return an error.
+///
 /// ## Signature
 /// ```zig
 /// vector.mul(allocator: std.mem.Allocator, x: X, y: Y) !vector.Mul(X, Y)

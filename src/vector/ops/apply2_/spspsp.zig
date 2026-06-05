@@ -4,55 +4,84 @@ const vector = @import("../../../vector.zig");
 const int = @import("../../../int.zig");
 
 pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) !void {
-    const nnz = int.min(x.nnz + y.nnz, x.len);
+    var nnz: usize = 0;
+    var cx: usize = 0;
+    var cy: usize = 0;
+    while (cx < x.nnz and cy < y.nnz) {
+        if (x.idx[cx] == y.idx[cy]) {
+            nnz += 1;
+            cx += 1;
+            cy += 1;
+        } else if (x.idx[cx] < y.idx[cy]) {
+            nnz += 1;
+            cx += 1;
+        } else {
+            nnz += 1;
+            cy += 1;
+        }
+    }
+
+    nnz += (x.nnz - cx) + (y.nnz - cy);
 
     if (o._dlen < nnz or o._ilen < nnz)
         return vector.Error.DimensionMismatch;
 
-    o.nnz = 0;
+    o.nnz = nnz;
 
-    var ix: usize = 0;
-    var iy: usize = 0;
-    while (ix < x.nnz and iy < y.nnz) {
-        if (x.idx[ix] == y.idx[iy]) {
-            op_(&o.data[o.nnz], x.data[ix], y.data[iy]);
+    var ix: usize = x.nnz;
+    var iy: usize = y.nnz;
+    var io: usize = nnz;
+    while (ix > 0 and iy > 0) {
+        const xi = ix - 1;
+        const yi = iy - 1;
+        const out_i = io - 1;
 
-            o.idx[o.nnz] = x.idx[ix];
-            o.nnz += 1;
-            ix += 1;
-            iy += 1;
-        } else if (x.idx[ix] < y.idx[iy]) {
-            numeric.set(&o.data[o.nnz], x.data[ix]);
+        if (x.idx[xi] == y.idx[yi]) {
+            op_(&o.data[out_i], x.data[xi], y.data[yi]);
+            o.idx[out_i] = x.idx[xi];
+            ix -= 1;
+            iy -= 1;
+            io -= 1;
+        } else if (x.idx[xi] > y.idx[yi]) {
+            numeric.set(&o.data[out_i], x.data[xi]);
 
-            o.idx[o.nnz] = x.idx[ix];
-            o.nnz += 1;
-            ix += 1;
+            o.idx[out_i] = x.idx[xi];
+            ix -= 1;
+            io -= 1;
         } else {
             if (comptime op_ == numeric.add_)
-                numeric.set(&o.data[o.nnz], y.data[iy])
+                numeric.set(&o.data[out_i], y.data[yi])
             else
-                numeric.set(&o.data[o.nnz], numeric.neg(y.data[iy]));
+                numeric.set(&o.data[out_i], numeric.neg(y.data[yi]));
 
-            o.idx[o.nnz] = y.idx[iy];
-            o.nnz += 1;
-            iy += 1;
+            o.idx[out_i] = y.idx[yi];
+            iy -= 1;
+            io -= 1;
         }
     }
 
-    while (ix < x.nnz) : (ix += 1) {
-        numeric.set(&o.data[o.nnz], x.data[ix]);
+    while (ix > 0) {
+        const xi = ix - 1;
+        const oi = io - 1;
 
-        o.idx[o.nnz] = x.idx[ix];
-        o.nnz += 1;
+        numeric.set(&o.data[oi], x.data[xi]);
+
+        o.idx[oi] = x.idx[xi];
+        ix -= 1;
+        io -= 1;
     }
 
-    while (iy < y.nnz) : (iy += 1) {
-        if (comptime op_ == numeric.add_)
-            numeric.set(&o.data[o.nnz], y.data[iy])
-        else
-            numeric.set(&o.data[o.nnz], numeric.neg(y.data[iy]));
+    while (iy > 0) {
+        const yi = iy - 1;
+        const oi = io - 1;
 
-        o.idx[o.nnz] = y.idx[iy];
-        o.nnz += 1;
+        if (comptime op_ == numeric.add_)
+            numeric.set(&o.data[oi], y.data[yi])
+        else
+            numeric.set(&o.data[oi], numeric.neg(y.data[yi]));
+
+        o.idx[oi] = y.idx[yi];
+        iy -= 1;
+        io -= 1;
     }
 }

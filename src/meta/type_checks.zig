@@ -154,6 +154,20 @@ pub fn isVector(comptime T: type) bool {
     }
 }
 
+/// Checks if the input type is an instance of a static vector.
+///
+/// ## Arguments
+/// * `T` (`comptime type`): The type to check.
+///
+/// ## Returns
+/// `bool`: `true` if the type is a static vector, `false` otherwise.
+pub fn isStaticVector(comptime T: type) bool {
+    switch (comptime @typeInfo(T)) {
+        .@"struct" => return @hasDecl(T, "is_vector") and T.is_vector and @hasDecl(T, "is_static") and T.is_static,
+        else => return false,
+    }
+}
+
 /// Checks if the input type is an instance of a dense vector.
 ///
 /// ## Arguments

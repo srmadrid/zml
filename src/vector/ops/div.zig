@@ -17,6 +17,9 @@ pub fn Div(comptime X: type, comptime Y: type) type {
 
 /// Performs division of vector by a numeric.
 ///
+/// For two static vectors, the allocator is not used and can be set to
+/// undefined, and the function cannot return an error.
+///
 /// ## Signature
 /// ```zig
 /// vector.div(allocator: std.mem.Allocator, x: X, y: Y) !vector.Div(X, Y)

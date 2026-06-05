@@ -140,6 +140,7 @@ pub const NumericType = enum {
 };
 
 pub const VectorType = enum {
+    static,
     dense,
     sparse,
     numeric, // Fallback for numeric types that are not vectors
@@ -288,6 +289,9 @@ pub inline fn numericType(comptime N: type) NumericType {
 /// ## Returns
 /// `meta.VectorType`: The corresponding `meta.VectorType` enum value.
 pub fn vectorType(comptime V: type) VectorType {
+    if (comptime isStaticVector(V))
+        return .static;
+
     if (comptime isDenseVector(V))
         return .dense;
 
@@ -419,6 +423,7 @@ pub const isSimdVector = type_checks.isSimdVector;
 pub const isNumeric = type_checks.isNumeric;
 pub const isCustomNumeric = type_checks.isCustomNumeric;
 pub const isVector = type_checks.isVector;
+pub const isStaticVector = type_checks.isStaticVector;
 pub const isDenseVector = type_checks.isDenseVector;
 pub const isSparseVector = type_checks.isSparseVector;
 pub const isMatrix = type_checks.isMatrix;
@@ -463,7 +468,7 @@ pub const isUnsigned = type_checks.isUnsigned;
 /// `type`: The widened or stable type suitable for loop accumulation.
 pub fn Accumulator(comptime N: type) type {
     comptime if (!isNumeric(N))
-        @compileError("zsl.numeric.Accumulator: N must be numeric, got \n\tT: " ++ @typeName(N) ++ "\n");
+        @compileError("zsl.meta.Accumulator: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
     switch (comptime numericType(N)) {
         .bool => return usize,
@@ -499,56 +504,44 @@ pub fn Identity(comptime T: type) type {
     return T;
 }
 
-/// Returns the scalar type of a given numeric type, vector, matrix or array.
-///
-/// This function returns the scalar type of a given numeric type, vector,
-/// matrix, or array. If the input type is a vector, a matrix or an array, it
-/// returns the element type (equivalent to `meta.Numeric`). If the input type
-/// is a numeric type, it returns the type itself, unless it is a complex type,
-/// in which case it returns the scalar type of the complex type.
+/// Returns the scalar type of a given numeric type.
 ///
 /// ## Arguments
-/// * `T` (`comptime type`): The type to get the scalar type of. Must be a
-/// supported numeric type, vector, matrix, or array.
+/// * `N` (`comptime type`): The type to get the scalar type of. Must be a
+///   numeric type.
 ///
 /// ## Returns
 /// `type`: The scalar type of the input type.
-pub fn Scalar(comptime T: type) type {
-    if (comptime !isSupportedType(T))
-        @compileError("zsl.meta.Scalar: " ++ @typeName(T) ++ " is not a supported type");
+pub fn Scalar(comptime N: type) type {
+    comptime if (!isNumeric(N))
+        @compileError("zsl.meta.Scalar: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
-    switch (comptime domain(T)) {
-        .numeric => switch (comptime numericType(T)) {
-            .bool => return T,
-            .int => return T,
-            .float => return T,
-            .dyadic => return T,
-            .complex => switch (comptime T) {
-                std.math.Complex(f16) => return f16,
-                std.math.Complex(f32) => return f32,
-                std.math.Complex(f64) => return f64,
-                std.math.Complex(f80) => return f80,
-                std.math.Complex(f128) => return f128,
-                std.math.Complex(comptime_float) => return comptime_float,
-                else => return T.Scalar,
-            },
-            .custom => {
-                if (comptime !@hasDecl(T, "Scalar"))
-                    @compileError("zsl.meta.Scalar: custom numeric type " ++ @typeName(T) ++ " must have a `Scalar` declaration");
-
-                return T.Scalar;
-            },
+    switch (comptime numericType(N)) {
+        .bool => return N,
+        .int => return N,
+        .float => return N,
+        .dyadic => return N,
+        .complex => switch (comptime N) {
+            std.math.Complex(f16) => return f16,
+            std.math.Complex(f32) => return f32,
+            std.math.Complex(f64) => return f64,
+            std.math.Complex(f80) => return f80,
+            std.math.Complex(f128) => return f128,
+            std.math.Complex(comptime_float) => return comptime_float,
+            else => return N.Scalar,
         },
-        .vector => return Numeric(T),
-        .matrix => return Numeric(T),
-        .array => return Numeric(T),
-        .expression => return T,
+        .custom => {
+            if (comptime !@hasDecl(N, "Scalar"))
+                @compileError("zsl.meta.Scalar: custom numeric type " ++ @typeName(N) ++ " must have a `Scalar` declaration");
+
+            return N.Scalar;
+        },
     }
 }
 
 pub fn Real(comptime N: type) type {
-    if (comptime !isNumeric(N))
-        @compileError("zsl.meta.Real: " ++ @typeName(N) ++ " is not a numeric type");
+    comptime if (!isNumeric(N))
+        @compileError("zsl.meta.Real: N must be a numeric type, got \n\tN = " ++ @typeName(N) ++ "\n");
 
     switch (comptime numericType(N)) {
         .bool => return N,
@@ -576,14 +569,9 @@ pub fn Real(comptime N: type) type {
 /// Returns the underlying numeric type of a given numeric type, vector, matrix
 /// or array.
 ///
-/// This function returns the underlying numeric type of a given numeric type,
-/// vector, matrix or array. If the input type is a vector, matrix or array, it
-/// returns the element type. If the input type is a numeric type, it returns
-/// the type itself.
-///
 /// ## Arguments
 /// * `T` (`comptime type`): The type to get the numeric type of. Must be a
-/// supported numeric type, vector, matrix, or array.
+///   numeric type, vector, matrix, or array.
 ///
 /// ## Returns
 /// `type`: The underlying numeric type of the input type.
@@ -594,6 +582,7 @@ pub fn Numeric(comptime T: type) type {
     switch (comptime domain(T)) {
         .numeric => return T,
         .vector => switch (comptime vectorType(T)) {
+            .static => return T.Numeric,
             .dense => return T.Numeric,
             .sparse => return T.Numeric,
             .numeric => return T,

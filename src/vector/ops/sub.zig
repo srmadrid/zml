@@ -17,6 +17,9 @@ pub fn Sub(comptime X: type, comptime Y: type) type {
 
 /// Performs subtraction between two vectors.
 ///
+/// For two static vectors, the allocator is not used and can be set to
+/// undefined, and the function cannot return an error.
+///
 /// ## Signature
 /// ```zig
 /// vector.sub(allocator: std.mem.Allocator, x: X, y: Y) !vector.Sub(X, Y)

@@ -1,5 +1,7 @@
 //! Namespace for vector types and operations.
 
+const static = @import("vector/static.zig");
+pub const Static = static.Static;
 const dense = @import("vector/dense.zig");
 pub const Dense = dense.Dense;
 const sparse = @import("vector/sparse.zig");

@@ -17,6 +17,9 @@ pub fn Add(comptime X: type, comptime Y: type) type {
 
 /// Performs addition between two vectors.
 ///
+/// For two static vectors, the allocator is not used and can be set to
+/// undefined, and the function cannot return an error.
+///
 /// ## Signature
 /// ```zig
 /// vector.add(allocator: std.mem.Allocator, x: X, y: Y) !vector.Add(X, Y)

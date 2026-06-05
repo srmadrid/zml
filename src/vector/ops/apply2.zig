@@ -26,17 +26,32 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
         @compileError("zsl.vector.apply2: calling op with arguments of types X and Y must return a numeric, got\n\tR = " ++ @typeName(R) ++ "\n");
 
     switch (comptime meta.vectorType(X)) {
+        .static => switch (comptime meta.vectorType(Y)) {
+            .static => {
+                if (comptime X.len != Y.len)
+                    @compileError("zsl.vector.apply2: static vectors x and y must have equal compile time lengths, got\n\tx: " ++
+                        @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n");
+
+                return vector.Static(X.len, R);
+            },
+            .dense => return vector.Dense(R),
+            .sparse => return vector.Dense(R),
+            .numeric => return vector.Static(X.len, R),
+        },
         .dense => switch (comptime meta.vectorType(Y)) {
+            .static => return vector.Dense(R),
             .dense => return vector.Dense(R),
             .sparse => return vector.Dense(R),
             .numeric => return vector.Dense(R),
         },
         .sparse => switch (comptime meta.vectorType(Y)) {
+            .static => return vector.Dense(R),
             .dense => return vector.Dense(R),
             .sparse => return vector.Sparse(R),
             .numeric => return vector.Sparse(R),
         },
         .numeric => switch (comptime meta.vectorType(Y)) {
+            .static => return vector.Static(Y.len, R),
             .dense => return vector.Dense(R),
             .sparse => return vector.Sparse(R),
             .numeric => unreachable,
@@ -46,6 +61,9 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 
 /// Applies a binary operation elementwise between two vectors, or between a
 /// vector and a numeric.
+///
+/// For two static vectors, the allocator is not used and can be set to
+/// undefined, and the function cannot return an error unless op can.
 ///
 /// For two sparse vectors, or a sparse vector and a numeric, the operation is
 /// only applied to the indices where at least one of the vectors has a non-zero
@@ -83,23 +101,23 @@ pub fn apply2(allocator: std.mem.Allocator, x: anytype, y: anytype, comptime op:
         return vector.Error.DimensionMismatch;
 
     var result = switch (comptime meta.vectorType(R)) {
+        .static => R.init,
         .dense => try R.init(allocator, x_len),
         .sparse => try R.init(allocator, x_len, (if (comptime meta.isSparseVector(X)) x.nnz else 0) + (if (comptime meta.isSparseVector(Y)) y.nnz else 0)),
-        else => unreachable,
+        .numeric => unreachable,
     };
 
     vecops.apply2_(
         &result,
         x,
         y,
-        if (comptime op == numeric.add)
-            numeric.add_
-        else if (comptime op == numeric.sub)
-            numeric.sub_
-        else if (comptime op == numeric.mul)
-            numeric.mul_
-        else
-            numeric.div_,
+        switch (comptime op) {
+            numeric.add => numeric.add_,
+            numeric.sub => numeric.sub_,
+            numeric.mul => numeric.mul_,
+            numeric.div => numeric.div_,
+            else => unreachable,
+        },
     ) catch unreachable;
 
     return result;
