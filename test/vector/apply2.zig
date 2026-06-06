@@ -5,6 +5,21 @@ const zsl = @import("zsl");
 const tzsl = @import("../zsl.zig");
 
 const combinations = [_][2]type{
+    // __stst
+    .{ tzsl.vector.Static(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
+
+    // __stde
+    .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
+
+    // __stsp
+    .{ tzsl.vector.Static(zsl.cf64), zsl.vector.Sparse(zsl.cf64) },
+
+    // __stnu
+    .{ tzsl.vector.Static(zsl.cf64), zsl.cf64 },
+
+    // __dest
+    .{ zsl.vector.Dense(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
+
     // __dede
     .{ zsl.vector.Dense(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
 
@@ -14,8 +29,14 @@ const combinations = [_][2]type{
     // __denu
     .{ zsl.vector.Dense(zsl.cf64), zsl.cf64 },
 
+    // __spst
+    .{ zsl.vector.Sparse(zsl.cf64), tzsl.vector.Static(zsl.cf64) },
+
     // __spde
     .{ zsl.vector.Sparse(zsl.cf64), zsl.vector.Dense(zsl.cf64) },
+
+    // __nust
+    .{ zsl.cf64, tzsl.vector.Static(zsl.cf64) },
 
     // __nude
     .{ zsl.cf64, zsl.vector.Dense(zsl.cf64) },
@@ -36,25 +57,46 @@ const len_limits: [3]usize = .{
     33,
 };
 
+const inc_combinations = [_][2]isize{
+    .{ 1, 2 },
+    .{ 2, 1 },
+    .{ -3, 2 },
+    .{ 2, -3 },
+    .{ -3, 5 },
+    .{ 5, -3 },
+};
+
 test "zsl.vector.apply2" {
     @setEvalBranchQuota(3000);
 
     const allocator = std.testing.allocator;
 
-    var prng = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(std.Io.failing).toSeconds()));
+    var prng = std.Random.DefaultPrng.init(@bitCast(std.Io.Clock.real.now(std.testing.io).toSeconds()));
     const rand = prng.random();
 
-    inline for (combinations) |combination| {
-        const ops_to_test =
-            if (comptime zsl.meta.isNumeric(combination[0]))
-                .{"mul"}
-            else if (comptime zsl.meta.isNumeric(combination[1]))
-                .{ "mul", "div" }
-            else
-                .{ "add", "sub" };
+    inline for (combinations) |fake_combination| {
+        inline for (len_limits) |len| {
+            comptime var combination = fake_combination;
+            inline for (0..combination.len) |i| {
+                if (@hasDecl(combination[i], "instantiate"))
+                    combination[i] = zsl.vector.Static(len, combination[i].Numeric);
+            }
 
-        for (len_limits) |len| {
-            try executeTestBlock(allocator, rand, combination, ops_to_test, len);
+            const ops_to_test =
+                if (comptime zsl.meta.isNumeric(combination[0]))
+                    .{"mul"}
+                else if (comptime zsl.meta.isNumeric(combination[1]))
+                    .{ "mul", "div" }
+                else
+                    .{ "add", "sub" };
+
+            try executeTestBlock(allocator, rand, combination, ops_to_test, len, 1, 1);
+
+            if (zsl.meta.isDenseVector(combination[0]) or zsl.meta.isDenseVector(combination[1])) {
+                for (inc_combinations) |incs| {
+                    try executeTestBlock(allocator, rand, combination, ops_to_test, len, incs[0], incs[1]);
+                }
+            }
         }
     }
 }
@@ -64,7 +106,9 @@ fn executeTestBlock(
     rand: std.Random,
     comptime combination: [2]type,
     comptime ops: anytype,
-    len: usize,
+    comptime len: usize,
+    incB: isize,
+    incC: isize,
 ) !void {
     inline for (ops) |op| {
         var B = if (comptime zsl.meta.isNumeric(combination[0])) tzsl.randomNumber(combination[0], rand) else try tzsl.vector.randomVector(
@@ -72,6 +116,7 @@ fn executeTestBlock(
             allocator,
             rand,
             len,
+            incB,
             len / 4,
         );
         defer tzsl.deinit(allocator, &B);
@@ -81,6 +126,7 @@ fn executeTestBlock(
             allocator,
             rand,
             len,
+            incC,
             len / 4,
         );
         defer tzsl.deinit(allocator, &C);
@@ -93,7 +139,7 @@ fn executeTestBlock(
             try zsl.vector.mul(allocator, B, C)
         else
             try zsl.vector.div(allocator, B, C);
-        defer A.deinit(allocator);
+        defer tzsl.deinit(allocator, &A);
 
         var D = if (comptime std.mem.eql(u8, op, "add"))
             try tzsl.vector.correctApply2(zsl.meta.Numeric(@TypeOf(A)), allocator, len, B, C, zsl.numeric.add_)

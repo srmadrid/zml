@@ -94,11 +94,16 @@ pub fn apply2(allocator: std.mem.Allocator, x: anytype, y: anytype, comptime op:
     const Y: type = @TypeOf(y);
     const R: type = vecops.Apply2(X, Y, op);
 
-    const x_len = if (comptime meta.isVector(X)) x.len else y.len;
-    const y_len = if (comptime meta.isVector(Y)) y.len else x.len;
+    const x_len_optional: ?usize = if (comptime meta.isVector(X)) (if (comptime meta.isStaticVector(X)) X.len else x.len) else null;
+    const y_len = if (comptime meta.isVector(Y)) (if (comptime meta.isStaticVector(Y)) Y.len else y.len) else x_len_optional.?;
+    const x_len = x_len_optional orelse y_len;
 
-    if (x_len != y_len)
-        return vector.Error.DimensionMismatch;
+    if (comptime !((meta.isStaticVector(X) or meta.isNumeric(X)) and
+        (meta.isStaticVector(Y) or meta.isNumeric(Y))))
+    {
+        if (x_len != y_len)
+            return vector.Error.DimensionMismatch;
+    }
 
     var result = switch (comptime meta.vectorType(R)) {
         .static => R.init,

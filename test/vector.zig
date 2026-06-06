@@ -96,6 +96,6 @@ pub fn areEql(u: anytype, v: anytype) !void {
 }
 
 test {
-    // _ = @import("vector/apply2.zig");
+    _ = @import("vector/apply2.zig");
     _ = @import("vector/apply2_.zig");
 }
