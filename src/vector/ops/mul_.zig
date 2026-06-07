@@ -11,7 +11,8 @@ const vecops = @import("../ops.zig");
 /// permitted and often more efficient. Any other form of memory overlap might
 /// yield incorrect results.
 ///
-/// For two static vectors the function cannot return an error.
+/// For two static vectors, or a static vector and a numeric, the function
+/// cannot return an error.
 ///
 /// ## Signature
 /// ```zig

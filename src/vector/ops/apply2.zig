@@ -62,8 +62,9 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 /// Applies a binary operation elementwise between two vectors, or between a
 /// vector and a numeric.
 ///
-/// For two static vectors, the allocator is not used and can be set to
-/// undefined, and the function cannot return an error unless op can.
+/// For two static vectors, or a static vector and a numeric, the allocator is
+/// not used and can be set to undefined, and the function cannot return an
+/// error unless op can.
 ///
 /// For two sparse vectors, or a sparse vector and a numeric, the operation is
 /// only applied to the indices where at least one of the vectors has a non-zero

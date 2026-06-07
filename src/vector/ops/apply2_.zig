@@ -10,7 +10,8 @@ const vector = @import("../../vector.zig");
 /// permitted and often more efficient. Any other form of memory overlap might
 /// yield incorrect results.
 ///
-/// For two static vectors the function cannot return an error unless op can.
+/// For two static vectors, or a static vector and a numeric, the function
+/// cannot return an error unless op can.
 ///
 /// For two input sparse vectors, or an input sparse vector and an input
 /// numeric, the operation is only applied to the indices where at least one of
