@@ -7,6 +7,23 @@ pub const blas = @import("linalg/blas.zig");
 // pub const lapacke = @import("linalg/lapacke.zig");
 // pub const lapack = @import("linalg/lapack.zig");
 
+// dot
+
+// outer
+
+// cross
+
+const _norm = @import("linalg/norm.zig");
+// pub const Norm = _norm.Norm;
+pub const NormType = _norm.NormType;
+// pub const norm =_norm.norm;
+// pub const normInto =_norm.normInto;
+
+// const _normalize = @import("linalg/normalize.zig");
+// pub const normalize =_norm.normalize;
+// pub const normalizeAlloc =_norm.normalizeAlloc;
+// pub const normalizeInto =_norm.normalizeInto;
+
 // pub fn dot(x: anytype, y: anytype, ctx: anytype) !Coerce(Numeric(@TypeOf(x)), Numeric(@TypeOf(y))) {
 //     // Dot(X, Y) = begin
 //     //     const T = numeric.Mul(meta.Numeric(X), meta.Numeric(Y))
