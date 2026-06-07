@@ -13,7 +13,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
         const i = if (x.direction == .forward) k else x.data[k];
         const j = if (x.direction == .forward) x.data[k] else k;
 
-        if (comptime op_ == numeric.mul_)
+        if (comptime op_ == numeric.mulInto)
             numeric.set(&o.data[o._index(i, j)], y)
         else
             op_(&o.data[o._index(i, j)], numeric.one(meta.Numeric(X)), y);

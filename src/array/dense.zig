@@ -219,7 +219,7 @@ pub fn Dense(N: type) type {
             arr.data[0] = start;
             var i: usize = 1;
             while (i < len) : (i += 1) {
-                numeric.add_(&arr.data[i], arr.data[i - 1], step);
+                numeric.addInto(&arr.data[i], arr.data[i - 1], step);
             }
 
             return arr;
@@ -278,11 +278,11 @@ pub fn Dense(N: type) type {
                     arr.data[1] = stop;
                 } else {
                     arr.data[0] = start;
-                    numeric.div_(&arr.data[1], numeric.add(arr.data[0], stop), numeric.two(N));
+                    numeric.divInto(&arr.data[1], numeric.add(arr.data[0], stop), numeric.two(N));
                 }
 
                 if (opts.retstep) |r|
-                    numeric.div_(r, numeric.sub(arr.data[1], arr.data[0]), numeric.two(N));
+                    numeric.divInto(r, numeric.sub(arr.data[1], arr.data[0]), numeric.two(N));
 
                 return arr;
             }
@@ -290,23 +290,23 @@ pub fn Dense(N: type) type {
             var step: N = numeric.sub(stop, start);
 
             if (opts.endpoint)
-                numeric.div_(&step, step, opts.num - 1)
+                numeric.divInto(&step, step, opts.num - 1)
             else
-                numeric.div_(&step, step, opts.num);
+                numeric.divInto(&step, step, opts.num);
 
             if (opts.retstep) |r|
                 r.* = step;
 
             if (opts.num == 3 and opts.endpoint) {
                 arr.data[0] = start;
-                numeric.add_(&arr.data[1], start, step);
+                numeric.addInto(&arr.data[1], start, step);
                 arr.data[2] = stop;
 
                 return arr;
             } else if (opts.num == 3 and !opts.endpoint) {
                 arr.data[0] = start;
-                numeric.add_(&arr.data[1], start, step);
-                numeric.sub_(&arr.data[2], stop, step);
+                numeric.addInto(&arr.data[1], start, step);
+                numeric.subInto(&arr.data[2], stop, step);
 
                 return arr;
             }
@@ -314,15 +314,15 @@ pub fn Dense(N: type) type {
             arr.data[0] = start;
             var i: usize = 1;
             while (i < opts.num - 2) : (i += 1) {
-                numeric.add_(&arr.data[i], arr.data[i - 1], step);
+                numeric.addInto(&arr.data[i], arr.data[i - 1], step);
             }
 
             if (opts.endpoint) {
-                numeric.add_(&arr.data[opts.num - 2], arr.data[opts.num - 3], step);
+                numeric.addInto(&arr.data[opts.num - 2], arr.data[opts.num - 3], step);
                 arr.data[opts.num - 1] = stop;
             } else {
-                numeric.add_(&arr.data[opts.num - 2], arr.data[opts.num - 3], step);
-                numeric.sub_(&arr.data[opts.num - 1], stop, step);
+                numeric.addInto(&arr.data[opts.num - 2], arr.data[opts.num - 3], step);
+                numeric.subInto(&arr.data[opts.num - 1], stop, step);
             }
 
             return arr;
@@ -374,7 +374,7 @@ pub fn Dense(N: type) type {
                 },
             );
 
-            numeric.pow_(&arr, base, arr) catch unreachable;
+            numeric.powInto(&arr, base, arr) catch unreachable;
 
             return arr;
         }

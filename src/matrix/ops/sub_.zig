@@ -33,5 +33,5 @@ pub fn sub_(o: anytype, x: anytype, y: anytype) !void {
         @compileError("zsl.matrix.sub_: o must be a mutable one-itme pointer to a matrix, and x and y must be matrices, got\n\to: " ++
             @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    return matops.apply2_(o, x, y, numeric.sub_);
+    return matops.apply2_(o, x, y, numeric.subInto);
 }

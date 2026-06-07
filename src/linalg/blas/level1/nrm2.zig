@@ -130,7 +130,7 @@ pub fn nrm2(
     var t: usize = 0;
     while (t < spawned_count) : (t += 1) {
         threads[t].join();
-        numeric.add_(&ssq, ssq, sums[t]);
+        numeric.addInto(&ssq, ssq, sums[t]);
     }
 
     if (spawn_err) |err|
@@ -155,7 +155,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
             inline for (0..unroll) |u| {
                 if (comptime meta.isComplex(meta.Child(X))) {
                     // sums[u] += re(x[i + u])^2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &sums[u],
                         numeric.re(x[i + u]),
                         numeric.re(x[i + u]),
@@ -163,7 +163,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                     );
 
                     // sums[u] += im(x[i + u])^2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &sums[u],
                         numeric.im(x[i + u]),
                         numeric.im(x[i + u]),
@@ -171,7 +171,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                     );
                 } else {
                     // sums[u] += x[i + u]^2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &sums[u],
                         x[i + u],
                         x[i + u],
@@ -184,7 +184,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
         while (i < n) : (i += 1) {
             if (comptime meta.isComplex(meta.Child(X))) {
                 // sums[0] += re(x[i])^2
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[0],
                     numeric.re(x[i]),
                     numeric.re(x[i]),
@@ -192,7 +192,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                 );
 
                 // sums[0] += im(x[i])^2
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[0],
                     numeric.im(x[i]),
                     numeric.im(x[i]),
@@ -200,7 +200,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                 );
             } else {
                 // sums[0] += x[i]^2
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[0],
                     x[i],
                     x[i],
@@ -216,7 +216,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                 const idx = numeric.cast(usize, ix + numeric.cast(isize, u) * incx);
                 if (comptime meta.isComplex(meta.Child(X))) {
                     // sums[0] += re(x[idx])^2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &sums[0],
                         numeric.re(x[idx]),
                         numeric.re(x[idx]),
@@ -224,7 +224,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                     );
 
                     // sums[0] += im(x[idx])^2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &sums[0],
                         numeric.im(x[idx]),
                         numeric.im(x[idx]),
@@ -232,7 +232,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                     );
                 } else {
                     // sums[0] += x[idx]^2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &sums[0],
                         x[idx],
                         x[idx],
@@ -248,7 +248,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
             const idx = numeric.cast(usize, ix);
             if (comptime meta.isComplex(meta.Child(X))) {
                 // sums[0] += re(x[idx])^2
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[0],
                     numeric.re(x[idx]),
                     numeric.re(x[idx]),
@@ -256,7 +256,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                 );
 
                 // sums[0] += im(x[idx])^2
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[0],
                     numeric.im(x[idx]),
                     numeric.im(x[idx]),
@@ -264,7 +264,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
                 );
             } else {
                 // sums[0] += x[idx]^2
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[0],
                     x[idx],
                     x[idx],
@@ -278,7 +278,7 @@ fn k_nrm2_ssq(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Nr
 
     var ssq = numeric.zero(meta.Accumulator(linalg.blas.Nrm2(X)));
     inline for (0..unroll) |u| {
-        numeric.add_(&ssq, ssq, sums[u]);
+        numeric.addInto(&ssq, ssq, sums[u]);
     }
 
     return ssq;

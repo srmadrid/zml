@@ -48,7 +48,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
     if (comptime meta.diagOf(X) == .unit) {
         var idx: usize = 0;
         while (idx < int.min(o.rows, o.cols)) : (idx += 1) {
-            if (comptime op_ == numeric.mul_)
+            if (comptime op_ == numeric.mulInto)
                 numeric.set(&o.data[o._index(idx, idx)], y)
             else {
                 op_(&o.data[o._index(idx, idx)], numeric.one(meta.Numeric(X)), y);

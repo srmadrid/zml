@@ -159,7 +159,7 @@ fn k_axpy(n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // y[i + u] += alpha * x[i + u]
-                numeric.fma_(
+                numeric.fmaInto(
                     &y[i + u],
                     alpha,
                     x[i + u],
@@ -170,7 +170,7 @@ fn k_axpy(n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
 
         while (i < n) : (i += 1) {
             // y[i] += alpha * x[i]
-            numeric.fma_(
+            numeric.fmaInto(
                 &y[i],
                 alpha,
                 x[i],
@@ -184,7 +184,7 @@ fn k_axpy(n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // y[iy + u * incy] += alpha * x[ix + u * incx]
-                numeric.fma_(
+                numeric.fmaInto(
                     &y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
                     alpha,
                     x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
@@ -198,7 +198,7 @@ fn k_axpy(n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype, incy: i
 
         while (i < n) : (i += 1) {
             // y[iy] += alpha * x[ix]
-            numeric.fma_(
+            numeric.fmaInto(
                 &y[numeric.cast(usize, iy)],
                 alpha,
                 x[numeric.cast(usize, ix)],

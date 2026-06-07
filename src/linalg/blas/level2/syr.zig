@@ -239,7 +239,7 @@ pub fn syr(
                         while (i < (r_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp * px_r[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
                                     temp,
                                     px_r[i + u],
@@ -250,7 +250,7 @@ pub fn syr(
 
                         while (i < r_len) : (i += 1) {
                             // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp * px_r[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
                                 temp,
                                 px_r[i],
@@ -358,7 +358,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
                         while (i < ((j - tile_i) / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += px[i + u] * temp
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     px[i + u],
                                     temp,
@@ -369,7 +369,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
 
                         while (i < j - tile_i) : (i += 1) {
                             // a[tile_i + i + j * lda] += px[i] * temp
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 px[i],
                                 temp,
@@ -378,7 +378,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
                         }
 
                         // a[j + j * lda] += px[j - tile_i] * temp
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &a[j + j * lda],
                             px[j - tile_i],
                             temp,
@@ -389,7 +389,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
                         while (i < (b_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += px[i + u] * temp
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     px[i + u],
                                     temp,
@@ -400,7 +400,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
 
                         while (i < b_len) : (i += 1) {
                             // a[tile_i + i + j * lda] += px[i] * temp
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 px[i],
                                 temp,
@@ -451,7 +451,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
 
                     if (j >= tile_i) {
                         // a[j + j * lda] += px[j - tile_i] * temp
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &a[j + j * lda],
                             px[j - tile_i],
                             temp,
@@ -461,7 +461,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
                         var i: usize = j - tile_i + 1;
                         while (i < b_len and i % unroll != 0) : (i += 1) {
                             // a[tile_i + i + j * lda] += px[i] * temp
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 px[i],
                                 temp,
@@ -472,7 +472,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
                         while (i < (b_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += px[i + u] * temp
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     px[i + u],
                                     temp,
@@ -483,7 +483,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
 
                         while (i < b_len) : (i += 1) {
                             // a[tile_i + i + j * lda] += px[i] * temp
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 px[i],
                                 temp,
@@ -495,7 +495,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
                         while (i < (b_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += px[i + u] * temp
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     px[i + u],
                                     temp,
@@ -506,7 +506,7 @@ fn k_syr(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, a: anyty
 
                         while (i < b_len) : (i += 1) {
                             // a[tile_i + i + j * lda] += px[i] * temp
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 px[i],
                                 temp,

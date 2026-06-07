@@ -225,7 +225,7 @@ pub fn symv(
                     var i: usize = 0;
                     while (i < r_len) : (i += 1) {
                         // y += local_y[ky + (r_start + i) * incy]
-                        numeric.atomicAdd_(
+                        numeric.atomicAddInPlace(
                             &worker_y[numeric.cast(usize, ky + numeric.cast(isize, r_start + i) * worker_incy)],
                             local_y[i],
                         );
@@ -289,7 +289,7 @@ pub fn symv(
                         while (i < (r_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // local_y_r[i + u] += temp1 * worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &local_y_r[i + u],
                                     temp1,
                                     worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
@@ -297,7 +297,7 @@ pub fn symv(
                                 );
 
                                 // sums[u] += worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] * local_x_r[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
                                     px_r[i + u],
@@ -307,12 +307,12 @@ pub fn symv(
                         }
 
                         inline for (0..unroll) |u| {
-                            numeric.add_(&temp2, temp2, sums[u]);
+                            numeric.addInto(&temp2, temp2, sums[u]);
                         }
 
                         while (i < r_len) : (i += 1) {
                             // local_y_r[i] += temp1 * worker_a[r_start + c_start * worker_lda + i + j * worker_lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &local_y_r[i],
                                 temp1,
                                 worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
@@ -320,7 +320,7 @@ pub fn symv(
                             );
 
                             // temp2 += worker_a[r_start + c_start * worker_lda + i + j * worker_lda] * local_x_r[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp2,
                                 worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
                                 px_r[i],
@@ -328,14 +328,14 @@ pub fn symv(
                             );
                         }
 
-                        numeric.fma_(&local_y_c[j], worker_alpha, temp2, local_y_c[j]);
+                        numeric.fmaInto(&local_y_c[j], worker_alpha, temp2, local_y_c[j]);
                     }
 
                     // Flush y back to global memory.
                     var i: usize = 0;
                     while (i < r_len) : (i += 1) {
                         // y += local_y_r[ky + (r_start + i) * incy]
-                        numeric.atomicAdd_(
+                        numeric.atomicAddInPlace(
                             &worker_y[numeric.cast(usize, ky + numeric.cast(isize, r_start + i) * worker_incy)],
                             local_y_r[i],
                         );
@@ -344,7 +344,7 @@ pub fn symv(
                     j = 0;
                     while (j < c_len) : (j += 1) {
                         // y += local_y_c[ky + (c_start + j) * incy]
-                        numeric.atomicAdd_(
+                        numeric.atomicAddInPlace(
                             &worker_y[numeric.cast(usize, ky + numeric.cast(isize, c_start + j) * worker_incy)],
                             local_y_c[j],
                         );
@@ -487,7 +487,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     while (i < ((j - tile_i) / unroll) * unroll) : (i += unroll) {
                         inline for (0..unroll) |u| {
                             // py[i + u] += temp1 * a[tile_i + i + u + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &py[i + u],
                                 temp1,
                                 a[tile_i + i + u + j * lda],
@@ -495,7 +495,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                             );
 
                             // sums[u] += a[tile_i + i + u + j * lda] * px[i + u]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &sums[u],
                                 a[tile_i + i + u + j * lda],
                                 px[i + u],
@@ -505,12 +505,12 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     inline for (0..unroll) |u| {
-                        numeric.add_(&temp2, temp2, sums[u]);
+                        numeric.addInto(&temp2, temp2, sums[u]);
                     }
 
                     while (i < j - tile_i) : (i += 1) {
                         // py[i] += temp1 * a[tile_i + i + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &py[i],
                             temp1,
                             a[tile_i + i + j * lda],
@@ -518,7 +518,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                         );
 
                         // temp2 += a[tile_i + i + j * lda] * px[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp2,
                             a[tile_i + i + j * lda],
                             px[i],
@@ -527,7 +527,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     // py[j - tile_i] += temp1 * a[j + j * lda] + alpha * temp2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &py[j - tile_i],
                         temp1,
                         a[j + j * lda],
@@ -549,7 +549,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     while (i + unroll <= b_len) : (i += unroll) {
                         inline for (0..unroll) |u| {
                             // py[i + u] += temp1 * a[tile_i + i + u + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &py[i + u],
                                 temp1,
                                 a[tile_i + i + u + j * lda],
@@ -557,7 +557,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                             );
 
                             // sums[u] += a[tile_i + i + u + j * lda] * px[i + u]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &sums[u],
                                 a[tile_i + i + u + j * lda],
                                 px[i + u],
@@ -567,12 +567,12 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     inline for (0..unroll) |u| {
-                        numeric.add_(&temp2, temp2, sums[u]);
+                        numeric.addInto(&temp2, temp2, sums[u]);
                     }
 
                     while (i < b_len) : (i += 1) {
                         // py[i] += temp1 * a[tile_i + i + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &py[i],
                             temp1,
                             a[tile_i + i + j * lda],
@@ -580,7 +580,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                         );
 
                         // temp2 += a[tile_i + i + j * lda] + px[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp2,
                             a[tile_i + i + j * lda],
                             px[i],
@@ -589,7 +589,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     // y[jy] += alpha * temp2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &y[numeric.cast(usize, jy)],
                         alpha,
                         temp2,
@@ -677,7 +677,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     var temp2 = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
 
                     // py[j - tile_i] += temp1 * a[j + j * lda]
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &py[j - tile_i],
                         temp1,
                         a[j + j * lda],
@@ -689,7 +689,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     var i: usize = j - tile_i + 1;
                     while (i < b_len and i % unroll != 0) : (i += 1) {
                         // py[i] += temp1 * a[tile_i + i + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &py[i],
                             temp1,
                             a[tile_i + i + j * lda],
@@ -697,7 +697,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                         );
 
                         // temp2 += a[tile_i + i + j * lda] * px[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp2,
                             a[tile_i + i + j * lda],
                             px[i],
@@ -708,7 +708,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     while (i < (b_len / unroll) * unroll) : (i += unroll) {
                         inline for (0..unroll) |u| {
                             // py[i + u] += temp1 * a[tile_i + i + u + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &py[i + u],
                                 temp1,
                                 a[tile_i + i + u + j * lda],
@@ -716,7 +716,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                             );
 
                             // sums[u] += a[tile_i + i + u + j * lda] * px[i + u]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &sums[u],
                                 a[tile_i + i + u + j * lda],
                                 px[i + u],
@@ -726,12 +726,12 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     inline for (0..unroll) |u| {
-                        numeric.add_(&temp2, temp2, sums[u]);
+                        numeric.addInto(&temp2, temp2, sums[u]);
                     }
 
                     while (i < b_len) : (i += 1) {
                         // py[i] += temp1 * a[tile_i + i + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &py[i],
                             temp1,
                             a[tile_i + i + j * lda],
@@ -739,7 +739,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                         );
 
                         // temp2 += a[tile_i + i + j * lda] * px[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp2,
                             a[tile_i + i + j * lda],
                             px[i],
@@ -748,7 +748,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     // py[j - tile_i] += alpha * temp2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &py[j - tile_i],
                         alpha,
                         temp2,
@@ -769,7 +769,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     while (i < (b_len / unroll) * unroll) : (i += unroll) {
                         inline for (0..unroll) |u| {
                             // py[i + u] += temp1 * a[tile_i + i + u + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &py[i + u],
                                 temp1,
                                 a[tile_i + i + u + j * lda],
@@ -777,7 +777,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                             );
 
                             // sums[u] += a[tile_i + i + u + j * lda] * px[i + u]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &sums[u],
                                 a[tile_i + i + u + j * lda],
                                 px[i + u],
@@ -787,12 +787,12 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     inline for (0..unroll) |u| {
-                        numeric.add_(&temp2, temp2, sums[u]);
+                        numeric.addInto(&temp2, temp2, sums[u]);
                     }
 
                     while (i < b_len) : (i += 1) {
                         // py[i] += temp1 * a[tile_i + i + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &py[i],
                             temp1,
                             a[tile_i + i + j * lda],
@@ -800,7 +800,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                         );
 
                         // temp2 += a[tile_i + i + j * lda] * px[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp2,
                             a[tile_i + i + j * lda],
                             px[i],
@@ -809,7 +809,7 @@ fn k_symv(uplo: Uplo, n: usize, alpha: anytype, a: anytype, lda: usize, x: anyty
                     }
 
                     // y[jy] += alpha * temp2
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &y[numeric.cast(usize, jy)],
                         alpha,
                         temp2,

@@ -77,7 +77,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (y.idx[p] == j) {
                     op_(&o.data[o._index(y.idx[p], j)], x.data[j], y.data[p]);
                 } else {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(y.idx[p], j)], y.data[p])
                     else
                         numeric.set(&o.data[o._index(y.idx[p], j)], numeric.neg(y.data[p]));
@@ -92,7 +92,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (i == y.idx[p]) {
                     op_(&o.data[o._index(i, y.idx[p])], x.data[i], y.data[p]);
                 } else {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, y.idx[p])], y.data[p])
                     else
                         numeric.set(&o.data[o._index(i, y.idx[p])], numeric.neg(y.data[p]));

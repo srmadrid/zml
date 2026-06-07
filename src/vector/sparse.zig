@@ -335,7 +335,7 @@ pub fn Sparse(N: type) type {
             var i: usize = 0;
             while (i < self.nnz) : (i += 1) {
                 if (self.idx[i] == index) {
-                    numeric.add_(&self.data[i], self.data[i], value);
+                    numeric.addInto(&self.data[i], self.data[i], value);
 
                     return;
                 } else if (self.idx[i] > index) {

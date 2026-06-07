@@ -15,19 +15,19 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             if (comptime meta.uploOf(Y) == .upper) {
                 var i: usize = 0;
                 while (i < j) : (i += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
                 }
 
                 if (comptime meta.diagOf(Y) == .unit) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(j, j)], numeric.one(meta.Numeric(O)))
                     else
                         numeric.set(&o.data[o._index(j, j)], numeric.neg(numeric.one(meta.Numeric(O))));
                 } else {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(j, j)], y.data[y._index(j, j)])
                     else
                         numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[y._index(j, j)]));
@@ -44,12 +44,12 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 }
 
                 if (comptime meta.diagOf(Y) == .unit) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(j, j)], numeric.one(meta.Numeric(O)))
                     else
                         numeric.set(&o.data[o._index(j, j)], numeric.neg(numeric.one(meta.Numeric(O))));
                 } else {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(j, j)], y.data[y._index(j, j)])
                     else
                         numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[y._index(j, j)]));
@@ -57,7 +57,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
 
                 i = j + 1;
                 while (i < o.rows) : (i += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -70,19 +70,19 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             if (comptime meta.uploOf(Y) == .lower) {
                 var j: usize = 0;
                 while (j < i) : (j += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
                 }
 
                 if (comptime meta.diagOf(Y) == .unit) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, i)], numeric.one(meta.Numeric(O)))
                     else
                         numeric.set(&o.data[o._index(i, i)], numeric.neg(numeric.one(meta.Numeric(O))));
                 } else {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, i)], y.data[y._index(i, i)])
                     else
                         numeric.set(&o.data[o._index(i, i)], numeric.neg(y.data[y._index(i, i)]));
@@ -99,12 +99,12 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 }
 
                 if (comptime meta.diagOf(Y) == .unit) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, i)], numeric.one(meta.Numeric(O)))
                     else
                         numeric.set(&o.data[o._index(i, i)], numeric.neg(numeric.one(meta.Numeric(O))));
                 } else {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, i)], y.data[y._index(i, i)])
                     else
                         numeric.set(&o.data[o._index(i, i)], numeric.neg(y.data[y._index(i, i)]));
@@ -112,7 +112,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
 
                 j = i + 1;
                 while (j < o.cols) : (j += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));

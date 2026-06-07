@@ -33,5 +33,5 @@ pub fn div_(o: anytype, x: anytype, y: anytype) !void {
         @compileError("zsl.matrix.div_: o must be a mutable one-itme pointer to a matrix, x must be a matrix, and y must be a numeric, got\n\to: " ++
             @typeName(O) ++ "\n\tx: " ++ @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n");
 
-    return matops.apply2_(o, x, y, numeric.div_);
+    return matops.apply2_(o, x, y, numeric.divInto);
 }

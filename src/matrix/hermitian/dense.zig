@@ -419,7 +419,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
             self.data[self._index(i, j)] = value;
 
             if (conj) {
-                numeric.conj_(&self.data[self._index(i, j)], self.data[self._index(i, j)]);
+                numeric.conjInto(&self.data[self._index(i, j)], self.data[self._index(i, j)]);
             }
         }
 
@@ -570,7 +570,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                     while (j < mat.cols) : (j += 1) {
                         var i: usize = 0;
                         while (i <= j) : (i += 1) {
-                            numeric.conj_(&mat.data[i + j * mat.ld], self.data[j + i * self.ld]);
+                            numeric.conjInto(&mat.data[i + j * mat.ld], self.data[j + i * self.ld]);
                         }
                     }
                 } else { // cu -> cl
@@ -578,7 +578,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                     while (j < mat.cols) : (j += 1) {
                         var i: usize = j;
                         while (i < mat.rows) : (i += 1) {
-                            numeric.conj_(&mat.data[i + j * mat.ld], self.data[j + i * self.ld]);
+                            numeric.conjInto(&mat.data[i + j * mat.ld], self.data[j + i * self.ld]);
                         }
                     }
                 }
@@ -588,7 +588,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                     while (i < mat.rows) : (i += 1) {
                         var j: usize = i;
                         while (j < mat.cols) : (j += 1) {
-                            numeric.conj_(&mat.data[i * mat.ld + j], self.data[j * self.ld + i]);
+                            numeric.conjInto(&mat.data[i * mat.ld + j], self.data[j * self.ld + i]);
                         }
                     }
                 } else { // ru -> rl
@@ -596,7 +596,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                     while (i < mat.rows) : (i += 1) {
                         var j: usize = 0;
                         while (j <= i) : (j += 1) {
-                            numeric.conj_(&mat.data[i * mat.ld + j], self.data[j * self.ld + i]);
+                            numeric.conjInto(&mat.data[i * mat.ld + j], self.data[j * self.ld + i]);
                         }
                     }
                 }
@@ -675,7 +675,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                         var i: usize = 0;
                         while (i < j) : (i += 1) {
                             mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
-                            numeric.conj_(&mat.data[j + i * mat.ld], self.data[i + j * self.ld]);
+                            numeric.conjInto(&mat.data[j + i * mat.ld], self.data[i + j * self.ld]);
                         }
 
                         mat.data[j + j * mat.ld] = self.data[j + j * self.ld];
@@ -688,7 +688,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                         var i: usize = j + 1;
                         while (i < mat.rows) : (i += 1) {
                             mat.data[i + j * mat.ld] = self.data[i + j * self.ld];
-                            numeric.conj_(&mat.data[j + i * mat.ld], self.data[i + j * self.ld]);
+                            numeric.conjInto(&mat.data[j + i * mat.ld], self.data[i + j * self.ld]);
                         }
                     }
                 }
@@ -701,7 +701,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                         var j: usize = i + 1;
                         while (j < mat.cols) : (j += 1) {
                             mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
-                            numeric.conj_(&mat.data[j * mat.ld + i], self.data[i * self.ld + j]);
+                            numeric.conjInto(&mat.data[j * mat.ld + i], self.data[i * self.ld + j]);
                         }
                     }
                 } else { // rl
@@ -710,7 +710,7 @@ pub fn Dense(N: type, uplo: Uplo, layout: Layout) type {
                         var j: usize = 0;
                         while (j < i) : (j += 1) {
                             mat.data[i * mat.ld + j] = self.data[i * self.ld + j];
-                            numeric.conj_(&mat.data[j * mat.ld + i], self.data[i * self.ld + j]);
+                            numeric.conjInto(&mat.data[j * mat.ld + i], self.data[i * self.ld + j]);
                         }
 
                         mat.data[i * mat.ld + i] = self.data[i * self.ld + i];

@@ -291,7 +291,7 @@ pub fn k_trmv(
                             while (i < (r_len / unroll) * unroll) : (i += unroll) {
                                 inline for (0..unroll) |u| {
                                     // px[i + u] += temp * a[tile_i + i + u + j * lda]
-                                    numeric.fma_(
+                                    numeric.fmaInto(
                                         &px[i + u],
                                         temp,
                                         if (comptime noconj)
@@ -305,7 +305,7 @@ pub fn k_trmv(
 
                             while (i < r_len) : (i += 1) {
                                 // px[i] += temp * a[tile_i + i + j * lda]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &px[i],
                                     temp,
                                     if (comptime noconj)
@@ -343,7 +343,7 @@ pub fn k_trmv(
                         while (i < (j / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // x[i + u] += a[i + u + j * lda]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &x[i + u],
                                     temp,
                                     if (comptime noconj)
@@ -357,7 +357,7 @@ pub fn k_trmv(
 
                         while (i < j) : (i += 1) {
                             // x[i] += a[i + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &x[i],
                                 temp,
                                 if (comptime noconj)
@@ -372,7 +372,7 @@ pub fn k_trmv(
                         var i: usize = tile_j;
                         while (i < j) : (i += 1) {
                             // x[ix] += temp * a[i + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &x[numeric.cast(usize, ix)],
                                 temp,
                                 if (comptime noconj)
@@ -388,7 +388,7 @@ pub fn k_trmv(
 
                     if (diag == .non_unit) {
                         // x[jx] *= a[j + j * lda]
-                        numeric.mul_(
+                        numeric.mulInto(
                             &x[numeric.cast(usize, jx)],
                             x[numeric.cast(usize, jx)],
                             if (comptime noconj)
@@ -439,7 +439,7 @@ pub fn k_trmv(
                             while (i < (r_len / unroll) * unroll) : (i += unroll) {
                                 inline for (0..unroll) |u| {
                                     // px[i + u] += temp * a[tile_i + i + u + j * lda]
-                                    numeric.fma_(
+                                    numeric.fmaInto(
                                         &px[i + u],
                                         temp,
                                         if (comptime noconj)
@@ -453,7 +453,7 @@ pub fn k_trmv(
 
                             while (i < r_len) : (i += 1) {
                                 // px[i] += temp * a[tile_i + i + j * lda]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &px[i],
                                     temp,
                                     if (comptime noconj)
@@ -492,7 +492,7 @@ pub fn k_trmv(
                         var i: usize = j + 1;
                         while (i < c_end and i % unroll != 0) : (i += 1) {
                             // x[i] += temp * a[i + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &x[i],
                                 temp,
                                 if (comptime noconj)
@@ -506,7 +506,7 @@ pub fn k_trmv(
                         while (i < (c_end / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // x[i + u] += a[i + u + j * lda]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &x[i + u],
                                     temp,
                                     if (comptime noconj)
@@ -520,7 +520,7 @@ pub fn k_trmv(
 
                         while (i < c_end) : (i += 1) {
                             // x[i] += a[i + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &x[i],
                                 temp,
                                 if (comptime noconj)
@@ -535,7 +535,7 @@ pub fn k_trmv(
                         var i: usize = j + 1;
                         while (i < c_end) : (i += 1) {
                             // x[ix] += a[i + j * lda]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &x[numeric.cast(usize, ix)],
                                 temp,
                                 if (comptime noconj)
@@ -550,7 +550,7 @@ pub fn k_trmv(
                     }
 
                     if (diag == .non_unit) {
-                        numeric.mul_(
+                        numeric.mulInto(
                             &x[numeric.cast(usize, jx)],
                             x[numeric.cast(usize, jx)],
                             if (comptime noconj)
@@ -610,7 +610,7 @@ pub fn k_trmv(
                         while (i < (i_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // sums[u] += a[i_tile + i + u + j * lda] * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[i_tile + i + u + j * lda]
@@ -626,7 +626,7 @@ pub fn k_trmv(
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
-                            numeric.add_(
+                            numeric.addInto(
                                 &temp,
                                 temp,
                                 sums[u],
@@ -635,7 +635,7 @@ pub fn k_trmv(
 
                         while (i < i_len) : (i += 1) {
                             // temp += a[i_tile + i + j * lda] * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i_tile + i + j * lda]
@@ -647,7 +647,7 @@ pub fn k_trmv(
                         }
 
                         // local_sums[j - tile_i] += temp
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_i],
                             local_sums[j - tile_i],
                             temp,
@@ -665,7 +665,7 @@ pub fn k_trmv(
 
                     if (diag == .non_unit) {
                         // temp += a[j + j * lda] * x[jx]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp,
                             if (comptime noconj)
                                 a[j + j * lda]
@@ -676,7 +676,7 @@ pub fn k_trmv(
                         );
                     } else {
                         // temp += x[jx]
-                        numeric.add_(
+                        numeric.addInto(
                             &temp,
                             temp,
                             x[numeric.cast(usize, jx)],
@@ -690,7 +690,7 @@ pub fn k_trmv(
                         while (i < (j / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // sums[u] += a[i + u + j * lda] * x[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[i + u + j * lda]
@@ -704,7 +704,7 @@ pub fn k_trmv(
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
-                            numeric.add_(
+                            numeric.addInto(
                                 &temp,
                                 temp,
                                 sums[u],
@@ -713,7 +713,7 @@ pub fn k_trmv(
 
                         while (i < j) : (i += 1) {
                             // temp += a[i + j * lda] * x[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i + j * lda]
@@ -730,7 +730,7 @@ pub fn k_trmv(
                                 const ix = kx + numeric.cast(isize, i + u) * incx;
 
                                 // sums[u] += a[i + u + j * lda] * x[ix]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[i + u + j * lda]
@@ -744,14 +744,14 @@ pub fn k_trmv(
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
-                            numeric.add_(&temp, temp, sums[u]);
+                            numeric.addInto(&temp, temp, sums[u]);
                         }
 
                         while (i < j) : (i += 1) {
                             const ix = kx + numeric.cast(isize, i) * incx;
 
                             // temp += a[i + j * lda] * x[ix]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i + j * lda]
@@ -805,7 +805,7 @@ pub fn k_trmv(
                         while (i < (i_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // sums[u] = a[i_tile + i + u + j * lda] * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[i_tile + i + u + j * lda]
@@ -820,12 +820,12 @@ pub fn k_trmv(
                         var temp = numeric.zero(meta.Accumulator(numeric.Mul(A, X)));
 
                         inline for (0..unroll) |u| {
-                            numeric.add_(&temp, temp, sums[u]);
+                            numeric.addInto(&temp, temp, sums[u]);
                         }
 
                         while (i < i_len) : (i += 1) {
                             // temp = a[i_tile + i + j * lda] * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i_tile + i + j * lda]
@@ -837,7 +837,7 @@ pub fn k_trmv(
                         }
 
                         // local_sums[j - tile_i] += temp
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_i],
                             local_sums[j - tile_i],
                             temp,
@@ -853,7 +853,7 @@ pub fn k_trmv(
 
                     if (diag == .non_unit) {
                         // temp += a[j + j * lda] * x[jx]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp,
                             if (comptime noconj)
                                 a[j + j * lda]
@@ -864,7 +864,7 @@ pub fn k_trmv(
                         );
                     } else {
                         // temp += x[jx]
-                        numeric.add_(
+                        numeric.addInto(
                             &temp,
                             temp,
                             x[numeric.cast(usize, jx)],
@@ -877,7 +877,7 @@ pub fn k_trmv(
                         var i: usize = j + 1;
                         while (i < r_end and i % unroll != 0) : (i += 1) {
                             // temp += a[i + j * lda] * x[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i + j * lda]
@@ -891,7 +891,7 @@ pub fn k_trmv(
                         while (i < (r_end / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // sums[u] += a[i + u + j * lda] * x[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[i + u + j * lda]
@@ -905,7 +905,7 @@ pub fn k_trmv(
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
-                            numeric.add_(
+                            numeric.addInto(
                                 &temp,
                                 temp,
                                 sums[u],
@@ -914,7 +914,7 @@ pub fn k_trmv(
 
                         while (i < r_end) : (i += 1) {
                             // temp += a[i + j * lda] * x[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i + j * lda]
@@ -930,7 +930,7 @@ pub fn k_trmv(
                             const ix = kx + numeric.cast(isize, i) * incx;
 
                             // temp += a[i + j * lda] * x[ix]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i + j * lda]
@@ -946,7 +946,7 @@ pub fn k_trmv(
                                 const ix = kx + numeric.cast(isize, i + u) * incx;
 
                                 // temp += a[i + u + j * lda] * x[ix]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[i + u + j * lda]
@@ -960,7 +960,7 @@ pub fn k_trmv(
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
-                            numeric.add_(
+                            numeric.addInto(
                                 &temp,
                                 temp,
                                 sums[u],
@@ -971,7 +971,7 @@ pub fn k_trmv(
                             const ix = kx + numeric.cast(isize, i) * incx;
 
                             // temp += a[i + j * lda] * x[ix]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[i + j * lda]
@@ -1036,7 +1036,7 @@ fn k_trmv_nd(
                 while (j < ti_end) : (j += 1) {
                     if (diag == .non_unit) {
                         // local_sums[j - tile_i] += a[j + j * lda] * x[j]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &local_sums[j - tile_i],
                             if (comptime noconj)
                                 a[j + j * lda]
@@ -1047,7 +1047,7 @@ fn k_trmv_nd(
                         );
                     } else {
                         // local_sums[j - tile_i] += x[j]
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_i],
                             local_sums[j - tile_i],
                             x[j],
@@ -1058,7 +1058,7 @@ fn k_trmv_nd(
                     // unroll?
                     while (i < j) : (i += 1) {
                         // local_sums[i - tile_i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &local_sums[i - tile_i],
                             if (comptime noconj)
                                 a[i + j * lda]
@@ -1083,7 +1083,7 @@ fn k_trmv_nd(
                         while (i < (ti_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // local_sums[i + u] += a[tile_i + i + u + (tile_j + j) * lda] + px[j]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &local_sums[i + u],
                                     if (comptime noconj)
                                         a[tile_i + i + u + (tile_j + j) * lda]
@@ -1097,7 +1097,7 @@ fn k_trmv_nd(
 
                         while (i < ti_len) : (i += 1) {
                             // local_sums[i] += a[tile_i + i + (tile_j + j) * lda] + px[j]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &local_sums[i],
                                 if (comptime noconj)
                                     a[tile_i + i + (tile_j + j) * lda]
@@ -1137,7 +1137,7 @@ fn k_trmv_nd(
                         while (i < (ti_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // local_sums[i + u] += a[tile_i + i + u + (tile_j + j) * lda] * px[j]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &local_sums[i + u],
                                     if (comptime noconj)
                                         a[tile_i + i + u + (tile_j + j) * lda]
@@ -1151,7 +1151,7 @@ fn k_trmv_nd(
 
                         while (i < ti_len) : (i += 1) {
                             // local_sums[i] += a[tile_i + i + (tile_j + j) * lda] * px[j]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &local_sums[i],
                                 if (comptime noconj)
                                     a[tile_i + i + (tile_j + j) * lda]
@@ -1168,7 +1168,7 @@ fn k_trmv_nd(
                 while (j < ti_end) : (j += 1) {
                     if (diag == .non_unit) {
                         // local_sums[j - tile_i] += a[j + j * lda] * x[j]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &local_sums[j - tile_i],
                             if (comptime noconj)
                                 a[j + j * lda]
@@ -1179,7 +1179,7 @@ fn k_trmv_nd(
                         );
                     } else {
                         // local_sums[j - tile_i] += x[j]
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_i],
                             local_sums[j - tile_i],
                             x[j],
@@ -1190,7 +1190,7 @@ fn k_trmv_nd(
                     // unroll?
                     while (i < ti_end) : (i += 1) {
                         // local_sums[i - tile_i] += a[i + j * lda] * x[j]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &local_sums[i - tile_i],
                             if (comptime noconj)
                                 a[i + j * lda]
@@ -1226,7 +1226,7 @@ fn k_trmv_nd(
                 while (j < tj_end) : (j += 1) {
                     if (diag == .non_unit) {
                         // local_sums[j - tile_j] += a[j + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &local_sums[j - tile_j],
                             if (comptime noconj)
                                 a[j + j * lda]
@@ -1237,7 +1237,7 @@ fn k_trmv_nd(
                         );
                     } else {
                         // local_sums[j - tile_j] += x[j]
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_j],
                             local_sums[j - tile_j],
                             x[j],
@@ -1260,7 +1260,7 @@ fn k_trmv_nd(
                         while (i < (ti_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // sums[u] += a[tile_i + i + u + j * lda] * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[tile_i + i + u + j * lda]
@@ -1276,7 +1276,7 @@ fn k_trmv_nd(
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
-                            numeric.add_(
+                            numeric.addInto(
                                 &temp,
                                 temp,
                                 sums[u],
@@ -1285,7 +1285,7 @@ fn k_trmv_nd(
 
                         while (i < ti_len) : (i += 1) {
                             // temp += a[tile_i + i + j * lda] * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[tile_i + i + j * lda]
@@ -1297,7 +1297,7 @@ fn k_trmv_nd(
                         }
 
                         // local_sums[j - tile_j] += temp
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_j],
                             local_sums[j - tile_j],
                             temp,
@@ -1314,7 +1314,7 @@ fn k_trmv_nd(
                     var i: usize = tile_j;
                     while (i < j and i % unroll != 0) : (i += 1) {
                         // temp += a[i + j * lda] * x[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp,
                             if (comptime noconj)
                                 a[i + j * lda]
@@ -1328,7 +1328,7 @@ fn k_trmv_nd(
                     while (i < (j / unroll) * unroll) : (i += unroll) {
                         inline for (0..unroll) |u| {
                             // sums[u] += a[i + u + j * lda] * x[i + u]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &sums[u],
                                 if (comptime noconj)
                                     a[i + u + j * lda]
@@ -1342,7 +1342,7 @@ fn k_trmv_nd(
 
                     inline for (0..unroll) |u| {
                         // temp += sums[u]
-                        numeric.add_(
+                        numeric.addInto(
                             &temp,
                             temp,
                             sums[u],
@@ -1351,7 +1351,7 @@ fn k_trmv_nd(
 
                     while (i < j) : (i += 1) {
                         // temp += a[i + j * lda] * x[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp,
                             if (comptime noconj)
                                 a[i + j * lda]
@@ -1363,7 +1363,7 @@ fn k_trmv_nd(
                     }
 
                     // local_sums[j - tile_j] += temp
-                    numeric.add_(
+                    numeric.addInto(
                         &local_sums[j - tile_j],
                         local_sums[j - tile_j],
                         temp,
@@ -1387,7 +1387,7 @@ fn k_trmv_nd(
                 while (j < tj_end) : (j += 1) {
                     if (diag == .non_unit) {
                         // local_sums[j - tile_j] += a[j + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &local_sums[j - tile_j],
                             if (comptime noconj)
                                 a[j + j * lda]
@@ -1398,7 +1398,7 @@ fn k_trmv_nd(
                         );
                     } else {
                         // local_sums[j - tile_j] += x[j]
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_j],
                             local_sums[j - tile_j],
                             x[j],
@@ -1415,7 +1415,7 @@ fn k_trmv_nd(
                     var i: usize = j + 1;
                     while (i < tj_end and i % unroll != 0) : (i += 1) {
                         // temp += a[i + j * lda] * x[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp,
                             if (comptime noconj)
                                 a[i + j * lda]
@@ -1429,7 +1429,7 @@ fn k_trmv_nd(
                     while (i < (tj_end / unroll) * unroll) : (i += unroll) {
                         inline for (0..unroll) |u| {
                             // sums[u] += a[i + u + j * lda] * x[i + u]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &sums[u],
                                 if (comptime noconj)
                                     a[i + u + j * lda]
@@ -1443,7 +1443,7 @@ fn k_trmv_nd(
 
                     inline for (0..unroll) |u| {
                         // temp += sums[u]
-                        numeric.add_(
+                        numeric.addInto(
                             &temp,
                             temp,
                             sums[u],
@@ -1452,7 +1452,7 @@ fn k_trmv_nd(
 
                     while (i < tj_end) : (i += 1) {
                         // temp += a[i + j * lda] * x[i]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &temp,
                             if (comptime noconj)
                                 a[i + j * lda]
@@ -1464,7 +1464,7 @@ fn k_trmv_nd(
                     }
 
                     // local_sums[j - tile_j] += temp
-                    numeric.add_(
+                    numeric.addInto(
                         &local_sums[j - tile_j],
                         local_sums[j - tile_j],
                         temp,
@@ -1486,7 +1486,7 @@ fn k_trmv_nd(
                         while (i < (ti_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // sums[u] += a[tile_i + i + u + j * lda] * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &sums[u],
                                     if (comptime noconj)
                                         a[tile_i + i + u + j * lda]
@@ -1502,7 +1502,7 @@ fn k_trmv_nd(
 
                         inline for (0..unroll) |u| {
                             // temp += sums[u]
-                            numeric.add_(
+                            numeric.addInto(
                                 &temp,
                                 temp,
                                 sums[u],
@@ -1511,7 +1511,7 @@ fn k_trmv_nd(
 
                         while (i < ti_len) : (i += 1) {
                             // temp += a[tile_i + i + j * lda] * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &temp,
                                 if (comptime noconj)
                                     a[tile_i + i + j * lda]
@@ -1523,7 +1523,7 @@ fn k_trmv_nd(
                         }
 
                         // local_sums[j - tile_j] += temp
-                        numeric.add_(
+                        numeric.addInto(
                             &local_sums[j - tile_j],
                             local_sums[j - tile_j],
                             temp,

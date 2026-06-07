@@ -142,7 +142,7 @@ pub fn dotc(
     var t: usize = 0;
     while (t < spawned_count) : (t += 1) {
         threads[t].join();
-        numeric.add_(&sum, sum, sums[t]);
+        numeric.addInto(&sum, sum, sums[t]);
     }
 
     if (spawn_err) |err|
@@ -167,7 +167,7 @@ fn k_dotc(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accum
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += conj(x[i + u]) * y[i + u]
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[u],
                     numeric.conj(x[i + u]),
                     y[i + u],
@@ -178,7 +178,7 @@ fn k_dotc(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accum
 
         while (i < n) : (i += 1) {
             // sums[0] += conj(x[i]) * y[i]
-            numeric.fma_(
+            numeric.fmaInto(
                 &sums[0],
                 numeric.conj(x[i]),
                 y[i],
@@ -192,7 +192,7 @@ fn k_dotc(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accum
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += conj(x[ix + u * incx]) * y[iy + u * incy]
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[u],
                     numeric.conj(x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)]),
                     y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
@@ -206,7 +206,7 @@ fn k_dotc(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accum
 
         while (i < n) : (i += 1) {
             // sums[0] += conj(x[ix]) * y[ix]
-            numeric.fma_(
+            numeric.fmaInto(
                 &sums[0],
                 numeric.conj(x[numeric.cast(usize, ix)]),
                 y[numeric.cast(usize, iy)],
@@ -221,7 +221,7 @@ fn k_dotc(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accum
     var sum = numeric.zero(meta.Accumulator(linalg.blas.Dotc(X, Y)));
     inline for (0..unroll) |u| {
         // sum += sums[u]
-        numeric.add_(&sum, sum, sums[u]);
+        numeric.addInto(&sum, sum, sums[u]);
     }
 
     return sum;

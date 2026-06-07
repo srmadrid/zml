@@ -19,7 +19,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
 
                 if (j < o.rows) {
                     if (comptime meta.diagOf(X) == .unit) {
-                        if (comptime op_ == numeric.mul_)
+                        if (comptime op_ == numeric.mulInto)
                             numeric.set(&o.data[o._index(j, j)], y)
                         else
                             op_(&o.data[o._index(j, j)], numeric.one(meta.Numeric(X)), y);
@@ -30,7 +30,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             } else {
                 if (j < o.rows) {
                     if (comptime meta.diagOf(X) == .unit) {
-                        if (comptime op_ == numeric.mul_)
+                        if (comptime op_ == numeric.mulInto)
                             numeric.set(&o.data[o._index(j, j)], y)
                         else
                             op_(&o.data[o._index(j, j)], numeric.one(meta.Numeric(X)), y);
@@ -56,7 +56,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
 
                 if (i < o.cols) {
                     if (comptime meta.diagOf(X) == .unit) {
-                        if (comptime op_ == numeric.mul_)
+                        if (comptime op_ == numeric.mulInto)
                             numeric.set(&o.data[o._index(i, i)], y)
                         else
                             op_(&o.data[o._index(i, i)], numeric.one(meta.Numeric(X)), y);
@@ -67,7 +67,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             } else {
                 if (i < o.cols) {
                     if (comptime meta.diagOf(X) == .unit) {
-                        if (comptime op_ == numeric.mul_)
+                        if (comptime op_ == numeric.mulInto)
                             numeric.set(&o.data[o._index(i, i)], y)
                         else
                             op_(&o.data[o._index(i, i)], numeric.one(meta.Numeric(X)), y);

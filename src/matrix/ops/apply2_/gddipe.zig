@@ -40,7 +40,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
         if (i == j) {
             op_(&o.data[o._index(i, j)], x.data[i], numeric.one(meta.Numeric(Y)));
         } else {
-            if (comptime op_ == numeric.add_)
+            if (comptime op_ == numeric.addInto)
                 o.data[o._index(i, j)] = numeric.one(meta.Numeric(O))
             else
                 o.data[o._index(i, j)] = numeric.neg(numeric.one(meta.Numeric(O)));

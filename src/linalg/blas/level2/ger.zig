@@ -241,7 +241,7 @@ fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype
                 while (i < (b_len / unroll) * unroll) : (i += unroll) {
                     inline for (0..unroll) |u| {
                         // a[tile_i + i + u + j * lda] += px[i + u] * temp
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &a[tile_i + i + u + j * lda],
                             px[i + u],
                             temp,
@@ -252,7 +252,7 @@ fn k_ger(m: usize, n: usize, alpha: anytype, x: anytype, incx: isize, y: anytype
 
                 while (i < b_len) : (i += 1) {
                     // a[tile_i + i + j * lda] += px[i] * temp
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &a[tile_i + i + j * lda],
                         px[i],
                         temp,

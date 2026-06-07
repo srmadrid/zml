@@ -14,8 +14,8 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
     comptime if ((!meta.isVector(X) and !meta.isNumeric(X)) or (!meta.isVector(Y) and !meta.isNumeric(Y)) or
         (!meta.isVector(X) and !meta.isVector(Y)) or
         opinfo != .@"fn" or opinfo.@"fn".params.len != 2)
-        @compileError("zsl.vector.apply2: at least one of x or y must be a vector, the other must be a vector or a numeric, and op must be a function of two arguments, got\n\tx: " ++
-            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n");
+        @compileError("zsl.vector.Apply2: at least one of X or Y must be a vector type, the other must be a vector or a numeric type, and op must be a function of two arguments, got\n\tX = " ++
+            @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\tOp = " ++ @typeName(Op) ++ "\n");
 
     comptime var R = meta.ReturnTypeFromInputs(op, &.{ meta.Numeric(X), meta.Numeric(Y) });
     const rinfo = @typeInfo(R);
@@ -23,14 +23,14 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
         R = rinfo.error_union.payload;
 
     comptime if (!meta.isNumeric(R))
-        @compileError("zsl.vector.apply2: calling op with arguments of types X and Y must return a numeric, got\n\tR = " ++ @typeName(R) ++ "\n");
+        @compileError("zsl.vector.Apply2: calling op with arguments of types " ++ @typeName(meta.Numeric(X)) ++ " and " ++ @typeName(meta.Numeric(Y)) ++ " must return a numeric, got\n\tR = " ++ @typeName(R) ++ "\n");
 
     switch (comptime meta.vectorType(X)) {
         .static => switch (comptime meta.vectorType(Y)) {
             .static => {
                 if (comptime X.len != Y.len)
-                    @compileError("zsl.vector.apply2: static vectors x and y must have equal compile time lengths, got\n\tx: " ++
-                        @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n");
+                    @compileError("zsl.vector.Apply2: static vector types X and Y must have equal lengths, got\n\tX = " ++
+                        @typeName(X) ++ "\n\tY = " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n");
 
                 return vector.Static(X.len, R);
             },
@@ -59,25 +59,18 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
     }
 }
 
-/// Applies a binary operation elementwise between two vectors, or between a
-/// vector and a numeric.
+/// Applies a binary operation elementwise between two static vectors, or
+/// between a static vector and a numeric.
 ///
-/// For two static vectors, or a static vector and a numeric, the allocator is
-/// not used and can be set to undefined, and the function cannot return an
-/// error unless op can.
-///
-/// For two sparse vectors, or a sparse vector and a numeric, the operation is
-/// only applied to the indices where at least one of the vectors has a non-zero
-/// element.
+/// This function is intended for stack-allocated vector types
+/// (`vector.Static`), and performs dimension checks at compile time.
 ///
 /// ## Signature
 /// ```zig
-/// vector.apply2(allocator: std.mem.Allocator, x: X, y: Y, op: Op) !vector.Apply2(X, Y, op)
+/// vector.apply2(x: X, y: Y, op: Op) vector.Apply2(X, Y, op)
 /// ```
 ///
 /// ## Arguments
-/// * `allocator` (`std.mem.Allocator`): The allocator to use for memory
-///   allocations.
 /// * `x` (`anytype`): The left operand.
 /// * `y` (`anytype`): The right operand.
 /// * `op` (`comptime anytype`): A binary numeric function to apply elementwise
@@ -85,43 +78,28 @@ pub fn Apply2(comptime X: type, comptime Y: type, comptime op: anytype) type {
 ///
 /// ## Returns
 /// `vector.Apply2(@TypeOf(x), @TypeOf(y), op)`: The result of the operation.
-///
-/// ## Errors
-/// * `std.mem.Allocator.Error.OutOfMemory`: If memory allocation fails.
-/// * `vector.Error.DimensionMismatch`: If the two vectors do not have the same
-///   length. Can only happen if both operands are vectors.
-pub fn apply2(allocator: std.mem.Allocator, x: anytype, y: anytype, comptime op: anytype) !vecops.Apply2(@TypeOf(x), @TypeOf(y), op) {
+pub fn apply2(x: anytype, y: anytype, comptime op: anytype) vecops.Apply2(@TypeOf(x), @TypeOf(y), op) {
     const X: type = @TypeOf(x);
     const Y: type = @TypeOf(y);
+    const Op: type = @TypeOf(op);
     const R: type = vecops.Apply2(X, Y, op);
 
-    const x_len_optional: ?usize = if (comptime meta.isVector(X)) (if (comptime meta.isStaticVector(X)) X.len else x.len) else null;
-    const y_len = if (comptime meta.isVector(Y)) (if (comptime meta.isStaticVector(Y)) Y.len else y.len) else x_len_optional.?;
-    const x_len = x_len_optional orelse y_len;
+    if (comptime meta.isDenseVector(X) or meta.isSparseVector(X) or
+        meta.isDenseVector(Y) or meta.isSparseVector(Y))
+        @compileError("zsl.vector.apply2: the result cannot be a heap-allocated vector type, i.e., both inputs must be static vectors, or a static vector and a numeric, got\n\tx: " ++
+            @typeName(X) ++ "\n\ty: " ++ @typeName(Y) ++ "\n\top: " ++ @typeName(Op) ++ "\n\tresult: " ++ @typeName(R) ++ "\n");
 
-    if (comptime !((meta.isStaticVector(X) or meta.isNumeric(X)) and
-        (meta.isStaticVector(Y) or meta.isNumeric(Y))))
-    {
-        if (x_len != y_len)
-            return vector.Error.DimensionMismatch;
-    }
+    var result = R.init;
 
-    var result = switch (comptime meta.vectorType(R)) {
-        .static => R.init,
-        .dense => try R.init(allocator, x_len),
-        .sparse => try R.init(allocator, x_len, (if (comptime meta.isSparseVector(X)) x.nnz else 0) + (if (comptime meta.isSparseVector(Y)) y.nnz else 0)),
-        .numeric => unreachable,
-    };
-
-    vecops.apply2_(
+    vecops.apply2Into(
         &result,
         x,
         y,
         switch (comptime op) {
-            numeric.add => numeric.add_,
-            numeric.sub => numeric.sub_,
-            numeric.mul => numeric.mul_,
-            numeric.div => numeric.div_,
+            numeric.add => numeric.addInto,
+            numeric.sub => numeric.subInto,
+            numeric.mul => numeric.mulInto,
+            numeric.div => numeric.divInto,
             else => unreachable,
         },
     ) catch unreachable;

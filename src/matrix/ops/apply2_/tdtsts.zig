@@ -47,7 +47,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     if (i_o == j_o and comptime meta.diagOf(X) == .unit) {
                         op_(&o.data[o._index(i_o, j_o)], numeric.one(meta.Numeric(X)), y.data[py]);
                     } else {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(i_o, j_o)], y.data[py])
                         else
                             numeric.set(&o.data[o._index(i_o, j_o)], numeric.neg(y.data[py]));
@@ -75,7 +75,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (i_o == j_o and comptime meta.diagOf(X) == .unit) {
                     op_(&o.data[o._index(i_o, j_o)], numeric.one(meta.Numeric(X)), y.data[py]);
                 } else {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i_o, j_o)], y.data[py])
                     else
                         numeric.set(&o.data[o._index(i_o, j_o)], numeric.neg(y.data[py]));
@@ -110,7 +110,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (i_o == j_o and comptime meta.diagOf(X) == .unit) {
                     op_(&o.data[o._index(i_o, j_o)], numeric.one(meta.Numeric(X)), y.data[py]);
                 } else if (utils.searchSparse(x, i_o, j_o) == null) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i_o, j_o)], y.data[py])
                     else
                         numeric.set(&o.data[o._index(i_o, j_o)], numeric.neg(y.data[py]));

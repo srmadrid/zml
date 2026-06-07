@@ -167,7 +167,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
                 const xi = x[i + u];
 
                 // x[i + u] = c * xi + s * y[i + u]
-                numeric.fma_(
+                numeric.fmaInto(
                     &x[i + u],
                     c,
                     xi,
@@ -175,7 +175,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
                 );
 
                 // y[i + u] = c * y[i + u] - conj(s) * xi
-                numeric.fma_(
+                numeric.fmaInto(
                     &y[i + u],
                     c,
                     y[i + u],
@@ -188,7 +188,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
             const xi = x[i];
 
             // x[i] = c * xi + s * y[i]
-            numeric.fma_(
+            numeric.fmaInto(
                 &x[i],
                 c,
                 xi,
@@ -196,7 +196,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
             );
 
             // y[i] = c * y[i] - conj(s) * xi
-            numeric.fma_(
+            numeric.fmaInto(
                 &y[i],
                 c,
                 y[i],
@@ -214,7 +214,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
                 const xi = x[x_idx];
 
                 // x[x_idx] = c * xi + s * y[y_idx]
-                numeric.fma_(
+                numeric.fmaInto(
                     &x[x_idx],
                     c,
                     xi,
@@ -222,7 +222,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
                 );
 
                 // y[y_idx] = c * y[y_idx] - conj(s) * xi
-                numeric.fma_(
+                numeric.fmaInto(
                     &y[y_idx],
                     c,
                     y[y_idx],
@@ -240,7 +240,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
             const xi = x[x_idx];
 
             // x[x_idx] = c * xi + s * y[y_idx]
-            numeric.fma_(
+            numeric.fmaInto(
                 &x[x_idx],
                 c,
                 xi,
@@ -248,7 +248,7 @@ fn k_rot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize, c: anytype,
             );
 
             // y[y_idx] = c * y[y_idx] - conj(s) * xi
-            numeric.fma_(
+            numeric.fmaInto(
                 &y[y_idx],
                 c,
                 y[y_idx],

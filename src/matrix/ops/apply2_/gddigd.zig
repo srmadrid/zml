@@ -16,9 +16,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
         var j: usize = 0;
         while (j < o.cols) : (j += 1) {
             var i: usize = 0;
-            if ((comptime op_ == numeric.sub_) or !aliased) {
+            if ((comptime op_ == numeric.subInto) or !aliased) {
                 while (i < int.min(j, o.rows)) : (i += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -30,9 +30,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             }
 
             i = int.min(j + 1, o.rows);
-            if ((comptime op_ == numeric.sub_) or !aliased) {
+            if ((comptime op_ == numeric.subInto) or !aliased) {
                 while (i < o.rows) : (i += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -43,9 +43,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
         var i: usize = 0;
         while (i < o.rows) : (i += 1) {
             var j: usize = 0;
-            if ((comptime op_ == numeric.sub_) or !aliased) {
+            if ((comptime op_ == numeric.subInto) or !aliased) {
                 while (j < int.min(i, o.cols)) : (j += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -57,9 +57,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             }
 
             j = int.min(i + 1, o.cols);
-            if ((comptime op_ == numeric.sub_) or !aliased) {
+            if ((comptime op_ == numeric.subInto) or !aliased) {
                 while (j < o.cols) : (j += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));

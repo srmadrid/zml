@@ -142,7 +142,7 @@ pub fn dot(
     var t: usize = 0;
     while (t < spawned_count) : (t += 1) {
         threads[t].join();
-        numeric.add_(&sum, sum, sums[t]);
+        numeric.addInto(&sum, sum, sums[t]);
     }
 
     if (spawn_err) |err|
@@ -167,7 +167,7 @@ fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += x[i + u] * y[i + u]
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[u],
                     x[i + u],
                     y[i + u],
@@ -178,7 +178,7 @@ fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
 
         while (i < n) : (i += 1) {
             // sums[0] += x[i] * y[i]
-            numeric.fma_(
+            numeric.fmaInto(
                 &sums[0],
                 x[i],
                 y[i],
@@ -192,7 +192,7 @@ fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += x[ix + u * incx] * y[iy + u * incy]
-                numeric.fma_(
+                numeric.fmaInto(
                     &sums[u],
                     x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
                     y[numeric.cast(usize, iy + numeric.cast(isize, u) * incy)],
@@ -206,7 +206,7 @@ fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
 
         while (i < n) : (i += 1) {
             // sums[0] += x[ix] * y[ix]
-            numeric.fma_(
+            numeric.fmaInto(
                 &sums[0],
                 x[numeric.cast(usize, ix)],
                 y[numeric.cast(usize, iy)],
@@ -221,7 +221,7 @@ fn k_dot(n: usize, x: anytype, incx: isize, y: anytype, incy: isize) meta.Accumu
     var sum = numeric.zero(meta.Accumulator(linalg.blas.Dot(X, Y)));
     inline for (0..unroll) |u| {
         // sum += sums[u]
-        numeric.add_(&sum, sum, sums[u]);
+        numeric.addInto(&sum, sum, sums[u]);
     }
 
     return sum;

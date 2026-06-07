@@ -338,7 +338,7 @@ pub fn Sparse(N: type) type {
                     const val = self.data[p];
 
                     if (r == current_r and c == current_c) {
-                        numeric.add_(&current_val, current_val, val);
+                        numeric.addInto(&current_val, current_val, val);
                     } else {
                         data[write_idx] = current_val;
                         idx[write_idx] = if (comptime meta.layoutOf(M) == .col_major) current_r else current_c;

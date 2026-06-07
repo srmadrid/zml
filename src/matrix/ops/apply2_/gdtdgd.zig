@@ -22,9 +22,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     op_(&o.data[o._index(i, j)], x.data[x._index(i, j)], y.data[y._index(i, j)]);
                 }
             } else {
-                if ((comptime op_ == numeric.sub_) or !aliased) {
+                if ((comptime op_ == numeric.subInto) or !aliased) {
                     while (i < int.min(j, o.rows)) : (i += 1) {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                         else
                             numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -45,9 +45,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     op_(&o.data[o._index(i, j)], x.data[x._index(i, j)], y.data[y._index(i, j)]);
                 }
             } else {
-                if ((comptime op_ == numeric.sub_) or !aliased) {
+                if ((comptime op_ == numeric.subInto) or !aliased) {
                     while (i < o.rows) : (i += 1) {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                         else
                             numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -64,9 +64,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     op_(&o.data[o._index(i, j)], x.data[x._index(i, j)], y.data[y._index(i, j)]);
                 }
             } else {
-                if ((comptime op_ == numeric.sub_) or !aliased) {
+                if ((comptime op_ == numeric.subInto) or !aliased) {
                     while (j < int.min(i, o.cols)) : (j += 1) {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                         else
                             numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -87,9 +87,9 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     op_(&o.data[o._index(i, j)], x.data[x._index(i, j)], y.data[y._index(i, j)]);
                 }
             } else {
-                if ((comptime op_ == numeric.sub_) or !aliased) {
+                if ((comptime op_ == numeric.subInto) or !aliased) {
                     while (j < o.cols) : (j += 1) {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                         else
                             numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));

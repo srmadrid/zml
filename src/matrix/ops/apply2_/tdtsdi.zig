@@ -22,7 +22,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     if (comptime meta.diagOf(X) == .unit) {
                         op_(&o.data[o._index(j, j)], numeric.one(meta.Numeric(X)), y.data[j]);
                     } else {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(j, j)], y.data[j])
                         else
                             numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[j]));
@@ -33,7 +33,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     if (comptime meta.diagOf(X) == .unit) {
                         op_(&o.data[o._index(j, j)], numeric.one(meta.Numeric(X)), y.data[j]);
                     } else {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(j, j)], y.data[j])
                         else
                             numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[j]));
@@ -59,7 +59,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     if (comptime meta.diagOf(X) == .unit) {
                         op_(&o.data[o._index(j, j)], numeric.one(meta.Numeric(X)), y.data[j]);
                     } else {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(j, j)], y.data[j])
                         else
                             numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[j]));
@@ -70,7 +70,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     if (comptime meta.diagOf(X) == .unit) {
                         op_(&o.data[o._index(j, j)], numeric.one(meta.Numeric(X)), y.data[j]);
                     } else {
-                        if (comptime op_ == numeric.add_)
+                        if (comptime op_ == numeric.addInto)
                             numeric.set(&o.data[o._index(j, j)], y.data[j])
                         else
                             numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[j]));

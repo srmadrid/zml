@@ -332,7 +332,7 @@ pub fn her2(
                         while (i < (r_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp1 * px_r[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
                                     temp1,
                                     if (comptime worker_noconj)
@@ -343,7 +343,7 @@ pub fn her2(
                                 );
 
                                 // worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda] += temp2 * py_r[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &worker_a[r_start + c_start * worker_lda + i + u + j * worker_lda],
                                     temp2,
                                     if (comptime worker_noconj)
@@ -357,7 +357,7 @@ pub fn her2(
 
                         while (i < r_len) : (i += 1) {
                             // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp1 * px_r[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
                                 temp1,
                                 if (comptime worker_noconj)
@@ -368,7 +368,7 @@ pub fn her2(
                             );
 
                             // worker_a[r_start + c_start * worker_lda + i + j * worker_lda] += temp2 * py_r[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &worker_a[r_start + c_start * worker_lda + i + j * worker_lda],
                                 temp2,
                                 if (comptime worker_noconj)
@@ -540,7 +540,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         while (i < ((j - tile_i) / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp1,
                                     if (comptime noconj)
@@ -551,7 +551,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                                 );
 
                                 // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp2,
                                     if (comptime noconj)
@@ -565,7 +565,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
 
                         while (i < j - tile_i) : (i += 1) {
                             // a[tile_i + i + j * lda] += temp1 * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp1,
                                 if (comptime noconj)
@@ -576,7 +576,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                             );
 
                             // a[tile_i + i + j * lda] += temp2 * py[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp2,
                                 if (comptime noconj)
@@ -588,7 +588,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         }
 
                         // a[j + j * lda] = re(a[j + j * lda]) + re(px[j - tile_i] * temp1)
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &a[j + j * lda],
                             if (comptime noconj)
                                 numeric.neg(numeric.im(px[j - tile_i]))
@@ -603,7 +603,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         );
 
                         // a[j + j * lda] = re(a[j + j * lda]) + re(py[j - tile_i] * temp2)
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &a[j + j * lda],
                             if (comptime noconj)
                                 numeric.neg(numeric.im(py[j - tile_i]))
@@ -621,7 +621,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         while (i < (b_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp1,
                                     if (comptime noconj)
@@ -632,7 +632,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                                 );
 
                                 // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp2,
                                     if (comptime noconj)
@@ -646,7 +646,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
 
                         while (i < b_len) : (i += 1) {
                             // a[tile_i + i + j * lda] += temp1 * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp1,
                                 if (comptime noconj)
@@ -657,7 +657,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                             );
 
                             // a[tile_i + i + j * lda] += temp2 * py[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp2,
                                 if (comptime noconj)
@@ -755,7 +755,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
 
                     if (j >= tile_i) {
                         // a[j + j * lda] = re(a[j + j * lda]) + re(conj(px[j - tile_i]) * temp1)
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &a[j + j * lda],
                             if (comptime !noconj)
                                 numeric.im(px[j - tile_i])
@@ -770,7 +770,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         );
 
                         // a[j + j * lda] = re(a[j + j * lda]) + re(conj(py[j - tile_i]) * temp2)
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &a[j + j * lda],
                             if (comptime !noconj)
                                 numeric.im(py[j - tile_i])
@@ -787,7 +787,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         var i: usize = j - tile_i + 1;
                         while (i < b_len and i % unroll != 0) : (i += 1) {
                             // a[tile_i + i + j * lda] += temp1 * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp1,
                                 if (comptime noconj)
@@ -798,7 +798,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                             );
 
                             // a[tile_i + i + j * lda] += temp2 * py[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp2,
                                 if (comptime noconj)
@@ -812,7 +812,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         while (i < (b_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp1,
                                     if (comptime noconj)
@@ -823,7 +823,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                                 );
 
                                 // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp2,
                                     if (comptime noconj)
@@ -837,7 +837,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
 
                         while (i < b_len) : (i += 1) {
                             // a[tile_i + i + j * lda] += temp1 * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp1,
                                 if (comptime noconj)
@@ -848,7 +848,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                             );
 
                             // a[tile_i + i + j * lda] += temp2 * py[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp2,
                                 if (comptime noconj)
@@ -863,7 +863,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                         while (i < (b_len / unroll) * unroll) : (i += unroll) {
                             inline for (0..unroll) |u| {
                                 // a[tile_i + i + u + j * lda] += temp1 * px[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp1,
                                     if (comptime noconj)
@@ -874,7 +874,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                                 );
 
                                 // a[tile_i + i + u + j * lda] += temp2 * py[i + u]
-                                numeric.fma_(
+                                numeric.fmaInto(
                                     &a[tile_i + i + u + j * lda],
                                     temp2,
                                     if (comptime noconj)
@@ -888,7 +888,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
 
                         while (i < b_len) : (i += 1) {
                             // a[tile_i + i + j * lda] += temp1 * px[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp1,
                                 if (comptime noconj)
@@ -899,7 +899,7 @@ fn k_her2(uplo: Uplo, n: usize, alpha: anytype, x: anytype, incx: isize, y: anyt
                             );
 
                             // a[tile_i + i + j * lda] += temp2 * py[i]
-                            numeric.fma_(
+                            numeric.fmaInto(
                                 &a[tile_i + i + j * lda],
                                 temp2,
                                 if (comptime noconj)

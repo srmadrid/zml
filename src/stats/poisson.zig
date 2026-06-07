@@ -51,9 +51,9 @@ pub fn Poisson(comptime Int: type, comptime Real: type) type {
             var p = numeric.one(Real);
 
             while (numeric.gt(p, self.enl)) {
-                numeric.add_(&k, k, numeric.one(Int));
+                numeric.addInto(&k, k, numeric.one(Int));
                 const u = utils.standardUniform(Real, prng);
-                numeric.mul_(&p, p, u);
+                numeric.mulInto(&p, p, u);
             }
 
             return k - 1;

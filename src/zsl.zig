@@ -20,7 +20,7 @@ pub const comptime_complex = complex.comptime_complex;
 // Domain namespaces
 pub const numeric = @import("numeric.zig");
 pub const vector = @import("vector.zig");
-pub const matrix = @import("matrix.zig");
+// pub const matrix = @import("matrix.zig");
 // pub const array = @import("array.zig");
 
 pub const stats = @import("stats.zig");

@@ -17,12 +17,12 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     o.data[o._index(i, j)] = numeric.zero(meta.Numeric(O));
                 }
 
-                if (comptime op_ == numeric.add_)
+                if (comptime op_ == numeric.addInto)
                     numeric.set(&o.data[o._index(j, j)], y.data[j])
                 else
                     numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[j]));
             } else {
-                if (comptime op_ == numeric.add_)
+                if (comptime op_ == numeric.addInto)
                     numeric.set(&o.data[o._index(j, j)], y.data[j])
                 else
                     numeric.set(&o.data[o._index(j, j)], numeric.neg(y.data[j]));
@@ -42,12 +42,12 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     o.data[o._index(i, j)] = numeric.zero(meta.Numeric(O));
                 }
 
-                if (comptime op_ == numeric.add_)
+                if (comptime op_ == numeric.addInto)
                     numeric.set(&o.data[o._index(i, i)], y.data[i])
                 else
                     numeric.set(&o.data[o._index(i, i)], numeric.neg(y.data[i]));
             } else {
-                if (comptime op_ == numeric.add_)
+                if (comptime op_ == numeric.addInto)
                     numeric.set(&o.data[o._index(i, i)], y.data[i])
                 else
                     numeric.set(&o.data[o._index(i, i)], numeric.neg(y.data[i]));

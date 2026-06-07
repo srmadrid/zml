@@ -21,7 +21,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (j < o.rows) {
                     if (comptime meta.diagOf(X) == .unit) {
                         if (comptime meta.diagOf(Y) == .unit) {
-                            if (comptime op_ == numeric.add_)
+                            if (comptime op_ == numeric.addInto)
                                 o.data[o._index(j, j)] = numeric.two(meta.Numeric(O))
                             else
                                 o.data[o._index(j, j)] = numeric.zero(meta.Numeric(O));
@@ -39,7 +39,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (j < o.rows) {
                     if (comptime meta.diagOf(X) == .unit) {
                         if (comptime meta.diagOf(Y) == .unit) {
-                            if (comptime op_ == numeric.add_)
+                            if (comptime op_ == numeric.addInto)
                                 o.data[o._index(j, j)] = numeric.two(meta.Numeric(O))
                             else
                                 o.data[o._index(j, j)] = numeric.zero(meta.Numeric(O));
@@ -72,7 +72,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (i < o.cols) {
                     if (comptime meta.diagOf(X) == .unit) {
                         if (comptime meta.diagOf(Y) == .unit) {
-                            if (comptime op_ == numeric.add_)
+                            if (comptime op_ == numeric.addInto)
                                 o.data[o._index(i, i)] = numeric.two(meta.Numeric(O))
                             else
                                 o.data[o._index(i, i)] = numeric.zero(meta.Numeric(O));
@@ -90,7 +90,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 if (i < o.cols) {
                     if (comptime meta.diagOf(X) == .unit) {
                         if (comptime meta.diagOf(Y) == .unit) {
-                            if (comptime op_ == numeric.add_)
+                            if (comptime op_ == numeric.addInto)
                                 o.data[o._index(i, i)] = numeric.two(meta.Numeric(O))
                             else
                                 o.data[o._index(i, i)] = numeric.zero(meta.Numeric(O));

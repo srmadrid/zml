@@ -48,7 +48,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                     const j_o = if (comptime meta.uploOf(O) == meta.uploOf(Y)) j_stored else i_stored;
 
                     const ty = if (comptime meta.uploOf(O) == meta.uploOf(Y)) y.data[py] else numeric.conj(y.data[py]);
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i_o, j_o)], ty)
                     else
                         numeric.set(&o.data[o._index(i_o, j_o)], numeric.neg(ty));
@@ -74,7 +74,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
                 const j_o = if (comptime meta.uploOf(O) == meta.uploOf(Y)) j_stored else i_stored;
 
                 const ty = if (comptime meta.uploOf(O) == meta.uploOf(Y)) y.data[py] else numeric.conj(y.data[py]);
-                if (comptime op_ == numeric.add_)
+                if (comptime op_ == numeric.addInto)
                     numeric.set(&o.data[o._index(i_o, j_o)], ty)
                 else
                     numeric.set(&o.data[o._index(i_o, j_o)], numeric.neg(ty));
@@ -118,7 +118,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
 
                 if (utils.searchSparse(x, r_x, c_x) == null) {
                     const ty = if (comptime meta.uploOf(O) == meta.uploOf(Y)) y.data[py] else numeric.conj(y.data[py]);
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i_o, j_o)], ty)
                     else
                         numeric.set(&o.data[o._index(i_o, j_o)], numeric.neg(ty));

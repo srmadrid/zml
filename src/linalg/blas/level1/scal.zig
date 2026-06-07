@@ -157,7 +157,7 @@ pub fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
             while (i < (n / unroll) * unroll) : (i += unroll) {
                 inline for (0..unroll) |u| {
                     // x[i + u] *= alpha
-                    numeric.mul_(
+                    numeric.mulInto(
                         &x[i + u],
                         alpha,
                         x[i + u],
@@ -167,7 +167,7 @@ pub fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
 
             while (i < n) : (i += 1) {
                 // x[i] *= alpha
-                numeric.mul_(
+                numeric.mulInto(
                     &x[i],
                     alpha,
                     x[i],
@@ -198,7 +198,7 @@ pub fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
             while (i < (n / unroll) * unroll) : (i += unroll) {
                 inline for (0..unroll) |u| {
                     // x[ix + u * incx] *= alpha
-                    numeric.mul_(
+                    numeric.mulInto(
                         &x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
                         alpha,
                         x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)],
@@ -210,7 +210,7 @@ pub fn k_scal(n: usize, alpha: anytype, x: anytype, incx: isize) void {
 
             while (i < n) : (i += 1) {
                 // x[ix] *= alpha
-                numeric.mul_(
+                numeric.mulInto(
                     &x[numeric.cast(usize, ix)],
                     alpha,
                     x[numeric.cast(usize, ix)],

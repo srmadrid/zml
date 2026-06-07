@@ -310,7 +310,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
                 while (i < (b_len / unroll) * unroll) : (i += unroll) {
                     inline for (0..unroll) |u| {
                         // py[i + u] += temp * a[tile_i + i + u + j * lda]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &py[i + u],
                             temp,
                             if (comptime noconj)
@@ -324,7 +324,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
 
                 while (i < b_len) : (i += 1) {
                     // py[i] += temp * a[tile_i + i + j * lda]
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &py[i],
                         temp,
                         if (comptime noconj)
@@ -390,7 +390,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
                 while (i < (b_len / unroll) * unroll) : (i += unroll) {
                     inline for (0..unroll) |u| {
                         // sums[u] += a[tile_i + i + u + j * lda] * px[i + u]
-                        numeric.fma_(
+                        numeric.fmaInto(
                             &sums[u],
                             if (comptime noconj)
                                 a[tile_i + i + u + j * lda]
@@ -403,12 +403,12 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
                 }
 
                 inline for (0..unroll) |u| {
-                    numeric.add_(&temp, temp, sums[u]);
+                    numeric.addInto(&temp, temp, sums[u]);
                 }
 
                 while (i < b_len) : (i += 1) {
                     // temp += a[tile_i + i + j * lda] * x[i]
-                    numeric.fma_(
+                    numeric.fmaInto(
                         &temp,
                         if (comptime noconj)
                             a[tile_i + i + j * lda]
@@ -420,7 +420,7 @@ pub fn k_gemv(transa: linalg.Transpose, m: usize, n: usize, alpha: anytype, a: a
                 }
 
                 // y[jy] += alpha * temp
-                numeric.fma_(
+                numeric.fmaInto(
                     &y[numeric.cast(usize, jy)],
                     alpha,
                     temp,

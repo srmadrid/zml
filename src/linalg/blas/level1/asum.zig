@@ -132,7 +132,7 @@ pub fn asum(
     var t: usize = 0;
     while (t < spawned_count) : (t += 1) {
         threads[t].join();
-        numeric.add_(&sum, sum, sums[t]);
+        numeric.addInto(&sum, sum, sums[t]);
     }
 
     if (spawn_err) |err|
@@ -156,7 +156,7 @@ fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += abs1(x[i + u])
-                numeric.add_(
+                numeric.addInto(
                     &sums[u],
                     sums[u],
                     numeric.abs1(x[i + u]),
@@ -166,7 +166,7 @@ fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@
 
         while (i < n) : (i += 1) {
             // sums[0] += abs1(x[i])
-            numeric.add_(
+            numeric.addInto(
                 &sums[0],
                 sums[0],
                 numeric.abs1(x[i]),
@@ -178,7 +178,7 @@ fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@
         while (i < (n / unroll) * unroll) : (i += unroll) {
             inline for (0..unroll) |u| {
                 // sums[u] += abs1(x[ix + u * incx])
-                numeric.add_(
+                numeric.addInto(
                     &sums[u],
                     sums[u],
                     numeric.abs1(x[numeric.cast(usize, ix + numeric.cast(isize, u) * incx)]),
@@ -190,7 +190,7 @@ fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@
 
         while (i < n) : (i += 1) {
             // sums[0] += abs1(x[ix])
-            numeric.add_(
+            numeric.addInto(
                 &sums[0],
                 sums[0],
                 numeric.abs1(x[numeric.cast(usize, ix)]),
@@ -203,7 +203,7 @@ fn k_asum(n: usize, x: anytype, incx: isize) meta.Accumulator(linalg.blas.Asum(@
     var sum = numeric.zero(meta.Accumulator(linalg.blas.Asum(X)));
     inline for (0..unroll) |u| {
         // sum += sums[u]
-        numeric.add_(&sum, sum, sums[u]);
+        numeric.addInto(&sum, sum, sums[u]);
     }
 
     return sum;

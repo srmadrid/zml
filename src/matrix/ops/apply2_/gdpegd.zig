@@ -11,13 +11,13 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
 
     const aliased = (comptime O == Y) and std.meta.eql(o.*, y);
 
-    if ((comptime op_ == numeric.sub_) or !aliased) {
+    if ((comptime op_ == numeric.subInto) or !aliased) {
         if (comptime meta.layoutOf(O) == .col_major) {
             var j: usize = 0;
             while (j < o.cols) : (j += 1) {
                 var i: usize = 0;
                 while (i < o.rows) : (i += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -28,7 +28,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             while (i < o.rows) : (i += 1) {
                 var j: usize = 0;
                 while (j < o.cols) : (j += 1) {
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], y.data[y._index(i, j)])
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(y.data[y._index(i, j)]));
@@ -42,7 +42,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
         const i = if (x.direction == .forward) k else x.data[k];
         const j = if (x.direction == .forward) x.data[k] else k;
 
-        if ((comptime op_ == numeric.add_) or !aliased)
+        if ((comptime op_ == numeric.addInto) or !aliased)
             op_(&o.data[o._index(i, j)], numeric.one(meta.Numeric(X)), y.data[y._index(i, j)])
         else
             op_(&o.data[o._index(i, j)], numeric.one(meta.Numeric(X)), numeric.neg(y.data[y._index(i, j)]));

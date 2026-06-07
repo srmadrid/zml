@@ -21,7 +21,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             } else {
                 while (i < j) : (i += 1) {
                     const ty = if (comptime meta.uploOf(Y) == .upper) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], ty)
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(ty));
@@ -42,7 +42,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             } else {
                 while (i < o.rows) : (i += 1) {
                     const ty = if (comptime meta.uploOf(Y) == .lower) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], ty)
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(ty));
@@ -61,7 +61,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             } else {
                 while (j < i) : (j += 1) {
                     const ty = if (comptime meta.uploOf(Y) == .lower) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], ty)
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(ty));
@@ -82,7 +82,7 @@ pub fn apply2_(o: anytype, x: anytype, y: anytype, comptime op_: anytype) void {
             } else {
                 while (j < o.cols) : (j += 1) {
                     const ty = if (comptime meta.uploOf(Y) == .upper) y.data[y._index(i, j)] else y.data[y._index(j, i)];
-                    if (comptime op_ == numeric.add_)
+                    if (comptime op_ == numeric.addInto)
                         numeric.set(&o.data[o._index(i, j)], ty)
                     else
                         numeric.set(&o.data[o._index(i, j)], numeric.neg(ty));
