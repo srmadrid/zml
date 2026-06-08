@@ -20,7 +20,7 @@ pub fn main(init: std.process.Init) !void {
     std.debug.print("||x||₂: {d}\n", .{zsl.linalg.norm(x, .l2)});
     std.debug.print("||x||_F: {d}\n", .{zsl.linalg.norm(x, .frobenius)});
     std.debug.print("||x||_∞: {d}\n", .{zsl.linalg.norm(x, .inf)});
-    std.debug.print("||x||ₚ: {d}, p = 10\n", .{zsl.linalg.norm(x, .{ .p = 10.0 })});
+    std.debug.print("||x||ₚ: {d}, p = 1000\n", .{zsl.linalg.norm(x, .{ .p = 1000.0 })});
 }
 
 pub fn blas_lv1_threshold_calibration(init: std.process.Init) !void {
